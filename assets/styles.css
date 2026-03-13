@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+.recipe-body h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+}
+.recipe-body h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+.recipe-body h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
+}
+.recipe-body p {
+  margin: 0.5rem 0;
+}
+.recipe-body ul {
+  list-style: disc;
+  margin-left: 1.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.recipe-body ol {
+  list-style: decimal;
+  margin-left: 1.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.recipe-body li {
+  margin: 0.125rem 0;
+}
+.recipe-body a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.recipe-body code {
+  background: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+.recipe-body pre {
+  background: #f3f4f6;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.recipe-body blockquote {
+  border-left: 4px solid #d1d5db;
+  padding-left: 1rem;
+  color: #6b7280;
+  margin: 0.5rem 0;
+}
