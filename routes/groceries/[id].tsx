@@ -16,7 +16,7 @@ export const handler = define.handlers({
     if (groceryRes.rows.length === 0) throw new HttpError(404);
 
     const pricesRes = await ctx.state.db.query(
-      `SELECT gp.*, s.name as store_name, s.location as store_location, s.currency as store_currency
+      `SELECT gp.*, s.name as store_name, s.currency as store_currency
        FROM grocery_prices gp
        JOIN stores s ON s.id = gp.store_id
        WHERE gp.grocery_id = $1
