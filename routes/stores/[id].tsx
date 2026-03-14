@@ -20,9 +20,9 @@ export const handler = define.handlers({
     );
 
     const pricesRes = await ctx.state.db.query(
-      `SELECT gp.*, g.name as grocery_name, g.unit as grocery_unit
-       FROM grocery_prices gp
-       JOIN groceries g ON g.id = gp.grocery_id
+      `SELECT gp.*, g.name as ingredient_name, g.unit as ingredient_unit
+       FROM ingredient_prices gp
+       JOIN ingredients g ON g.id = gp.ingredient_id
        WHERE gp.store_id = $1
        ORDER BY g.name`,
       [id],
@@ -214,17 +214,17 @@ export default define.page<typeof handler>(function StoreDetail({ data }) {
                     class="card p-3"
                   >
                     <a
-                      href={`/groceries/${p.grocery_id}`}
+                      href={`/ingredients/${p.ingredient_id}`}
                       class="font-medium link"
                     >
-                      {String(p.grocery_name)}
+                      {String(p.ingredient_name)}
                     </a>
                     <div class="text-sm text-stone-600">
                       {getCurrencySymbol(String(store.currency ?? "EUR"))}
                       {String(p.price)}
                       {p.amount &&
                         ` / ${String(p.amount)} ${
-                          String(p.grocery_unit ?? "")
+                          String(p.ingredient_unit ?? "")
                         }`}
                     </div>
                   </div>

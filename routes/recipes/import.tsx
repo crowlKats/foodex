@@ -14,8 +14,8 @@ import OcrUpload from "../../islands/OcrUpload.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
-    const groceriesRes = await ctx.state.db.query(
-      "SELECT id, name, unit FROM groceries ORDER BY name",
+    const ingredientsRes = await ctx.state.db.query(
+      "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
     const allToolsRes = await ctx.state.db.query(
       "SELECT id, name FROM tools ORDER BY name",
@@ -25,7 +25,7 @@ export const handler = define.handlers({
     );
 
     return page({
-      groceries: groceriesRes.rows,
+      ingredients: ingredientsRes.rows,
       allTools: allToolsRes.rows,
       allRecipes: allRecipesRes.rows,
       ocr: null,
@@ -36,8 +36,8 @@ export const handler = define.handlers({
     const form = await ctx.req.formData();
     const ocrJson = form.get("ocr_result") as string | null;
 
-    const groceriesRes = await ctx.state.db.query(
-      "SELECT id, name, unit FROM groceries ORDER BY name",
+    const ingredientsRes = await ctx.state.db.query(
+      "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
     const allToolsRes = await ctx.state.db.query(
       "SELECT id, name FROM tools ORDER BY name",
@@ -47,7 +47,7 @@ export const handler = define.handlers({
     );
 
     const baseData = {
-      groceries: groceriesRes.rows,
+      ingredients: ingredientsRes.rows,
       allTools: allToolsRes.rows,
       allRecipes: allRecipesRes.rows,
     };
@@ -66,8 +66,8 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function ImportRecipePage({ data }) {
-  const { groceries, allTools, allRecipes, ocr, error } = data as {
-    groceries: Record<string, unknown>[];
+  const { ingredients, allTools, allRecipes, ocr, error } = data as {
+    ingredients: Record<string, unknown>[];
     allTools: Record<string, unknown>[];
     allRecipes: Record<string, unknown>[];
     ocr: OcrRecipeData | null;
@@ -173,9 +173,9 @@ export default define.page<typeof handler>(function ImportRecipePage({ data }) {
               <IngredientForm
                 initialIngredients={ocr.ingredients.map((ing) => ({
                   ...ing,
-                  grocery_id: "",
+                  ingredient_id: "",
                 }))}
-                groceries={groceries.map((g) => ({
+                ingredients={ingredients.map((g) => ({
                   id: String(g.id),
                   name: String(g.name),
                   unit: String(g.unit ?? ""),

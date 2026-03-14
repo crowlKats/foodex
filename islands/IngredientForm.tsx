@@ -8,12 +8,12 @@ interface Ingredient {
   name: string;
   amount: string;
   unit: string;
-  grocery_id: string;
+  ingredient_id: string;
 }
 
 interface IngredientFormProps {
   initialIngredients: Ingredient[];
-  groceries: { id: string; name: string; unit: string }[];
+  ingredients: { id: string; name: string; unit: string }[];
 }
 
 function slugifyKey(name: string): string {
@@ -24,18 +24,19 @@ function slugifyKey(name: string): string {
 }
 
 export default function IngredientForm(
-  { initialIngredients, groceries }: IngredientFormProps,
+  { initialIngredients, ingredients: availableIngredients }:
+    IngredientFormProps,
 ) {
   const items = useSignal<Ingredient[]>(
     initialIngredients.length > 0
       ? [...initialIngredients]
-      : [{ key: "", name: "", amount: "", unit: "", grocery_id: "" }],
+      : [{ key: "", name: "", amount: "", unit: "", ingredient_id: "" }],
   );
 
   function add() {
     items.value = [
       ...items.value,
-      { key: "", name: "", amount: "", unit: "", grocery_id: "" },
+      { key: "", name: "", amount: "", unit: "", ingredient_id: "" },
     ];
   }
 
@@ -47,9 +48,9 @@ export default function IngredientForm(
     const next = [...items.value];
     next[index] = { ...next[index], [field]: value };
 
-    // Auto-fill from grocery selection
-    if (field === "grocery_id" && value) {
-      const g = groceries.find((g) => g.id === value);
+    // Auto-fill from ingredient selection
+    if (field === "ingredient_id" && value) {
+      const g = availableIngredients.find((g) => g.id === value);
       if (g) {
         next[index].name = g.name;
         next[index].key = slugifyKey(g.name);
@@ -57,7 +58,7 @@ export default function IngredientForm(
           next[index].unit = g.unit;
         }
       }
-    } else if (field === "grocery_id" && !value) {
+    } else if (field === "ingredient_id" && !value) {
       next[index].name = "";
       next[index].key = "";
     }
@@ -71,17 +72,17 @@ export default function IngredientForm(
         <div key={i} class="card p-3 space-y-2">
           <div class="flex gap-2 items-center">
             <select
-              value={item.grocery_id}
+              value={item.ingredient_id}
               onInput={(e) =>
                 update(
                   i,
-                  "grocery_id",
+                  "ingredient_id",
                   (e.target as HTMLSelectElement).value,
                 )}
               class="flex-1 text-sm"
             >
-              <option value="">-- Link grocery --</option>
-              {groceries.map((g) => (
+              <option value="">-- Link ingredient --</option>
+              {availableIngredients.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
@@ -169,8 +170,8 @@ export default function IngredientForm(
           />
           <input
             type="hidden"
-            name={`ingredients[${i}][grocery_id]`}
-            value={item.grocery_id}
+            name={`ingredients[${i}][ingredient_id]`}
+            value={item.ingredient_id}
           />
         </div>
       ))}

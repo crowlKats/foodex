@@ -1,10 +1,10 @@
 /**
- * Resolve a grocery_id for an ingredient: only link if explicitly selected.
+ * Resolve an ingredient_id for an ingredient: only link if explicitly selected.
  */
-export function resolveGroceryId(
-  groceryId: string | undefined,
+export function resolveIngredientId(
+  ingredientId: string | undefined,
 ): number | null {
-  if (groceryId) return parseInt(groceryId);
+  if (ingredientId) return parseInt(ingredientId);
   return null;
 }
 

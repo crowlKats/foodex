@@ -1,6 +1,6 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
-import { parseFormArray, resolveGroceryId } from "../../lib/form.ts";
+import { parseFormArray, resolveIngredientId } from "../../lib/form.ts";
 import QuantityInput from "../../islands/QuantityInput.tsx";
 import IngredientForm from "../../islands/IngredientForm.tsx";
 import ToolForm from "../../islands/ToolForm.tsx";
@@ -22,8 +22,8 @@ function slugify(text: string): string {
 
 export const handler = define.handlers({
   async GET(ctx) {
-    const groceriesRes = await ctx.state.db.query(
-      "SELECT id, name, unit FROM groceries ORDER BY name",
+    const ingredientsRes = await ctx.state.db.query(
+      "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
     const allToolsRes = await ctx.state.db.query(
       "SELECT id, name FROM tools ORDER BY name",
@@ -33,7 +33,7 @@ export const handler = define.handlers({
     );
 
     return page({
-      groceries: groceriesRes.rows,
+      ingredients: ingredientsRes.rows,
       allTools: allToolsRes.rows,
       allRecipes: allRecipesRes.rows,
     });
@@ -74,8 +74,8 @@ export const handler = define.handlers({
     const coverImageId = form.get("cover_image_id") as string;
 
     if (!title?.trim()) {
-      const groceriesRes = await ctx.state.db.query(
-        "SELECT id, name, unit FROM groceries ORDER BY name",
+      const ingredientsRes = await ctx.state.db.query(
+        "SELECT id, name, unit FROM ingredients ORDER BY name",
       );
       const allToolsRes = await ctx.state.db.query(
         "SELECT id, name FROM tools ORDER BY name",
@@ -84,7 +84,7 @@ export const handler = define.handlers({
         "SELECT id, title, slug FROM recipes ORDER BY title",
       );
       return page({
-        groceries: groceriesRes.rows,
+        ingredients: ingredientsRes.rows,
         allTools: allToolsRes.rows,
         allRecipes: allRecipesRes.rows,
         error: "Title is required",
@@ -115,8 +115,8 @@ export const handler = define.handlers({
       recipeId = res.rows[0].id as number;
     } catch (err) {
       if (String(err).includes("unique")) {
-        const groceriesRes = await ctx.state.db.query(
-          "SELECT id, name, unit FROM groceries ORDER BY name",
+        const ingredientsRes = await ctx.state.db.query(
+          "SELECT id, name, unit FROM ingredients ORDER BY name",
         );
         const allToolsRes = await ctx.state.db.query(
           "SELECT id, name FROM tools ORDER BY name",
@@ -125,7 +125,7 @@ export const handler = define.handlers({
           "SELECT id, title, slug FROM recipes ORDER BY title",
         );
         return page({
-          groceries: groceriesRes.rows,
+          ingredients: ingredientsRes.rows,
           allTools: allToolsRes.rows,
           allRecipes: allRecipesRes.rows,
           error: `Slug "${slug}" already exists`,
@@ -134,18 +134,18 @@ export const handler = define.handlers({
       throw err;
     }
 
-    // Insert ingredients (auto-create missing groceries)
+    // Insert recipe ingredients
     const ingredients = parseFormArray(form, "ingredients");
     for (let i = 0; i < ingredients.length; i++) {
       const ing = ingredients[i];
       if (!ing.name?.trim()) continue;
-      const groceryId = resolveGroceryId(ing.grocery_id);
+      const ingredientId = resolveIngredientId(ing.ingredient_id);
       await ctx.state.db.query(
-        `INSERT INTO recipe_ingredients (recipe_id, grocery_id, key, name, amount, unit, sort_order)
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, sort_order)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           recipeId,
-          groceryId,
+          ingredientId,
           ing.key?.trim() || null,
           ing.name.trim(),
           ing.amount ? parseFloat(ing.amount) : null,
@@ -224,8 +224,8 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function NewRecipePage({ data }) {
-  const { groceries, allTools, allRecipes, error } = data as {
-    groceries: Record<string, unknown>[];
+  const { ingredients, allTools, allRecipes, error } = data as {
+    ingredients: Record<string, unknown>[];
     allTools: Record<string, unknown>[];
     allRecipes: Record<string, unknown>[];
     error?: string;
@@ -284,7 +284,7 @@ export default define.page<typeof handler>(function NewRecipePage({ data }) {
           <h2 class="font-semibold mb-2">Ingredients</h2>
           <IngredientForm
             initialIngredients={[]}
-            groceries={groceries.map((g) => ({
+            ingredients={ingredients.map((g) => ({
               id: String(g.id),
               name: String(g.name),
               unit: String(g.unit ?? ""),

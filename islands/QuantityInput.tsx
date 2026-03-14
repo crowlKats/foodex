@@ -65,40 +65,40 @@ export default function QuantityInput(
             <label class="block text-sm font-medium mb-1">
               Tray size (W x L x D)
             </label>
-            <div class="flex items-center gap-1 flex-wrap">
+            <div class="flex items-center gap-1">
               <input
                 type="number"
                 min="1"
                 step="0.5"
                 value={qValue}
-                placeholder="width"
-                class="w-full text-center"
+                placeholder="W"
+                class="flex-1 min-w-0 text-center"
                 onInput={(e) => {
                   qValue.value =
                     parseFloat((e.target as HTMLInputElement).value) || 0;
                 }}
               />
-              <span class="text-stone-500 text-sm">&times;</span>
+              <span class="text-stone-500 text-sm shrink-0">&times;</span>
               <input
                 type="number"
                 min="1"
                 step="0.5"
                 value={qValue2}
-                placeholder="length"
-                class="w-full text-center"
+                placeholder="L"
+                class="flex-1 min-w-0 text-center"
                 onInput={(e) => {
                   qValue2.value =
                     parseFloat((e.target as HTMLInputElement).value) || 0;
                 }}
               />
-              <span class="text-stone-500 text-sm">&times;</span>
+              <span class="text-stone-500 text-sm shrink-0">&times;</span>
               <input
                 type="number"
                 min="1"
                 step="0.5"
                 value={qValue3}
-                placeholder="depth"
-                class="w-full text-center"
+                placeholder="D"
+                class="flex-1 min-w-0 text-center"
                 onInput={(e) => {
                   qValue3.value =
                     parseFloat((e.target as HTMLInputElement).value) || 0;

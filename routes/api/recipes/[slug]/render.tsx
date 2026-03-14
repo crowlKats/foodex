@@ -71,9 +71,9 @@ export const handler = define.handlers({
 
     // Fetch ingredients with keys
     const ingredientsRes = await ctx.state.db.query(
-      `SELECT ri.*, g.name as grocery_name, g.unit as grocery_unit
+      `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit
        FROM recipe_ingredients ri
-       LEFT JOIN groceries g ON g.id = ri.grocery_id
+       LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE ri.recipe_id = $1
        ORDER BY ri.sort_order, ri.id`,
       [recipe.id],

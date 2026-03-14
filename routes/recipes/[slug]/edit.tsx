@@ -1,6 +1,6 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
-import { parseFormArray, resolveGroceryId } from "../../../lib/form.ts";
+import { parseFormArray, resolveIngredientId } from "../../../lib/form.ts";
 import QuantityInput from "../../../islands/QuantityInput.tsx";
 import IngredientForm from "../../../islands/IngredientForm.tsx";
 import ToolForm from "../../../islands/ToolForm.tsx";
@@ -25,9 +25,9 @@ export const handler = define.handlers({
     const recipe = recipeRes.rows[0];
 
     const ingredientsRes = await ctx.state.db.query(
-      `SELECT ri.*, g.name as grocery_name
+      `SELECT ri.*, g.name as ingredient_name
        FROM recipe_ingredients ri
-       LEFT JOIN groceries g ON g.id = ri.grocery_id
+       LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE ri.recipe_id = $1
        ORDER BY ri.sort_order, ri.id`,
       [recipe.id],
@@ -76,8 +76,8 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const groceriesRes = await ctx.state.db.query(
-      "SELECT id, name, unit FROM groceries ORDER BY name",
+    const ingredientsListRes = await ctx.state.db.query(
+      "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
     const allToolsRes = await ctx.state.db.query(
       "SELECT id, name FROM tools ORDER BY name",
@@ -98,7 +98,7 @@ export const handler = define.handlers({
       tools: toolsRes.rows,
       steps: stepsWithMedia,
       refs: refsRes.rows,
-      groceries: groceriesRes.rows,
+      allIngredients: ingredientsListRes.rows,
       allTools: allToolsRes.rows,
       allRecipes: allRecipesRes.rows,
     });
@@ -176,13 +176,13 @@ export const handler = define.handlers({
     for (let i = 0; i < ingredients.length; i++) {
       const ing = ingredients[i];
       if (!ing.name?.trim()) continue;
-      const groceryId = resolveGroceryId(ing.grocery_id);
+      const ingredientId = resolveIngredientId(ing.ingredient_id);
       await ctx.state.db.query(
-        `INSERT INTO recipe_ingredients (recipe_id, grocery_id, key, name, amount, unit, sort_order)
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, sort_order)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           recipeId,
-          groceryId,
+          ingredientId,
           ing.key?.trim() || null,
           ing.name.trim(),
           ing.amount ? parseFloat(ing.amount) : null,
@@ -280,7 +280,7 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
     tools,
     steps,
     refs,
-    groceries,
+    allIngredients,
     allTools,
     allRecipes,
   } = data as {
@@ -289,7 +289,7 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
     tools: Record<string, unknown>[];
     steps: Record<string, unknown>[];
     refs: Record<string, unknown>[];
-    groceries: Record<string, unknown>[];
+    allIngredients: Record<string, unknown>[];
     allTools: Record<string, unknown>[];
     allRecipes: Record<string, unknown>[];
   };
@@ -299,7 +299,7 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
     name: String(i.name),
     amount: i.amount != null ? String(i.amount) : "",
     unit: String(i.unit ?? ""),
-    grocery_id: i.grocery_id != null ? String(i.grocery_id) : "",
+    ingredient_id: i.ingredient_id != null ? String(i.ingredient_id) : "",
   }));
 
   const toolData = tools.map((m) => ({
@@ -376,6 +376,9 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
             initialValue2={recipe.quantity_value2 != null
               ? Number(recipe.quantity_value2)
               : undefined}
+            initialValue3={recipe.quantity_value3 != null
+              ? Number(recipe.quantity_value3)
+              : undefined}
           />
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             <DurationInput
@@ -395,7 +398,7 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
           <h2 class="font-semibold mb-2">Ingredients</h2>
           <IngredientForm
             initialIngredients={ingredientData}
-            groceries={groceries.map((g) => ({
+            ingredients={allIngredients.map((g) => ({
               id: String(g.id),
               name: String(g.name),
               unit: String(g.unit ?? ""),

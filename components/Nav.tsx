@@ -11,7 +11,7 @@ export function Nav() {
           </a>
           <div class="hidden sm:flex items-center gap-6">
             <a href="/recipes" class="nav-link">Recipes</a>
-            <a href="/groceries" class="nav-link">Groceries</a>
+            <a href="/ingredients" class="nav-link">Ingredients</a>
             <a href="/stores" class="nav-link">Stores</a>
             <a href="/tools" class="nav-link">Tools</a>
           </div>
@@ -21,7 +21,7 @@ export function Nav() {
         </div>
         <div class="flex sm:hidden items-center justify-around mt-2">
           <a href="/recipes" class="nav-link text-sm">Recipes</a>
-          <a href="/groceries" class="nav-link text-sm">Groceries</a>
+          <a href="/ingredients" class="nav-link text-sm">Ingredients</a>
           <a href="/stores" class="nav-link text-sm">Stores</a>
           <a href="/tools" class="nav-link text-sm">Tools</a>
         </div>

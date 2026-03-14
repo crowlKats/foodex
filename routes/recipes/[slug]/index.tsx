@@ -24,9 +24,9 @@ export const handler = define.handlers({
     const recipe = recipeRes.rows[0];
 
     const ingredientsRes = await ctx.state.db.query(
-      `SELECT ri.*, g.name as grocery_name, g.unit as grocery_unit
+      `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit
        FROM recipe_ingredients ri
-       LEFT JOIN groceries g ON g.id = ri.grocery_id
+       LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE ri.recipe_id = $1
        ORDER BY ri.sort_order, ri.id`,
       [recipe.id],
@@ -89,28 +89,28 @@ export const handler = define.handlers({
       unit2: recipe.quantity_unit2 ? String(recipe.quantity_unit2) : undefined,
     };
 
-    // Fetch cheapest prices for linked groceries
-    const groceryIds = ingredientsRes.rows
-      .filter((i) => i.grocery_id != null)
-      .map((i) => Number(i.grocery_id));
+    // Fetch cheapest prices for linked ingredients
+    const ingredientIds = ingredientsRes.rows
+      .filter((i) => i.ingredient_id != null)
+      .map((i) => Number(i.ingredient_id));
 
     const priceMap = new Map<
       number,
       { price: number; amount: number; priceUnit: string; currency: string }
     >();
-    if (groceryIds.length > 0) {
+    if (ingredientIds.length > 0) {
       const pricesRes = await ctx.state.db.query(
-        `SELECT DISTINCT ON (gp.grocery_id)
-           gp.grocery_id, gp.price, gp.amount, coalesce(gp.unit, g.unit) as price_unit, s.currency
-         FROM grocery_prices gp
+        `SELECT DISTINCT ON (gp.ingredient_id)
+           gp.ingredient_id, gp.price, gp.amount, coalesce(gp.unit, g.unit) as price_unit, s.currency
+         FROM ingredient_prices gp
          JOIN stores s ON s.id = gp.store_id
-         JOIN groceries g ON g.id = gp.grocery_id
-         WHERE gp.grocery_id = ANY($1)
-         ORDER BY gp.grocery_id, gp.price ASC`,
-        [groceryIds],
+         JOIN ingredients g ON g.id = gp.ingredient_id
+         WHERE gp.ingredient_id = ANY($1)
+         ORDER BY gp.ingredient_id, gp.price ASC`,
+        [ingredientIds],
       );
       for (const row of pricesRes.rows) {
-        priceMap.set(Number(row.grocery_id), {
+        priceMap.set(Number(row.ingredient_id), {
           price: Number(row.price),
           amount: Number(row.amount) || 1,
           priceUnit: String(row.price_unit ?? ""),
@@ -123,8 +123,10 @@ export const handler = define.handlers({
     const ingredientsForTemplate = ingredientsRes.rows
       .filter((i) => i.key && i.amount != null)
       .map((i) => {
-        const groceryId = i.grocery_id ? Number(i.grocery_id) : undefined;
-        const priceInfo = groceryId ? priceMap.get(groceryId) : undefined;
+        const ingredientId = i.ingredient_id
+          ? Number(i.ingredient_id)
+          : undefined;
+        const priceInfo = ingredientId ? priceMap.get(ingredientId) : undefined;
         const ingAmount = Number(i.amount);
         const ingUnit = String(i.unit ?? "");
         const baseCost = priceInfo
@@ -140,8 +142,8 @@ export const handler = define.handlers({
           key: String(i.key),
           amount: ingAmount,
           unit: ingUnit,
-          name: String(i.grocery_name ?? i.name),
-          grocery_id: groceryId,
+          name: String(i.ingredient_name ?? i.name),
+          ingredient_id: ingredientId,
           base_cost: baseCost ?? undefined,
           currency: priceInfo?.currency,
         };
@@ -227,7 +229,7 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
       amount: number;
       unit: string;
       name: string;
-      grocery_id?: number;
+      ingredient_id?: number;
     }[];
     tools: Record<string, unknown>[];
     steps: { title: string; body: string }[];

@@ -30,7 +30,7 @@ interface RecipeIngredient {
   amount: number;
   unit: string;
   name: string;
-  grocery_id?: number;
+  ingredient_id?: number;
   base_cost?: number; // cost at the recipe's default quantity
   currency?: string;
 }
@@ -370,10 +370,10 @@ export default function RecipeView(
                       <span class="font-medium">
                         {formatAmount(scaled, ing.unit)} {ing.unit}
                       </span>{" "}
-                      {ing.grocery_id
+                      {ing.ingredient_id
                         ? (
                           <a
-                            href={`/groceries/${ing.grocery_id}`}
+                            href={`/ingredients/${ing.ingredient_id}`}
                             class="link"
                           >
                             {ing.name}
