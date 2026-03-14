@@ -7,6 +7,15 @@ CREATE TABLE IF NOT EXISTS store_locations (
 
 -- Migrate existing location data
 INSERT INTO store_locations (store_id, address)
-SELECT id, location FROM stores WHERE location IS NOT NULL AND location != '';
+SELECT id, location FROM stores
+WHERE location IS NOT NULL AND location != ''
+  AND NOT EXISTS (SELECT 1 FROM store_locations sl WHERE sl.store_id = stores.id);
 
-ALTER TABLE stores DROP COLUMN location;
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'stores' AND column_name = 'location'
+  ) THEN
+    ALTER TABLE stores DROP COLUMN location;
+  END IF;
+END $$;

@@ -129,7 +129,7 @@ CREATE INDEX idx_recipes_search ON recipes USING GIN (search_vector);
 CREATE OR REPLACE FUNCTION update_grocery_search_vector() RETURNS trigger AS $$
 BEGIN
   NEW.search_vector := to_tsvector('english',
-    coalesce(NEW.name, '') || ' ' || coalesce(NEW.brand, '') || ' ' || coalesce(NEW.category, ''));
+    coalesce(NEW.name, '') || ' ' || coalesce(NEW.brand, ''));
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
