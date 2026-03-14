@@ -3,6 +3,7 @@ import { define } from "../../../utils.ts";
 import { renderRecipeSteps } from "../../../lib/markdown.ts";
 import { formatDuration } from "../../../lib/duration.ts";
 import { scaleIngredients } from "../../../lib/template.ts";
+import { computeIngredientCost } from "../../../lib/unit-convert.ts";
 import { formatQuantity } from "../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../lib/quantity.ts";
 import RecipeView from "../../../islands/RecipeView.tsx";
@@ -88,16 +89,63 @@ export const handler = define.handlers({
       unit2: recipe.quantity_unit2 ? String(recipe.quantity_unit2) : undefined,
     };
 
+    // Fetch cheapest prices for linked groceries
+    const groceryIds = ingredientsRes.rows
+      .filter((i) => i.grocery_id != null)
+      .map((i) => Number(i.grocery_id));
+
+    const priceMap = new Map<
+      number,
+      { price: number; amount: number; priceUnit: string; currency: string }
+    >();
+    if (groceryIds.length > 0) {
+      const pricesRes = await ctx.state.db.query(
+        `SELECT DISTINCT ON (gp.grocery_id)
+           gp.grocery_id, gp.price, gp.amount, coalesce(gp.unit, g.unit) as price_unit, s.currency
+         FROM grocery_prices gp
+         JOIN stores s ON s.id = gp.store_id
+         JOIN groceries g ON g.id = gp.grocery_id
+         WHERE gp.grocery_id = ANY($1)
+         ORDER BY gp.grocery_id, gp.price ASC`,
+        [groceryIds],
+      );
+      for (const row of pricesRes.rows) {
+        priceMap.set(Number(row.grocery_id), {
+          price: Number(row.price),
+          amount: Number(row.amount) || 1,
+          priceUnit: String(row.price_unit ?? ""),
+          currency: String(row.currency ?? "EUR"),
+        });
+      }
+    }
+
     // Build ingredient variables for template engine
     const ingredientsForTemplate = ingredientsRes.rows
       .filter((i) => i.key && i.amount != null)
-      .map((i) => ({
-        key: String(i.key),
-        amount: Number(i.amount),
-        unit: String(i.unit ?? ""),
-        name: String(i.grocery_name ?? i.name),
-        grocery_id: i.grocery_id ? Number(i.grocery_id) : undefined,
-      }));
+      .map((i) => {
+        const groceryId = i.grocery_id ? Number(i.grocery_id) : undefined;
+        const priceInfo = groceryId ? priceMap.get(groceryId) : undefined;
+        const ingAmount = Number(i.amount);
+        const ingUnit = String(i.unit ?? "");
+        const baseCost = priceInfo
+          ? computeIngredientCost(
+            ingAmount,
+            ingUnit,
+            priceInfo.price,
+            priceInfo.amount,
+            priceInfo.priceUnit,
+          )
+          : undefined;
+        return {
+          key: String(i.key),
+          amount: ingAmount,
+          unit: ingUnit,
+          name: String(i.grocery_name ?? i.name),
+          grocery_id: groceryId,
+          base_cost: baseCost ?? undefined,
+          currency: priceInfo?.currency,
+        };
+      });
 
     const scaledIngredients = scaleIngredients(
       ingredientsForTemplate,

@@ -6,6 +6,7 @@ import {
 } from "../lib/template.ts";
 import { computeScaleRatio } from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
+import { getCurrencySymbol } from "../lib/currencies.ts";
 import { marked } from "marked";
 
 function RecipeHtml({ html }: { html: string }) {
@@ -30,6 +31,8 @@ interface RecipeIngredient {
   unit: string;
   name: string;
   grocery_id?: number;
+  base_cost?: number; // cost at the recipe's default quantity
+  currency?: string;
 }
 
 interface RecipeTool {
@@ -287,7 +290,7 @@ export default function RecipeView(
               min="1"
               step="0.5"
               value={targetValue}
-              class="w-16 text-center"
+              class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
                 if (v > 0) {
@@ -296,13 +299,13 @@ export default function RecipeView(
                 }
               }}
             />
-            <span class="text-stone-500 text-sm">&times;</span>
+            <span class="text-stone-500 text-xs">&times;</span>
             <input
               type="number"
               min="1"
               step="0.5"
               value={targetValue2}
-              class="w-16 text-center"
+              class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
                 if (v > 0) {
@@ -311,13 +314,13 @@ export default function RecipeView(
                 }
               }}
             />
-            <span class="text-stone-500 text-sm">&times;</span>
+            <span class="text-stone-500 text-xs">&times;</span>
             <input
               type="number"
               min="1"
               step="0.5"
               value={targetValue3}
-              class="w-16 text-center"
+              class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
                 if (v > 0) {
@@ -326,7 +329,7 @@ export default function RecipeView(
                 }
               }}
             />
-            <span class="text-stone-500 text-sm">cm</span>
+            <span class="text-stone-500 text-xs">cm</span>
             {loading.value && (
               <span class="text-xs text-stone-400 ml-2">updating...</span>
             )}
@@ -343,7 +346,7 @@ export default function RecipeView(
   }
 
   return (
-    <div class="grid gap-6 lg:grid-cols-3">
+    <div class="grid gap-6 lg:grid-cols-4">
       <div class="lg:col-span-1 space-y-4">
         <div class="card">
           {renderScalingUI()}
@@ -351,29 +354,63 @@ export default function RecipeView(
         {ingredients.length > 0 && (
           <div class="card">
             <h2 class="font-semibold mb-2">Ingredients</h2>
-            <ul class="space-y-1">
+            <ul class="space-y-1.5">
               {ingredients.map((ing) => {
-                const scaled = ing.amount * getCurrentRatio();
+                const ratio = getCurrentRatio();
+                const scaled = ing.amount * ratio;
+                const cost = ing.base_cost != null
+                  ? ing.base_cost * ratio
+                  : undefined;
                 return (
-                  <li key={ing.key || ing.name} class="text-sm">
-                    <span class="font-medium">
-                      {formatAmount(scaled, ing.unit)} {ing.unit}
-                      {" "}
+                  <li
+                    key={ing.key || ing.name}
+                    class="text-sm flex justify-between items-baseline gap-2"
+                  >
+                    <span>
+                      <span class="font-medium">
+                        {formatAmount(scaled, ing.unit)} {ing.unit}
+                      </span>{" "}
+                      {ing.grocery_id
+                        ? (
+                          <a
+                            href={`/groceries/${ing.grocery_id}`}
+                            class="link"
+                          >
+                            {ing.name}
+                          </a>
+                        )
+                        : <span>{ing.name}</span>}
                     </span>
-                    {ing.grocery_id
-                      ? (
-                        <a
-                          href={`/groceries/${ing.grocery_id}`}
-                          class="link"
-                        >
-                          {ing.name}
-                        </a>
-                      )
-                      : <span>{ing.name}</span>}
+                    {cost != null && (
+                      <span class="text-stone-400 text-xs whitespace-nowrap">
+                        {getCurrencySymbol(ing.currency ?? "EUR")}
+                        {cost.toFixed(2)}
+                      </span>
+                    )}
                   </li>
                 );
               })}
             </ul>
+            {(() => {
+              const ratio = getCurrentRatio();
+              const total = ingredients.reduce((sum, ing) => {
+                if (ing.base_cost == null) return sum;
+                return sum + ing.base_cost * ratio;
+              }, 0);
+              const hasPrices = ingredients.some((i) => i.base_cost != null);
+              if (!hasPrices) return null;
+              const currency = ingredients.find((i) => i.currency)?.currency ??
+                "EUR";
+              return (
+                <div class="mt-3 pt-2 border-t-2 border-stone-200 dark:border-stone-700 flex justify-between text-sm font-semibold">
+                  <span>Estimated cost</span>
+                  <span class="text-orange-600">
+                    {getCurrencySymbol(currency)}
+                    {total.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         )}
         {tools && tools.length > 0 && (
@@ -411,7 +448,7 @@ export default function RecipeView(
           </div>
         )}
       </div>
-      <div class="lg:col-span-2">
+      <div class="lg:col-span-3">
         <RecipeHtml html={html.value} />
       </div>
     </div>

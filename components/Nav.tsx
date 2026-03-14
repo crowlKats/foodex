@@ -6,7 +6,7 @@ export function Nav() {
     <nav class="bg-stone-900 text-stone-200 border-b-2 border-orange-600 dark:border-orange-500">
       <div class="max-w-6xl mx-auto px-4 py-3">
         <div class="flex items-center gap-4 sm:gap-6">
-          <a href="/" class="text-lg font-bold nav-link">
+          <a href="/" class="flex items-center text-lg font-bold nav-link">
             <TbChefHat class="size-5 inline mr-1" />Foodex
           </a>
           <div class="hidden sm:flex items-center gap-6">
