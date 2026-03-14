@@ -18,18 +18,18 @@ CREATE TABLE IF NOT EXISTS recipe_sections (
 );
 
 -- Migrate existing recipe bodies into a single section per recipe
-INSERT INTO recipe_sections (recipe_id, title, body, sort_order)
-SELECT id, 'Instructions', body, 0
-FROM recipes
-WHERE body IS NOT NULL AND body != ''
-  AND NOT EXISTS (SELECT 1 FROM recipe_sections rs WHERE rs.recipe_id = recipes.id);
-
--- Drop body column from recipes
+-- Only runs if the body column still exists on recipes
 DO $$ BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'recipes' AND column_name = 'body'
   ) THEN
+    INSERT INTO recipe_sections (recipe_id, title, body, sort_order)
+    SELECT id, 'Instructions', body, 0
+    FROM recipes
+    WHERE body IS NOT NULL AND body != ''
+      AND NOT EXISTS (SELECT 1 FROM recipe_sections rs WHERE rs.recipe_id = recipes.id);
+
     ALTER TABLE recipes DROP COLUMN body;
   END IF;
 END $$;

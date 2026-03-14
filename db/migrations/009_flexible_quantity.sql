@@ -50,18 +50,13 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Migrate existing data
-UPDATE recipes SET quantity_value = default_servings, quantity_type = 'servings', quantity_unit = 'servings'
-  WHERE EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'recipes' AND column_name = 'default_servings'
-  );
-
+-- Migrate existing data and drop old column
 DO $$ BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'recipes' AND column_name = 'default_servings'
   ) THEN
+    EXECUTE 'UPDATE recipes SET quantity_value = default_servings, quantity_type = ''servings'', quantity_unit = ''servings''';
     ALTER TABLE recipes DROP COLUMN default_servings;
   END IF;
 END $$;
