@@ -1,4 +1,11 @@
-ALTER TABLE IF EXISTS recipe_machines RENAME TO recipe_tools;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipe_machines')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'recipe_tools')
+  THEN
+    ALTER TABLE recipe_machines RENAME TO recipe_tools;
+  END IF;
+END $$;
+
 ALTER SEQUENCE IF EXISTS recipe_machines_id_seq RENAME TO recipe_tools_id_seq;
 
 DO $$ BEGIN
@@ -10,5 +17,12 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-ALTER TABLE IF EXISTS machines RENAME TO tools;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'machines')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tools')
+  THEN
+    ALTER TABLE machines RENAME TO tools;
+  END IF;
+END $$;
+
 ALTER SEQUENCE IF EXISTS machines_id_seq RENAME TO tools_id_seq;
