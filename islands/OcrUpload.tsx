@@ -3,6 +3,49 @@ import TbFileImport from "tb-icons/TbFileImport";
 import TbLoader2 from "tb-icons/TbLoader2";
 import TbX from "tb-icons/TbX";
 
+interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+async function cropAndUpload(
+  file: File,
+  bounds: Bounds,
+): Promise<string> {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = url;
+  });
+  URL.revokeObjectURL(url);
+
+  const sx = Math.round(bounds.x * img.naturalWidth);
+  const sy = Math.round(bounds.y * img.naturalHeight);
+  const sw = Math.round(bounds.width * img.naturalWidth);
+  const sh = Math.round(bounds.height * img.naturalHeight);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+  const blob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.9)
+  );
+
+  const form = new FormData();
+  form.append("file", blob, "cover.jpg");
+  const res = await fetch("/api/upload", { method: "POST", body: form });
+  if (!res.ok) throw new Error("Upload failed");
+  const data = await res.json();
+  return String(data.id);
+}
+
 export default function OcrUpload() {
   const dragging = useSignal(false);
   const files = useSignal<File[]>([]);
@@ -41,15 +84,36 @@ export default function OcrUpload() {
       if (!res.ok) {
         throw new Error(data.error || "OCR failed");
       }
+
+      // If OCR detected a food photo, crop and upload it as cover image
+      let coverImageId: string | null = null;
+      if (data.cover_image) {
+        try {
+          coverImageId = await cropAndUpload(
+            files.value[data.cover_image.image_index],
+            data.cover_image,
+          );
+        } catch {
+          // Cover image extraction failed, continue without it
+        }
+      }
+
       // Submit OCR result to the import page via hidden form
       const form = document.createElement("form");
       form.method = "POST";
       form.action = "/recipes/import";
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = "ocr_result";
-      input.value = JSON.stringify(data);
-      form.appendChild(input);
+      const ocrInput = document.createElement("input");
+      ocrInput.type = "hidden";
+      ocrInput.name = "ocr_result";
+      ocrInput.value = JSON.stringify(data);
+      form.appendChild(ocrInput);
+      if (coverImageId) {
+        const coverInput = document.createElement("input");
+        coverInput.type = "hidden";
+        coverInput.name = "cover_image_id";
+        coverInput.value = coverImageId;
+        form.appendChild(coverInput);
+      }
       document.body.appendChild(form);
       form.submit();
     } catch (err) {

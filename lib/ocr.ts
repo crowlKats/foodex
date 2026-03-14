@@ -2,6 +2,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ALL_UNITS } from "./units.ts";
 import { DOCS as TEMPLATE_DOCS } from "../routes/docs/templates.md.tsx";
 
+export interface CoverImageBounds {
+  image_index: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface OcrRecipeData {
   title: string;
   description: string;
@@ -12,6 +20,7 @@ export interface OcrRecipeData {
   quantity_unit: string;
   ingredients: { key: string; name: string; amount: string; unit: string }[];
   steps: { title: string; body: string }[];
+  cover_image: CoverImageBounds | null;
 }
 
 const SYSTEM_PROMPT =
@@ -31,7 +40,8 @@ Return ONLY valid JSON with this exact shape:
   ],
   "steps": [
     { "title": "Step title (short)", "body": "Detailed step instructions" }
-  ]
+  ],
+  "cover_image": { "image_index": 0, "x": 0.1, "y": 0.05, "width": 0.8, "height": 0.4 } or null
 }
 
 Rules:
@@ -45,6 +55,7 @@ Rules:
 - Step titles should be short (2-4 words). Step bodies support Markdown and a template syntax for dynamic ingredient scaling. Only use template refs when an ingredient amount is explicitly mentioned in a step — if a step just names an ingredient without a specific quantity, use plain text.
 - Template syntax reference:
 ${TEMPLATE_DOCS}
+- "cover_image": If the image(s) contain a photograph of the finished dish, return its bounding box as { "image_index": <0-based index of which image>, "x": <left edge 0-1>, "y": <top edge 0-1>, "width": <0-1>, "height": <0-1> } where all values are fractions of the image dimensions. If there is no food photo, return null.
 - If the image contains multiple recipes, extract only the most prominent one
 - The recipe may be in ANY language — ALWAYS translate all text (title, description, ingredient names, step instructions) to English
 - Return ONLY the JSON object, no markdown fences or extra text`;

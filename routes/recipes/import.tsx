@@ -29,12 +29,14 @@ export const handler = define.handlers({
       allTools: allToolsRes.rows,
       allRecipes: allRecipesRes.rows,
       ocr: null,
+      coverImage: null,
       error: null,
     });
   },
   async POST(ctx) {
     const form = await ctx.req.formData();
     const ocrJson = form.get("ocr_result") as string | null;
+    const coverImageId = form.get("cover_image_id") as string | null;
 
     const ingredientsRes = await ctx.state.db.query(
       "SELECT id, name, unit FROM ingredients ORDER BY name",
@@ -53,26 +55,51 @@ export const handler = define.handlers({
     };
 
     if (!ocrJson) {
-      return page({ ...baseData, ocr: null, error: "No OCR data received" });
+      return page({ ...baseData, ocr: null, coverImage: null, error: "No OCR data received" });
     }
 
     try {
       const ocr = JSON.parse(ocrJson) as OcrRecipeData;
-      return page({ ...baseData, ocr, error: null });
+
+      let coverImage: { id: string; url: string; filename: string; content_type: string } | null = null;
+      if (coverImageId) {
+        const mediaRes = await ctx.state.db.query(
+          "SELECT id, url, filename, content_type FROM media WHERE id = $1",
+          [parseInt(coverImageId)],
+        );
+        if (mediaRes.rows.length > 0) {
+          const m = mediaRes.rows[0];
+          coverImage = {
+            id: String(m.id),
+            url: String(m.url),
+            filename: String(m.filename),
+            content_type: String(m.content_type),
+          };
+        }
+      }
+
+      return page({ ...baseData, ocr, coverImage, error: null });
     } catch {
-      return page({ ...baseData, ocr: null, error: "Invalid OCR data" });
+      return page({ ...baseData, ocr: null, coverImage: null, error: "Invalid OCR data" });
     }
   },
 });
 
 export default define.page<typeof handler>(function ImportRecipePage({ data }) {
-  const { ingredients, allTools, allRecipes, ocr, error } = data as {
-    ingredients: Record<string, unknown>[];
-    allTools: Record<string, unknown>[];
-    allRecipes: Record<string, unknown>[];
-    ocr: OcrRecipeData | null;
-    error: string | null;
-  };
+  const { ingredients, allTools, allRecipes, ocr, coverImage, error } =
+    data as {
+      ingredients: Record<string, unknown>[];
+      allTools: Record<string, unknown>[];
+      allRecipes: Record<string, unknown>[];
+      ocr: OcrRecipeData | null;
+      coverImage: {
+        id: string;
+        url: string;
+        filename: string;
+        content_type: string;
+      } | null;
+      error: string | null;
+    };
 
   // Convert OCR prep/cook time from minutes to display values
   let prepTimeValue = "";
@@ -124,7 +151,11 @@ export default define.page<typeof handler>(function ImportRecipePage({ data }) {
           <form method="POST" action="/recipes/new" class="space-y-6">
             <div class="card">
               <h2 class="section-title">Cover Image</h2>
-              <MediaUpload name="cover_image_id" accept="image/*" />
+              <MediaUpload
+                name="cover_image_id"
+                accept="image/*"
+                initialMedia={coverImage ? [coverImage] : undefined}
+              />
             </div>
 
             <div class="card space-y-3">

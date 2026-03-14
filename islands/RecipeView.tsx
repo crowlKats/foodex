@@ -67,11 +67,12 @@ function renderStepsClient(
   const vars: Record<string, number> = { ratio };
   const parts: string[] = [];
 
-  for (const step of steps) {
+  for (let si = 0; si < steps.length; si++) {
+    const step = steps[si];
     const evaluated = evaluateTemplate(step.body, vars, scaled);
     const html = marked.parse(evaluated);
     if (typeof html === "string") {
-      let stepHtml = `<h2 class="text-xl font-semibold mt-6 mb-3">${
+      let stepHtml = `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${si + 1}.</span>${
         step.title.replace(/</g, "&lt;")
       }</h2>\n${html}`;
       if (step.media && step.media.length > 0) {

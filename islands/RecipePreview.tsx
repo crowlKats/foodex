@@ -66,7 +66,8 @@ export default function RecipePreview() {
     const vars: Record<string, number> = { ratio: 1 };
     const parts: string[] = [];
 
-    for (const step of steps) {
+    for (let si = 0; si < steps.length; si++) {
+      const step = steps[si];
       const evaluated = evaluateTemplate(step.body, vars, scaled);
       const rendered = marked.parse(evaluated);
       if (typeof rendered === "string") {
@@ -74,7 +75,7 @@ export default function RecipePreview() {
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;");
         parts.push(
-          `<h2 class="text-xl font-semibold mt-6 mb-3">${escapedTitle}</h2>\n${rendered}`,
+          `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${si + 1}.</span>${escapedTitle}</h2>\n${rendered}`,
         );
       }
     }
