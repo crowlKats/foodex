@@ -1,13 +1,15 @@
 import { define } from "../../../../utils.ts";
-import { renderRecipeBody } from "../../../../lib/markdown.ts";
+import { renderRecipeSteps } from "../../../../lib/markdown.ts";
+import { scaleIngredients } from "../../../../lib/template.ts";
+import { computeScaleRatio } from "../../../../lib/quantity.ts";
+import type { RecipeQuantity } from "../../../../lib/quantity.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
     const slug = ctx.params.slug;
-    const servings = Number(ctx.url.searchParams.get("servings")) || 4;
 
     const recipeRes = await ctx.state.db.query(
-      "SELECT body FROM recipes WHERE slug = $1",
+      "SELECT id, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2 FROM recipes WHERE slug = $1",
       [slug],
     );
     if (recipeRes.rows.length === 0) {
@@ -17,10 +19,90 @@ export const handler = define.handlers({
       });
     }
 
-    const body = String(recipeRes.rows[0].body);
-    const html = await renderRecipeBody(
-      body,
-      { servings },
+    const recipe = recipeRes.rows[0];
+
+    const baseQuantity: RecipeQuantity = {
+      type: String(
+        recipe.quantity_type || "servings",
+      ) as RecipeQuantity["type"],
+      value: Number(recipe.quantity_value ?? 4),
+      unit: String(recipe.quantity_unit || "servings"),
+      value2: recipe.quantity_value2 != null
+        ? Number(recipe.quantity_value2)
+        : undefined,
+      value3: recipe.quantity_value3 != null
+        ? Number(recipe.quantity_value3)
+        : undefined,
+      unit2: recipe.quantity_unit2 ? String(recipe.quantity_unit2) : undefined,
+    };
+
+    // Build target quantity from query params
+    // Support backwards-compat `servings` param, plus new `type`, `value`, `unit`, `value2` params
+    const params = ctx.url.searchParams;
+    let targetQuantity: RecipeQuantity;
+
+    if (params.has("type") && params.has("value")) {
+      targetQuantity = {
+        type: String(params.get("type")) as RecipeQuantity["type"],
+        value: Number(params.get("value")),
+        unit: String(params.get("unit") || baseQuantity.unit),
+        value2: params.has("value2") ? Number(params.get("value2")) : undefined,
+        value3: params.has("value3") ? Number(params.get("value3")) : undefined,
+        unit2: params.has("unit2") ? String(params.get("unit2")) : undefined,
+      };
+    } else if (params.has("servings")) {
+      // Backwards compatibility
+      targetQuantity = {
+        type: "servings",
+        value: Number(params.get("servings")) || 4,
+        unit: "servings",
+      };
+    } else {
+      targetQuantity = { ...baseQuantity };
+    }
+
+    const ratio = computeScaleRatio(baseQuantity, targetQuantity);
+
+    // Fetch steps
+    const stepsRes = await ctx.state.db.query(
+      `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+
+    // Fetch ingredients with keys
+    const ingredientsRes = await ctx.state.db.query(
+      `SELECT ri.*, g.name as grocery_name, g.unit as grocery_unit
+       FROM recipe_ingredients ri
+       LEFT JOIN groceries g ON g.id = ri.grocery_id
+       WHERE ri.recipe_id = $1
+       ORDER BY ri.sort_order, ri.id`,
+      [recipe.id],
+    );
+
+    // Build ingredient variables for template
+    const ingredientsForTemplate = ingredientsRes.rows
+      .filter((i) => i.key && i.amount != null)
+      .map((i) => ({
+        key: String(i.key),
+        amount: Number(i.amount),
+        unit: String(i.unit ?? ""),
+        name: String(i.name),
+      }));
+
+    const scaledIngredients = scaleIngredients(
+      ingredientsForTemplate,
+      ratio,
+    );
+
+    const steps = stepsRes.rows.map((s) => ({
+      title: String(s.title),
+      body: String(s.body),
+    }));
+
+    const html = await renderRecipeSteps(
+      steps,
+      { ratio },
+      scaledIngredients,
       async (refSlug) => {
         const res = await ctx.state.db.query(
           "SELECT title, slug FROM recipes WHERE slug = $1",

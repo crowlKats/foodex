@@ -1,5 +1,11 @@
-// Template expression evaluator for {= expression =} syntax.
+// Template expression evaluator for {{ expression }} syntax.
 // Pure JS - runs on both server and client.
+
+export interface IngredientVar {
+  amount: number;
+  unit: string;
+  name: string;
+}
 
 type Token =
   | { type: "number"; value: number }
@@ -10,7 +16,8 @@ type Token =
   | { type: "/" }
   | { type: "(" }
   | { type: ")" }
-  | { type: "," };
+  | { type: "," }
+  | { type: "." };
 
 function tokenize(input: string): Token[] {
   const tokens: Token[] = [];
@@ -40,7 +47,23 @@ function tokenize(input: string): Token[] {
     } else if (ch === ",") {
       tokens.push({ type: "," });
       i++;
-    } else if (ch >= "0" && ch <= "9" || ch === ".") {
+    } else if (ch === ".") {
+      // Check if this is a decimal number (.5) or property access
+      if (
+        i + 1 < input.length && input[i + 1] >= "0" && input[i + 1] <= "9" &&
+        (tokens.length === 0 || tokens[tokens.length - 1].type !== "ident")
+      ) {
+        let num = ".";
+        i++;
+        while (i < input.length && input[i] >= "0" && input[i] <= "9") {
+          num += input[i++];
+        }
+        tokens.push({ type: "number", value: parseFloat(num) });
+      } else {
+        tokens.push({ type: "." });
+        i++;
+      }
+    } else if (ch >= "0" && ch <= "9") {
       let num = "";
       while (
         i < input.length &&
@@ -49,7 +72,9 @@ function tokenize(input: string): Token[] {
         num += input[i++];
       }
       tokens.push({ type: "number", value: parseFloat(num) });
-    } else if (ch >= "a" && ch <= "z" || ch >= "A" && ch <= "Z" || ch === "_") {
+    } else if (
+      ch >= "a" && ch <= "z" || ch >= "A" && ch <= "Z" || ch === "_"
+    ) {
       let ident = "";
       while (
         i < input.length &&
@@ -70,6 +95,7 @@ function tokenize(input: string): Token[] {
 type Expr =
   | { kind: "number"; value: number }
   | { kind: "var"; name: string }
+  | { kind: "prop"; object: string; property: string }
   | { kind: "binary"; op: "+" | "-" | "*" | "/"; left: Expr; right: Expr }
   | { kind: "unary"; op: "-"; operand: Expr }
   | { kind: "call"; name: string; args: Expr[] };
@@ -146,6 +172,17 @@ class Parser {
 
     if (tok.type === "ident") {
       this.advance();
+      // Property access: ident.prop
+      if (this.peek()?.type === ".") {
+        this.advance();
+        const propTok = this.expect("ident");
+        return {
+          kind: "prop",
+          object: tok.value,
+          property: (propTok as { type: "ident"; value: string }).value,
+        };
+      }
+      // Function call: ident(args)
       if (this.peek()?.type === "(") {
         this.advance();
         const args: Expr[] = [];
@@ -182,6 +219,12 @@ function evaluate(expr: Expr, vars: Record<string, number>): number {
     case "var":
       if (expr.name in vars) return vars[expr.name];
       throw new Error(`Unknown variable: '${expr.name}'`);
+    case "prop": // e.g. flour.amount -> look up "flour_amount" in vars
+    {
+      const key = `${expr.object}_${expr.property}`;
+      if (key in vars) return vars[key];
+      throw new Error(`Unknown property: '${expr.object}.${expr.property}'`);
+    }
     case "binary": {
       const l = evaluate(expr.left, vars);
       const r = evaluate(expr.right, vars);
@@ -208,30 +251,93 @@ function evaluate(expr: Expr, vars: Record<string, number>): number {
   }
 }
 
-function formatNumber(n: number): string {
+// Units that should display as whole numbers
+const WHOLE_UNITS = new Set([
+  "g",
+  "mg",
+  "ml",
+  "cl",
+  "dl",
+  "mm",
+  "pcs",
+  "slice",
+  "clove",
+  "bunch",
+  "sprig",
+  "pinch",
+  "dash",
+]);
+
+export function formatAmount(n: number, unit?: string): string {
+  if (unit && WHOLE_UNITS.has(unit)) {
+    return Math.round(n).toString();
+  }
   if (Number.isInteger(n)) return n.toString();
+  // For fractional units (kg, l, tsp, tbsp, cup, oz, lb, etc.)
+  // use up to 2 decimals, trim trailing zeros
   const fixed = n.toFixed(2);
   return fixed.replace(/\.?0+$/, "");
+}
+
+function formatNumber(n: number): string {
+  return formatAmount(n);
 }
 
 export function evaluateExpression(
   expression: string,
   variables: Record<string, number>,
+  ingredients?: Record<string, IngredientVar>,
 ): string {
   try {
     const tokens = tokenize(expression);
     const ast = new Parser(tokens).parse();
-    return formatNumber(evaluate(ast, variables));
+
+    // Check if expression is a single ingredient variable reference
+    if (ast.kind === "var" && ingredients && ast.name in ingredients) {
+      const ing = ingredients[ast.name];
+      return `${formatAmount(ing.amount, ing.unit)}${ing.unit} ${ing.name}`;
+    }
+
+    // Build vars map with ingredient amounts as key_amount
+    const allVars = { ...variables };
+    if (ingredients) {
+      for (const [key, ing] of Object.entries(ingredients)) {
+        allVars[`${key}_amount`] = ing.amount;
+      }
+    }
+
+    return formatNumber(evaluate(ast, allVars));
   } catch (err) {
-    return `{= ${expression} =} /* error: ${(err as Error).message} */`;
+    return `{{ ${expression} }} /* error: ${(err as Error).message} */`;
   }
 }
 
 export function evaluateTemplate(
   template: string,
   variables: Record<string, number>,
+  ingredients?: Record<string, IngredientVar>,
 ): string {
-  return template.replace(/\{=\s*(.*?)\s*=\}/g, (_match, expr: string) => {
-    return evaluateExpression(expr, variables);
+  return template.replace(/\{\{\s*(.*?)\s*\}\}/g, (_match, expr: string) => {
+    return evaluateExpression(expr, variables, ingredients);
   });
+}
+
+/**
+ * Build the scaled ingredients map from recipe data.
+ * Scales all amounts by the given ratio.
+ */
+export function scaleIngredients(
+  ingredients: { key: string; amount: number; unit: string; name: string }[],
+  ratio: number,
+): Record<string, IngredientVar> {
+  const result: Record<string, IngredientVar> = {};
+  for (const ing of ingredients) {
+    if (!ing.key) continue;
+    result[ing.key] = {
+      amount: ing.amount * ratio,
+      unit: ing.unit,
+      name: ing.name,
+    };
+  }
+  return result;
 }

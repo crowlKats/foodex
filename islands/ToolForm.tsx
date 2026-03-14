@@ -1,28 +1,30 @@
 import { useSignal } from "@preact/signals";
+import TbPlus from "tb-icons/TbPlus";
+import TbX from "tb-icons/TbX";
 
-interface DeviceEntry {
-  device_id: string;
+interface ToolEntry {
+  tool_id: string;
   usage_description: string;
   settings: string;
 }
 
-interface DeviceFormProps {
-  initialDevices: DeviceEntry[];
-  devices: { id: string; name: string }[];
+interface ToolFormProps {
+  initialTools: ToolEntry[];
+  tools: { id: string; name: string }[];
 }
 
-export default function DeviceForm(
-  { initialDevices, devices }: DeviceFormProps,
+export default function ToolForm(
+  { initialTools, tools }: ToolFormProps,
 ) {
-  const items = useSignal<DeviceEntry[]>(
-    initialDevices.length > 0
-      ? [...initialDevices]
-      : [{ device_id: "", usage_description: "", settings: "" }],
+  const items = useSignal<ToolEntry[]>(
+    initialTools.length > 0
+      ? [...initialTools]
+      : [{ tool_id: "", usage_description: "", settings: "" }],
   );
 
   function add() {
     items.value = [...items.value, {
-      device_id: "",
+      tool_id: "",
       usage_description: "",
       settings: "",
     }];
@@ -32,7 +34,7 @@ export default function DeviceForm(
     items.value = items.value.filter((_, i) => i !== index);
   }
 
-  function update(index: number, field: keyof DeviceEntry, value: string) {
+  function update(index: number, field: keyof ToolEntry, value: string) {
     const next = [...items.value];
     next[index] = { ...next[index], [field]: value };
     items.value = next;
@@ -42,16 +44,20 @@ export default function DeviceForm(
     <div class="space-y-2">
       {items.value.map((item, i) => (
         <div key={i} class="flex gap-2 items-start">
-          <div class="flex-1 grid grid-cols-3 gap-2">
+          <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
             <select
-              value={item.device_id}
+              value={item.tool_id}
               onInput={(e) =>
-                update(i, "device_id", (e.target as HTMLSelectElement).value)}
-              class="border rounded px-2 py-1.5 text-sm"
+                update(
+                  i,
+                  "tool_id",
+                  (e.target as HTMLSelectElement).value,
+                )}
+              class="text-sm"
             >
-              <option value="">-- Device --</option>
-              {devices.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
+              <option value="">-- Tool --</option>
+              {tools.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </select>
             <input
@@ -60,7 +66,7 @@ export default function DeviceForm(
               value={item.settings}
               onInput={(e) =>
                 update(i, "settings", (e.target as HTMLInputElement).value)}
-              class="border rounded px-2 py-1.5 text-sm"
+              class="text-sm"
             />
             <input
               type="text"
@@ -72,29 +78,29 @@ export default function DeviceForm(
                   "usage_description",
                   (e.target as HTMLInputElement).value,
                 )}
-              class="border rounded px-2 py-1.5 text-sm"
+              class="text-sm"
             />
           </div>
           <button
             type="button"
             onClick={() => remove(i)}
-            class="text-red-600 hover:text-red-800 px-2 py-1"
+            class="text-red-600 hover:text-red-700 px-2 py-1 cursor-pointer"
           >
-            &times;
+            <TbX class="size-4" />
           </button>
           <input
             type="hidden"
-            name={`devices[${i}][device_id]`}
-            value={item.device_id}
+            name={`tools[${i}][tool_id]`}
+            value={item.tool_id}
           />
           <input
             type="hidden"
-            name={`devices[${i}][usage_description]`}
+            name={`tools[${i}][usage_description]`}
             value={item.usage_description}
           />
           <input
             type="hidden"
-            name={`devices[${i}][settings]`}
+            name={`tools[${i}][settings]`}
             value={item.settings}
           />
         </div>
@@ -102,9 +108,9 @@ export default function DeviceForm(
       <button
         type="button"
         onClick={add}
-        class="text-sm text-blue-600 hover:text-blue-800"
+        class="link text-sm font-medium"
       >
-        + Add Device
+        <TbPlus class="size-3.5 inline mr-1" />Add Tool
       </button>
     </div>
   );

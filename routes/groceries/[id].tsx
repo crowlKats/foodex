@@ -1,6 +1,10 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../utils.ts";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
+import { UnitSelect } from "../../components/UnitSelect.tsx";
+import { getCurrencySymbol } from "../../lib/currencies.ts";
+import { BackLink } from "../../components/BackLink.tsx";
+import { FormField } from "../../components/FormField.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -12,7 +16,7 @@ export const handler = define.handlers({
     if (groceryRes.rows.length === 0) throw new HttpError(404);
 
     const pricesRes = await ctx.state.db.query(
-      `SELECT gp.*, s.name as store_name, s.location as store_location
+      `SELECT gp.*, s.name as store_name, s.location as store_location, s.currency as store_currency
        FROM grocery_prices gp
        JOIN stores s ON s.id = gp.store_id
        WHERE gp.grocery_id = $1
@@ -47,13 +51,12 @@ export const handler = define.handlers({
       const storeId = form.get("store_id");
       const price = form.get("price");
       const amount = form.get("amount");
-      const unit = form.get("unit");
       await ctx.state.db.query(
-        `INSERT INTO grocery_prices (grocery_id, store_id, price, amount, unit)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO grocery_prices (grocery_id, store_id, price, amount)
+         VALUES ($1, $2, $3, $4)
          ON CONFLICT (grocery_id, store_id)
-         DO UPDATE SET price = $3, amount = $4, unit = $5, updated_at = now()`,
-        [id, storeId, price, amount || null, unit || null],
+         DO UPDATE SET price = $3, amount = $4, updated_at = now()`,
+        [id, storeId, price, amount || null],
       );
       return new Response(null, {
         status: 303,
@@ -74,7 +77,7 @@ export const handler = define.handlers({
     }
 
     const name = form.get("name") as string;
-    const category = form.get("category") as string;
+    const brand = form.get("brand") as string;
     const unit = form.get("unit") as string;
     if (!name?.trim()) {
       return new Response(null, {
@@ -83,8 +86,13 @@ export const handler = define.handlers({
       });
     }
     await ctx.state.db.query(
-      "UPDATE groceries SET name = $1, category = $2, unit = $3 WHERE id = $4",
-      [name.trim(), category?.trim() || null, unit?.trim() || null, id],
+      "UPDATE groceries SET name = $1, brand = $2, unit = $3 WHERE id = $4",
+      [
+        name.trim(),
+        brand?.trim() || null,
+        unit?.trim() || null,
+        id,
+      ],
     );
     return new Response(null, {
       status: 303,
@@ -101,166 +109,173 @@ export default define.page<typeof handler>(function GroceryDetail({ data }) {
   };
   return (
     <div>
-      <a href="/groceries" class="text-blue-600 hover:underline text-sm">
-        &larr; Back to Groceries
-      </a>
+      <BackLink href="/groceries" label="Back to Groceries" />
 
-      <div class="mt-4 grid gap-6 lg:grid-cols-2">
-        <div>
-          <h1 class="text-2xl font-bold mb-4">Edit Grocery</h1>
-          <form
-            method="POST"
-            class="bg-white rounded-lg shadow p-4 space-y-3"
+      <h1 class="text-2xl font-bold mt-4">
+        {String(grocery.name)}
+        {grocery.unit && (
+          <span class="text-stone-400 text-lg font-normal ml-2">
+            ({String(grocery.unit)})
+          </span>
+        )}
+      </h1>
+
+      {/* Prices section - primary content */}
+      <div class="mt-6">
+        <h2 class="text-lg font-semibold mb-3">
+          Store Prices ({prices.length})
+        </h2>
+
+        {prices.length > 0 && (
+          <div class="space-y-2 mb-4">
+            {prices.map((p, i) => (
+              <div
+                key={String(p.id)}
+                class={`card flex justify-between items-center ${
+                  i === 0 ? "ring-2 ring-orange-400" : ""
+                }`}
+              >
+                <div class="flex items-center gap-4">
+                  <div class="text-xl font-bold text-orange-600">
+                    {getCurrencySymbol(String(p.store_currency ?? "EUR"))}
+                    {String(p.price)}
+                  </div>
+                  <div>
+                    <a
+                      href={`/stores/${p.store_id}`}
+                      class="font-medium link"
+                    >
+                      {String(p.store_name)}
+                    </a>
+                    {p.amount && (
+                      <div class="text-sm text-stone-500">
+                        per {String(p.amount)} {String(grocery.unit ?? "")}
+                      </div>
+                    )}
+                    {i === 0 && prices.length > 1 && (
+                      <div class="text-xs text-orange-600 font-medium">
+                        Cheapest
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <form method="POST">
+                  <input type="hidden" name="_method" value="DELETE_PRICE" />
+                  <input type="hidden" name="price_id" value={String(p.id)} />
+                  <button
+                    type="submit"
+                    class="text-red-500 hover:text-red-700 text-sm cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form
+          method="POST"
+          class="card space-y-3"
+        >
+          <input type="hidden" name="_method" value="ADD_PRICE" />
+          <h3 class="text-sm font-semibold">Add / Update Price</h3>
+          <FormField label="Store">
+            <select
+              name="store_id"
+              required
+              class="w-full"
+            >
+              <option value="">Select a store...</option>
+              {stores.map((s) => (
+                <option key={String(s.id)} value={String(s.id)}>
+                  {String(s.name)}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <FormField label="Price">
+              <input
+                type="number"
+                name="price"
+                step="0.01"
+                required
+                class="w-full"
+              />
+            </FormField>
+            <FormField label="Per amount">
+              <input
+                type="number"
+                name="amount"
+                step="any"
+                placeholder="e.g. 500"
+                class="w-full"
+              />
+            </FormField>
+          </div>
+          <button
+            type="submit"
+            class="btn btn-primary"
           >
-            <div>
-              <label class="block text-sm font-medium mb-1">Name</label>
+            Add Price
+          </button>
+        </form>
+      </div>
+
+      {/* Edit grocery details */}
+      <div class="mt-8">
+        <h2 class="text-lg font-semibold mb-3">Edit Details</h2>
+        <form
+          method="POST"
+          class="card space-y-3"
+        >
+          <div class="grid gap-3 md:grid-cols-2">
+            <FormField label="Name">
               <input
                 type="text"
                 name="name"
                 value={String(grocery.name)}
                 required
-                class="w-full border rounded px-3 py-2"
+                class="w-full"
               />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Category</label>
+            </FormField>
+            <FormField label="Brand">
               <input
                 type="text"
-                name="category"
-                value={String(grocery.category ?? "")}
-                class="w-full border rounded px-3 py-2"
+                name="brand"
+                value={String(grocery.brand ?? "")}
+                class="w-full"
               />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Unit</label>
-              <input
-                type="text"
+            </FormField>
+            <FormField label="Unit">
+              <UnitSelect
                 name="unit"
                 value={String(grocery.unit ?? "")}
-                class="w-full border rounded px-3 py-2"
+                class="w-full"
+                required
               />
-            </div>
+            </FormField>
+          </div>
+          <div class="flex gap-2">
             <button
               type="submit"
-              class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              class="btn btn-primary"
             >
               Save
             </button>
-          </form>
+          </div>
+        </form>
 
-          <form method="POST" class="mt-4">
-            <input type="hidden" name="_method" value="DELETE" />
-            <ConfirmButton
-              message="Delete this grocery?"
-              class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-            >
-              Delete Grocery
-            </ConfirmButton>
-          </form>
-        </div>
-
-        <div>
-          <h2 class="text-lg font-semibold mb-3">Prices</h2>
-
-          {prices.length > 0 && (
-            <div class="space-y-2 mb-4">
-              {prices.map((p) => (
-                <div
-                  key={String(p.id)}
-                  class="bg-white rounded-lg shadow p-3 flex justify-between items-center"
-                >
-                  <div>
-                    <a
-                      href={`/stores/${p.store_id}`}
-                      class="font-medium text-blue-600 hover:underline"
-                    >
-                      {String(p.store_name)}
-                    </a>
-                    <div class="text-sm text-gray-600">
-                      ${String(p.price)}
-                      {p.amount && (
-                        <span>
-                          {` / ${String(p.amount)} ${
-                            String(p.unit ?? grocery.unit ?? "")
-                          }`}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <form method="POST">
-                    <input type="hidden" name="_method" value="DELETE_PRICE" />
-                    <input type="hidden" name="price_id" value={String(p.id)} />
-                    <button
-                      type="submit"
-                      class="text-red-600 hover:text-red-800 text-sm"
-                    >
-                      Remove
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <h3 class="text-sm font-semibold mb-2">Add Price</h3>
-          <form
-            method="POST"
-            class="bg-white rounded-lg shadow p-4 space-y-3"
+        <form method="POST" class="mt-4">
+          <input type="hidden" name="_method" value="DELETE" />
+          <ConfirmButton
+            message="Delete this grocery and all its prices?"
+            class="btn btn-danger"
           >
-            <input type="hidden" name="_method" value="ADD_PRICE" />
-            <div>
-              <label class="block text-sm font-medium mb-1">Store</label>
-              <select
-                name="store_id"
-                required
-                class="w-full border rounded px-3 py-2"
-              >
-                <option value="">Select a store...</option>
-                {stores.map((s) => (
-                  <option key={String(s.id)} value={String(s.id)}>
-                    {String(s.name)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div>
-                <label class="block text-sm font-medium mb-1">Price</label>
-                <input
-                  type="number"
-                  name="price"
-                  step="0.01"
-                  required
-                  class="w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Amount</label>
-                <input
-                  type="number"
-                  name="amount"
-                  step="0.001"
-                  class="w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium mb-1">Unit</label>
-                <input
-                  type="text"
-                  name="unit"
-                  placeholder={String(grocery.unit ?? "")}
-                  class="w-full border rounded px-3 py-2"
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              Add Price
-            </button>
-          </form>
-        </div>
+            Delete Grocery
+          </ConfirmButton>
+        </form>
       </div>
     </div>
   );

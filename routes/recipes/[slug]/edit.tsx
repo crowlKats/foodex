@@ -1,14 +1,24 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
-import { parseFormArray } from "../../../lib/form.ts";
+import { parseFormArray, resolveGroceryId } from "../../../lib/form.ts";
+import QuantityInput from "../../../islands/QuantityInput.tsx";
 import IngredientForm from "../../../islands/IngredientForm.tsx";
-import DeviceForm from "../../../islands/DeviceForm.tsx";
+import ToolForm from "../../../islands/ToolForm.tsx";
+import StepForm from "../../../islands/StepForm.tsx";
+import MediaUpload from "../../../islands/MediaUpload.tsx";
+import RecipePreview from "../../../islands/RecipePreview.tsx";
+import { BackLink } from "../../../components/BackLink.tsx";
+import { FormField } from "../../../components/FormField.tsx";
+import { DurationInput } from "../../../components/DurationInput.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query(
-      "SELECT * FROM recipes WHERE slug = $1",
+      `SELECT r.*, m.id as cover_media_id, m.url as cover_media_url, m.filename as cover_media_filename, m.content_type as cover_media_content_type
+       FROM recipes r
+       LEFT JOIN media m ON m.id = r.cover_image_id
+       WHERE r.slug = $1`,
       [slug],
     );
     if (recipeRes.rows.length === 0) throw new HttpError(404);
@@ -23,14 +33,39 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const devicesRes = await ctx.state.db.query(
-      `SELECT rd.*, d.name as device_name
-       FROM recipe_devices rd
-       JOIN devices d ON d.id = rd.device_id
-       WHERE rd.recipe_id = $1
-       ORDER BY rd.sort_order, rd.id`,
+    const toolsRes = await ctx.state.db.query(
+      `SELECT rt.*, t.name as tool_name
+       FROM recipe_tools rt
+       JOIN tools t ON t.id = rt.tool_id
+       WHERE rt.recipe_id = $1
+       ORDER BY rt.sort_order, rt.id`,
       [recipe.id],
     );
+
+    const stepsRes = await ctx.state.db.query(
+      `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+
+    // Fetch media for each step
+    const stepMediaRes = await ctx.state.db.query(
+      `SELECT rsm.step_id, rsm.sort_order, m.id as media_id, m.url
+       FROM recipe_step_media rsm
+       JOIN media m ON m.id = rsm.media_id
+       JOIN recipe_steps rs ON rs.id = rsm.step_id
+       WHERE rs.recipe_id = $1
+       ORDER BY rsm.step_id, rsm.sort_order`,
+      [recipe.id],
+    );
+    const stepMediaMap = new Map<string, { id: string; url: string }[]>();
+    for (const row of stepMediaRes.rows) {
+      const stepId = String(row.step_id);
+      if (!stepMediaMap.has(stepId)) stepMediaMap.set(stepId, []);
+      stepMediaMap.get(stepId)!.push({
+        id: String(row.media_id),
+        url: String(row.url),
+      });
+    }
 
     const refsRes = await ctx.state.db.query(
       `SELECT rr.*, r.title as ref_title, r.slug as ref_slug
@@ -44,21 +79,27 @@ export const handler = define.handlers({
     const groceriesRes = await ctx.state.db.query(
       "SELECT id, name, unit FROM groceries ORDER BY name",
     );
-    const allDevicesRes = await ctx.state.db.query(
-      "SELECT id, name FROM devices ORDER BY name",
+    const allToolsRes = await ctx.state.db.query(
+      "SELECT id, name FROM tools ORDER BY name",
     );
     const allRecipesRes = await ctx.state.db.query(
       "SELECT id, title, slug FROM recipes WHERE id != $1 ORDER BY title",
       [recipe.id],
     );
 
+    const stepsWithMedia = stepsRes.rows.map((s: Record<string, unknown>) => ({
+      ...s,
+      media: stepMediaMap.get(String(s.id)) ?? [],
+    }));
+
     return page({
       recipe,
       ingredients: ingredientsRes.rows,
-      devices: devicesRes.rows,
+      tools: toolsRes.rows,
+      steps: stepsWithMedia,
       refs: refsRes.rows,
       groceries: groceriesRes.rows,
-      allDevices: allDevicesRes.rows,
+      allTools: allToolsRes.rows,
       allRecipes: allRecipesRes.rows,
     });
   },
@@ -73,32 +114,55 @@ export const handler = define.handlers({
 
     const form = await ctx.req.formData();
     const title = form.get("title") as string;
-    const newSlug = form.get("slug") as string;
     const description = form.get("description") as string;
-    const body = form.get("body") as string;
-    const defaultServings = parseInt(
-      form.get("default_servings") as string,
+    const quantityType = (form.get("quantity_type") as string) || "servings";
+    const quantityValue = parseFloat(
+      form.get("quantity_value") as string,
     ) || 4;
-    const prepTime = form.get("prep_time")
-      ? parseInt(form.get("prep_time") as string)
+    const quantityUnit = (form.get("quantity_unit") as string) || "servings";
+    const quantityValue2Raw = form.get("quantity_value2") as string;
+    const quantityValue2 = quantityValue2Raw
+      ? parseFloat(quantityValue2Raw)
       : null;
-    const cookTime = form.get("cook_time")
-      ? parseInt(form.get("cook_time") as string)
+    const quantityValue3Raw = form.get("quantity_value3") as string;
+    const quantityValue3 = quantityValue3Raw
+      ? parseFloat(quantityValue3Raw)
       : null;
+    const quantityUnit2 = (form.get("quantity_unit2") as string) || null;
+    const prepTimeRaw = form.get("prep_time") as string;
+    const prepTimeUnit = form.get("prep_time_unit") as string;
+    const prepTime = prepTimeRaw
+      ? Math.round(
+        parseFloat(prepTimeRaw) * (prepTimeUnit === "hr" ? 60 : 1),
+      )
+      : null;
+    const cookTimeRaw = form.get("cook_time") as string;
+    const cookTimeUnit = form.get("cook_time_unit") as string;
+    const cookTime = cookTimeRaw
+      ? Math.round(
+        parseFloat(cookTimeRaw) * (cookTimeUnit === "hr" ? 60 : 1),
+      )
+      : null;
+    const coverImageId = form.get("cover_image_id") as string;
 
-    // Update recipe
+    // Update recipe (no slug, no body)
     await ctx.state.db.query(
-      `UPDATE recipes SET title=$1, slug=$2, description=$3, body=$4,
-       default_servings=$5, prep_time=$6, cook_time=$7, updated_at=now()
-       WHERE id=$8`,
+      `UPDATE recipes SET title=$1, description=$2,
+       quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
+       prep_time=$9, cook_time=$10, cover_image_id=$11, updated_at=now()
+       WHERE id=$12`,
       [
         title?.trim(),
-        newSlug?.trim(),
         description?.trim() || null,
-        body ?? "",
-        defaultServings,
+        quantityType,
+        quantityValue,
+        quantityUnit,
+        quantityValue2,
+        quantityValue3,
+        quantityUnit2,
         prepTime,
         cookTime,
+        coverImageId ? parseInt(coverImageId) : null,
         recipeId,
       ],
     );
@@ -112,12 +176,14 @@ export const handler = define.handlers({
     for (let i = 0; i < ingredients.length; i++) {
       const ing = ingredients[i];
       if (!ing.name?.trim()) continue;
+      const groceryId = resolveGroceryId(ing.grocery_id);
       await ctx.state.db.query(
-        `INSERT INTO recipe_ingredients (recipe_id, grocery_id, name, amount, unit, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO recipe_ingredients (recipe_id, grocery_id, key, name, amount, unit, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           recipeId,
-          ing.grocery_id ? parseInt(ing.grocery_id) : null,
+          groceryId,
+          ing.key?.trim() || null,
           ing.name.trim(),
           ing.amount ? parseFloat(ing.amount) : null,
           ing.unit?.trim() || null,
@@ -126,26 +192,61 @@ export const handler = define.handlers({
       );
     }
 
-    // Re-insert devices
+    // Re-insert tools
     await ctx.state.db.query(
-      "DELETE FROM recipe_devices WHERE recipe_id = $1",
+      "DELETE FROM recipe_tools WHERE recipe_id = $1",
       [recipeId],
     );
-    const deviceEntries = parseFormArray(form, "devices");
-    for (let i = 0; i < deviceEntries.length; i++) {
-      const dev = deviceEntries[i];
-      if (!dev.device_id) continue;
+    const toolEntries = parseFormArray(form, "tools");
+    for (let i = 0; i < toolEntries.length; i++) {
+      const t = toolEntries[i];
+      if (!t.tool_id) continue;
       await ctx.state.db.query(
-        `INSERT INTO recipe_devices (recipe_id, device_id, usage_description, settings, sort_order)
+        `INSERT INTO recipe_tools (recipe_id, tool_id, usage_description, settings, sort_order)
          VALUES ($1, $2, $3, $4, $5)`,
         [
           recipeId,
-          parseInt(dev.device_id),
-          dev.usage_description?.trim() || null,
-          dev.settings?.trim() || null,
+          parseInt(t.tool_id),
+          t.usage_description?.trim() || null,
+          t.settings?.trim() || null,
           i,
         ],
       );
+    }
+
+    // Re-insert steps (cascade deletes step media too)
+    await ctx.state.db.query(
+      "DELETE FROM recipe_steps WHERE recipe_id = $1",
+      [recipeId],
+    );
+    const steps = parseFormArray(form, "steps");
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      if (!step.title?.trim() && !step.body?.trim()) continue;
+      const stepRes = await ctx.state.db.query(
+        `INSERT INTO recipe_steps (recipe_id, title, body, sort_order)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [
+          recipeId,
+          step.title?.trim() || "",
+          step.body?.trim() || "",
+          i,
+        ],
+      );
+      // Insert step media
+      const stepId = stepRes.rows[0].id;
+      let mi = 0;
+      while (form.has(`steps[${i}][media][${mi}]`)) {
+        const mediaId = form.get(`steps[${i}][media][${mi}]`) as string;
+        if (mediaId) {
+          await ctx.state.db.query(
+            `INSERT INTO recipe_step_media (step_id, media_id, sort_order)
+             VALUES ($1, $2, $3)`,
+            [stepId, parseInt(mediaId), mi],
+          );
+        }
+        mi++;
+      }
     }
 
     // Re-insert references
@@ -165,10 +266,9 @@ export const handler = define.handlers({
       );
     }
 
-    const finalSlug = newSlug?.trim() || slug;
     return new Response(null, {
       status: 303,
-      headers: { Location: `/recipes/${finalSlug}` },
+      headers: { Location: `/recipes/${slug}` },
     });
   },
 });
@@ -177,32 +277,41 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
   const {
     recipe,
     ingredients,
-    devices,
+    tools,
+    steps,
     refs,
     groceries,
-    allDevices,
+    allTools,
     allRecipes,
   } = data as {
     recipe: Record<string, unknown>;
     ingredients: Record<string, unknown>[];
-    devices: Record<string, unknown>[];
+    tools: Record<string, unknown>[];
+    steps: Record<string, unknown>[];
     refs: Record<string, unknown>[];
     groceries: Record<string, unknown>[];
-    allDevices: Record<string, unknown>[];
+    allTools: Record<string, unknown>[];
     allRecipes: Record<string, unknown>[];
   };
 
   const ingredientData = ingredients.map((i) => ({
+    key: String(i.key ?? ""),
     name: String(i.name),
     amount: i.amount != null ? String(i.amount) : "",
     unit: String(i.unit ?? ""),
     grocery_id: i.grocery_id != null ? String(i.grocery_id) : "",
   }));
 
-  const deviceData = devices.map((d) => ({
-    device_id: String(d.device_id),
-    usage_description: String(d.usage_description ?? ""),
-    settings: String(d.settings ?? ""),
+  const toolData = tools.map((m) => ({
+    tool_id: String(m.tool_id),
+    usage_description: String(m.usage_description ?? ""),
+    settings: String(m.settings ?? ""),
+  }));
+
+  const stepData = steps.map((s) => ({
+    title: String(s.title ?? ""),
+    body: String(s.body ?? ""),
+    media: (s.media ?? []) as { id: string; url: string }[],
   }));
 
   const refData = refs.map((r) => ({
@@ -212,12 +321,10 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
   return (
     <div>
       <div class="flex items-center gap-4 mb-4">
-        <a href="/recipes" class="text-blue-600 hover:underline text-sm">
-          &larr; Back to Recipes
-        </a>
+        <BackLink href="/recipes" label="Back to Recipes" />
         <a
           href={`/recipes/${recipe.slug}`}
-          class="text-blue-600 hover:underline text-sm"
+          class="link text-sm"
         >
           View
         </a>
@@ -226,93 +333,65 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
       <h1 class="text-2xl font-bold mb-4">Edit: {String(recipe.title)}</h1>
 
       <form method="POST" class="space-y-6">
-        <div class="bg-white rounded-lg shadow p-4 space-y-3">
+        <div class="card">
+          <h2 class="section-title">Cover Image</h2>
+          <MediaUpload
+            name="cover_image_id"
+            accept="image/*"
+            initialMedia={recipe.cover_media_id
+              ? [{
+                id: String(recipe.cover_media_id),
+                url: String(recipe.cover_media_url),
+                filename: String(recipe.cover_media_filename),
+                content_type: String(recipe.cover_media_content_type),
+              }]
+              : []}
+          />
+        </div>
+
+        <div class="card space-y-3">
           <h2 class="font-semibold">Details</h2>
-          <div class="grid gap-3 md:grid-cols-2">
-            <div>
-              <label class="block text-sm font-medium mb-1">Title</label>
-              <input
-                type="text"
-                name="title"
-                value={String(recipe.title)}
-                required
-                class="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Slug</label>
-              <input
-                type="text"
-                name="slug"
-                value={String(recipe.slug)}
-                required
-                class="w-full border rounded px-3 py-2"
-              />
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Description</label>
+          <FormField label="Title">
+            <input
+              type="text"
+              name="title"
+              value={String(recipe.title)}
+              required
+              class="w-full"
+            />
+          </FormField>
+          <FormField label="Description">
             <textarea
               name="description"
               rows={2}
-              class="w-full border rounded px-3 py-2"
+              class="w-full"
             >
               {String(recipe.description ?? "")}
             </textarea>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">Servings</label>
-              <input
-                type="number"
-                name="default_servings"
-                value={String(recipe.default_servings)}
-                min="1"
-                class="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Prep (min)</label>
-              <input
-                type="number"
-                name="prep_time"
-                value={String(recipe.prep_time ?? "")}
-                class="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Cook (min)</label>
-              <input
-                type="number"
-                name="cook_time"
-                value={String(recipe.cook_time ?? "")}
-                class="w-full border rounded px-3 py-2"
-              />
-            </div>
+          </FormField>
+          <QuantityInput
+            initialType={String(recipe.quantity_type ?? "servings")}
+            initialValue={Number(recipe.quantity_value ?? 4)}
+            initialUnit={String(recipe.quantity_unit ?? "servings")}
+            initialValue2={recipe.quantity_value2 != null
+              ? Number(recipe.quantity_value2)
+              : undefined}
+          />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            <DurationInput
+              name="prep_time"
+              label="Prep time"
+              value={String(recipe.prep_time ?? "")}
+            />
+            <DurationInput
+              name="cook_time"
+              label="Cook time"
+              value={String(recipe.cook_time ?? "")}
+            />
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-4">
-          <h2 class="font-semibold mb-2">Body (Markdown)</h2>
-          <p class="text-xs text-gray-500 mb-2">
-            Use <code class="bg-gray-100 px-1">{"{= expression =}"}</code>{" "}
-            for scalable amounts. Available variables:{" "}
-            <code class="bg-gray-100 px-1">servings</code>. Functions:{" "}
-            <code class="bg-gray-100 px-1">round()</code>,{" "}
-            <code class="bg-gray-100 px-1">ceil()</code>,{" "}
-            <code class="bg-gray-100 px-1">floor()</code>. Sub-recipes:{" "}
-            <code class="bg-gray-100 px-1">@recipe(slug)</code>.
-          </p>
-          <textarea
-            name="body"
-            rows={12}
-            class="w-full border rounded px-3 py-2 font-mono text-sm"
-          >
-            {String(recipe.body ?? "")}
-          </textarea>
-        </div>
-
-        <div class="bg-white rounded-lg shadow p-4">
+        <div class="card">
           <h2 class="font-semibold mb-2">Ingredients</h2>
           <IngredientForm
             initialIngredients={ingredientData}
@@ -324,18 +403,30 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
           />
         </div>
 
-        <div class="bg-white rounded-lg shadow p-4">
-          <h2 class="font-semibold mb-2">Devices</h2>
-          <DeviceForm
-            initialDevices={deviceData}
-            devices={allDevices.map((d) => ({
-              id: String(d.id),
-              name: String(d.name),
+        <div class="card">
+          <h2 class="font-semibold mb-2">Tools</h2>
+          <ToolForm
+            initialTools={toolData}
+            tools={allTools.map((m) => ({
+              id: String(m.id),
+              name: String(m.name),
             }))}
           />
         </div>
 
-        <div class="bg-white rounded-lg shadow p-4">
+        <div class="card">
+          <h2 class="font-semibold mb-2">Steps</h2>
+          <p class="text-xs text-stone-500 mb-2">
+            Use <code class="code-hint">{"{{ key }}"}</code>{" "}
+            for scaled ingredients,{" "}
+            <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
+            for just the number. Supports math and functions.{" "}
+            <a href="/docs/templates" class="link text-xs">Full reference</a>
+          </p>
+          <StepForm initialSteps={stepData} />
+        </div>
+
+        <div class="card">
           <h2 class="font-semibold mb-2">Sub-recipe References</h2>
           <RefForm
             initialRefs={refData}
@@ -346,12 +437,15 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
           />
         </div>
 
-        <button
-          type="submit"
-          class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium"
-        >
-          Save Recipe
-        </button>
+        <div class="flex gap-3">
+          <button
+            type="submit"
+            class="btn btn-primary"
+          >
+            Save Recipe
+          </button>
+          <RecipePreview />
+        </div>
       </form>
     </div>
   );
@@ -370,7 +464,7 @@ function RefForm(
         <div key={i} class="flex gap-2 mb-2 items-center">
           <select
             name={`refs[${i}][referenced_recipe_id]`}
-            class="flex-1 border rounded px-3 py-2"
+            class="flex-1"
           >
             <option value="">Select a recipe...</option>
             {recipes.map((r) => (
@@ -385,9 +479,9 @@ function RefForm(
           </select>
         </div>
       ))}
-      <p class="text-xs text-gray-500 mt-2">
+      <p class="text-xs text-stone-500 mt-2">
         Add more references by saving and re-editing, or use @recipe(slug) in
-        the body.
+        the steps.
       </p>
     </div>
   );

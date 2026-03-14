@@ -1,3 +1,13 @@
+/**
+ * Resolve a grocery_id for an ingredient: only link if explicitly selected.
+ */
+export function resolveGroceryId(
+  groceryId: string | undefined,
+): number | null {
+  if (groceryId) return parseInt(groceryId);
+  return null;
+}
+
 // Parse indexed form field arrays from FormData.
 // E.g., "ingredients[0][name]", "ingredients[1][amount]" -> [{name: ..., amount: ...}]
 export function parseFormArray(

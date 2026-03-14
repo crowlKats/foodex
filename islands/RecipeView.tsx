@@ -1,49 +1,147 @@
 import { useSignal } from "@preact/signals";
-import { evaluateTemplate } from "../lib/template.ts";
+import {
+  evaluateTemplate,
+  formatAmount,
+  scaleIngredients,
+} from "../lib/template.ts";
+import { computeScaleRatio } from "../lib/quantity.ts";
+import type { RecipeQuantity } from "../lib/quantity.ts";
 import { marked } from "marked";
 
 function RecipeHtml({ html }: { html: string }) {
   return (
     <div
-      class="bg-white rounded-lg shadow p-6 recipe-body"
+      class="card p-6 recipe-body"
       // deno-lint-ignore react-no-danger
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
 }
 
+interface RecipeStep {
+  title: string;
+  body: string;
+  media?: { id: string; url: string }[];
+}
+
+interface RecipeIngredient {
+  key: string;
+  amount: number;
+  unit: string;
+  name: string;
+  grocery_id?: number;
+}
+
+interface RecipeTool {
+  id: number;
+  name: string;
+  settings?: string;
+  usage?: string;
+}
+
+interface RecipeRef {
+  slug: string;
+  title: string;
+}
+
 interface RecipeViewProps {
-  recipeBody: string;
-  defaultServings: number;
+  steps: RecipeStep[];
+  ingredients: RecipeIngredient[];
+  tools?: RecipeTool[];
+  refs?: RecipeRef[];
+  baseQuantity: RecipeQuantity;
   slug: string;
   hasSubRecipes: boolean;
   initialHtml: string;
 }
 
+function renderStepsClient(
+  steps: RecipeStep[],
+  ratio: number,
+  ingredients: RecipeIngredient[],
+): string {
+  const scaled = scaleIngredients(ingredients, ratio);
+  const vars: Record<string, number> = { ratio };
+  const parts: string[] = [];
+
+  for (const step of steps) {
+    const evaluated = evaluateTemplate(step.body, vars, scaled);
+    const html = marked.parse(evaluated);
+    if (typeof html === "string") {
+      let stepHtml = `<h2 class="text-xl font-semibold mt-6 mb-3">${
+        step.title.replace(/</g, "&lt;")
+      }</h2>\n${html}`;
+      if (step.media && step.media.length > 0) {
+        stepHtml += `<div class="flex flex-wrap gap-2 mt-3">${
+          step.media.map((m) =>
+            `<img src="${m.url}" alt="" class="max-w-sm border-2 border-stone-300 dark:border-stone-700" />`
+          ).join("")
+        }</div>`;
+      }
+      parts.push(stepHtml);
+    }
+  }
+  return parts.join("\n");
+}
+
+function buildQueryParams(target: RecipeQuantity): string {
+  const params = new URLSearchParams();
+  params.set("type", target.type);
+  params.set("value", String(target.value));
+  params.set("unit", target.unit);
+  if (target.value2 != null) params.set("value2", String(target.value2));
+  if (target.value3 != null) params.set("value3", String(target.value3));
+  if (target.unit2) params.set("unit2", target.unit2);
+  return params.toString();
+}
+
 export default function RecipeView(
-  { recipeBody, defaultServings, slug, hasSubRecipes, initialHtml }:
-    RecipeViewProps,
+  {
+    steps,
+    ingredients,
+    tools,
+    refs,
+    baseQuantity,
+    slug,
+    hasSubRecipes,
+    initialHtml,
+  }: RecipeViewProps,
 ) {
-  const servings = useSignal(defaultServings);
+  const targetValue = useSignal(baseQuantity.value);
+  const targetUnit = useSignal(baseQuantity.unit);
+  const targetValue2 = useSignal(baseQuantity.value2 ?? baseQuantity.value);
+  const targetValue3 = useSignal(baseQuantity.value3 ?? 1);
   const html = useSignal(initialHtml);
   const loading = useSignal(false);
 
-  function updateHtml(newServings: number) {
-    servings.value = newServings;
+  function getTarget(): RecipeQuantity {
+    return {
+      type: baseQuantity.type,
+      value: targetValue.value,
+      unit: targetUnit.value,
+      value2: baseQuantity.type === "dimensions"
+        ? targetValue2.value
+        : undefined,
+      value3: baseQuantity.type === "dimensions"
+        ? targetValue3.value
+        : undefined,
+      unit2: baseQuantity.type === "dimensions"
+        ? (baseQuantity.unit2 ?? "cm")
+        : undefined,
+    };
+  }
 
-    // Client-side template evaluation (instant)
-    const evaluated = evaluateTemplate(recipeBody, {
-      servings: newServings,
-    });
-    const rendered = marked.parse(evaluated);
-    if (typeof rendered === "string") {
-      html.value = rendered;
-    }
+  function update() {
+    const target = getTarget();
+    const ratio = computeScaleRatio(baseQuantity, target);
 
-    // If there are sub-recipe refs, also fetch server-rendered version
+    // Client-side rendering (instant)
+    html.value = renderStepsClient(steps, ratio, ingredients);
+
+    // Server fetch if sub-recipe refs exist
     if (hasSubRecipes) {
       loading.value = true;
-      fetch(`/api/recipes/${slug}/render?servings=${newServings}`)
+      fetch(`/api/recipes/${slug}/render?${buildQueryParams(target)}`)
         .then((r) => r.json())
         .then((data: { html: string }) => {
           html.value = data.html;
@@ -54,44 +152,268 @@ export default function RecipeView(
     }
   }
 
-  return (
-    <div>
-      <div class="bg-white rounded-lg shadow p-4 mb-4">
-        <label class="text-sm font-medium mr-3">Servings:</label>
-        <div class="inline-flex items-center gap-2">
-          <button
-            type="button"
-            class="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 font-bold"
-            onClick={() => {
-              if (servings.value > 1) updateHtml(servings.value - 1);
-            }}
-          >
-            -
-          </button>
-          <input
-            type="number"
-            min="1"
-            value={servings}
-            class="w-16 text-center border rounded px-2 py-1"
-            onInput={(e) => {
-              const v = parseInt((e.target as HTMLInputElement).value);
-              if (v > 0) updateHtml(v);
-            }}
-          />
-          <button
-            type="button"
-            class="w-8 h-8 rounded bg-gray-200 hover:bg-gray-300 font-bold"
-            onClick={() => updateHtml(servings.value + 1)}
-          >
-            +
-          </button>
-          {loading.value && (
-            <span class="text-xs text-gray-400 ml-2">updating...</span>
-          )}
+  function renderScalingUI() {
+    if (baseQuantity.type === "servings") {
+      return (
+        <div>
+          <label class="text-sm font-medium mr-3">Servings:</label>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              class="w-8 h-8 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 font-bold cursor-pointer"
+              onClick={() => {
+                if (targetValue.value > 1) {
+                  targetValue.value = targetValue.value - 1;
+                  update();
+                }
+              }}
+            >
+              -
+            </button>
+            <input
+              type="number"
+              min="1"
+              value={targetValue}
+              class="w-16 text-center"
+              onInput={(e) => {
+                const v = parseInt((e.target as HTMLInputElement).value);
+                if (v > 0) {
+                  targetValue.value = v;
+                  update();
+                }
+              }}
+            />
+            <button
+              type="button"
+              class="w-8 h-8 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 font-bold cursor-pointer"
+              onClick={() => {
+                targetValue.value = targetValue.value + 1;
+                update();
+              }}
+            >
+              +
+            </button>
+            {loading.value && (
+              <span class="text-xs text-stone-400 ml-2">updating...</span>
+            )}
+          </div>
         </div>
-      </div>
+      );
+    }
 
-      <RecipeHtml html={html.value} />
+    if (baseQuantity.type === "weight") {
+      return (
+        <div>
+          <label class="text-sm font-medium mr-3">Weight:</label>
+          <div class="flex items-center gap-2 flex-wrap">
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={targetValue}
+              class="w-24 text-center"
+              onInput={(e) => {
+                const v = parseFloat((e.target as HTMLInputElement).value);
+                if (v > 0) {
+                  targetValue.value = v;
+                  update();
+                }
+              }}
+            />
+            <select
+              value={targetUnit}
+              class="w-16"
+              onChange={(e) => {
+                targetUnit.value = (e.target as HTMLSelectElement).value;
+                update();
+              }}
+            >
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+            </select>
+            {loading.value && (
+              <span class="text-xs text-stone-400 ml-2">updating...</span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (baseQuantity.type === "volume") {
+      return (
+        <div>
+          <label class="text-sm font-medium mr-3">Volume:</label>
+          <div class="flex items-center gap-2 flex-wrap">
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={targetValue}
+              class="w-24 text-center"
+              onInput={(e) => {
+                const v = parseFloat((e.target as HTMLInputElement).value);
+                if (v > 0) {
+                  targetValue.value = v;
+                  update();
+                }
+              }}
+            />
+            <select
+              value={targetUnit}
+              class="w-16"
+              onChange={(e) => {
+                targetUnit.value = (e.target as HTMLSelectElement).value;
+                update();
+              }}
+            >
+              <option value="ml">ml</option>
+              <option value="l">l</option>
+            </select>
+            {loading.value && (
+              <span class="text-xs text-stone-400 ml-2">updating...</span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (baseQuantity.type === "dimensions") {
+      return (
+        <div>
+          <label class="text-sm font-medium mr-3">Tray (W x L x D):</label>
+          <div class="flex items-center gap-1 flex-wrap">
+            <input
+              type="number"
+              min="1"
+              step="0.5"
+              value={targetValue}
+              class="w-16 text-center"
+              onInput={(e) => {
+                const v = parseFloat((e.target as HTMLInputElement).value);
+                if (v > 0) {
+                  targetValue.value = v;
+                  update();
+                }
+              }}
+            />
+            <span class="text-stone-500 text-sm">&times;</span>
+            <input
+              type="number"
+              min="1"
+              step="0.5"
+              value={targetValue2}
+              class="w-16 text-center"
+              onInput={(e) => {
+                const v = parseFloat((e.target as HTMLInputElement).value);
+                if (v > 0) {
+                  targetValue2.value = v;
+                  update();
+                }
+              }}
+            />
+            <span class="text-stone-500 text-sm">&times;</span>
+            <input
+              type="number"
+              min="1"
+              step="0.5"
+              value={targetValue3}
+              class="w-16 text-center"
+              onInput={(e) => {
+                const v = parseFloat((e.target as HTMLInputElement).value);
+                if (v > 0) {
+                  targetValue3.value = v;
+                  update();
+                }
+              }}
+            />
+            <span class="text-stone-500 text-sm">cm</span>
+            {loading.value && (
+              <span class="text-xs text-stone-400 ml-2">updating...</span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
+  function getCurrentRatio(): number {
+    return computeScaleRatio(baseQuantity, getTarget());
+  }
+
+  return (
+    <div class="grid gap-6 lg:grid-cols-3">
+      <div class="lg:col-span-1 space-y-4">
+        <div class="card">
+          {renderScalingUI()}
+        </div>
+        {ingredients.length > 0 && (
+          <div class="card">
+            <h2 class="font-semibold mb-2">Ingredients</h2>
+            <ul class="space-y-1">
+              {ingredients.map((ing) => {
+                const scaled = ing.amount * getCurrentRatio();
+                return (
+                  <li key={ing.key || ing.name} class="text-sm">
+                    <span class="font-medium">
+                      {formatAmount(scaled, ing.unit)} {ing.unit}
+                      {" "}
+                    </span>
+                    {ing.grocery_id
+                      ? (
+                        <a
+                          href={`/groceries/${ing.grocery_id}`}
+                          class="link"
+                        >
+                          {ing.name}
+                        </a>
+                      )
+                      : <span>{ing.name}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {tools && tools.length > 0 && (
+          <div class="card">
+            <h2 class="font-semibold mb-2">Tools</h2>
+            <ul class="space-y-1">
+              {tools.map((t) => (
+                <li key={t.id} class="text-sm">
+                  <a href={`/tools/${t.id}`} class="link font-medium">
+                    {t.name}
+                  </a>
+                  {t.settings && (
+                    <span class="text-stone-500">{` (${t.settings})`}</span>
+                  )}
+                  {t.usage && (
+                    <div class="text-stone-500 text-xs">{t.usage}</div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {refs && refs.length > 0 && (
+          <div class="card">
+            <h2 class="font-semibold mb-2">Sub-recipes</h2>
+            <ul class="space-y-1">
+              {refs.map((r) => (
+                <li key={r.slug}>
+                  <a href={`/recipes/${r.slug}`} class="link text-sm">
+                    {r.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      <div class="lg:col-span-2">
+        <RecipeHtml html={html.value} />
+      </div>
     </div>
   );
 }

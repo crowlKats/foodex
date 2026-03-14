@@ -1,39 +1,76 @@
 import { marked } from "marked";
-import { evaluateTemplate } from "./template.ts";
+import { evaluateTemplate, type IngredientVar } from "./template.ts";
 
 export interface RecipeRef {
   title: string;
   slug: string;
 }
 
+export interface Step {
+  title: string;
+  body: string;
+  media?: { id: string; url: string }[];
+}
+
 export type RecipeResolver = (slug: string) => Promise<RecipeRef | null>;
 
-export async function renderRecipeBody(
-  body: string,
+export async function renderRecipeSteps(
+  steps: Step[],
   variables: Record<string, number>,
+  ingredients?: Record<string, IngredientVar>,
   resolveRecipe?: RecipeResolver,
 ): Promise<string> {
-  // Step 1: Evaluate {= =} template expressions
-  let result = evaluateTemplate(body, variables);
+  const parts: string[] = [];
 
-  // Step 2: Resolve @recipe(slug) references
-  if (resolveRecipe) {
-    const recipePattern = /@recipe\(([a-z0-9_-]+)\)/g;
-    const matches = [...result.matchAll(recipePattern)];
-    for (const match of matches) {
-      const slug = match[1];
-      const ref = await resolveRecipe(slug);
-      if (ref) {
-        result = result.replace(
-          match[0],
-          `[${ref.title}](/recipes/${ref.slug})`,
-        );
-      } else {
-        result = result.replace(match[0], `*unknown recipe: ${slug}*`);
+  for (const step of steps) {
+    // Evaluate template expressions
+    let result = evaluateTemplate(step.body, variables, ingredients);
+
+    // Resolve @recipe(slug) references
+    if (resolveRecipe) {
+      const recipePattern = /@recipe\(([a-z0-9_-]+)\)/g;
+      const matches = [...result.matchAll(recipePattern)];
+      for (const match of matches) {
+        const slug = match[1];
+        const ref = await resolveRecipe(slug);
+        if (ref) {
+          result = result.replace(
+            match[0],
+            `[${ref.title}](/recipes/${ref.slug})`,
+          );
+        } else {
+          result = result.replace(match[0], `*unknown recipe: ${slug}*`);
+        }
       }
     }
+
+    // Render markdown
+    const html = await marked.parse(result);
+    let stepHtml = `<h2 class="text-xl font-semibold mt-6 mb-3">${
+      escapeHtml(step.title)
+    }</h2>\n${html}`;
+
+    // Append step images
+    if (step.media && step.media.length > 0) {
+      stepHtml += `<div class="flex flex-wrap gap-2 mt-3">${
+        step.media.map((m) =>
+          `<img src="${
+            escapeHtml(m.url)
+          }" alt="" class="max-w-sm border-2 border-stone-300" />`
+        ).join("")
+      }</div>`;
+    }
+
+    parts.push(stepHtml);
   }
 
-  // Step 3: Render markdown to HTML
-  return await marked.parse(result);
+  return parts.join("\n");
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

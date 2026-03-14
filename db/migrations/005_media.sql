@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS media (
+  id SERIAL PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  url TEXT NOT NULL,
+  content_type TEXT NOT NULL,
+  filename TEXT,
+  size_bytes INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE recipes ADD COLUMN cover_image_id INTEGER REFERENCES media(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS recipe_section_media (
+  id SERIAL PRIMARY KEY,
+  section_id INTEGER NOT NULL REFERENCES recipe_sections(id) ON DELETE CASCADE,
+  media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);

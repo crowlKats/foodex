@@ -1,6 +1,10 @@
 import { useSignal } from "@preact/signals";
+import { ALL_UNITS, UNIT_GROUPS } from "../lib/units.ts";
+import TbPlus from "tb-icons/TbPlus";
+import TbX from "tb-icons/TbX";
 
 interface Ingredient {
+  key: string;
   name: string;
   amount: string;
   unit: string;
@@ -12,22 +16,27 @@ interface IngredientFormProps {
   groceries: { id: string; name: string; unit: string }[];
 }
 
+function slugifyKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
 export default function IngredientForm(
   { initialIngredients, groceries }: IngredientFormProps,
 ) {
   const items = useSignal<Ingredient[]>(
     initialIngredients.length > 0
       ? [...initialIngredients]
-      : [{ name: "", amount: "", unit: "", grocery_id: "" }],
+      : [{ key: "", name: "", amount: "", unit: "", grocery_id: "" }],
   );
 
   function add() {
-    items.value = [...items.value, {
-      name: "",
-      amount: "",
-      unit: "",
-      grocery_id: "",
-    }];
+    items.value = [
+      ...items.value,
+      { key: "", name: "", amount: "", unit: "", grocery_id: "" },
+    ];
   }
 
   function remove(index: number) {
@@ -38,70 +47,111 @@ export default function IngredientForm(
     const next = [...items.value];
     next[index] = { ...next[index], [field]: value };
 
-    // Auto-fill name from grocery selection
+    // Auto-fill from grocery selection
     if (field === "grocery_id" && value) {
       const g = groceries.find((g) => g.id === value);
       if (g) {
         next[index].name = g.name;
-        if (g.unit && !next[index].unit) {
+        next[index].key = slugifyKey(g.name);
+        if (g.unit && !next[index].unit && ALL_UNITS.includes(g.unit)) {
           next[index].unit = g.unit;
         }
       }
+    } else if (field === "grocery_id" && !value) {
+      next[index].name = "";
+      next[index].key = "";
     }
 
     items.value = next;
   }
 
   return (
-    <div class="space-y-2">
+    <div class="space-y-3">
       {items.value.map((item, i) => (
-        <div key={i} class="flex gap-2 items-start">
-          <div class="flex-1 grid grid-cols-4 gap-2">
+        <div key={i} class="card p-3 space-y-2">
+          <div class="flex gap-2 items-center">
             <select
               value={item.grocery_id}
               onInput={(e) =>
-                update(i, "grocery_id", (e.target as HTMLSelectElement).value)}
-              class="border rounded px-2 py-1.5 text-sm"
+                update(
+                  i,
+                  "grocery_id",
+                  (e.target as HTMLSelectElement).value,
+                )}
+              class="flex-1 text-sm"
             >
-              <option value="">-- Grocery --</option>
+              <option value="">-- Link grocery --</option>
               {groceries.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              class="text-red-600 hover:text-red-700 px-1 cursor-pointer"
+            >
+              <TbX class="size-4" />
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+            <div class="flex">
+              <input
+                type="number"
+                placeholder="Amount"
+                step="any"
+                value={item.amount}
+                onInput={(e) =>
+                  update(i, "amount", (e.target as HTMLInputElement).value)}
+                class="flex-1 text-sm"
+              />
+              <select
+                value={item.unit}
+                onInput={(e) =>
+                  update(i, "unit", (e.target as HTMLSelectElement).value)}
+                class="text-sm -ml-0.5"
+              >
+                <option value="">-- Unit --</option>
+                {UNIT_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.units.map((u) => (
+                      <option key={u.name} value={u.name}>{u.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
             <input
               type="text"
-              placeholder="Name"
-              value={item.name}
+              placeholder="key (for templates)"
+              value={item.key}
               onInput={(e) =>
-                update(i, "name", (e.target as HTMLInputElement).value)}
-              class="border rounded px-2 py-1.5 text-sm"
-            />
-            <input
-              type="number"
-              placeholder="Amount"
-              step="any"
-              value={item.amount}
-              onInput={(e) =>
-                update(i, "amount", (e.target as HTMLInputElement).value)}
-              class="border rounded px-2 py-1.5 text-sm"
-            />
-            <input
-              type="text"
-              placeholder="Unit"
-              value={item.unit}
-              onInput={(e) =>
-                update(i, "unit", (e.target as HTMLInputElement).value)}
-              class="border rounded px-2 py-1.5 text-sm"
+                update(i, "key", (e.target as HTMLInputElement).value)}
+              class="text-sm font-mono"
             />
           </div>
-          <button
-            type="button"
-            onClick={() => remove(i)}
-            class="text-red-600 hover:text-red-800 px-2 py-1"
-          >
-            &times;
-          </button>
+          <p class="text-xs text-stone-400">
+            {item.key
+              ? (
+                <span>
+                  Use{" "}
+                  <code class="code-hint">
+                    {`{{ ${item.key} }}`}
+                  </code>{" "}
+                  in steps for scaled output, or{" "}
+                  <code class="code-hint">
+                    {`{{ ${item.key}.amount }}`}
+                  </code>{" "}
+                  for just the number
+                </span>
+              )
+              : "Enter a name to auto-generate the template key"}
+          </p>
           {/* Hidden fields for form submission */}
+          <input
+            type="hidden"
+            name={`ingredients[${i}][key]`}
+            value={item.key}
+          />
           <input
             type="hidden"
             name={`ingredients[${i}][name]`}
@@ -127,9 +177,9 @@ export default function IngredientForm(
       <button
         type="button"
         onClick={add}
-        class="text-sm text-blue-600 hover:text-blue-800"
+        class="link text-sm font-medium"
       >
-        + Add Ingredient
+        <TbPlus class="size-3.5 inline mr-1" />Add Ingredient
       </button>
     </div>
   );

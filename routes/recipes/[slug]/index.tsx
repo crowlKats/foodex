@@ -1,14 +1,22 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
-import { renderRecipeBody } from "../../../lib/markdown.ts";
+import { renderRecipeSteps } from "../../../lib/markdown.ts";
+import { formatDuration } from "../../../lib/duration.ts";
+import { scaleIngredients } from "../../../lib/template.ts";
+import { formatQuantity } from "../../../lib/quantity.ts";
+import type { RecipeQuantity } from "../../../lib/quantity.ts";
 import RecipeView from "../../../islands/RecipeView.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
+import { BackLink } from "../../../components/BackLink.tsx";
+import TbEdit from "tb-icons/TbEdit";
 
 export const handler = define.handlers({
   async GET(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query(
-      "SELECT * FROM recipes WHERE slug = $1",
+      `SELECT r.*, m.url as cover_image_url FROM recipes r
+       LEFT JOIN media m ON m.id = r.cover_image_id
+       WHERE r.slug = $1`,
       [slug],
     );
     if (recipeRes.rows.length === 0) throw new HttpError(404);
@@ -23,14 +31,38 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const devicesRes = await ctx.state.db.query(
-      `SELECT rd.*, d.name as device_name, d.description as device_description
-       FROM recipe_devices rd
-       JOIN devices d ON d.id = rd.device_id
-       WHERE rd.recipe_id = $1
-       ORDER BY rd.sort_order, rd.id`,
+    const toolsRes = await ctx.state.db.query(
+      `SELECT rt.*, t.name as tool_name, t.description as tool_description
+       FROM recipe_tools rt
+       JOIN tools t ON t.id = rt.tool_id
+       WHERE rt.recipe_id = $1
+       ORDER BY rt.sort_order, rt.id`,
       [recipe.id],
     );
+
+    const stepsRes = await ctx.state.db.query(
+      `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+
+    const stepMediaRes = await ctx.state.db.query(
+      `SELECT rsm.step_id, m.id as media_id, m.url
+       FROM recipe_step_media rsm
+       JOIN media m ON m.id = rsm.media_id
+       JOIN recipe_steps rs ON rs.id = rsm.step_id
+       WHERE rs.recipe_id = $1
+       ORDER BY rsm.step_id, rsm.sort_order`,
+      [recipe.id],
+    );
+    const stepMediaMap = new Map<string, { id: string; url: string }[]>();
+    for (const row of stepMediaRes.rows) {
+      const stepId = String(row.step_id);
+      if (!stepMediaMap.has(stepId)) stepMediaMap.set(stepId, []);
+      stepMediaMap.get(stepId)!.push({
+        id: String(row.media_id),
+        url: String(row.url),
+      });
+    }
 
     const refsRes = await ctx.state.db.query(
       `SELECT rr.*, r.title as ref_title, r.slug as ref_slug
@@ -41,14 +73,52 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const servings = Number(recipe.default_servings);
-    const hasSubRecipes = /@recipe\([a-z0-9_-]+\)/.test(
-      String(recipe.body),
+    const baseQuantity: RecipeQuantity = {
+      type: String(
+        recipe.quantity_type || "servings",
+      ) as RecipeQuantity["type"],
+      value: Number(recipe.quantity_value ?? 4),
+      unit: String(recipe.quantity_unit || "servings"),
+      value2: recipe.quantity_value2 != null
+        ? Number(recipe.quantity_value2)
+        : undefined,
+      value3: recipe.quantity_value3 != null
+        ? Number(recipe.quantity_value3)
+        : undefined,
+      unit2: recipe.quantity_unit2 ? String(recipe.quantity_unit2) : undefined,
+    };
+
+    // Build ingredient variables for template engine
+    const ingredientsForTemplate = ingredientsRes.rows
+      .filter((i) => i.key && i.amount != null)
+      .map((i) => ({
+        key: String(i.key),
+        amount: Number(i.amount),
+        unit: String(i.unit ?? ""),
+        name: String(i.grocery_name ?? i.name),
+        grocery_id: i.grocery_id ? Number(i.grocery_id) : undefined,
+      }));
+
+    const scaledIngredients = scaleIngredients(
+      ingredientsForTemplate,
+      1,
     );
 
-    const renderedBody = await renderRecipeBody(
-      String(recipe.body),
-      { servings },
+    // Check for sub-recipe references across all step bodies
+    const hasSubRecipes = stepsRes.rows.some((s) =>
+      /@recipe\([a-z0-9_-]+\)/.test(String(s.body))
+    );
+
+    const stepsData = stepsRes.rows.map((s: Record<string, unknown>) => ({
+      title: String(s.title),
+      body: String(s.body),
+      media: stepMediaMap.get(String(s.id)) ?? [],
+    }));
+
+    const renderedHtml = await renderRecipeSteps(
+      stepsData,
+      { ratio: 1 },
+      scaledIngredients,
       async (refSlug) => {
         const res = await ctx.state.db.query(
           "SELECT title, slug FROM recipes WHERE slug = $1",
@@ -64,11 +134,13 @@ export const handler = define.handlers({
 
     return page({
       recipe,
-      ingredients: ingredientsRes.rows,
-      devices: devicesRes.rows,
+      ingredientsForTemplate,
+      tools: toolsRes.rows,
+      steps: stepsData,
       refs: refsRes.rows,
-      renderedBody,
+      renderedHtml,
       hasSubRecipes,
+      baseQuantity,
     });
   },
   async POST(ctx) {
@@ -92,140 +164,99 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function RecipeViewPage({ data }) {
-  const { recipe, ingredients, devices, refs, renderedBody, hasSubRecipes } =
-    data as {
-      recipe: Record<string, unknown>;
-      ingredients: Record<string, unknown>[];
-      devices: Record<string, unknown>[];
-      refs: Record<string, unknown>[];
-      renderedBody: string;
-      hasSubRecipes: boolean;
-    };
+  const {
+    recipe,
+    ingredientsForTemplate,
+    tools,
+    steps,
+    refs,
+    renderedHtml,
+    hasSubRecipes,
+  } = data as {
+    recipe: Record<string, unknown>;
+    ingredientsForTemplate: {
+      key: string;
+      amount: number;
+      unit: string;
+      name: string;
+      grocery_id?: number;
+    }[];
+    tools: Record<string, unknown>[];
+    steps: { title: string; body: string }[];
+    refs: Record<string, unknown>[];
+    renderedHtml: string;
+    hasSubRecipes: boolean;
+    baseQuantity: RecipeQuantity;
+  };
 
   return (
     <div>
-      <div class="flex items-center gap-4 mb-4">
-        <a href="/recipes" class="text-blue-600 hover:underline text-sm">
-          &larr; Back to Recipes
-        </a>
+      <BackLink href="/recipes" label="Back to Recipes" />
+
+      {recipe.cover_image_url && (
+        <img
+          src={String(recipe.cover_image_url)}
+          alt={String(recipe.title)}
+          class="w-full h-64 object-cover mt-4"
+        />
+      )}
+
+      <div class="flex items-center gap-3 mt-4 mb-2 flex-wrap">
+        <h1 class="text-3xl font-bold flex-1">{String(recipe.title)}</h1>
         <a
           href={`/recipes/${recipe.slug}/edit`}
-          class="text-blue-600 hover:underline text-sm"
+          class="btn btn-outline"
         >
-          Edit
+          <TbEdit class="size-3.5" />Edit
         </a>
         <form method="POST" class="inline">
           <input type="hidden" name="_method" value="DELETE" />
           <ConfirmButton
             message="Delete this recipe?"
-            class="text-red-600 hover:underline text-sm"
+            class="btn btn-danger"
           >
             Delete
           </ConfirmButton>
         </form>
       </div>
-
-      <h1 class="text-3xl font-bold">{String(recipe.title)}</h1>
       {recipe.description && (
-        <p class="text-gray-600 mt-1">{String(recipe.description)}</p>
+        <p class="text-stone-600 mt-1">{String(recipe.description)}</p>
       )}
 
-      <div class="flex gap-4 text-sm text-gray-500 mt-2">
-        <span>{String(recipe.default_servings)} servings</span>
+      <div class="flex gap-2 sm:gap-4 text-sm text-stone-500 mt-2 flex-wrap">
+        <span>{formatQuantity(data.baseQuantity)}</span>
         {recipe.prep_time != null && (
-          <span>Prep: {String(recipe.prep_time)} min</span>
+          <span>Prep: {formatDuration(Number(recipe.prep_time))}</span>
         )}
         {recipe.cook_time != null && (
-          <span>Cook: {String(recipe.cook_time)} min</span>
+          <span>Cook: {formatDuration(Number(recipe.cook_time))}</span>
         )}
       </div>
 
-      <div class="grid gap-6 lg:grid-cols-3 mt-6">
-        <div class="lg:col-span-1 space-y-4">
-          {ingredients.length > 0 && (
-            <div class="bg-white rounded-lg shadow p-4">
-              <h2 class="font-semibold mb-2">Ingredients</h2>
-              <ul class="space-y-1">
-                {ingredients.map((i) => (
-                  <li key={String(i.id)} class="text-sm">
-                    {i.amount != null && (
-                      <span class="font-medium">
-                        {String(i.amount)} {String(i.unit ?? "")}
-                        {" "}
-                      </span>
-                    )}
-                    {i.grocery_id
-                      ? (
-                        <a
-                          href={`/groceries/${i.grocery_id}`}
-                          class="text-blue-600 hover:underline"
-                        >
-                          {String(i.grocery_name ?? i.name)}
-                        </a>
-                      )
-                      : <span>{String(i.name)}</span>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {devices.length > 0 && (
-            <div class="bg-white rounded-lg shadow p-4">
-              <h2 class="font-semibold mb-2">Devices</h2>
-              <ul class="space-y-1">
-                {devices.map((d) => (
-                  <li key={String(d.id)} class="text-sm">
-                    <a
-                      href={`/devices/${d.device_id}`}
-                      class="text-blue-600 hover:underline font-medium"
-                    >
-                      {String(d.device_name)}
-                    </a>
-                    {d.settings && (
-                      <span class="text-gray-500">
-                        {` (${String(d.settings)})`}
-                      </span>
-                    )}
-                    {d.usage_description && (
-                      <div class="text-gray-500 text-xs">
-                        {String(d.usage_description)}
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {refs.length > 0 && (
-            <div class="bg-white rounded-lg shadow p-4">
-              <h2 class="font-semibold mb-2">Sub-recipes</h2>
-              <ul class="space-y-1">
-                {refs.map((r) => (
-                  <li key={String(r.id)}>
-                    <a
-                      href={`/recipes/${r.ref_slug}`}
-                      class="text-blue-600 hover:underline text-sm"
-                    >
-                      {String(r.ref_title)}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        <div class="lg:col-span-2">
-          <RecipeView
-            recipeBody={String(recipe.body)}
-            defaultServings={Number(recipe.default_servings)}
-            slug={String(recipe.slug)}
-            hasSubRecipes={hasSubRecipes}
-            initialHtml={renderedBody}
-          />
-        </div>
+      <div class="mt-6">
+        <RecipeView
+          steps={steps.map((s) => ({
+            title: String(s.title),
+            body: String(s.body),
+          }))}
+          ingredients={ingredientsForTemplate}
+          tools={tools.map((m) => ({
+            id: Number(m.tool_id),
+            name: String(m.tool_name),
+            settings: m.settings ? String(m.settings) : undefined,
+            usage: m.usage_description
+              ? String(m.usage_description)
+              : undefined,
+          }))}
+          refs={refs.map((r) => ({
+            slug: String(r.ref_slug),
+            title: String(r.ref_title),
+          }))}
+          baseQuantity={data.baseQuantity}
+          slug={String(recipe.slug)}
+          hasSubRecipes={hasSubRecipes}
+          initialHtml={renderedHtml}
+        />
       </div>
     </div>
   );

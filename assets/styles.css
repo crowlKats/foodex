@@ -1,58 +1,147 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Cards ── */
+.card {
+  @apply bg-white dark:bg-stone-900 border-2 border-stone-300
+    dark:border-stone-700 p-4;
+}
+
+.card-hover {
+  @apply cursor-pointer transition-colors duration-75 hover:border-orange-600
+    dark:hover:border-orange-500;
+}
+
+/* ── Buttons ── */
+.btn {
+  @apply inline-flex items-center justify-center gap-1.5 px-5 py-2 text-sm
+    font-semibold border-2 cursor-pointer transition-all duration-75
+    select-none;
+}
+
+.btn-primary {
+  @apply bg-orange-600 text-white border-orange-600 hover:bg-orange-700
+    hover:border-orange-700;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white border-red-600 hover:bg-red-700
+    hover:border-red-700;
+}
+
+.btn-outline {
+  @apply bg-transparent text-orange-600 border-orange-600 hover:bg-orange-600
+    hover:text-white dark:text-orange-400 dark:border-orange-400
+    dark:hover:bg-orange-500 dark:hover:text-stone-900;
+}
+
+/* ── Links ── */
+.link {
+  @apply text-orange-600 dark:text-orange-400 hover:underline cursor-pointer;
+}
+
+/* Hide number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── Inputs (global) ── */
+input,
+select,
+textarea {
+  @apply border-2 border-stone-300 dark:border-stone-700 bg-stone-100
+    dark:bg-stone-800 text-stone-900 dark:text-stone-100 px-3 py-2 text-sm
+    transition-colors duration-75 focus:outline-none focus:border-orange-600
+    dark:focus:border-orange-500;
+}
+
+input[type="search"],
+.search-input {
+  @apply bg-white dark:bg-stone-900;
+}
+
+select {
+  @apply cursor-pointer;
+}
+
+/* ── Alerts ── */
+.alert-error {
+  @apply bg-red-50 dark:bg-red-950 border-2 border-red-600 text-red-800
+    dark:text-red-300 px-4 py-2;
+}
+
+/* ── Section titles ── */
+.section-title {
+  @apply text-xs font-bold uppercase tracking-wider text-stone-500
+    dark:text-stone-400 border-b-2 border-stone-300 dark:border-stone-700 pb-2
+    mb-3 select-none;
+}
+
+/* ── Inline code hints ── */
+.code-hint {
+  @apply bg-stone-100 dark:bg-stone-800 px-1 border border-stone-300
+    dark:border-stone-600 text-xs font-mono;
+}
+
+/* ── Nav ── */
+.nav-link {
+  @apply hover:text-orange-400 transition-colors duration-75 cursor-pointer
+    select-none;
+}
+
+/* ── Recipe body (rendered markdown - can't add classes to generated HTML) ── */
 .recipe-body h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 1rem 0 0.5rem;
+  @apply text-2xl font-bold mt-6 mb-2 pb-1 border-b-2 border-stone-300
+    dark:border-stone-700;
 }
+
 .recipe-body h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 1rem 0 0.5rem;
+  @apply text-xl font-bold mt-5 mb-2 pb-1 border-b border-stone-200
+    dark:border-stone-700;
 }
+
 .recipe-body h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0.75rem 0 0.25rem;
+  @apply text-lg font-semibold mt-4 mb-1;
 }
+
 .recipe-body p {
-  margin: 0.5rem 0;
+  @apply my-2 leading-relaxed;
 }
+
 .recipe-body ul {
-  list-style: disc;
-  margin-left: 1.5rem;
-  margin-top: 0.25rem;
-  margin-bottom: 0.5rem;
+  @apply list-disc ml-6 my-1;
 }
+
 .recipe-body ol {
-  list-style: decimal;
-  margin-left: 1.5rem;
-  margin-top: 0.25rem;
-  margin-bottom: 0.5rem;
+  @apply list-decimal ml-6 my-1;
 }
+
 .recipe-body li {
-  margin: 0.125rem 0;
+  @apply my-1 leading-relaxed;
 }
+
 .recipe-body a {
-  color: #2563eb;
-  text-decoration: underline;
+  @apply text-orange-600 dark:text-orange-400 underline;
 }
+
 .recipe-body code {
-  background: #f3f4f6;
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
+  @apply bg-stone-100 dark:bg-stone-800 border border-stone-300
+    dark:border-stone-600 px-1.5 text-sm;
 }
+
 .recipe-body pre {
-  background: #f3f4f6;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  margin: 0.5rem 0;
+  @apply bg-stone-100 dark:bg-stone-800 border-2 border-stone-300
+    dark:border-stone-600 p-4 overflow-x-auto my-3;
 }
+
 .recipe-body blockquote {
-  border-left: 4px solid #d1d5db;
-  padding-left: 1rem;
-  color: #6b7280;
-  margin: 0.5rem 0;
+  @apply border-l-4 border-orange-600 dark:border-orange-500 pl-4 text-stone-500
+    dark:text-stone-400 my-3;
 }
