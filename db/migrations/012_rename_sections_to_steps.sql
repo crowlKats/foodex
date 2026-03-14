@@ -6,7 +6,13 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-ALTER SEQUENCE IF EXISTS recipe_sections_id_seq RENAME TO recipe_steps_id_seq;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'recipe_sections_id_seq')
+     AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'recipe_steps_id_seq')
+  THEN
+    ALTER SEQUENCE recipe_sections_id_seq RENAME TO recipe_steps_id_seq;
+  END IF;
+END $$;
 
 DO $$ BEGIN
   IF EXISTS (
@@ -25,4 +31,10 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-ALTER SEQUENCE IF EXISTS recipe_section_media_id_seq RENAME TO recipe_step_media_id_seq;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'recipe_section_media_id_seq')
+     AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'recipe_step_media_id_seq')
+  THEN
+    ALTER SEQUENCE recipe_section_media_id_seq RENAME TO recipe_step_media_id_seq;
+  END IF;
+END $$;

@@ -6,7 +6,13 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-ALTER SEQUENCE IF EXISTS recipe_machines_id_seq RENAME TO recipe_tools_id_seq;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'recipe_machines_id_seq')
+     AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'recipe_tools_id_seq')
+  THEN
+    ALTER SEQUENCE recipe_machines_id_seq RENAME TO recipe_tools_id_seq;
+  END IF;
+END $$;
 
 DO $$ BEGIN
   IF EXISTS (
@@ -25,4 +31,10 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-ALTER SEQUENCE IF EXISTS machines_id_seq RENAME TO tools_id_seq;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'machines_id_seq')
+     AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'tools_id_seq')
+  THEN
+    ALTER SEQUENCE machines_id_seq RENAME TO tools_id_seq;
+  END IF;
+END $$;
