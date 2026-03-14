@@ -75,7 +75,9 @@ export default function RecipePreview() {
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;");
         parts.push(
-          `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${si + 1}.</span>${escapedTitle}</h2>\n${rendered}`,
+          `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
+            si + 1
+          }.</span>${escapedTitle}</h2>\n${rendered}`,
         );
       }
     }

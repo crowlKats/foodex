@@ -292,10 +292,30 @@ export function evaluateExpression(
     const tokens = tokenize(expression);
     const ast = new Parser(tokens).parse();
 
-    // Check if expression is a single ingredient variable reference
+    // Single ingredient reference: {{ flour }} → "200g flour"
     if (ast.kind === "var" && ingredients && ast.name in ingredients) {
       const ing = ingredients[ast.name];
-      return `${formatAmount(ing.amount, ing.unit)}${ing.unit} ${ing.name}`;
+      return `${
+        formatAmount(ing.amount, ing.unit)
+      }${ing.unit} ${ing.name.toLowerCase()}`;
+    }
+
+    // Capitalized ingredient reference: {{ Flour }} → "200g Flour"
+    if (ast.kind === "var" && ingredients) {
+      const lower = ast.name.charAt(0).toLowerCase() + ast.name.slice(1);
+      if (lower in ingredients) {
+        const ing = ingredients[lower];
+        return `${formatAmount(ing.amount, ing.unit)}${ing.unit} ${
+          ing.name.charAt(0).toUpperCase()
+        }${ing.name.slice(1).toLowerCase()}`;
+      }
+    }
+
+    // Property access on ingredients: {{ flour.name }}, {{ flour.amount }}
+    if (ast.kind === "prop" && ingredients && ast.object in ingredients) {
+      const ing = ingredients[ast.object];
+      if (ast.property === "name") return ing.name.toLowerCase();
+      // .amount falls through to numeric evaluation below
     }
 
     // Build vars map with ingredient amounts as key_amount

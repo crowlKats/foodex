@@ -7,6 +7,7 @@ import { computeIngredientCost } from "../../../lib/unit-convert.ts";
 import { formatQuantity } from "../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../lib/quantity.ts";
 import RecipeView from "../../../islands/RecipeView.tsx";
+import ImageLightbox from "../../../islands/ImageLightbox.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import TbEdit from "tb-icons/TbEdit";
@@ -244,11 +245,13 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
       <BackLink href="/recipes" label="Back to Recipes" />
 
       {recipe.cover_image_url && (
-        <img
-          src={String(recipe.cover_image_url)}
-          alt={String(recipe.title)}
-          class="w-full h-64 object-cover mt-4"
-        />
+        <div class="mt-4">
+          <ImageLightbox
+            src={String(recipe.cover_image_url)}
+            alt={String(recipe.title)}
+            class="w-full h-64 object-cover"
+          />
+        </div>
       )}
 
       <div class="flex items-center gap-3 mt-4 mb-2 flex-wrap">

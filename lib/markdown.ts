@@ -47,9 +47,10 @@ export async function renderRecipeSteps(
 
     // Render markdown
     const html = await marked.parse(result);
-    let stepHtml = `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${si + 1}.</span>${
-      escapeHtml(step.title)
-    }</h2>\n${html}`;
+    let stepHtml =
+      `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
+        si + 1
+      }.</span>${escapeHtml(step.title)}</h2>\n${html}`;
 
     // Append step images
     if (step.media && step.media.length > 0) {

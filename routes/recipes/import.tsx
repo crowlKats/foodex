@@ -55,13 +55,23 @@ export const handler = define.handlers({
     };
 
     if (!ocrJson) {
-      return page({ ...baseData, ocr: null, coverImage: null, error: "No OCR data received" });
+      return page({
+        ...baseData,
+        ocr: null,
+        coverImage: null,
+        error: "No OCR data received",
+      });
     }
 
     try {
       const ocr = JSON.parse(ocrJson) as OcrRecipeData;
 
-      let coverImage: { id: string; url: string; filename: string; content_type: string } | null = null;
+      let coverImage: {
+        id: string;
+        url: string;
+        filename: string;
+        content_type: string;
+      } | null = null;
       if (coverImageId) {
         const mediaRes = await ctx.state.db.query(
           "SELECT id, url, filename, content_type FROM media WHERE id = $1",
@@ -80,7 +90,12 @@ export const handler = define.handlers({
 
       return page({ ...baseData, ocr, coverImage, error: null });
     } catch {
-      return page({ ...baseData, ocr: null, coverImage: null, error: "Invalid OCR data" });
+      return page({
+        ...baseData,
+        ocr: null,
+        coverImage: null,
+        error: "Invalid OCR data",
+      });
     }
   },
 });

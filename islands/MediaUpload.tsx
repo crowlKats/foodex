@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import TbUpload from "tb-icons/TbUpload";
 import TbX from "tb-icons/TbX";
+import ImageCrop from "./ImageCrop.tsx";
 
 interface MediaItem {
   id: string;
@@ -100,6 +101,23 @@ export default function MediaUpload(
               >
                 <TbX class="size-3" />
               </button>
+              {isImage(item.content_type) && (
+                <div class="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ImageCrop
+                    imageUrl={item.url}
+                    mediaId={item.id}
+                    onCropped={(newId, newUrl) => {
+                      const next = [...items.value];
+                      next[i] = {
+                        ...next[i],
+                        id: newId,
+                        url: newUrl,
+                      };
+                      items.value = next;
+                    }}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

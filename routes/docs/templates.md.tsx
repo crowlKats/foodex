@@ -8,12 +8,22 @@ Recipe steps support a template syntax using \`{{ expression }}\` for dynamic in
 ## Ingredient References
 Each ingredient defined in a recipe has a **key** (e.g. \`flour\`, \`eggs\`, \`butter\`). Use the key inside \`{{ }}\` to reference it in step bodies.
 
-### Full output: \`{{ key }}\`
-Renders the scaled amount + unit + name.
+### Full output (lowercase): \`{{ key }}\`
+Renders the scaled amount + unit + name in lowercase.
 Example: \`{{ flour }}\` → "200g flour"
+Use in mid-sentence: "Mix {{ flour }} with {{ eggs }}."
+
+### Capitalized: \`{{ Key }}\`
+Same as above but with capitalized name (for start of sentence).
+Example: \`{{ Flour }}\` → "200g Flour"
+
+### Name only: \`{{ key.name }}\`
+Renders just the ingredient name with no amount. Use when the amount is already shown in the sidebar or when referring to the ingredient without repeating the quantity.
+Example: \`{{ flour.name }}\` → "flour"
+Use: "Sift the {{ flour.name }} into a bowl."
 
 ### Amount only: \`{{ key.amount }}\`
-Renders just the scaled numeric value.
+Renders just the scaled numeric value. Useful for math or custom formatting.
 Example: \`{{ flour.amount }}\` → "200"
 
 All values scale automatically when the recipe quantity (servings, weight, volume, or tray dimensions) is changed.

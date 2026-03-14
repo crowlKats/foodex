@@ -55,7 +55,7 @@ Rules:
 - Step titles should be short (2-4 words). Step bodies support Markdown and a template syntax for dynamic ingredient scaling. Only use template refs when an ingredient amount is explicitly mentioned in a step — if a step just names an ingredient without a specific quantity, use plain text.
 - Template syntax reference:
 ${TEMPLATE_DOCS}
-- "cover_image": If the image(s) contain a photograph of the finished dish, return its bounding box as { "image_index": <0-based index of which image>, "x": <left edge 0-1>, "y": <top edge 0-1>, "width": <0-1>, "height": <0-1> } where all values are fractions of the image dimensions. If there is no food photo, return null.
+- "cover_image": If the image(s) contain a photograph of food, return its bounding box as { "image_index": <0-based index of which image>, "x": <left edge 0-1>, "y": <top edge 0-1>, "width": <0-1>, "height": <0-1> } where all values are fractions of the image dimensions. Crop closely to the food photo, minimizing surrounding text or whitespace, but it's OK to include a small margin. Photos embedded in recipe pages, cookbook scans, or screenshots all count. If there is no food photo at all, return null.
 - If the image contains multiple recipes, extract only the most prominent one
 - The recipe may be in ANY language — ALWAYS translate all text (title, description, ingredient names, step instructions) to English
 - Return ONLY the JSON object, no markdown fences or extra text`;

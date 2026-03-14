@@ -26,7 +26,7 @@ export default define.page(function TemplateDocs() {
           <div class="card space-y-3">
             <div>
               <div class="text-xs font-bold uppercase text-stone-500 mb-1">
-                Full output (amount + unit + name)
+                Full output (amount + unit + name, lowercase)
               </div>
               <code class="code-hint">{"{{ flour }}"}</code>
               <span class="text-stone-500 mx-2">&rarr;</span>
@@ -34,7 +34,23 @@ export default define.page(function TemplateDocs() {
             </div>
             <div>
               <div class="text-xs font-bold uppercase text-stone-500 mb-1">
-                Amount only (number)
+                Capitalized (for start of sentence)
+              </div>
+              <code class="code-hint">{"{{ Flour }}"}</code>
+              <span class="text-stone-500 mx-2">&rarr;</span>
+              <span>200g Flour</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase text-stone-500 mb-1">
+                Name only (no amount, for "add the flour")
+              </div>
+              <code class="code-hint">{"{{ flour.name }}"}</code>
+              <span class="text-stone-500 mx-2">&rarr;</span>
+              <span>flour</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase text-stone-500 mb-1">
+                Amount only (number, for math)
               </div>
               <code class="code-hint">{"{{ flour.amount }}"}</code>
               <span class="text-stone-500 mx-2">&rarr;</span>
@@ -42,7 +58,7 @@ export default define.page(function TemplateDocs() {
             </div>
           </div>
           <p class="text-sm text-stone-500 mt-2">
-            These values scale automatically when the recipe quantity changes.
+            All values scale automatically when the recipe quantity changes.
           </p>
         </section>
 
