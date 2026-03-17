@@ -22,6 +22,13 @@ function slugify(text: string): string {
 
 export const handler = define.handlers({
   async GET(ctx) {
+    if (!ctx.state.user) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login" },
+      });
+    }
+
     const ingredientsRes = await ctx.state.db.query(
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
@@ -39,6 +46,13 @@ export const handler = define.handlers({
     });
   },
   async POST(ctx) {
+    if (!ctx.state.user) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login" },
+      });
+    }
+
     const form = await ctx.req.formData();
     const title = form.get("title") as string;
     const slug = slugify(title || "");
@@ -94,8 +108,8 @@ export const handler = define.handlers({
     let recipeId: number;
     try {
       const res = await ctx.state.db.query(
-        `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING id`,
         [
           title.trim(),
@@ -110,6 +124,7 @@ export const handler = define.handlers({
           prepTime,
           cookTime,
           coverImageId ? parseInt(coverImageId) : null,
+          ctx.state.user!.id,
         ],
       );
       recipeId = res.rows[0].id as number;

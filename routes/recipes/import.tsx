@@ -14,6 +14,13 @@ import OcrUpload from "../../islands/OcrUpload.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
+    if (!ctx.state.user) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login" },
+      });
+    }
+
     const ingredientsRes = await ctx.state.db.query(
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );

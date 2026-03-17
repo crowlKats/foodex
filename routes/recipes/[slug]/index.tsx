@@ -16,8 +16,10 @@ export const handler = define.handlers({
   async GET(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query(
-      `SELECT r.*, m.url as cover_image_url FROM recipes r
+      `SELECT r.*, m.url as cover_image_url, u.name as author_name
+       FROM recipes r
        LEFT JOIN media m ON m.id = r.cover_image_id
+       LEFT JOIN users u ON u.id = r.user_id
        WHERE r.slug = $1`,
       [slug],
     );
@@ -183,6 +185,9 @@ export const handler = define.handlers({
       },
     );
 
+    const isOwner = ctx.state.user != null &&
+      recipe.user_id === ctx.state.user.id;
+
     return page({
       recipe,
       ingredientsForTemplate,
@@ -192,6 +197,7 @@ export const handler = define.handlers({
       renderedHtml,
       hasSubRecipes,
       baseQuantity,
+      isOwner,
     });
   },
   async POST(ctx) {
@@ -200,6 +206,20 @@ export const handler = define.handlers({
     const method = form.get("_method");
 
     if (method === "DELETE") {
+      // Only owner can delete
+      const recipeRes = await ctx.state.db.query(
+        "SELECT user_id FROM recipes WHERE slug = $1",
+        [slug],
+      );
+      if (
+        recipeRes.rows.length === 0 || !ctx.state.user ||
+        recipeRes.rows[0].user_id !== ctx.state.user.id
+      ) {
+        return new Response(null, {
+          status: 303,
+          headers: { Location: `/recipes/${slug}` },
+        });
+      }
       await ctx.state.db.query("DELETE FROM recipes WHERE slug = $1", [slug]);
       return new Response(null, {
         status: 303,
@@ -223,6 +243,7 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
     refs,
     renderedHtml,
     hasSubRecipes,
+    isOwner,
   } = data as {
     recipe: Record<string, unknown>;
     ingredientsForTemplate: {
@@ -238,6 +259,7 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
     renderedHtml: string;
     hasSubRecipes: boolean;
     baseQuantity: RecipeQuantity;
+    isOwner: boolean;
   };
 
   return (
@@ -256,21 +278,30 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
 
       <div class="flex items-center gap-3 mt-4 mb-2 flex-wrap">
         <h1 class="text-3xl font-bold flex-1">{String(recipe.title)}</h1>
-        <a
-          href={`/recipes/${recipe.slug}/edit`}
-          class="btn btn-outline"
-        >
-          <TbEdit class="size-3.5" />Edit
-        </a>
-        <form method="POST" class="inline">
-          <input type="hidden" name="_method" value="DELETE" />
-          <ConfirmButton
-            message="Delete this recipe?"
-            class="btn btn-danger"
-          >
-            Delete
-          </ConfirmButton>
-        </form>
+        {recipe.author_name && (
+          <span class="text-sm text-stone-500">
+            by {String(recipe.author_name)}
+          </span>
+        )}
+        {isOwner && (
+          <>
+            <a
+              href={`/recipes/${recipe.slug}/edit`}
+              class="btn btn-outline"
+            >
+              <TbEdit class="size-3.5" />Edit
+            </a>
+            <form method="POST" class="inline">
+              <input type="hidden" name="_method" value="DELETE" />
+              <ConfirmButton
+                message="Delete this recipe?"
+                class="btn btn-danger"
+              >
+                Delete
+              </ConfirmButton>
+            </form>
+          </>
+        )}
       </div>
       {recipe.description && (
         <p class="text-stone-600 mt-1">{String(recipe.description)}</p>

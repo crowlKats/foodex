@@ -67,10 +67,16 @@ interface ImageInput {
 
 type ImageMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 
+export interface OcrUsage {
+  input_tokens: number;
+  output_tokens: number;
+  model: string;
+}
+
 export async function extractRecipeFromImages(
   images: ImageInput[],
   context?: string,
-): Promise<OcrRecipeData> {
+): Promise<{ recipe: OcrRecipeData; usage: OcrUsage }> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY environment variable is not set");
@@ -130,5 +136,12 @@ export async function extractRecipeFromImages(
     jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   }
 
-  return JSON.parse(jsonText) as OcrRecipeData;
+  return {
+    recipe: JSON.parse(jsonText) as OcrRecipeData,
+    usage: {
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+      model: response.model,
+    },
+  };
 }

@@ -24,6 +24,14 @@ export const handler = define.handlers({
     if (recipeRes.rows.length === 0) throw new HttpError(404);
     const recipe = recipeRes.rows[0];
 
+    // Only owner can edit
+    if (!ctx.state.user || recipe.user_id !== ctx.state.user.id) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: `/recipes/${slug}` },
+      });
+    }
+
     const ingredientsRes = await ctx.state.db.query(
       `SELECT ri.*, g.name as ingredient_name
        FROM recipe_ingredients ri
@@ -106,10 +114,22 @@ export const handler = define.handlers({
   async POST(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query(
-      "SELECT id FROM recipes WHERE slug = $1",
+      "SELECT id, user_id FROM recipes WHERE slug = $1",
       [slug],
     );
     if (recipeRes.rows.length === 0) throw new HttpError(404);
+
+    // Only owner can edit
+    if (
+      !ctx.state.user ||
+      recipeRes.rows[0].user_id !== ctx.state.user.id
+    ) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: `/recipes/${slug}` },
+      });
+    }
+
     const recipeId = recipeRes.rows[0].id;
 
     const form = await ctx.req.formData();

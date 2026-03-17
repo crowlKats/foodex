@@ -15,10 +15,11 @@ export const handler = define.handlers({
     let result;
     if (q) {
       result = await ctx.state.db.query(
-        `SELECT DISTINCT r.*, m.url as cover_image_url FROM recipes r
+        `SELECT DISTINCT r.*, m.url as cover_image_url, u.name as author_name FROM recipes r
          LEFT JOIN recipe_steps rs ON rs.recipe_id = r.id
          LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
          LEFT JOIN media m ON m.id = r.cover_image_id
+         LEFT JOIN users u ON u.id = r.user_id
          WHERE r.search_vector @@ plainto_tsquery('english', $1)
             OR rs.body ILIKE '%' || $1 || '%'
             OR ri.name ILIKE '%' || $1 || '%'
@@ -27,35 +28,41 @@ export const handler = define.handlers({
       );
     } else {
       result = await ctx.state.db.query(
-        `SELECT r.*, m.url as cover_image_url FROM recipes r
+        `SELECT r.*, m.url as cover_image_url, u.name as author_name FROM recipes r
          LEFT JOIN media m ON m.id = r.cover_image_id
+         LEFT JOIN users u ON u.id = r.user_id
          ORDER BY r.updated_at DESC`,
       );
     }
-    return page({ recipes: result.rows, q });
+    return page({ recipes: result.rows, q, loggedIn: ctx.state.user != null });
   },
 });
 
 export default define.page<typeof handler>(function RecipesPage({ data }) {
-  const { recipes, q } = data as {
+  const { recipes, q, loggedIn } = data as {
     recipes: Record<string, unknown>[];
     q: string;
+    loggedIn: boolean;
   };
   return (
     <div>
       <PageHeader title="Recipes" query={q}>
-        <a
-          href="/recipes/import"
-          class="btn btn-outline"
-        >
-          Import
-        </a>
-        <a
-          href="/recipes/new"
-          class="btn btn-primary"
-        >
-          New Recipe
-        </a>
+        {loggedIn && (
+          <>
+            <a
+              href="/recipes/import"
+              class="btn btn-outline"
+            >
+              Import
+            </a>
+            <a
+              href="/recipes/new"
+              class="btn btn-primary"
+            >
+              New Recipe
+            </a>
+          </>
+        )}
       </PageHeader>
 
       <div>
@@ -90,6 +97,9 @@ export default define.page<typeof handler>(function RecipesPage({ data }) {
                     </div>
                   </div>
                   <div class="text-xs text-stone-400 mt-2 flex gap-4">
+                    {r.author_name && (
+                      <span>by {String(r.author_name)}</span>
+                    )}
                     <span>
                       <TbUsers class="size-3.5 inline mr-0.5" />
                       {formatQuantity({
