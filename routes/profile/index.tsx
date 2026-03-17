@@ -32,19 +32,71 @@ export const handler = define.handlers({
       [ctx.state.user.id],
     );
 
+    const allStoresRes = await ctx.state.db.query(
+      "SELECT id, name FROM stores ORDER BY name",
+    );
+
+    const userStoresRes = await ctx.state.db.query(
+      "SELECT store_id FROM user_stores WHERE user_id = $1",
+      [ctx.state.user.id],
+    );
+    const userStoreIds = new Set(
+      userStoresRes.rows.map((r) => Number(r.store_id)),
+    );
+
     return page({
       recipes: recipesRes.rows,
       tools: toolsRes.rows,
+      allStores: allStoresRes.rows,
+      userStoreIds: [...userStoreIds],
+    });
+  },
+  async POST(ctx) {
+    if (!ctx.state.user) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login" },
+      });
+    }
+
+    const form = await ctx.req.formData();
+    const method = form.get("_method");
+
+    if (method === "TOGGLE_STORE") {
+      const storeId = parseInt(form.get("store_id") as string);
+      const existing = await ctx.state.db.query(
+        "SELECT 1 FROM user_stores WHERE user_id = $1 AND store_id = $2",
+        [ctx.state.user.id, storeId],
+      );
+      if (existing.rows.length > 0) {
+        await ctx.state.db.query(
+          "DELETE FROM user_stores WHERE user_id = $1 AND store_id = $2",
+          [ctx.state.user.id, storeId],
+        );
+      } else {
+        await ctx.state.db.query(
+          "INSERT INTO user_stores (user_id, store_id) VALUES ($1, $2)",
+          [ctx.state.user.id, storeId],
+        );
+      }
+    }
+
+    return new Response(null, {
+      status: 303,
+      headers: { Location: "/profile" },
     });
   },
 });
 
 export default define.page<typeof handler>(function ProfilePage({ data, state }) {
-  const { recipes, tools } = data as {
+  const { recipes, tools, allStores, userStoreIds } = data as {
     recipes: Record<string, unknown>[];
     tools: Record<string, unknown>[];
+    allStores: Record<string, unknown>[];
+    userStoreIds: number[];
   };
   const user = state.user!;
+  const storeSet = new Set(userStoreIds);
 
   return (
     <div>
@@ -142,30 +194,82 @@ export default define.page<typeof handler>(function ProfilePage({ data, state })
             )}
         </div>
 
-        <div>
-          <h2 class="text-lg font-semibold mb-3">
-            My Tools ({tools.length})
-          </h2>
-          {tools.length === 0
-            ? <p class="text-stone-500">No tools marked yet.</p>
-            : (
-              <div class="space-y-2">
-                {tools.map((t) => (
-                  <a
-                    key={String(t.id)}
-                    href={`/tools/${t.id}`}
-                    class="block card card-hover"
+        <div class="space-y-6">
+          <div>
+            <h2 class="text-lg font-semibold mb-3">
+              My Stores ({userStoreIds.length})
+            </h2>
+            <p class="text-xs text-stone-500 mb-2">
+              Select which stores are available to you. This filters your
+              shopping list.
+            </p>
+            <div class="space-y-1">
+              {allStores.map((s) => {
+                const active = storeSet.has(s.id as number);
+                return (
+                  <form
+                    key={String(s.id)}
+                    method="POST"
+                    class="inline"
                   >
-                    <div class="font-medium">{String(t.name)}</div>
-                    {t.description && (
-                      <div class="text-sm text-stone-500 truncate">
-                        {String(t.description)}
-                      </div>
-                    )}
-                  </a>
-                ))}
-              </div>
-            )}
+                    <input type="hidden" name="_method" value="TOGGLE_STORE" />
+                    <input
+                      type="hidden"
+                      name="store_id"
+                      value={String(s.id)}
+                    />
+                    <button
+                      type="submit"
+                      class={`block w-full text-left px-3 py-2 text-sm border-2 cursor-pointer transition-colors ${
+                        active
+                          ? "border-green-500 dark:border-green-600 bg-green-50 dark:bg-green-950"
+                          : "border-stone-300 dark:border-stone-700 hover:border-stone-400"
+                      }`}
+                    >
+                      <span class="font-medium">{String(s.name)}</span>
+                      {active && (
+                        <span class="text-xs text-green-600 dark:text-green-400 ml-2">
+                          active
+                        </span>
+                      )}
+                    </button>
+                  </form>
+                );
+              })}
+              {allStores.length === 0 && (
+                <p class="text-stone-500 text-sm">
+                  No stores yet.{" "}
+                  <a href="/stores" class="link">Add one</a>
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h2 class="text-lg font-semibold mb-3">
+              My Tools ({tools.length})
+            </h2>
+            {tools.length === 0
+              ? <p class="text-stone-500">No tools marked yet.</p>
+              : (
+                <div class="space-y-2">
+                  {tools.map((t) => (
+                    <a
+                      key={String(t.id)}
+                      href={`/tools/${t.id}`}
+                      class="block card card-hover"
+                    >
+                      <div class="font-medium">{String(t.name)}</div>
+                      {t.description && (
+                        <div class="text-sm text-stone-500 truncate">
+                          {String(t.description)}
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+          </div>
         </div>
       </div>
     </div>

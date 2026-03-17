@@ -324,6 +324,7 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
 
   const toolData = tools.map((m) => ({
     tool_id: String(m.tool_id),
+    tool_name: String(m.tool_name ?? ""),
     usage_description: String(m.usage_description ?? ""),
     settings: String(m.settings ?? ""),
   }));

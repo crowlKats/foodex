@@ -1,9 +1,11 @@
 import { useSignal } from "@preact/signals";
+import SearchSelect from "./SearchSelect.tsx";
 import TbPlus from "tb-icons/TbPlus";
 import TbX from "tb-icons/TbX";
 
 interface ToolEntry {
   tool_id: string;
+  tool_name: string;
   usage_description: string;
   settings: string;
 }
@@ -19,12 +21,15 @@ export default function ToolForm(
   const items = useSignal<ToolEntry[]>(
     initialTools.length > 0
       ? [...initialTools]
-      : [{ tool_id: "", usage_description: "", settings: "" }],
+      : [{ tool_id: "", tool_name: "", usage_description: "", settings: "" }],
   );
+
+  const options = tools.map((t) => ({ id: t.id, name: t.name }));
 
   function add() {
     items.value = [...items.value, {
       tool_id: "",
+      tool_name: "",
       usage_description: "",
       settings: "",
     }];
@@ -45,21 +50,21 @@ export default function ToolForm(
       {items.value.map((item, i) => (
         <div key={i} class="flex gap-2 items-start">
           <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <select
-              value={item.tool_id}
-              onInput={(e) =>
-                update(
-                  i,
-                  "tool_id",
-                  (e.target as HTMLSelectElement).value,
-                )}
-              class="text-sm"
-            >
-              <option value="">-- Tool --</option>
-              {tools.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
+            <SearchSelect
+              value={{ id: item.tool_id, name: item.tool_name }}
+              options={options}
+              placeholder="Search tool..."
+              onSelect={(o) => {
+                const next = [...items.value];
+                next[i] = { ...next[i], tool_id: o.id, tool_name: o.name };
+                items.value = next;
+              }}
+              onClear={() => {
+                const next = [...items.value];
+                next[i] = { ...next[i], tool_id: "", tool_name: "" };
+                items.value = next;
+              }}
+            />
             <input
               type="text"
               placeholder="Settings (e.g. 180C)"
@@ -88,21 +93,9 @@ export default function ToolForm(
           >
             <TbX class="size-4" />
           </button>
-          <input
-            type="hidden"
-            name={`tools[${i}][tool_id]`}
-            value={item.tool_id}
-          />
-          <input
-            type="hidden"
-            name={`tools[${i}][usage_description]`}
-            value={item.usage_description}
-          />
-          <input
-            type="hidden"
-            name={`tools[${i}][settings]`}
-            value={item.settings}
-          />
+          <input type="hidden" name={`tools[${i}][tool_id]`} value={item.tool_id} />
+          <input type="hidden" name={`tools[${i}][usage_description]`} value={item.usage_description} />
+          <input type="hidden" name={`tools[${i}][settings]`} value={item.settings} />
         </div>
       ))}
       <button

@@ -1,5 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { ALL_UNITS, UNIT_GROUPS } from "../lib/units.ts";
+import SearchSelect from "./SearchSelect.tsx";
 import TbPlus from "tb-icons/TbPlus";
 import TbX from "tb-icons/TbX";
 
@@ -33,6 +34,12 @@ export default function IngredientForm(
       : [{ key: "", name: "", amount: "", unit: "", ingredient_id: "" }],
   );
 
+  const options = availableIngredients.map((g) => ({
+    id: g.id,
+    name: g.name,
+    detail: g.unit || undefined,
+  }));
+
   function add() {
     items.value = [
       ...items.value,
@@ -47,22 +54,28 @@ export default function IngredientForm(
   function update(index: number, field: keyof Ingredient, value: string) {
     const next = [...items.value];
     next[index] = { ...next[index], [field]: value };
+    items.value = next;
+  }
 
-    // Auto-fill from ingredient selection
-    if (field === "ingredient_id" && value) {
-      const g = availableIngredients.find((g) => g.id === value);
-      if (g) {
-        next[index].name = g.name;
-        next[index].key = slugifyKey(g.name);
-        if (g.unit && !next[index].unit && ALL_UNITS.includes(g.unit)) {
-          next[index].unit = g.unit;
-        }
-      }
-    } else if (field === "ingredient_id" && !value) {
-      next[index].name = "";
-      next[index].key = "";
-    }
+  function selectIngredient(index: number, id: string) {
+    const g = availableIngredients.find((g) => g.id === id);
+    if (!g) return;
+    const next = [...items.value];
+    next[index] = {
+      ...next[index],
+      ingredient_id: g.id,
+      name: g.name,
+      key: slugifyKey(g.name),
+      unit: g.unit && ALL_UNITS.includes(g.unit) && !next[index].unit
+        ? g.unit
+        : next[index].unit,
+    };
+    items.value = next;
+  }
 
+  function clearIngredient(index: number) {
+    const next = [...items.value];
+    next[index] = { ...next[index], ingredient_id: "", name: "", key: "" };
     items.value = next;
   }
 
@@ -71,21 +84,13 @@ export default function IngredientForm(
       {items.value.map((item, i) => (
         <div key={i} class="card p-3 space-y-2">
           <div class="flex gap-2 items-center">
-            <select
-              value={item.ingredient_id}
-              onInput={(e) =>
-                update(
-                  i,
-                  "ingredient_id",
-                  (e.target as HTMLSelectElement).value,
-                )}
-              class="flex-1 text-sm"
-            >
-              <option value="">-- Link ingredient --</option>
-              {availableIngredients.map((g) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
+            <SearchSelect
+              value={{ id: item.ingredient_id, name: item.name }}
+              options={options}
+              placeholder="Search ingredient..."
+              onSelect={(o) => selectIngredient(i, o.id)}
+              onClear={() => clearIngredient(i)}
+            />
             <button
               type="button"
               onClick={() => remove(i)}
@@ -147,32 +152,11 @@ export default function IngredientForm(
               )
               : "Enter a name to auto-generate the template key"}
           </p>
-          {/* Hidden fields for form submission */}
-          <input
-            type="hidden"
-            name={`ingredients[${i}][key]`}
-            value={item.key}
-          />
-          <input
-            type="hidden"
-            name={`ingredients[${i}][name]`}
-            value={item.name}
-          />
-          <input
-            type="hidden"
-            name={`ingredients[${i}][amount]`}
-            value={item.amount}
-          />
-          <input
-            type="hidden"
-            name={`ingredients[${i}][unit]`}
-            value={item.unit}
-          />
-          <input
-            type="hidden"
-            name={`ingredients[${i}][ingredient_id]`}
-            value={item.ingredient_id}
-          />
+          <input type="hidden" name={`ingredients[${i}][key]`} value={item.key} />
+          <input type="hidden" name={`ingredients[${i}][name]`} value={item.name} />
+          <input type="hidden" name={`ingredients[${i}][amount]`} value={item.amount} />
+          <input type="hidden" name={`ingredients[${i}][unit]`} value={item.unit} />
+          <input type="hidden" name={`ingredients[${i}][ingredient_id]`} value={item.ingredient_id} />
         </div>
       ))}
       <button
