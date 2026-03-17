@@ -1,5 +1,12 @@
 import { createDefine } from "fresh";
 
+export interface User {
+  id: number;
+  name: string;
+  email: string | null;
+  avatar_url: string | null;
+}
+
 export interface State {
   db: {
     query: (
@@ -7,6 +14,7 @@ export interface State {
       params?: unknown[],
     ) => Promise<{ rows: Record<string, unknown>[] }>;
   };
+  user: User | null;
 }
 
 export const define = createDefine<State>();

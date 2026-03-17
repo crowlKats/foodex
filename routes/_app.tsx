@@ -13,7 +13,7 @@ function DarkModeScript() {
   );
 }
 
-export default define.page(function App({ Component }) {
+export default define.page(function App({ Component, state }) {
   return (
     <html>
       <head>
@@ -23,7 +23,7 @@ export default define.page(function App({ Component }) {
         <DarkModeScript />
       </head>
       <body class="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
-        <Nav />
+        <Nav user={state.user} />
         <main class="max-w-6xl mx-auto px-4 py-6">
           <Component />
         </main>

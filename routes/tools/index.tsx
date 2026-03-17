@@ -20,7 +20,19 @@ export const handler = define.handlers({
         "SELECT * FROM tools ORDER BY name",
       );
     }
-    return page({ tools: result.rows, q });
+
+    const ownedToolIds = new Set<number>();
+    if (ctx.state.user) {
+      const utRes = await ctx.state.db.query(
+        "SELECT tool_id FROM user_tools WHERE user_id = $1",
+        [ctx.state.user.id],
+      );
+      for (const row of utRes.rows) {
+        ownedToolIds.add(row.tool_id as number);
+      }
+    }
+
+    return page({ tools: result.rows, q, ownedToolIds: [...ownedToolIds] });
   },
   async POST(ctx) {
     const form = await ctx.req.formData();
@@ -44,11 +56,13 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function ToolsPage({ data }) {
-  const { tools, error, q } = data as {
+  const { tools, error, q, ownedToolIds } = data as {
     tools: Record<string, unknown>[];
     error?: string;
     q: string;
+    ownedToolIds?: number[];
   };
+  const ownedSet = new Set(ownedToolIds ?? []);
   return (
     <div>
       <PageHeader title="Tools" query={q} />
@@ -104,7 +118,14 @@ export default define.page<typeof handler>(function ToolsPage({ data }) {
                     href={`/tools/${m.id}`}
                     class="block card card-hover"
                   >
-                    <div class="font-medium">{String(m.name)}</div>
+                    <div class="flex items-center gap-2">
+                      <div class="font-medium flex-1">{String(m.name)}</div>
+                      {ownedSet.has(m.id as number) && (
+                        <span class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
+                          owned
+                        </span>
+                      )}
+                    </div>
                     {m.description && (
                       <div class="text-sm text-stone-500 truncate">
                         {String(m.description)}
