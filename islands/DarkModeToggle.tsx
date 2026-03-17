@@ -5,7 +5,6 @@ import TbMoon from "tb-icons/TbMoon";
 export default function DarkModeToggle() {
   const dark = useSignal(false);
 
-  // Initialize from DOM state (set by inline script in _app.tsx)
   if (typeof document !== "undefined") {
     dark.value = document.documentElement.classList.contains("dark");
   }

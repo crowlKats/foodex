@@ -30,7 +30,6 @@ app.use(define.middleware(async (ctx) => {
         avatar_url: row.avatar_url as string | null,
       };
 
-      // Fetch unchecked shopping list item count
       const countRes = await query(
         `SELECT COUNT(*) as cnt FROM shopping_list_items sli
          JOIN shopping_lists sl ON sl.id = sli.shopping_list_id

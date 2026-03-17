@@ -20,7 +20,6 @@ export const handler = define.handlers({
       code,
     );
 
-    // Upsert user
     const result = await ctx.state.db.query(
       `INSERT INTO users (google_id, email, name, avatar_url)
        VALUES ($1, $2, $3, $4)
@@ -33,7 +32,6 @@ export const handler = define.handlers({
     );
     const userId = result.rows[0].id as number;
 
-    // Create session
     const sessionId = generateSessionId();
     await ctx.state.db.query(
       `INSERT INTO sessions (id, user_id, expires_at)

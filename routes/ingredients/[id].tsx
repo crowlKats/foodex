@@ -156,7 +156,6 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
 
       <div class="grid gap-6 lg:grid-cols-3 mt-6">
         <div class="space-y-6">
-          {/* Edit details */}
           <div>
             <h2 class="text-lg font-semibold mb-3">Details</h2>
             <form method="POST" class="card space-y-3">
@@ -190,7 +189,6 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
             </form>
           </div>
 
-          {/* Brands */}
           <div>
             <h2 class="text-lg font-semibold mb-3">
               Brands ({brands.length})
@@ -239,7 +237,6 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
         </div>
 
         <div class="lg:col-span-2">
-          {/* Prices */}
           <h2 class="text-lg font-semibold mb-3">
             Prices ({prices.length})
           </h2>

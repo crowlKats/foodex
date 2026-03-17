@@ -36,8 +36,6 @@ export const handler = define.handlers({
       unit2: recipe.quantity_unit2 ? String(recipe.quantity_unit2) : undefined,
     };
 
-    // Build target quantity from query params
-    // Support backwards-compat `servings` param, plus new `type`, `value`, `unit`, `value2` params
     const params = ctx.url.searchParams;
     let targetQuantity: RecipeQuantity;
 
@@ -51,7 +49,6 @@ export const handler = define.handlers({
         unit2: params.has("unit2") ? String(params.get("unit2")) : undefined,
       };
     } else if (params.has("servings")) {
-      // Backwards compatibility
       targetQuantity = {
         type: "servings",
         value: Number(params.get("servings")) || 4,
@@ -63,13 +60,11 @@ export const handler = define.handlers({
 
     const ratio = computeScaleRatio(baseQuantity, targetQuantity);
 
-    // Fetch steps
     const stepsRes = await ctx.state.db.query(
       `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
       [recipe.id],
     );
 
-    // Fetch ingredients with keys
     const ingredientsRes = await ctx.state.db.query(
       `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit
        FROM recipe_ingredients ri
@@ -79,7 +74,6 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    // Build ingredient variables for template
     const ingredientsForTemplate = ingredientsRes.rows
       .filter((i) => i.key && i.amount != null)
       .map((i) => ({

@@ -31,7 +31,6 @@ export default function QuantityInput(
 
   function onTypeChange(newType: QuantityType) {
     qType.value = newType;
-    // Reset to sensible defaults for the new type
     const defaults = QUANTITY_DEFAULTS[newType];
     qValue.value = defaults.value;
     qUnit.value = defaults.unit;
@@ -144,7 +143,6 @@ export default function QuantityInput(
           </div>
         )}
 
-      {/* Hidden fields for form submission */}
       <input type="hidden" name="quantity_type" value={qType.value} />
       <input type="hidden" name="quantity_value" value={String(qValue.value)} />
       <input type="hidden" name="quantity_unit" value={qUnit.value} />

@@ -15,11 +15,7 @@ export const handler = define.handlers({
 
     const key = String(result.rows[0].key);
 
-    try {
-      await deleteFile(key);
-    } catch {
-      // File may already be gone from S3, continue with DB cleanup
-    }
+    await deleteFile(key).catch(() => {});
 
     await ctx.state.db.query("DELETE FROM media WHERE id = $1", [id]);
 

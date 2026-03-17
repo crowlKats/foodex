@@ -131,7 +131,6 @@ export async function extractRecipeFromImages(
   }
 
   let jsonText = textBlock.text.trim();
-  // Strip markdown code fences if present
   if (jsonText.startsWith("```")) {
     jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   }

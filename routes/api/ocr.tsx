@@ -31,7 +31,6 @@ export const handler = define.handlers({
       );
       const { recipe, usage } = await extractRecipeFromImages(images, context);
 
-      // Log usage
       await ctx.state.db.query(
         `INSERT INTO ocr_usage (user_id, input_tokens, output_tokens, model)
          VALUES ($1, $2, $3, $4)`,

@@ -46,7 +46,6 @@ async function apiCall(body: Record<string, unknown>) {
   return res.json();
 }
 
-// Fixed-width cells for alignment
 const STORE_COL = "w-28 shrink-0";
 const PRICE_COL = "w-16 shrink-0 text-right";
 const REMOVE_COL = "w-5 shrink-0 text-center";
@@ -63,19 +62,24 @@ export default function ShoppingListView(
     document.cookie = `sl_view=${mode}; Path=/; Max-Age=31536000; SameSite=Lax`;
   }
 
-  function getItemCost(item: ShoppingItem): { cost: number; currency: string } | null {
-    if (item.ingredient_id == null || item.amount == null) return null;
-    const prices = pricesMap[String(item.ingredient_id)];
+  function getCost(
+    ingredientId: number | null,
+    amount: number | null,
+    unit: string | null,
+    storeId: number | null,
+  ): { cost: number; currency: string } | null {
+    if (ingredientId == null || amount == null) return null;
+    const prices = pricesMap[String(ingredientId)];
     if (!prices || prices.length === 0) return null;
 
-    const price = item.store_id
-      ? prices.find((p) => p.store_id === item.store_id)
+    const price = storeId
+      ? prices.find((p) => p.store_id === storeId)
       : prices[0];
     if (!price) return null;
 
     const cost = computeIngredientCost(
-      item.amount,
-      item.unit ?? "",
+      amount,
+      unit ?? "",
       price.price,
       price.amount,
       price.unit,
@@ -127,7 +131,7 @@ export default function ShoppingListView(
   }
 
   function renderItemRow(item: ShoppingItem, showRecipe: boolean) {
-    const costInfo = getItemCost(item);
+    const costInfo = getCost(item.ingredient_id, item.amount, item.unit, item.store_id);
     const itemStores = getStoresForItem(item.ingredient_id);
     return (
       <div
@@ -203,8 +207,6 @@ export default function ShoppingListView(
     );
   }
 
-  // --- Merged items for store view ---
-
   interface MergedItem {
     ids: number[];
     ingredient_id: number | null;
@@ -256,29 +258,8 @@ export default function ShoppingListView(
     return [...merged.values(), ...standalone];
   }
 
-  function getMergedItemCost(item: MergedItem): { cost: number; currency: string } | null {
-    if (item.ingredient_id == null || item.amount == null) return null;
-    const prices = pricesMap[String(item.ingredient_id)];
-    if (!prices || prices.length === 0) return null;
-
-    const price = item.store_id
-      ? prices.find((p) => p.store_id === item.store_id)
-      : prices[0];
-    if (!price) return null;
-
-    const cost = computeIngredientCost(
-      item.amount,
-      item.unit ?? "",
-      price.price,
-      price.amount,
-      price.unit,
-    );
-    if (cost == null) return null;
-    return { cost, currency: price.currency };
-  }
-
   function renderMergedItemRow(item: MergedItem) {
-    const costInfo = getMergedItemCost(item);
+    const costInfo = getCost(item.ingredient_id, item.amount, item.unit, item.store_id);
     const itemStores = getStoresForItem(item.ingredient_id);
 
     return (
@@ -371,8 +352,6 @@ export default function ShoppingListView(
     );
   }
 
-  // --- Grouping ---
-
   function renderGroupedByRecipe(unchecked: ShoppingItem[]) {
     const byRecipe = new Map<string, ShoppingItem[]>();
     for (const item of unchecked) {
@@ -426,7 +405,7 @@ export default function ShoppingListView(
       let groupCurrency = "EUR";
       let hasGroupPrice = false;
       for (const mi of mergedItems) {
-        const info = getMergedItemCost(mi);
+        const info = getCost(mi.ingredient_id, mi.amount, mi.unit, mi.store_id);
         if (info) {
           groupCost += info.cost;
           groupCurrency = info.currency;
@@ -473,8 +452,6 @@ export default function ShoppingListView(
     });
   }
 
-  // --- Main render ---
-
   const unchecked = items.value.filter((i) => !i.checked);
   const checked = items.value.filter((i) => i.checked);
 
@@ -482,7 +459,7 @@ export default function ShoppingListView(
   let totalCurrency = "EUR";
   let hasAnyPrice = false;
   for (const item of unchecked) {
-    const info = getItemCost(item);
+    const info = getCost(item.ingredient_id, item.amount, item.unit, item.store_id);
     if (info) {
       totalCost += info.cost;
       totalCurrency = info.currency;

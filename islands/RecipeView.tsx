@@ -145,10 +145,8 @@ export default function RecipeView(
     const target = getTarget();
     const ratio = computeScaleRatio(baseQuantity, target);
 
-    // Client-side rendering (instant)
     html.value = renderStepsClient(steps, ratio, ingredients);
 
-    // Server fetch if sub-recipe refs exist
     if (hasSubRecipes) {
       loading.value = true;
       fetch(`/api/recipes/${slug}/render?${buildQueryParams(target)}`)

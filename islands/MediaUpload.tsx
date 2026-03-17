@@ -48,9 +48,7 @@ export default function MediaUpload(
         } else {
           items.value = [newItem];
         }
-      } catch {
-        // Upload failed silently
-      }
+      } catch {}
     }
 
     uploading.value = false;
@@ -58,11 +56,7 @@ export default function MediaUpload(
 
   async function remove(index: number) {
     const item = items.value[index];
-    try {
-      await fetch(`/api/media/${item.id}`, { method: "DELETE" });
-    } catch {
-      // Ignore delete errors
-    }
+    await fetch(`/api/media/${item.id}`, { method: "DELETE" }).catch(() => {});
     items.value = items.value.filter((_, i) => i !== index);
   }
 
@@ -158,7 +152,6 @@ export default function MediaUpload(
         )}
       </div>
 
-      {/* Hidden fields for form submission */}
       {items.value.map((item, i) => (
         <input
           key={item.id}

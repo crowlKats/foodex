@@ -1,7 +1,3 @@
-// Convert an amount to its base unit (g for weight, ml for volume).
-// Returns the converted amount and the base unit name.
-// If no conversion is known, returns the original values.
-
 const CONVERSIONS: Record<string, { base: string; factor: number }> = {
   // Weight → grams
   g: { base: "g", factor: 1 },
@@ -33,11 +29,6 @@ export function toBaseUnit(
   return { amount: amount * conv.factor, unit: conv.base };
 }
 
-/**
- * Compute cost of `ingredientAmount` in `ingredientUnit`
- * given a price of `price` per `priceAmount` in `priceUnit`.
- * Returns null if units are incompatible.
- */
 export function computeIngredientCost(
   ingredientAmount: number,
   ingredientUnit: string,
@@ -48,7 +39,6 @@ export function computeIngredientCost(
   const ing = toBaseUnit(ingredientAmount, ingredientUnit);
   const pr = toBaseUnit(priceAmount, priceUnit);
 
-  // Units must be compatible (same base unit)
   if (ing.unit !== pr.unit) return null;
   if (pr.amount === 0) return null;
 

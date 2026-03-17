@@ -85,7 +85,6 @@ export default function OcrUpload() {
         throw new Error(data.error || "OCR failed");
       }
 
-      // If OCR detected a food photo, crop and upload it as cover image
       let coverImageId: string | null = null;
       if (data.cover_image) {
         try {
@@ -93,12 +92,9 @@ export default function OcrUpload() {
             files.value[data.cover_image.image_index],
             data.cover_image,
           );
-        } catch {
-          // Cover image extraction failed, continue without it
-        }
+        } catch {}
       }
 
-      // Submit OCR result to the import page via hidden form
       const form = document.createElement("form");
       form.method = "POST";
       form.action = "/recipes/import";

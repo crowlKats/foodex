@@ -17,7 +17,6 @@ async function getOrCreateList(
 }
 
 export const handler = define.handlers({
-  // Add items to shopping list
   async POST(ctx) {
     if (!ctx.state.user) {
       return new Response(null, { status: 401 });
@@ -27,7 +26,6 @@ export const handler = define.handlers({
     const listId = await getOrCreateList(ctx.state.db, ctx.state.user.id);
 
     if (body.action === "add_recipe") {
-      // Add all ingredients from a recipe
       const { recipe_id, scale } = body as {
         recipe_id: number;
         scale: number;
@@ -43,7 +41,6 @@ export const handler = define.handlers({
         [recipe_id],
       );
 
-      // Get max sort_order
       const maxRes = await ctx.state.db.query(
         "SELECT COALESCE(MAX(sort_order), -1) as max_order FROM shopping_list_items WHERE shopping_list_id = $1",
         [listId],

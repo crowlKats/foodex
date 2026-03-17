@@ -1,6 +1,3 @@
-// Template expression evaluator for {{ expression }} syntax.
-// Pure JS - runs on both server and client.
-
 export interface IngredientVar {
   amount: number;
   unit: string;
@@ -48,7 +45,6 @@ function tokenize(input: string): Token[] {
       tokens.push({ type: "," });
       i++;
     } else if (ch === ".") {
-      // Check if this is a decimal number (.5) or property access
       if (
         i + 1 < input.length && input[i + 1] >= "0" && input[i + 1] <= "9" &&
         (tokens.length === 0 || tokens[tokens.length - 1].type !== "ident")
@@ -172,7 +168,6 @@ class Parser {
 
     if (tok.type === "ident") {
       this.advance();
-      // Property access: ident.prop
       if (this.peek()?.type === ".") {
         this.advance();
         const propTok = this.expect("ident");
@@ -182,7 +177,6 @@ class Parser {
           property: (propTok as { type: "ident"; value: string }).value,
         };
       }
-      // Function call: ident(args)
       if (this.peek()?.type === "(") {
         this.advance();
         const args: Expr[] = [];
@@ -219,8 +213,7 @@ function evaluate(expr: Expr, vars: Record<string, number>): number {
     case "var":
       if (expr.name in vars) return vars[expr.name];
       throw new Error(`Unknown variable: '${expr.name}'`);
-    case "prop": // e.g. flour.amount -> look up "flour_amount" in vars
-    {
+    case "prop": {
       const key = `${expr.object}_${expr.property}`;
       if (key in vars) return vars[key];
       throw new Error(`Unknown property: '${expr.object}.${expr.property}'`);
@@ -251,7 +244,6 @@ function evaluate(expr: Expr, vars: Record<string, number>): number {
   }
 }
 
-// Units that should display as whole numbers
 const WHOLE_UNITS = new Set([
   "g",
   "mg",
@@ -273,14 +265,8 @@ export function formatAmount(n: number, unit?: string): string {
     return Math.round(n).toString();
   }
   if (Number.isInteger(n)) return n.toString();
-  // For fractional units (kg, l, tsp, tbsp, cup, oz, lb, etc.)
-  // use up to 2 decimals, trim trailing zeros
   const fixed = n.toFixed(2);
   return fixed.replace(/\.?0+$/, "");
-}
-
-function formatNumber(n: number): string {
-  return formatAmount(n);
 }
 
 export function evaluateExpression(
@@ -292,7 +278,6 @@ export function evaluateExpression(
     const tokens = tokenize(expression);
     const ast = new Parser(tokens).parse();
 
-    // Single ingredient reference: {{ flour }} → "200g flour"
     if (ast.kind === "var" && ingredients && ast.name in ingredients) {
       const ing = ingredients[ast.name];
       return `${
@@ -300,7 +285,6 @@ export function evaluateExpression(
       }${ing.unit} ${ing.name.toLowerCase()}`;
     }
 
-    // Capitalized ingredient reference: {{ Flour }} → "200g Flour"
     if (ast.kind === "var" && ingredients) {
       const lower = ast.name.charAt(0).toLowerCase() + ast.name.slice(1);
       if (lower in ingredients) {
@@ -311,14 +295,11 @@ export function evaluateExpression(
       }
     }
 
-    // Property access on ingredients: {{ flour.name }}, {{ flour.amount }}
     if (ast.kind === "prop" && ingredients && ast.object in ingredients) {
       const ing = ingredients[ast.object];
       if (ast.property === "name") return ing.name.toLowerCase();
-      // .amount falls through to numeric evaluation below
     }
 
-    // Build vars map with ingredient amounts as key_amount
     const allVars = { ...variables };
     if (ingredients) {
       for (const [key, ing] of Object.entries(ingredients)) {
@@ -326,7 +307,7 @@ export function evaluateExpression(
       }
     }
 
-    return formatNumber(evaluate(ast, allVars));
+    return formatAmount(evaluate(ast, allVars));
   } catch (err) {
     return `{{ ${expression} }} /* error: ${(err as Error).message} */`;
   }
@@ -342,10 +323,6 @@ export function evaluateTemplate(
   });
 }
 
-/**
- * Build the scaled ingredients map from recipe data.
- * Scales all amounts by the given ratio.
- */
 export function scaleIngredients(
   ingredients: { key: string; amount: number; unit: string; name: string }[],
   ratio: number,

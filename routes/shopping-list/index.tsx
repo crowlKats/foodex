@@ -11,7 +11,6 @@ export const handler = define.handlers({
       });
     }
 
-    // Get or create list
     let listRes = await ctx.state.db.query(
       "SELECT id FROM shopping_lists WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1",
       [ctx.state.user.id],
@@ -24,7 +23,6 @@ export const handler = define.handlers({
     }
     const listId = listRes.rows[0].id as number;
 
-    // Fetch items with recipe info
     const itemsRes = await ctx.state.db.query(
       `SELECT sli.*,
               r.title as recipe_title, r.slug as recipe_slug
@@ -35,7 +33,6 @@ export const handler = define.handlers({
       [listId],
     );
 
-    // Fetch user's stores (or all stores if none selected)
     const userStoresRes = await ctx.state.db.query(
       "SELECT store_id FROM user_stores WHERE user_id = $1",
       [ctx.state.user.id],
@@ -52,7 +49,6 @@ export const handler = define.handlers({
         "SELECT id, name, currency FROM stores ORDER BY name",
       );
 
-    // Fetch prices for all linked ingredients (filtered to user's stores)
     const ingredientIds = itemsRes.rows
       .filter((i) => i.ingredient_id != null)
       .map((i) => Number(i.ingredient_id));
@@ -95,11 +91,10 @@ export const handler = define.handlers({
 
     const items = itemsRes.rows.map((i) => {
       let storeId = i.store_id != null ? Number(i.store_id) : null;
-      // Default to cheapest store if none selected
       if (storeId == null && i.ingredient_id != null) {
         const prices = pricesMap[String(i.ingredient_id)];
         if (prices && prices.length > 0) {
-          storeId = prices[0].store_id; // sorted by price ASC
+          storeId = prices[0].store_id;
         }
       }
       return {
@@ -121,7 +116,6 @@ export const handler = define.handlers({
       currency: String(s.currency ?? "EUR"),
     }));
 
-    // Read view mode from cookie
     const cookie = ctx.req.headers.get("cookie") ?? "";
     const vmMatch = cookie.match(/(?:^|;\s*)sl_view=(recipe|store)/);
     const viewMode = (vmMatch?.[1] ?? "recipe") as "recipe" | "store";

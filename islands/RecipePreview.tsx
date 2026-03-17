@@ -24,7 +24,6 @@ export default function RecipePreview() {
 
     const data = new FormData(form);
 
-    // Collect ingredients
     const ingredients: {
       key: string;
       amount: number;
@@ -45,7 +44,6 @@ export default function RecipePreview() {
       i++;
     }
 
-    // Collect steps
     const steps: { title: string; body: string }[] = [];
     let j = 0;
     while (data.has(`steps[${j}][title]`) || data.has(`steps[${j}][body]`)) {
@@ -61,7 +59,6 @@ export default function RecipePreview() {
       return "<p class='text-stone-500'>No steps to preview.</p>";
     }
 
-    // Render
     const scaled = scaleIngredients(ingredients, 1);
     const vars: Record<string, number> = { ratio: 1 };
     const parts: string[] = [];

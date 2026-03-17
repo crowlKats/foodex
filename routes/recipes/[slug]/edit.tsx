@@ -1,6 +1,6 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
-import { parseFormArray, resolveIngredientId } from "../../../lib/form.ts";
+import { parseFormArray } from "../../../lib/form.ts";
 import QuantityInput from "../../../islands/QuantityInput.tsx";
 import IngredientForm from "../../../islands/IngredientForm.tsx";
 import ToolForm from "../../../islands/ToolForm.tsx";
@@ -10,6 +10,7 @@ import RecipePreview from "../../../islands/RecipePreview.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
 import { DurationInput } from "../../../components/DurationInput.tsx";
+import { RefForm } from "../../../components/RefForm.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -24,7 +25,6 @@ export const handler = define.handlers({
     if (recipeRes.rows.length === 0) throw new HttpError(404);
     const recipe = recipeRes.rows[0];
 
-    // Only owner can edit
     if (!ctx.state.user || recipe.user_id !== ctx.state.user.id) {
       return new Response(null, {
         status: 303,
@@ -55,7 +55,6 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    // Fetch media for each step
     const stepMediaRes = await ctx.state.db.query(
       `SELECT rsm.step_id, rsm.sort_order, m.id as media_id, m.url
        FROM recipe_step_media rsm
@@ -119,7 +118,6 @@ export const handler = define.handlers({
     );
     if (recipeRes.rows.length === 0) throw new HttpError(404);
 
-    // Only owner can edit
     if (
       !ctx.state.user ||
       recipeRes.rows[0].user_id !== ctx.state.user.id
@@ -165,7 +163,6 @@ export const handler = define.handlers({
       : null;
     const coverImageId = form.get("cover_image_id") as string;
 
-    // Update recipe (no slug, no body)
     await ctx.state.db.query(
       `UPDATE recipes SET title=$1, description=$2,
        quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
@@ -187,7 +184,6 @@ export const handler = define.handlers({
       ],
     );
 
-    // Re-insert ingredients
     await ctx.state.db.query(
       "DELETE FROM recipe_ingredients WHERE recipe_id = $1",
       [recipeId],
@@ -196,7 +192,7 @@ export const handler = define.handlers({
     for (let i = 0; i < ingredients.length; i++) {
       const ing = ingredients[i];
       if (!ing.name?.trim()) continue;
-      const ingredientId = resolveIngredientId(ing.ingredient_id);
+      const ingredientId = ing.ingredient_id ? parseInt(ing.ingredient_id) : null;
       await ctx.state.db.query(
         `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, sort_order)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -212,7 +208,6 @@ export const handler = define.handlers({
       );
     }
 
-    // Re-insert tools
     await ctx.state.db.query(
       "DELETE FROM recipe_tools WHERE recipe_id = $1",
       [recipeId],
@@ -234,7 +229,6 @@ export const handler = define.handlers({
       );
     }
 
-    // Re-insert steps (cascade deletes step media too)
     await ctx.state.db.query(
       "DELETE FROM recipe_steps WHERE recipe_id = $1",
       [recipeId],
@@ -253,7 +247,6 @@ export const handler = define.handlers({
           i,
         ],
       );
-      // Insert step media
       const stepId = stepRes.rows[0].id;
       let mi = 0;
       while (form.has(`steps[${i}][media][${mi}]`)) {
@@ -269,7 +262,6 @@ export const handler = define.handlers({
       }
     }
 
-    // Re-insert references
     await ctx.state.db.query(
       "DELETE FROM recipe_references WHERE recipe_id = $1",
       [recipeId],
@@ -475,38 +467,3 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
   );
 });
 
-// Simple server-rendered ref form (no island needed - just static rows + JS)
-function RefForm(
-  { initialRefs, recipes }: {
-    initialRefs: { referenced_recipe_id: string }[];
-    recipes: { id: string; title: string }[];
-  },
-) {
-  return (
-    <div>
-      {initialRefs.map((ref, i) => (
-        <div key={i} class="flex gap-2 mb-2 items-center">
-          <select
-            name={`refs[${i}][referenced_recipe_id]`}
-            class="flex-1"
-          >
-            <option value="">Select a recipe...</option>
-            {recipes.map((r) => (
-              <option
-                key={r.id}
-                value={r.id}
-                selected={r.id === ref.referenced_recipe_id}
-              >
-                {r.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
-      <p class="text-xs text-stone-500 mt-2">
-        Add more references by saving and re-editing, or use @recipe(slug) in
-        the steps.
-      </p>
-    </div>
-  );
-}

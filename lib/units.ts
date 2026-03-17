@@ -1,6 +1,3 @@
-// Preset units used across the application.
-// Grouped by category for UI display.
-
 export interface UnitDef {
   name: string;
   step: string; // HTML input step attribute

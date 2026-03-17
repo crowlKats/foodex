@@ -9,7 +9,6 @@ export const handler = define.handlers({
   async GET(ctx) {
     const q = ctx.url.searchParams.get("q")?.trim() || "";
 
-    // Fetch ingredients with their cheapest price and store count
     let result;
     if (q) {
       result = await ctx.state.db.query(
@@ -81,7 +80,6 @@ export const handler = define.handlers({
     );
     const ingredientId = ingredientRes.rows[0].id;
 
-    // If a store and price were provided, add the price entry
     if (storeId && price) {
       await ctx.state.db.query(
         `INSERT INTO ingredient_prices (ingredient_id, store_id, price, amount)

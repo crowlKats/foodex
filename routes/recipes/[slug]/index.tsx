@@ -92,7 +92,6 @@ export const handler = define.handlers({
       unit2: recipe.quantity_unit2 ? String(recipe.quantity_unit2) : undefined,
     };
 
-    // Fetch cheapest prices for linked ingredients
     const ingredientIds = ingredientsRes.rows
       .filter((i) => i.ingredient_id != null)
       .map((i) => Number(i.ingredient_id));
@@ -122,7 +121,6 @@ export const handler = define.handlers({
       }
     }
 
-    // Build ingredient variables for template engine
     const ingredientsForTemplate = ingredientsRes.rows
       .filter((i) => i.key && i.amount != null)
       .map((i) => {
@@ -157,7 +155,6 @@ export const handler = define.handlers({
       1,
     );
 
-    // Check for sub-recipe references across all step bodies
     const hasSubRecipes = stepsRes.rows.some((s) =>
       /@recipe\([a-z0-9_-]+\)/.test(String(s.body))
     );
@@ -207,7 +204,6 @@ export const handler = define.handlers({
     const method = form.get("_method");
 
     if (method === "DELETE") {
-      // Only owner can delete
       const recipeRes = await ctx.state.db.query(
         "SELECT user_id FROM recipes WHERE slug = $1",
         [slug],

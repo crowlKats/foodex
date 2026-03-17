@@ -8,8 +8,6 @@ function getBaseUrl(req: Request): string {
   return `${url.protocol}//${url.host}`;
 }
 
-// --- GitHub OAuth ---
-
 export function getGitHubAuthUrl(req: Request): string {
   const params = new URLSearchParams({
     client_id: GITHUB_CLIENT_ID,
@@ -65,8 +63,6 @@ export async function exchangeGitHubCode(
   };
 }
 
-// --- Google OAuth ---
-
 export function getGoogleAuthUrl(req: Request): string {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -110,8 +106,6 @@ export async function exchangeGoogleCode(
     avatarUrl: user.picture ?? "",
   };
 }
-
-// --- Session management ---
 
 export function generateSessionId(): string {
   const bytes = new Uint8Array(32);

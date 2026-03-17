@@ -24,10 +24,8 @@ export async function renderRecipeSteps(
 
   for (let si = 0; si < steps.length; si++) {
     const step = steps[si];
-    // Evaluate template expressions
     let result = evaluateTemplate(step.body, variables, ingredients);
 
-    // Resolve @recipe(slug) references
     if (resolveRecipe) {
       const recipePattern = /@recipe\(([a-z0-9_-]+)\)/g;
       const matches = [...result.matchAll(recipePattern)];
@@ -45,14 +43,12 @@ export async function renderRecipeSteps(
       }
     }
 
-    // Render markdown
     const html = await marked.parse(result);
     let stepHtml =
       `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
         si + 1
       }.</span>${escapeHtml(step.title)}</h2>\n${html}`;
 
-    // Append step images
     if (step.media && step.media.length > 0) {
       stepHtml += `<div class="flex flex-wrap gap-2 mt-3">${
         step.media.map((m) =>

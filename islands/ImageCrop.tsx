@@ -107,7 +107,6 @@ export default function ImageCrop(
     onPointerDown(e, "se");
   }
 
-  // Reset crop when opening
   useEffect(() => {
     if (open.value) {
       crop.value = { x: 0, y: 0, w: 1, h: 1 };
@@ -147,7 +146,6 @@ export default function ImageCrop(
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
 
-      // Delete old media
       fetch(`/api/media/${mediaId}`, { method: "DELETE" }).catch(() => {});
 
       onCropped(String(data.id), String(data.url));
@@ -202,7 +200,6 @@ export default function ImageCrop(
             class="w-full h-full object-contain"
             draggable={false}
           />
-          {/* Darkened overlay outside crop */}
           <div
             class="absolute inset-0 pointer-events-none"
             style={`clip-path: polygon(0% 0%, 0% 100%, ${c.x * 100}% 100%, ${
@@ -213,7 +210,6 @@ export default function ImageCrop(
               c.x * 100
             }% 100%, 100% 100%, 100% 0%); background: rgba(0,0,0,0.5);`}
           />
-          {/* Crop area - draggable to move */}
           <div
             class="absolute border-2 border-white cursor-move"
             style={`left: ${c.x * 100}%; top: ${c.y * 100}%; width: ${
@@ -221,7 +217,6 @@ export default function ImageCrop(
             }%; height: ${c.h * 100}%;`}
             onPointerDown={(e) => onPointerDown(e, "move")}
           >
-            {/* Corner handles */}
             {(["nw", "ne", "sw", "se"] as const).map((corner) => (
               <div
                 key={corner}
@@ -235,7 +230,6 @@ export default function ImageCrop(
               />
             ))}
           </div>
-          {/* Click on empty area to start new crop */}
           <div
             class="absolute inset-0"
             style="cursor: crosshair; z-index: -1;"

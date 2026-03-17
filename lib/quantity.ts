@@ -1,6 +1,3 @@
-// Recipe quantity types and scaling logic.
-// Pure JS - works on both server and client.
-
 export type QuantityType = "servings" | "weight" | "volume" | "dimensions";
 
 export interface RecipeQuantity {
@@ -36,10 +33,6 @@ export const QUANTITY_DEFAULTS: Record<
   dimensions: { value: 30, unit: "cm", value2: 40, value3: 5 },
 };
 
-/**
- * Compute the scaling ratio between a base quantity and a target quantity.
- * For dimensions, scales by volume (W x L x D).
- */
 export function computeScaleRatio(
   base: RecipeQuantity,
   target: RecipeQuantity,
@@ -52,7 +45,6 @@ export function computeScaleRatio(
     return baseVol > 0 ? targetVol / baseVol : 1;
   }
 
-  // For weight/volume, normalize to same base unit
   const baseNormalized = normalizeValue(base.value, base.unit);
   const targetNormalized = normalizeValue(target.value, target.unit);
   return baseNormalized > 0 ? targetNormalized / baseNormalized : 1;
@@ -69,17 +61,11 @@ function normalizeValue(value: number, unit: string): number {
   }
 }
 
-/**
- * Format a quantity for display.
- */
 export function formatQuantity(q: RecipeQuantity): string {
   if (q.type === "dimensions") {
     const parts = [q.value, q.value2 ?? q.value];
     if (q.value3) parts.push(q.value3);
     return parts.join(" x ") + " cm";
-  }
-  if (q.type === "servings") {
-    return `${q.value} ${q.unit}`;
   }
   return `${q.value} ${q.unit}`;
 }

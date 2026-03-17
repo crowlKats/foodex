@@ -1,15 +1,3 @@
-/**
- * Resolve an ingredient_id for an ingredient: only link if explicitly selected.
- */
-export function resolveIngredientId(
-  ingredientId: string | undefined,
-): number | null {
-  if (ingredientId) return parseInt(ingredientId);
-  return null;
-}
-
-// Parse indexed form field arrays from FormData.
-// E.g., "ingredients[0][name]", "ingredients[1][amount]" -> [{name: ..., amount: ...}]
 export function parseFormArray(
   formData: FormData,
   prefix: string,

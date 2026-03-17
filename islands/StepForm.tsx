@@ -69,9 +69,7 @@ export default function StepForm({ initialSteps }: StepFormProps) {
             url: String(data.url),
           }],
         };
-      } catch {
-        // upload failed
-      }
+      } catch {}
     }
     items.value = next;
     uploading.value = null;
@@ -81,7 +79,6 @@ export default function StepForm({ initialSteps }: StepFormProps) {
     const next = [...items.value];
     const item = next[stepIndex];
     const mediaItem = item.media[mediaIndex];
-    // Fire-and-forget delete
     fetch(`/api/media/${mediaItem.id}`, { method: "DELETE" }).catch(() => {});
     next[stepIndex] = {
       ...item,
@@ -137,7 +134,6 @@ export default function StepForm({ initialSteps }: StepFormProps) {
             class="w-full text-sm font-mono"
           />
 
-          {/* Step images */}
           {item.media.length > 0 && (
             <div class="flex flex-wrap gap-2">
               {item.media.map((m, mi) => (
@@ -177,7 +173,6 @@ export default function StepForm({ initialSteps }: StepFormProps) {
             )}
           </button>
 
-          {/* Hidden fields */}
           <input type="hidden" name={`steps[${i}][title]`} value={item.title} />
           <input type="hidden" name={`steps[${i}][body]`} value={item.body} />
           {item.media.map((m, mi) => (

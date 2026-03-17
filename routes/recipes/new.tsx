@@ -1,6 +1,6 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
-import { parseFormArray, resolveIngredientId } from "../../lib/form.ts";
+import { parseFormArray } from "../../lib/form.ts";
 import QuantityInput from "../../islands/QuantityInput.tsx";
 import IngredientForm from "../../islands/IngredientForm.tsx";
 import ToolForm from "../../islands/ToolForm.tsx";
@@ -10,6 +10,7 @@ import RecipePreview from "../../islands/RecipePreview.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { DurationInput } from "../../components/DurationInput.tsx";
+import { RefForm } from "../../components/RefForm.tsx";
 
 function slugify(text: string): string {
   return text
@@ -149,12 +150,11 @@ export const handler = define.handlers({
       throw err;
     }
 
-    // Insert recipe ingredients
     const ingredients = parseFormArray(form, "ingredients");
     for (let i = 0; i < ingredients.length; i++) {
       const ing = ingredients[i];
       if (!ing.name?.trim()) continue;
-      const ingredientId = resolveIngredientId(ing.ingredient_id);
+      const ingredientId = ing.ingredient_id ? parseInt(ing.ingredient_id) : null;
       await ctx.state.db.query(
         `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, sort_order)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -170,7 +170,6 @@ export const handler = define.handlers({
       );
     }
 
-    // Insert tools
     const toolEntries = parseFormArray(form, "tools");
     for (let i = 0; i < toolEntries.length; i++) {
       const t = toolEntries[i];
@@ -188,7 +187,6 @@ export const handler = define.handlers({
       );
     }
 
-    // Insert steps with media
     const steps = parseFormArray(form, "steps");
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
@@ -218,7 +216,6 @@ export const handler = define.handlers({
       }
     }
 
-    // Insert references
     const refEntries = parseFormArray(form, "refs");
     for (let i = 0; i < refEntries.length; i++) {
       const ref = refEntries[i];
@@ -355,53 +352,3 @@ export default define.page<typeof handler>(function NewRecipePage({ data }) {
   );
 });
 
-// Simple server-rendered ref form
-function RefForm(
-  { initialRefs, recipes }: {
-    initialRefs: { referenced_recipe_id: string }[];
-    recipes: { id: string; title: string }[];
-  },
-) {
-  return (
-    <div>
-      {initialRefs.map((ref, i) => (
-        <div key={i} class="flex gap-2 mb-2 items-center">
-          <select
-            name={`refs[${i}][referenced_recipe_id]`}
-            class="flex-1"
-          >
-            <option value="">Select a recipe...</option>
-            {recipes.map((r) => (
-              <option
-                key={r.id}
-                value={r.id}
-                selected={r.id === ref.referenced_recipe_id}
-              >
-                {r.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
-      {initialRefs.length === 0 && (
-        <div class="flex gap-2 mb-2 items-center">
-          <select
-            name="refs[0][referenced_recipe_id]"
-            class="flex-1"
-          >
-            <option value="">Select a recipe...</option>
-            {recipes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      <p class="text-xs text-stone-500 mt-2">
-        Add more references by saving and re-editing, or use @recipe(slug) in
-        the steps.
-      </p>
-    </div>
-  );
-}
