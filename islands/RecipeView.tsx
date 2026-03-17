@@ -56,6 +56,8 @@ interface RecipeViewProps {
   slug: string;
   hasSubRecipes: boolean;
   initialHtml: string;
+  recipeId: number;
+  loggedIn: boolean;
 }
 
 function renderStepsClient(
@@ -110,8 +112,11 @@ export default function RecipeView(
     slug,
     hasSubRecipes,
     initialHtml,
+    recipeId,
+    loggedIn,
   }: RecipeViewProps,
 ) {
+  const addedToList = useSignal<string | null>(null);
   const targetValue = useSignal(baseQuantity.value);
   const targetUnit = useSignal(baseQuantity.unit);
   const targetValue2 = useSignal(baseQuantity.value2 ?? baseQuantity.value);
@@ -347,6 +352,41 @@ export default function RecipeView(
     return computeScaleRatio(baseQuantity, getTarget());
   }
 
+  async function addAllToShoppingList() {
+    const ratio = getCurrentRatio();
+    const res = await fetch("/api/shopping-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "add_recipe",
+        recipe_id: recipeId,
+        scale: ratio,
+      }),
+    });
+    if (res.ok) {
+      addedToList.value = "all";
+      setTimeout(() => { addedToList.value = null; }, 2000);
+    }
+  }
+
+  async function addOneToShoppingList(ing: RecipeIngredient) {
+    const ratio = getCurrentRatio();
+    await fetch("/api/shopping-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "add_ingredient",
+        ingredient_id: ing.ingredient_id ?? null,
+        name: ing.name,
+        amount: ing.amount != null ? ing.amount * ratio : null,
+        unit: ing.unit || null,
+        recipe_id: recipeId,
+      }),
+    });
+    addedToList.value = ing.key;
+    setTimeout(() => { addedToList.value = null; }, 1500);
+  }
+
   return (
     <div class="grid gap-6 lg:grid-cols-4">
       <div class="lg:col-span-1 space-y-4">
@@ -355,7 +395,18 @@ export default function RecipeView(
         </div>
         {ingredients.length > 0 && (
           <div class="card">
-            <h2 class="font-semibold mb-2">Ingredients</h2>
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="font-semibold">Ingredients</h2>
+              {loggedIn && (
+                <button
+                  type="button"
+                  class="text-xs text-orange-600 hover:underline cursor-pointer"
+                  onClick={addAllToShoppingList}
+                >
+                  {addedToList.value === "all" ? "Added!" : "Add all to list"}
+                </button>
+              )}
+            </div>
             <ul class="space-y-1.5">
               {ingredients.map((ing) => {
                 const ratio = getCurrentRatio();
@@ -368,20 +419,32 @@ export default function RecipeView(
                     key={ing.key || ing.name}
                     class="text-sm flex justify-between items-baseline gap-2"
                   >
-                    <span>
-                      <span class="font-medium">
-                        {formatAmount(scaled, ing.unit)} {ing.unit}
-                      </span>{" "}
-                      {ing.ingredient_id
-                        ? (
-                          <a
-                            href={`/ingredients/${ing.ingredient_id}`}
-                            class="link"
-                          >
-                            {ing.name}
-                          </a>
-                        )
-                        : <span>{ing.name}</span>}
+                    <span class="flex items-baseline gap-1">
+                      {loggedIn && (
+                        <button
+                          type="button"
+                          class="text-stone-400 hover:text-orange-600 cursor-pointer text-xs leading-none"
+                          title="Add to shopping list"
+                          onClick={() => addOneToShoppingList(ing)}
+                        >
+                          {addedToList.value === ing.key ? "\u2713" : "+"}
+                        </button>
+                      )}
+                      <span>
+                        <span class="font-medium">
+                          {formatAmount(scaled, ing.unit)} {ing.unit}
+                        </span>{" "}
+                        {ing.ingredient_id
+                          ? (
+                            <a
+                              href={`/ingredients/${ing.ingredient_id}`}
+                              class="link"
+                            >
+                              {ing.name}
+                            </a>
+                          )
+                          : <span>{ing.name}</span>}
+                      </span>
                     </span>
                     {cost != null && (
                       <span class="text-stone-400 text-xs whitespace-nowrap">

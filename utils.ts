@@ -15,6 +15,7 @@ export interface State {
     ) => Promise<{ rows: Record<string, unknown>[] }>;
   };
   user: User | null;
+  shoppingListCount: number;
 }
 
 export const define = createDefine<State>();

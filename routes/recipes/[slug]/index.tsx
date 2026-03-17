@@ -198,6 +198,7 @@ export const handler = define.handlers({
       hasSubRecipes,
       baseQuantity,
       isOwner,
+      loggedIn: ctx.state.user != null,
     });
   },
   async POST(ctx) {
@@ -260,6 +261,7 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
     hasSubRecipes: boolean;
     baseQuantity: RecipeQuantity;
     isOwner: boolean;
+    loggedIn: boolean;
   };
 
   return (
@@ -340,6 +342,8 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
           slug={String(recipe.slug)}
           hasSubRecipes={hasSubRecipes}
           initialHtml={renderedHtml}
+          recipeId={Number(recipe.id)}
+          loggedIn={data.loggedIn}
         />
       </div>
     </div>

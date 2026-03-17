@@ -10,6 +10,7 @@ app.use(staticFiles());
 app.use(define.middleware(async (ctx) => {
   ctx.state.db = { query };
   ctx.state.user = null;
+  ctx.state.shoppingListCount = 0;
 
   const sessionId = getSessionIdFromRequest(ctx.req);
   if (sessionId) {
@@ -28,6 +29,15 @@ app.use(define.middleware(async (ctx) => {
         email: row.email as string | null,
         avatar_url: row.avatar_url as string | null,
       };
+
+      // Fetch unchecked shopping list item count
+      const countRes = await query(
+        `SELECT COUNT(*) as cnt FROM shopping_list_items sli
+         JOIN shopping_lists sl ON sl.id = sli.shopping_list_id
+         WHERE sl.user_id = $1 AND sli.checked = false`,
+        [row.id],
+      );
+      ctx.state.shoppingListCount = Number(countRes.rows[0].cnt);
     }
   }
 
