@@ -13,10 +13,11 @@ interface SearchSelectProps {
   placeholder?: string;
   onSelect: (option: SearchSelectOption) => void;
   onClear: () => void;
+  onChange?: (text: string) => void;
 }
 
 export default function SearchSelect(
-  { value, options, placeholder, onSelect, onClear }: SearchSelectProps,
+  { value, options, placeholder, onSelect, onClear, onChange }: SearchSelectProps,
 ) {
   const query = useSignal(value.name);
   const open = useSignal(false);
@@ -79,13 +80,15 @@ export default function SearchSelect(
           value={query}
           class={`flex-1 text-sm ${linked.value ? "border-green-500 dark:border-green-600" : ""}`}
           onInput={(e) => {
-            query.value = (e.target as HTMLInputElement).value;
+            const text = (e.target as HTMLInputElement).value;
+            query.value = text;
             open.value = true;
             highlightIndex.value = -1;
             if (linked.value) {
               linked.value = false;
               onClear();
             }
+            onChange?.(text);
           }}
           onFocus={() => { open.value = true; }}
           onBlur={() => {

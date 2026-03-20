@@ -75,7 +75,17 @@ export default function IngredientForm(
 
   function clearIngredient(index: number) {
     const next = [...items.value];
-    next[index] = { ...next[index], ingredient_id: "", name: "", key: "" };
+    next[index] = { ...next[index], ingredient_id: "" };
+    items.value = next;
+  }
+
+  function handleFreeText(index: number, text: string) {
+    const next = [...items.value];
+    next[index] = {
+      ...next[index],
+      name: text,
+      key: next[index].ingredient_id ? next[index].key : slugifyKey(text),
+    };
     items.value = next;
   }
 
@@ -87,9 +97,10 @@ export default function IngredientForm(
             <SearchSelect
               value={{ id: item.ingredient_id, name: item.name }}
               options={options}
-              placeholder="Search ingredient..."
+              placeholder="Search or type ingredient..."
               onSelect={(o) => selectIngredient(i, o.id)}
               onClear={() => clearIngredient(i)}
+              onChange={(text) => handleFreeText(i, text)}
             />
             <button
               type="button"

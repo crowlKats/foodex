@@ -1,0 +1,72 @@
+import { define } from "../../utils.ts";
+
+export const handler = define.handlers({
+  async POST(ctx) {
+    if (!ctx.state.user) {
+      return new Response(null, { status: 401 });
+    }
+
+    const body = await ctx.req.json();
+    const householdId = body.household_id;
+
+    // Verify membership
+    const memberCheck = await ctx.state.db.query(
+      "SELECT 1 FROM household_members WHERE household_id = $1 AND user_id = $2",
+      [householdId, ctx.state.user.id],
+    );
+    if (memberCheck.rows.length === 0) {
+      return new Response(JSON.stringify({ error: "Not a member" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (body.action === "add") {
+      const res = await ctx.state.db.query(
+        `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit, added_by)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [
+          householdId,
+          body.ingredient_id ?? null,
+          body.name,
+          body.amount ?? null,
+          body.unit ?? null,
+          ctx.state.user.id,
+        ],
+      );
+      return new Response(
+        JSON.stringify({ ok: true, id: res.rows[0].id }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (body.action === "update") {
+      await ctx.state.db.query(
+        `UPDATE pantry_items SET amount = $1, unit = $2, updated_at = now()
+         WHERE id = $3 AND household_id = $4`,
+        [body.amount ?? null, body.unit ?? null, body.item_id, householdId],
+      );
+      return new Response(
+        JSON.stringify({ ok: true }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (body.action === "remove") {
+      await ctx.state.db.query(
+        "DELETE FROM pantry_items WHERE id = $1 AND household_id = $2",
+        [body.item_id, householdId],
+      );
+      return new Response(
+        JSON.stringify({ ok: true }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    return new Response(JSON.stringify({ error: "Unknown action" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+});

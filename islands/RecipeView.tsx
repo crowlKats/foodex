@@ -58,6 +58,8 @@ interface RecipeViewProps {
   initialHtml: string;
   recipeId: number;
   loggedIn: boolean;
+  pantryIngredientIds?: number[];
+  pantryIngredientNames?: string[];
 }
 
 function renderStepsClient(
@@ -71,11 +73,19 @@ function renderStepsClient(
 
   for (let si = 0; si < steps.length; si++) {
     const step = steps[si];
-    const evaluated = evaluateTemplate(step.body, vars, scaled);
+    let evaluated = evaluateTemplate(step.body, vars, scaled);
+    // Resolve step references: @step(N) → anchor link
+    evaluated = evaluated.replace(/@step\((\d+)\)/g, (_m, num: string) => {
+      const n = parseInt(num);
+      if (n < 1 || n > steps.length) return `*unknown step: ${num}*`;
+      const title = steps[n - 1].title;
+      const label = title ? `step ${n} (${title})` : `step ${n}`;
+      return `[${label}](#step-${n})`;
+    });
     const html = marked.parse(evaluated);
     if (typeof html === "string") {
       let stepHtml =
-        `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
+        `<h2 id="step-${si + 1}" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
           si + 1
         }.</span>${step.title.replace(/</g, "&lt;")}</h2>\n${html}`;
       if (step.media && step.media.length > 0) {
@@ -114,8 +124,20 @@ export default function RecipeView(
     initialHtml,
     recipeId,
     loggedIn,
+    pantryIngredientIds,
+    pantryIngredientNames,
   }: RecipeViewProps,
 ) {
+  const pantryIdSet = new Set(pantryIngredientIds ?? []);
+  const pantryNameSet = new Set(
+    (pantryIngredientNames ?? []).map((n) => n.toLowerCase()),
+  );
+
+  function isInPantry(ing: RecipeIngredient): boolean {
+    if (ing.ingredient_id && pantryIdSet.has(ing.ingredient_id)) return true;
+    if (pantryNameSet.has(ing.name.toLowerCase())) return true;
+    return false;
+  }
   const addedToList = useSignal<string | null>(null);
   const targetValue = useSignal(baseQuantity.value);
   const targetUnit = useSignal(baseQuantity.unit);
@@ -393,6 +415,24 @@ export default function RecipeView(
         </div>
         {ingredients.length > 0 && (
           <div class="card">
+            {pantryIdSet.size + pantryNameSet.size > 0 && (() => {
+              const inPantry = ingredients.filter(isInPantry).length;
+              const total = ingredients.length;
+              const allAvailable = inPantry === total;
+              return (
+                <div
+                  class={`text-xs px-2 py-1.5 mb-3 rounded ${
+                    allAvailable
+                      ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
+                      : "bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300"
+                  }`}
+                >
+                  {allAvailable
+                    ? "All ingredients in pantry!"
+                    : `${inPantry}/${total} ingredients in pantry`}
+                </div>
+              );
+            })()}
             <div class="flex items-center justify-between mb-2">
               <h2 class="font-semibold">Ingredients</h2>
               {loggedIn && (
@@ -427,6 +467,14 @@ export default function RecipeView(
                         >
                           {addedToList.value === ing.key ? "\u2713" : "+"}
                         </button>
+                      )}
+                      {isInPantry(ing) && (
+                        <span
+                          class="text-green-600 dark:text-green-400 text-xs leading-none"
+                          title="In pantry"
+                        >
+                          &#x25cf;
+                        </span>
                       )}
                       <span>
                         <span class="font-medium">

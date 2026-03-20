@@ -11,6 +11,7 @@ import ImageLightbox from "../../../islands/ImageLightbox.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import TbEdit from "tb-icons/TbEdit";
+import TbCopy from "tb-icons/TbCopy";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -185,6 +186,23 @@ export const handler = define.handlers({
     const isOwner = ctx.state.user != null &&
       recipe.user_id === ctx.state.user.id;
 
+    // Load pantry items from user's households
+    let pantryIngredientIds: number[] = [];
+    let pantryIngredientNames: string[] = [];
+    if (ctx.state.user) {
+      const pantryRes = await ctx.state.db.query(
+        `SELECT DISTINCT pi.ingredient_id, lower(pi.name) as name
+         FROM pantry_items pi
+         JOIN household_members hm ON hm.household_id = pi.household_id
+         WHERE hm.user_id = $1`,
+        [ctx.state.user.id],
+      );
+      pantryIngredientIds = pantryRes.rows
+        .filter((r) => r.ingredient_id != null)
+        .map((r) => Number(r.ingredient_id));
+      pantryIngredientNames = pantryRes.rows.map((r) => String(r.name));
+    }
+
     return page({
       recipe,
       ingredientsForTemplate,
@@ -196,6 +214,8 @@ export const handler = define.handlers({
       baseQuantity,
       isOwner,
       loggedIn: ctx.state.user != null,
+      pantryIngredientIds,
+      pantryIngredientNames,
     });
   },
   async POST(ctx) {
@@ -258,6 +278,8 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
     baseQuantity: RecipeQuantity;
     isOwner: boolean;
     loggedIn: boolean;
+    pantryIngredientIds: number[];
+    pantryIngredientNames: string[];
   };
 
   return (
@@ -300,6 +322,13 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
             </form>
           </>
         )}
+        {data.loggedIn && (
+          <form action={`/recipes/${recipe.slug}/clone`} method="POST" class="inline">
+            <button type="submit" class="btn btn-outline">
+              <TbCopy class="size-3.5" />Fork
+            </button>
+          </form>
+        )}
       </div>
       {recipe.description && (
         <p class="text-stone-600 mt-1">{String(recipe.description)}</p>
@@ -340,6 +369,8 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
           initialHtml={renderedHtml}
           recipeId={Number(recipe.id)}
           loggedIn={data.loggedIn}
+          pantryIngredientIds={data.pantryIngredientIds}
+          pantryIngredientNames={data.pantryIngredientNames}
         />
       </div>
     </div>
