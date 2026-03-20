@@ -56,10 +56,28 @@ export const handler = define.handlers({
       [id],
     );
 
+    const toolsRes = await ctx.state.db.query(
+      "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
+      [id],
+    );
+
+    const storesRes = await ctx.state.db.query(
+      "SELECT id, name FROM stores WHERE household_id = $1 ORDER BY name",
+      [id],
+    );
+
+    const recipesRes = await ctx.state.db.query(
+      "SELECT COUNT(*) as cnt FROM recipes WHERE household_id = $1",
+      [id],
+    );
+
     return page({
       household: householdRes.rows[0],
       members: membersRes.rows,
       invites: invitesRes.rows,
+      tools: toolsRes.rows,
+      stores: storesRes.rows,
+      recipeCount: Number(recipesRes.rows[0].cnt),
       myRole,
     });
   },
@@ -142,12 +160,16 @@ export const handler = define.handlers({
 export default define.page<typeof handler>(function HouseholdDetailPage(
   { data, state, url },
 ) {
-  const { household, members, invites, myRole } = data as {
-    household: Record<string, unknown>;
-    members: Record<string, unknown>[];
-    invites: Record<string, unknown>[];
-    myRole: string;
-  };
+  const { household, members, invites, tools, stores, recipeCount, myRole } =
+    data as {
+      household: Record<string, unknown>;
+      members: Record<string, unknown>[];
+      invites: Record<string, unknown>[];
+      tools: Record<string, unknown>[];
+      stores: Record<string, unknown>[];
+      recipeCount: number;
+      myRole: string;
+    };
   const isOwner = myRole === "owner";
 
   return (
@@ -158,13 +180,56 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
         </div>
       </div>
 
-      <div class="mb-6">
+      <div class="grid gap-4 sm:grid-cols-3 mb-6">
         <a
           href={`/households/${household.id}/pantry`}
-          class="btn btn-primary"
+          class="card card-hover text-center py-4"
         >
-          Pantry
+          <div class="text-2xl font-bold">Pantry</div>
         </a>
+        <a href="/recipes" class="card card-hover text-center py-4">
+          <div class="text-2xl font-bold">{recipeCount}</div>
+          <div class="text-sm text-stone-500">
+            {recipeCount === 1 ? "Recipe" : "Recipes"}
+          </div>
+        </a>
+        <a href="/stores" class="card card-hover text-center py-4">
+          <div class="text-2xl font-bold">{stores.length}</div>
+          <div class="text-sm text-stone-500">
+            {stores.length === 1 ? "Store" : "Stores"}
+          </div>
+        </a>
+      </div>
+
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-3">
+          Tools ({tools.length})
+        </h2>
+        {tools.length === 0
+          ? (
+            <p class="text-stone-500">
+              No tools yet. <a href="/tools" class="link">Add one</a>
+            </p>
+          )
+          : (
+            <div class="flex flex-wrap gap-2">
+              {tools.map((t) => (
+                <a
+                  key={String(t.id)}
+                  href={`/tools/${t.id}`}
+                  class="px-3 py-1.5 text-sm rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                >
+                  {String(t.name)}
+                </a>
+              ))}
+              <a
+                href="/tools"
+                class="px-3 py-1.5 text-sm rounded-full border border-dashed border-stone-300 dark:border-stone-600 text-stone-500 hover:border-stone-400 transition-colors"
+              >
+                Manage tools
+              </a>
+            </div>
+          )}
       </div>
 
       <div class="grid gap-6 md:grid-cols-2">
