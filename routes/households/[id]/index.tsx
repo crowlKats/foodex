@@ -154,9 +154,6 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
     <div>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <a href="/households" class="text-sm text-stone-500 hover:text-stone-700 dark:hover:text-stone-300">
-            &larr; Households
-          </a>
           <h1 class="text-2xl font-bold">{String(household.name)}</h1>
         </div>
       </div>

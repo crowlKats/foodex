@@ -12,17 +12,21 @@ export const handler = define.handlers({
       });
     }
 
+    // If user already belongs to a household, redirect to it
     const result = await ctx.state.db.query(
-      `SELECT h.*,
-        (SELECT COUNT(*) FROM household_members hm WHERE hm.household_id = h.id) as member_count,
-        hm.role as my_role
-       FROM households h
-       JOIN household_members hm ON hm.household_id = h.id AND hm.user_id = $1
-       ORDER BY h.name`,
+      `SELECT h.id FROM households h
+       JOIN household_members hm ON hm.household_id = h.id AND hm.user_id = $1`,
       [ctx.state.user.id],
     );
 
-    return page({ households: result.rows });
+    if (result.rows.length > 0) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: `/households/${result.rows[0].id}` },
+      });
+    }
+
+    return page({});
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -32,20 +36,24 @@ export const handler = define.handlers({
       });
     }
 
+    // If user already belongs to a household, redirect to it
+    const existing = await ctx.state.db.query(
+      `SELECT h.id FROM households h
+       JOIN household_members hm ON hm.household_id = h.id AND hm.user_id = $1`,
+      [ctx.state.user.id],
+    );
+    if (existing.rows.length > 0) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: `/households/${existing.rows[0].id}` },
+      });
+    }
+
     const form = await ctx.req.formData();
     const name = form.get("name") as string;
 
     if (!name?.trim()) {
-      const result = await ctx.state.db.query(
-        `SELECT h.*,
-          (SELECT COUNT(*) FROM household_members hm WHERE hm.household_id = h.id) as member_count,
-          hm.role as my_role
-         FROM households h
-         JOIN household_members hm ON hm.household_id = h.id AND hm.user_id = $1
-         ORDER BY h.name`,
-        [ctx.state.user.id],
-      );
-      return page({ households: result.rows, error: "Name is required" });
+      return page({ error: "Name is required" });
     }
 
     const houseRes = await ctx.state.db.query(
@@ -67,14 +75,15 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function HouseholdsPage({ data }) {
-  const { households, error } = data as {
-    households: Record<string, unknown>[];
-    error?: string;
-  };
+  const { error } = data as { error?: string };
 
   return (
-    <div>
-      <PageHeader title="Households" />
+    <div class="max-w-md mx-auto mt-12">
+      <PageHeader title="Create Household" />
+
+      <p class="text-stone-500 mb-6">
+        Create a household to manage your pantry and share it with others.
+      </p>
 
       {error && (
         <div class="alert-error mb-4">
@@ -82,59 +91,20 @@ export default define.page<typeof handler>(function HouseholdsPage({ data }) {
         </div>
       )}
 
-      <div class="grid gap-6 md:grid-cols-2">
-        <div>
-          <h2 class="text-lg font-semibold mb-3">Create Household</h2>
-          <form method="POST" class="card space-y-3">
-            <FormField label="Name">
-              <input
-                type="text"
-                name="name"
-                required
-                placeholder="e.g. Smith Family"
-                class="w-full"
-              />
-            </FormField>
-            <button type="submit" class="btn btn-primary">
-              Create Household
-            </button>
-          </form>
-        </div>
-
-        <div>
-          <h2 class="text-lg font-semibold mb-3">
-            My Households ({households.length})
-          </h2>
-          {households.length === 0
-            ? (
-              <p class="text-stone-500">
-                No households yet. Create one to get started.
-              </p>
-            )
-            : (
-              <div class="space-y-2">
-                {households.map((h) => (
-                  <a
-                    key={String(h.id)}
-                    href={`/households/${h.id}`}
-                    class="block card card-hover"
-                  >
-                    <div class="font-medium">{String(h.name)}</div>
-                    <div class="text-sm text-stone-500">
-                      {String(h.member_count)}{" "}
-                      member{Number(h.member_count) !== 1 ? "s" : ""}
-                      {h.my_role === "owner" && (
-                        <span class="ml-2 text-xs text-orange-600 dark:text-orange-400">
-                          owner
-                        </span>
-                      )}
-                    </div>
-                  </a>
-                ))}
-              </div>
-            )}
-        </div>
-      </div>
+      <form method="POST" class="card space-y-3">
+        <FormField label="Name">
+          <input
+            type="text"
+            name="name"
+            required
+            placeholder="e.g. Smith Family"
+            class="w-full"
+          />
+        </FormField>
+        <button type="submit" class="btn btn-primary">
+          Create Household
+        </button>
+      </form>
     </div>
   );
 });

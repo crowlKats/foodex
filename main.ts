@@ -11,6 +11,7 @@ app.use(define.middleware(async (ctx) => {
   ctx.state.db = { query };
   ctx.state.user = null;
   ctx.state.shoppingListCount = 0;
+  ctx.state.pantryUrl = null;
 
   const sessionId = getSessionIdFromRequest(ctx.req);
   if (sessionId) {
@@ -37,6 +38,16 @@ app.use(define.middleware(async (ctx) => {
         [row.id],
       );
       ctx.state.shoppingListCount = Number(countRes.rows[0].cnt);
+
+      const householdRes = await query(
+        `SELECT h.id FROM households h
+         JOIN household_members hm ON hm.household_id = h.id
+         WHERE hm.user_id = $1`,
+        [row.id],
+      );
+      if (householdRes.rows.length > 0) {
+        ctx.state.pantryUrl = `/households/${householdRes.rows[0].id}/pantry`;
+      }
     }
   }
 

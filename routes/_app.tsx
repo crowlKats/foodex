@@ -23,7 +23,7 @@ export default define.page(function App({ Component, state }) {
         <DarkModeScript />
       </head>
       <body class="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
-        <Nav user={state.user} shoppingListCount={state.shoppingListCount} />
+        <Nav user={state.user} shoppingListCount={state.shoppingListCount} pantryUrl={state.pantryUrl} />
         <main class="max-w-6xl mx-auto px-4 py-6">
           <Component />
         </main>

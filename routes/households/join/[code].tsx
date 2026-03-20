@@ -26,7 +26,7 @@ export const handler = define.handlers({
 
     const invite = inviteRes.rows[0];
 
-    // Check if already a member
+    // Check if already a member of this household
     const existingRes = await ctx.state.db.query(
       "SELECT 1 FROM household_members WHERE household_id = $1 AND user_id = $2",
       [invite.household_id, ctx.state.user.id],
@@ -36,6 +36,18 @@ export const handler = define.handlers({
       return new Response(null, {
         status: 303,
         headers: { Location: `/households/${invite.household_id}` },
+      });
+    }
+
+    // Check if user already belongs to another household
+    const membershipRes = await ctx.state.db.query(
+      "SELECT household_id FROM household_members WHERE user_id = $1",
+      [ctx.state.user.id],
+    );
+
+    if (membershipRes.rows.length > 0) {
+      return page({
+        error: "You already belong to a household. Leave your current household before joining a new one.",
       });
     }
 
@@ -62,18 +74,35 @@ export const handler = define.handlers({
 
     const invite = inviteRes.rows[0];
 
-    // Check if already a member
+    // Check if already a member of this household
     const existingRes = await ctx.state.db.query(
       "SELECT 1 FROM household_members WHERE household_id = $1 AND user_id = $2",
       [invite.household_id, ctx.state.user.id],
     );
 
-    if (existingRes.rows.length === 0) {
-      await ctx.state.db.query(
-        "INSERT INTO household_members (household_id, user_id, role) VALUES ($1, $2, 'member')",
-        [invite.household_id, ctx.state.user.id],
-      );
+    if (existingRes.rows.length > 0) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: `/households/${invite.household_id}` },
+      });
     }
+
+    // Check if user already belongs to another household
+    const membershipRes = await ctx.state.db.query(
+      "SELECT household_id FROM household_members WHERE user_id = $1",
+      [ctx.state.user.id],
+    );
+
+    if (membershipRes.rows.length > 0) {
+      return page({
+        error: "You already belong to a household. Leave your current household before joining a new one.",
+      });
+    }
+
+    await ctx.state.db.query(
+      "INSERT INTO household_members (household_id, user_id, role) VALUES ($1, $2, 'member')",
+      [invite.household_id, ctx.state.user.id],
+    );
 
     return new Response(null, {
       status: 303,
