@@ -11,16 +11,14 @@ import ImageLightbox from "../../../islands/ImageLightbox.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import TbEdit from "tb-icons/TbEdit";
-import TbCopy from "tb-icons/TbCopy";
 
 export const handler = define.handlers({
   async GET(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query(
-      `SELECT r.*, m.url as cover_image_url, u.name as author_name
+      `SELECT r.*, m.url as cover_image_url
        FROM recipes r
        LEFT JOIN media m ON m.id = r.cover_image_id
-       LEFT JOIN users u ON u.id = r.user_id
        WHERE r.slug = $1`,
       [slug],
     );
@@ -183,8 +181,8 @@ export const handler = define.handlers({
       },
     );
 
-    const isOwner = ctx.state.user != null &&
-      recipe.user_id === ctx.state.user.id;
+    const isOwner = ctx.state.householdId != null &&
+      recipe.household_id === ctx.state.householdId;
 
     // Load pantry items from user's households
     let pantryIngredientIds: number[] = [];
@@ -216,6 +214,7 @@ export const handler = define.handlers({
       loggedIn: ctx.state.user != null,
       pantryIngredientIds,
       pantryIngredientNames,
+      householdId: ctx.state.householdId,
     });
   },
   async POST(ctx) {
@@ -225,12 +224,12 @@ export const handler = define.handlers({
 
     if (method === "DELETE") {
       const recipeRes = await ctx.state.db.query(
-        "SELECT user_id FROM recipes WHERE slug = $1",
+        "SELECT household_id FROM recipes WHERE slug = $1",
         [slug],
       );
       if (
-        recipeRes.rows.length === 0 || !ctx.state.user ||
-        recipeRes.rows[0].user_id !== ctx.state.user.id
+        recipeRes.rows.length === 0 || !ctx.state.householdId ||
+        recipeRes.rows[0].household_id !== ctx.state.householdId
       ) {
         return new Response(null, {
           status: 303,
@@ -298,11 +297,6 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
 
       <div class="flex items-center gap-3 mt-4 mb-2 flex-wrap">
         <h1 class="text-3xl font-bold flex-1">{String(recipe.title)}</h1>
-        {recipe.author_name && (
-          <span class="text-sm text-stone-500">
-            by {String(recipe.author_name)}
-          </span>
-        )}
         {isOwner && (
           <>
             <a
@@ -321,13 +315,6 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
               </ConfirmButton>
             </form>
           </>
-        )}
-        {data.loggedIn && (
-          <form action={`/recipes/${recipe.slug}/clone`} method="POST" class="inline">
-            <button type="submit" class="btn btn-outline">
-              <TbCopy class="size-3.5" />Fork
-            </button>
-          </form>
         )}
       </div>
       {recipe.description && (

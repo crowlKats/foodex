@@ -6,6 +6,13 @@ import { CURRENCIES } from "../../lib/currencies.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
+    if (!ctx.state.user || !ctx.state.householdId) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
+      });
+    }
+
     const q = ctx.url.searchParams.get("q")?.trim() || "";
 
     let result;
@@ -15,34 +22,45 @@ export const handler = define.handlers({
           (SELECT COUNT(*) FROM store_locations sl WHERE sl.store_id = s.id) as location_count
          FROM stores s
          LEFT JOIN store_locations sl ON sl.store_id = s.id
-         WHERE s.name ILIKE '%' || $1 || '%' OR sl.address ILIKE '%' || $1 || '%'
+         WHERE s.household_id = $2
+           AND (s.name ILIKE '%' || $1 || '%' OR sl.address ILIKE '%' || $1 || '%')
          GROUP BY s.id
          ORDER BY s.name`,
-        [q],
+        [q, ctx.state.householdId],
       );
     } else {
       result = await ctx.state.db.query(
         `SELECT s.*,
           (SELECT COUNT(*) FROM store_locations sl WHERE sl.store_id = s.id) as location_count
          FROM stores s
+         WHERE s.household_id = $1
          ORDER BY s.name`,
+        [ctx.state.householdId],
       );
     }
     return page({ stores: result.rows, q });
   },
   async POST(ctx) {
+    if (!ctx.state.user || !ctx.state.householdId) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
+      });
+    }
+
     const form = await ctx.req.formData();
     const name = form.get("name") as string;
     const currency = form.get("currency") as string;
     if (!name?.trim()) {
       const result = await ctx.state.db.query(
-        "SELECT * FROM stores ORDER BY name",
+        "SELECT * FROM stores WHERE household_id = $1 ORDER BY name",
+        [ctx.state.householdId],
       );
       return page({ stores: result.rows, error: "Name is required" });
     }
     const storeRes = await ctx.state.db.query(
-      "INSERT INTO stores (name, currency) VALUES ($1, $2) RETURNING id",
-      [name.trim(), currency?.trim() || "EUR"],
+      "INSERT INTO stores (name, currency, household_id) VALUES ($1, $2, $3) RETURNING id",
+      [name.trim(), currency?.trim() || "EUR", ctx.state.householdId],
     );
     return new Response(null, {
       status: 303,
@@ -106,7 +124,7 @@ export default define.page<typeof handler>(function StoresPage({ data }) {
 
         <div>
           <h2 class="text-lg font-semibold mb-3">
-            All Stores ({stores.length})
+            Stores ({stores.length})
           </h2>
           {stores.length === 0
             ? <p class="text-stone-500">No stores yet.</p>

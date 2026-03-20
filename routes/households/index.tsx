@@ -50,6 +50,35 @@ export const handler = define.handlers({
     }
 
     const form = await ctx.req.formData();
+    const method = form.get("_method");
+
+    if (method === "JOIN") {
+      const code = (form.get("code") as string)?.trim();
+      if (!code) {
+        return page({ error: "Invite code is required" });
+      }
+
+      const inviteRes = await ctx.state.db.query(
+        `SELECT hi.household_id FROM household_invites hi
+         WHERE hi.code = $1 AND hi.expires_at > now()`,
+        [code],
+      );
+      if (inviteRes.rows.length === 0) {
+        return page({ error: "Invalid or expired invite code" });
+      }
+
+      const householdId = inviteRes.rows[0].household_id;
+      await ctx.state.db.query(
+        "INSERT INTO household_members (household_id, user_id, role) VALUES ($1, $2, 'member')",
+        [householdId, ctx.state.user.id],
+      );
+
+      return new Response(null, {
+        status: 303,
+        headers: { Location: `/households/${householdId}` },
+      });
+    }
+
     const name = form.get("name") as string;
 
     if (!name?.trim()) {
@@ -79,10 +108,11 @@ export default define.page<typeof handler>(function HouseholdsPage({ data }) {
 
   return (
     <div class="max-w-md mx-auto mt-12">
-      <PageHeader title="Create Household" />
+      <PageHeader title="Get Started" />
 
       <p class="text-stone-500 mb-6">
-        Create a household to manage your pantry and share it with others.
+        Create a new household or join an existing one to manage recipes, tools,
+        stores, and your pantry.
       </p>
 
       {error && (
@@ -91,20 +121,50 @@ export default define.page<typeof handler>(function HouseholdsPage({ data }) {
         </div>
       )}
 
-      <form method="POST" class="card space-y-3">
-        <FormField label="Name">
-          <input
-            type="text"
-            name="name"
-            required
-            placeholder="e.g. Smith Family"
-            class="w-full"
-          />
-        </FormField>
-        <button type="submit" class="btn btn-primary">
-          Create Household
-        </button>
-      </form>
+      <div class="space-y-6">
+        <div>
+          <h2 class="text-lg font-semibold mb-3">Create Household</h2>
+          <form method="POST" class="card space-y-3">
+            <FormField label="Name">
+              <input
+                type="text"
+                name="name"
+                required
+                placeholder="e.g. Smith Family"
+                class="w-full"
+              />
+            </FormField>
+            <button type="submit" class="btn btn-primary">
+              Create Household
+            </button>
+          </form>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <hr class="flex-1 border-stone-300 dark:border-stone-700" />
+          <span class="text-sm text-stone-400">or</span>
+          <hr class="flex-1 border-stone-300 dark:border-stone-700" />
+        </div>
+
+        <div>
+          <h2 class="text-lg font-semibold mb-3">Join Household</h2>
+          <form method="POST" class="card space-y-3">
+            <input type="hidden" name="_method" value="JOIN" />
+            <FormField label="Invite Code">
+              <input
+                type="text"
+                name="code"
+                required
+                placeholder="Paste invite code..."
+                class="w-full"
+              />
+            </FormField>
+            <button type="submit" class="btn btn-primary">
+              Join Household
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 });

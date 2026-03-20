@@ -6,10 +6,17 @@ import { FormField } from "../../components/FormField.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
+    if (!ctx.state.user || !ctx.state.householdId) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
+      });
+    }
+
     const id = parseInt(ctx.params.id);
     const toolRes = await ctx.state.db.query(
-      "SELECT * FROM tools WHERE id = $1",
-      [id],
+      "SELECT * FROM tools WHERE id = $1 AND household_id = $2",
+      [id, ctx.state.householdId],
     );
     if (toolRes.rows.length === 0) throw new HttpError(404);
 
@@ -22,24 +29,28 @@ export const handler = define.handlers({
       [id],
     );
 
-    let userHasTool = false;
-    if (ctx.state.user) {
-      const utRes = await ctx.state.db.query(
-        "SELECT 1 FROM user_tools WHERE user_id = $1 AND tool_id = $2",
-        [ctx.state.user.id, id],
-      );
-      userHasTool = utRes.rows.length > 0;
-    }
-
     return page({
       tool: toolRes.rows[0],
       usage: usageRes.rows,
-      userHasTool,
-      loggedIn: ctx.state.user != null,
     });
   },
   async POST(ctx) {
+    if (!ctx.state.user || !ctx.state.householdId) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
+      });
+    }
+
     const id = parseInt(ctx.params.id);
+
+    // Verify tool belongs to household
+    const toolRes = await ctx.state.db.query(
+      "SELECT 1 FROM tools WHERE id = $1 AND household_id = $2",
+      [id, ctx.state.householdId],
+    );
+    if (toolRes.rows.length === 0) throw new HttpError(404);
+
     const form = await ctx.req.formData();
     const method = form.get("_method");
 
@@ -48,28 +59,6 @@ export const handler = define.handlers({
       return new Response(null, {
         status: 303,
         headers: { Location: "/tools" },
-      });
-    }
-
-    if (method === "TOGGLE_OWNED" && ctx.state.user) {
-      const existing = await ctx.state.db.query(
-        "SELECT 1 FROM user_tools WHERE user_id = $1 AND tool_id = $2",
-        [ctx.state.user.id, id],
-      );
-      if (existing.rows.length > 0) {
-        await ctx.state.db.query(
-          "DELETE FROM user_tools WHERE user_id = $1 AND tool_id = $2",
-          [ctx.state.user.id, id],
-        );
-      } else {
-        await ctx.state.db.query(
-          "INSERT INTO user_tools (user_id, tool_id) VALUES ($1, $2)",
-          [ctx.state.user.id, id],
-        );
-      }
-      return new Response(null, {
-        status: 303,
-        headers: { Location: `/tools/${id}` },
       });
     }
 
@@ -93,11 +82,9 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function ToolDetail({ data }) {
-  const { tool, usage, userHasTool, loggedIn } = data as {
+  const { tool, usage } = data as {
     tool: Record<string, unknown>;
     usage: Record<string, unknown>[];
-    userHasTool: boolean;
-    loggedIn: boolean;
   };
   return (
     <div>
@@ -135,20 +122,6 @@ export default define.page<typeof handler>(function ToolDetail({ data }) {
               Save
             </button>
           </form>
-
-          {loggedIn && (
-            <form method="POST" class="mt-4">
-              <input type="hidden" name="_method" value="TOGGLE_OWNED" />
-              <button
-                type="submit"
-                class={`btn w-full ${
-                  userHasTool ? "btn-outline" : "btn-primary"
-                }`}
-              >
-                {userHasTool ? "Remove from my tools" : "I have this tool"}
-              </button>
-            </form>
-          )}
 
           <form method="POST" class="mt-4">
             <input type="hidden" name="_method" value="DELETE" />

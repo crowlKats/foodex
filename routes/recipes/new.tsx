@@ -23,10 +23,10 @@ function slugify(text: string): string {
 
 export const handler = define.handlers({
   async GET(ctx) {
-    if (!ctx.state.user) {
+    if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
       });
     }
 
@@ -34,10 +34,12 @@ export const handler = define.handlers({
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
     const allToolsRes = await ctx.state.db.query(
-      "SELECT id, name FROM tools ORDER BY name",
+      "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
+      [ctx.state.householdId],
     );
     const allRecipesRes = await ctx.state.db.query(
-      "SELECT id, title, slug FROM recipes ORDER BY title",
+      "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
+      [ctx.state.householdId],
     );
 
     return page({
@@ -47,10 +49,10 @@ export const handler = define.handlers({
     });
   },
   async POST(ctx) {
-    if (!ctx.state.user) {
+    if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
       });
     }
 
@@ -93,10 +95,12 @@ export const handler = define.handlers({
         "SELECT id, name, unit FROM ingredients ORDER BY name",
       );
       const allToolsRes = await ctx.state.db.query(
-        "SELECT id, name FROM tools ORDER BY name",
+        "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
+        [ctx.state.householdId],
       );
       const allRecipesRes = await ctx.state.db.query(
-        "SELECT id, title, slug FROM recipes ORDER BY title",
+        "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
+        [ctx.state.householdId],
       );
       return page({
         ingredients: ingredientsRes.rows,
@@ -109,7 +113,7 @@ export const handler = define.handlers({
     let recipeId: number;
     try {
       const res = await ctx.state.db.query(
-        `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, user_id)
+        `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, household_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING id`,
         [
@@ -125,7 +129,7 @@ export const handler = define.handlers({
           prepTime,
           cookTime,
           coverImageId ? parseInt(coverImageId) : null,
-          ctx.state.user!.id,
+          ctx.state.householdId,
         ],
       );
       recipeId = res.rows[0].id as number;
@@ -135,10 +139,12 @@ export const handler = define.handlers({
           "SELECT id, name, unit FROM ingredients ORDER BY name",
         );
         const allToolsRes = await ctx.state.db.query(
-          "SELECT id, name FROM tools ORDER BY name",
+          "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
+          [ctx.state.householdId],
         );
         const allRecipesRes = await ctx.state.db.query(
-          "SELECT id, title, slug FROM recipes ORDER BY title",
+          "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
+          [ctx.state.householdId],
         );
         return page({
           ingredients: ingredientsRes.rows,

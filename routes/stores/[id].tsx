@@ -7,10 +7,17 @@ import { FormField } from "../../components/FormField.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
+    if (!ctx.state.user || !ctx.state.householdId) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
+      });
+    }
+
     const id = parseInt(ctx.params.id);
     const storeRes = await ctx.state.db.query(
-      "SELECT * FROM stores WHERE id = $1",
-      [id],
+      "SELECT * FROM stores WHERE id = $1 AND household_id = $2",
+      [id, ctx.state.householdId],
     );
     if (storeRes.rows.length === 0) throw new HttpError(404);
 
@@ -35,7 +42,22 @@ export const handler = define.handlers({
     });
   },
   async POST(ctx) {
+    if (!ctx.state.user || !ctx.state.householdId) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
+      });
+    }
+
     const id = parseInt(ctx.params.id);
+
+    // Verify store belongs to household
+    const storeCheck = await ctx.state.db.query(
+      "SELECT 1 FROM stores WHERE id = $1 AND household_id = $2",
+      [id, ctx.state.householdId],
+    );
+    if (storeCheck.rows.length === 0) throw new HttpError(404);
+
     const form = await ctx.req.formData();
     const method = form.get("_method");
 

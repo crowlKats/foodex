@@ -33,49 +33,32 @@ export const handler = define.handlers({
       [listId],
     );
 
-    const userStoresRes = await ctx.state.db.query(
-      "SELECT store_id FROM user_stores WHERE user_id = $1",
-      [ctx.state.user.id],
-    );
-    const userStoreIds = userStoresRes.rows.map((r) => Number(r.store_id));
-    const hasUserStores = userStoreIds.length > 0;
-
-    const storesRes = hasUserStores
+    const storesRes = ctx.state.householdId
       ? await ctx.state.db.query(
-        "SELECT id, name, currency FROM stores WHERE id = ANY($1) ORDER BY name",
-        [userStoreIds],
+        "SELECT id, name, currency FROM stores WHERE household_id = $1 ORDER BY name",
+        [ctx.state.householdId],
       )
       : await ctx.state.db.query(
         "SELECT id, name, currency FROM stores ORDER BY name",
       );
 
+    const storeIds = storesRes.rows.map((r) => Number(r.id));
     const ingredientIds = itemsRes.rows
       .filter((i) => i.ingredient_id != null)
       .map((i) => Number(i.ingredient_id));
 
     const pricesMap: Record<string, { store_id: number; price: number; amount: number; unit: string; currency: string }[]> = {};
-    if (ingredientIds.length > 0) {
-      const pricesRes = hasUserStores
-        ? await ctx.state.db.query(
-          `SELECT gp.ingredient_id, gp.store_id, gp.price, gp.amount,
-                  coalesce(gp.unit, g.unit) as unit, s.currency
-           FROM ingredient_prices gp
-           JOIN stores s ON s.id = gp.store_id
-           JOIN ingredients g ON g.id = gp.ingredient_id
-           WHERE gp.ingredient_id = ANY($1) AND gp.store_id = ANY($2)
-           ORDER BY gp.ingredient_id, gp.price ASC`,
-          [ingredientIds, userStoreIds],
-        )
-        : await ctx.state.db.query(
-          `SELECT gp.ingredient_id, gp.store_id, gp.price, gp.amount,
-                  coalesce(gp.unit, g.unit) as unit, s.currency
-           FROM ingredient_prices gp
-           JOIN stores s ON s.id = gp.store_id
-           JOIN ingredients g ON g.id = gp.ingredient_id
-           WHERE gp.ingredient_id = ANY($1)
-           ORDER BY gp.ingredient_id, gp.price ASC`,
-          [ingredientIds],
-        );
+    if (ingredientIds.length > 0 && storeIds.length > 0) {
+      const pricesRes = await ctx.state.db.query(
+        `SELECT gp.ingredient_id, gp.store_id, gp.price, gp.amount,
+                coalesce(gp.unit, g.unit) as unit, s.currency
+         FROM ingredient_prices gp
+         JOIN stores s ON s.id = gp.store_id
+         JOIN ingredients g ON g.id = gp.ingredient_id
+         WHERE gp.ingredient_id = ANY($1) AND gp.store_id = ANY($2)
+         ORDER BY gp.ingredient_id, gp.price ASC`,
+        [ingredientIds, storeIds],
+      );
       for (const row of pricesRes.rows) {
         const key = String(row.ingredient_id);
         if (!pricesMap[key]) pricesMap[key] = [];

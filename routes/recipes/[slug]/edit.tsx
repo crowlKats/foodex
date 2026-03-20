@@ -25,7 +25,7 @@ export const handler = define.handlers({
     if (recipeRes.rows.length === 0) throw new HttpError(404);
     const recipe = recipeRes.rows[0];
 
-    if (!ctx.state.user || recipe.user_id !== ctx.state.user.id) {
+    if (!ctx.state.householdId || recipe.household_id !== ctx.state.householdId) {
       return new Response(null, {
         status: 303,
         headers: { Location: `/recipes/${slug}` },
@@ -87,11 +87,12 @@ export const handler = define.handlers({
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
     const allToolsRes = await ctx.state.db.query(
-      "SELECT id, name FROM tools ORDER BY name",
+      "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
+      [ctx.state.householdId],
     );
     const allRecipesRes = await ctx.state.db.query(
-      "SELECT id, title, slug FROM recipes WHERE id != $1 ORDER BY title",
-      [recipe.id],
+      "SELECT id, title, slug FROM recipes WHERE household_id = $1 AND id != $2 ORDER BY title",
+      [ctx.state.householdId, recipe.id],
     );
 
     const stepsWithMedia = stepsRes.rows.map((s: Record<string, unknown>) => ({
@@ -113,14 +114,14 @@ export const handler = define.handlers({
   async POST(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query(
-      "SELECT id, user_id FROM recipes WHERE slug = $1",
+      "SELECT id, household_id FROM recipes WHERE slug = $1",
       [slug],
     );
     if (recipeRes.rows.length === 0) throw new HttpError(404);
 
     if (
-      !ctx.state.user ||
-      recipeRes.rows[0].user_id !== ctx.state.user.id
+      !ctx.state.householdId ||
+      recipeRes.rows[0].household_id !== ctx.state.householdId
     ) {
       return new Response(null, {
         status: 303,

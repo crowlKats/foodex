@@ -42,7 +42,7 @@ export const handler = define.handlers({
     return new Response(null, {
       status: 303,
       headers: {
-        Location: "/",
+        Location: "/recipes",
         "Set-Cookie": createSessionCookie(sessionId),
       },
     });

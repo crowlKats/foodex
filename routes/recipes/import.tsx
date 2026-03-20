@@ -15,10 +15,10 @@ import OcrUpload from "../../islands/OcrUpload.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
-    if (!ctx.state.user) {
+    if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
       });
     }
 
@@ -26,10 +26,12 @@ export const handler = define.handlers({
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
     const allToolsRes = await ctx.state.db.query(
-      "SELECT id, name FROM tools ORDER BY name",
+      "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
+      [ctx.state.householdId],
     );
     const allRecipesRes = await ctx.state.db.query(
-      "SELECT id, title, slug FROM recipes ORDER BY title",
+      "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
+      [ctx.state.householdId],
     );
 
     return page({
@@ -50,10 +52,12 @@ export const handler = define.handlers({
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
     const allToolsRes = await ctx.state.db.query(
-      "SELECT id, name FROM tools ORDER BY name",
+      "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
+      [ctx.state.householdId],
     );
     const allRecipesRes = await ctx.state.db.query(
-      "SELECT id, title, slug FROM recipes ORDER BY title",
+      "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
+      [ctx.state.householdId],
     );
 
     const baseData = {

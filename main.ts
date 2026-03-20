@@ -12,6 +12,7 @@ app.use(define.middleware(async (ctx) => {
   ctx.state.user = null;
   ctx.state.shoppingListCount = 0;
   ctx.state.pantryUrl = null;
+  ctx.state.householdId = null;
 
   const sessionId = getSessionIdFromRequest(ctx.req);
   if (sessionId) {
@@ -46,7 +47,9 @@ app.use(define.middleware(async (ctx) => {
         [row.id],
       );
       if (householdRes.rows.length > 0) {
-        ctx.state.pantryUrl = `/households/${householdRes.rows[0].id}/pantry`;
+        const hid = householdRes.rows[0].id as number;
+        ctx.state.householdId = hid;
+        ctx.state.pantryUrl = `/households/${hid}/pantry`;
       }
     }
   }
@@ -56,6 +59,23 @@ app.use(define.middleware(async (ctx) => {
 
 app.use(define.middleware((ctx) => {
   console.log(`${ctx.req.method} ${ctx.req.url}`);
+
+  // Require household for authenticated users (onboarding)
+  if (ctx.state.user && !ctx.state.householdId) {
+    const path = new URL(ctx.req.url).pathname;
+    if (
+      !path.startsWith("/auth") &&
+      !path.startsWith("/households") &&
+      !path.startsWith("/_fresh") &&
+      !path.startsWith("/api")
+    ) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/households" },
+      });
+    }
+  }
+
   return ctx.next();
 }));
 

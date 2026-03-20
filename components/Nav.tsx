@@ -4,12 +4,17 @@ import TbShoppingCart from "tb-icons/TbShoppingCart";
 import type { User } from "../utils.ts";
 
 export function Nav(
-  { user, shoppingListCount, pantryUrl }: {
+  { user, shoppingListCount, pantryUrl, householdId }: {
     user?: User | null;
     shoppingListCount?: number;
     pantryUrl?: string | null;
+    householdId?: number | null;
   },
 ) {
+  const householdUrl = householdId
+    ? `/households/${householdId}`
+    : "/households";
+
   return (
     <nav class="bg-stone-900 text-stone-200 border-b-2 border-orange-600 dark:border-orange-500">
       <div class="max-w-6xl mx-auto px-4 py-3">
@@ -22,8 +27,8 @@ export function Nav(
             <a href="/ingredients" class="nav-link">Ingredients</a>
             <a href="/stores" class="nav-link">Stores</a>
             <a href="/tools" class="nav-link">Tools</a>
-            <a href="/households" class="nav-link">Households</a>
             {pantryUrl && <a href={pantryUrl} class="nav-link">Pantry</a>}
+            <a href={householdUrl} class="nav-link">Household</a>
           </div>
           <div class="ml-auto flex items-center gap-3">
             {user && (
@@ -79,8 +84,8 @@ export function Nav(
           <a href="/ingredients" class="nav-link text-sm">Ingredients</a>
           <a href="/stores" class="nav-link text-sm">Stores</a>
           <a href="/tools" class="nav-link text-sm">Tools</a>
-          <a href="/households" class="nav-link text-sm">Households</a>
           {pantryUrl && <a href={pantryUrl} class="nav-link text-sm">Pantry</a>}
+          <a href={householdUrl} class="nav-link text-sm">Household</a>
         </div>
       </div>
     </nav>

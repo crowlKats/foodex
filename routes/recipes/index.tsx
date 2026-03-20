@@ -10,64 +10,67 @@ import TbUsers from "tb-icons/TbUsers";
 
 export const handler = define.handlers({
   async GET(ctx) {
+    if (!ctx.state.user || !ctx.state.householdId) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
+      });
+    }
+
     const q = ctx.url.searchParams.get("q")?.trim() || "";
 
     let result;
     if (q) {
       result = await ctx.state.db.query(
-        `SELECT DISTINCT r.*, m.url as cover_image_url, u.name as author_name FROM recipes r
+        `SELECT DISTINCT r.*, m.url as cover_image_url FROM recipes r
          LEFT JOIN recipe_steps rs ON rs.recipe_id = r.id
          LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
          LEFT JOIN media m ON m.id = r.cover_image_id
-         LEFT JOIN users u ON u.id = r.user_id
-         WHERE r.search_vector @@ plainto_tsquery('english', $1)
+         WHERE r.household_id = $2
+           AND (r.search_vector @@ plainto_tsquery('english', $1)
             OR rs.body ILIKE '%' || $1 || '%'
-            OR ri.name ILIKE '%' || $1 || '%'
+            OR ri.name ILIKE '%' || $1 || '%')
          ORDER BY r.updated_at DESC`,
-        [q],
+        [q, ctx.state.householdId],
       );
     } else {
       result = await ctx.state.db.query(
-        `SELECT r.*, m.url as cover_image_url, u.name as author_name FROM recipes r
+        `SELECT r.*, m.url as cover_image_url FROM recipes r
          LEFT JOIN media m ON m.id = r.cover_image_id
-         LEFT JOIN users u ON u.id = r.user_id
+         WHERE r.household_id = $1
          ORDER BY r.updated_at DESC`,
+        [ctx.state.householdId],
       );
     }
-    return page({ recipes: result.rows, q, loggedIn: ctx.state.user != null });
+    return page({ recipes: result.rows, q });
   },
 });
 
 export default define.page<typeof handler>(function RecipesPage({ data }) {
-  const { recipes, q, loggedIn } = data as {
+  const { recipes, q } = data as {
     recipes: Record<string, unknown>[];
     q: string;
-    loggedIn: boolean;
   };
   return (
     <div>
       <PageHeader title="Recipes" query={q}>
-        {loggedIn && (
-          <>
-            <a
-              href="/recipes/import"
-              class="btn btn-outline"
-            >
-              Import
-            </a>
-            <a
-              href="/recipes/new"
-              class="btn btn-primary"
-            >
-              New Recipe
-            </a>
-          </>
-        )}
+        <a
+          href="/recipes/import"
+          class="btn btn-outline"
+        >
+          Import
+        </a>
+        <a
+          href="/recipes/new"
+          class="btn btn-primary"
+        >
+          New Recipe
+        </a>
       </PageHeader>
 
       <div>
         <h2 class="text-lg font-semibold mb-3">
-          All Recipes ({recipes.length})
+          Recipes ({recipes.length})
         </h2>
         {recipes.length === 0
           ? <p class="text-stone-500">No recipes yet.</p>
@@ -97,9 +100,6 @@ export default define.page<typeof handler>(function RecipesPage({ data }) {
                     </div>
                   </div>
                   <div class="text-xs text-stone-400 mt-2 flex gap-4">
-                    {r.author_name && (
-                      <span>by {String(r.author_name)}</span>
-                    )}
                     <span>
                       <TbUsers class="size-3.5 inline mr-0.5" />
                       {formatQuantity({

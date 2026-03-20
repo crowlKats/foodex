@@ -12,10 +12,10 @@ function slugify(text: string): string {
 
 export const handler = define.handlers({
   async POST(ctx) {
-    if (!ctx.state.user) {
+    if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
       });
     }
 
@@ -43,7 +43,7 @@ export const handler = define.handlers({
 
     // Clone recipe
     const newRecipeRes = await ctx.state.db.query(
-      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, user_id)
+      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, household_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING id`,
       [
@@ -59,7 +59,7 @@ export const handler = define.handlers({
         recipe.prep_time,
         recipe.cook_time,
         recipe.cover_image_id,
-        ctx.state.user.id,
+        ctx.state.householdId,
       ],
     );
     const newRecipeId = newRecipeRes.rows[0].id;

@@ -17,6 +17,7 @@ export interface State {
   user: User | null;
   shoppingListCount: number;
   pantryUrl: string | null;
+  householdId: number | null;
 }
 
 export const define = createDefine<State>();
