@@ -23,8 +23,8 @@ export const handler = define.handlers({
 
     if (body.action === "add") {
       const res = await ctx.state.db.query(
-        `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit, added_by)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
         [
           householdId,
@@ -32,7 +32,6 @@ export const handler = define.handlers({
           body.name,
           body.amount ?? null,
           body.unit ?? null,
-          ctx.state.user.id,
         ],
       );
       return new Response(

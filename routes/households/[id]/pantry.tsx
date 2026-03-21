@@ -30,11 +30,7 @@ export const handler = define.handlers({
     }
 
     const pantryRes = await ctx.state.db.query(
-      `SELECT pi.*, u.name as added_by_name
-       FROM pantry_items pi
-       LEFT JOIN users u ON u.id = pi.added_by
-       WHERE pi.household_id = $1
-       ORDER BY pi.name`,
+      `SELECT * FROM pantry_items WHERE household_id = $1 ORDER BY name`,
       [id],
     );
 
@@ -82,7 +78,6 @@ export default define.page<typeof handler>(function PantryPage({ data }) {
           name: String(p.name),
           amount: p.amount != null ? Number(p.amount) : undefined,
           unit: p.unit ? String(p.unit) : undefined,
-          added_by_name: p.added_by_name ? String(p.added_by_name) : undefined,
         }))}
         ingredients={ingredients.map((i) => ({
           id: String(i.id),

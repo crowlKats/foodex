@@ -10,7 +10,6 @@ interface PantryItem {
   name: string;
   amount?: number;
   unit?: string;
-  added_by_name?: string;
 }
 
 interface PantryIngredient {
@@ -224,7 +223,7 @@ export default function PantryManager(
                     step="any"
                     value={item.amount ?? ""}
                     placeholder="Qty"
-                    class="w-20 text-sm py-1 px-2"
+                    class="w-20"
                     onBlur={(e) => {
                       const val = (e.target as HTMLInputElement).value;
                       const amount = val ? parseFloat(val) : null;
@@ -235,7 +234,7 @@ export default function PantryManager(
                   />
                   <select
                     value={item.unit ?? ""}
-                    class="w-24 text-sm py-1 px-2"
+                    class="w-24"
                     onChange={(e) => {
                       const unit =
                         (e.target as HTMLSelectElement).value || null;
@@ -253,11 +252,6 @@ export default function PantryManager(
                       </optgroup>
                     ))}
                   </select>
-                  {item.added_by_name && (
-                    <span class="text-xs text-stone-400 hidden sm:inline">
-                      {item.added_by_name}
-                    </span>
-                  )}
                   <button
                     type="button"
                     class="text-red-500 hover:text-red-700 p-1 cursor-pointer"
