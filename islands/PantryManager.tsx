@@ -213,18 +213,48 @@ export default function PantryManager(
               {items.value.map((item) => (
                 <div
                   key={item.id}
-                  class="card flex items-center gap-3 py-2"
+                  class="card flex items-center gap-2 py-2"
                 >
-                  <div class="flex-1">
+                  <div class="flex-1 min-w-0">
                     <span class="font-medium text-sm">{item.name}</span>
-                    {item.amount != null && (
-                      <span class="text-sm text-stone-500 ml-1">
-                        — {item.amount}{item.unit ? ` ${item.unit}` : ""}
-                      </span>
-                    )}
                   </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={item.amount ?? ""}
+                    placeholder="Qty"
+                    class="w-20 text-sm py-1 px-2"
+                    onBlur={(e) => {
+                      const val = (e.target as HTMLInputElement).value;
+                      const amount = val ? parseFloat(val) : null;
+                      if (amount !== (item.amount ?? null)) {
+                        updateItem(item, amount, item.unit ?? null);
+                      }
+                    }}
+                  />
+                  <select
+                    value={item.unit ?? ""}
+                    class="w-24 text-sm py-1 px-2"
+                    onChange={(e) => {
+                      const unit =
+                        (e.target as HTMLSelectElement).value || null;
+                      updateItem(item, item.amount ?? null, unit);
+                    }}
+                  >
+                    <option value="">—</option>
+                    {UNIT_GROUPS.map((g) => (
+                      <optgroup key={g.label} label={g.label}>
+                        {g.units.map((u) => (
+                          <option key={u.name} value={u.name}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                   {item.added_by_name && (
-                    <span class="text-xs text-stone-400">
+                    <span class="text-xs text-stone-400 hidden sm:inline">
                       {item.added_by_name}
                     </span>
                   )}
