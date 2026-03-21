@@ -9,6 +9,8 @@ import type { RecipeQuantity } from "../lib/quantity.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
 import { marked } from "marked";
 
+marked.use({ renderer: { html: () => "" } });
+
 function RecipeHtml({ html }: { html: string }) {
   return (
     <div
@@ -47,6 +49,13 @@ interface RecipeRef {
   title: string;
 }
 
+interface PantryItem {
+  ingredient_id?: number;
+  name: string;
+  amount?: number;
+  unit?: string;
+}
+
 interface RecipeViewProps {
   steps: RecipeStep[];
   ingredients: RecipeIngredient[];
@@ -60,6 +69,8 @@ interface RecipeViewProps {
   loggedIn: boolean;
   pantryIngredientIds?: number[];
   pantryIngredientNames?: string[];
+  pantryItems?: PantryItem[];
+  householdId?: number | null;
 }
 
 function renderStepsClient(
@@ -126,17 +137,40 @@ export default function RecipeView(
     loggedIn,
     pantryIngredientIds,
     pantryIngredientNames,
+    pantryItems: pantryItemsProp,
+    householdId,
   }: RecipeViewProps,
 ) {
   const pantryIdSet = new Set(pantryIngredientIds ?? []);
   const pantryNameSet = new Set(
     (pantryIngredientNames ?? []).map((n) => n.toLowerCase()),
   );
+  const pantryItems = pantryItemsProp ?? [];
 
   function isInPantry(ing: RecipeIngredient): boolean {
     if (ing.ingredient_id && pantryIdSet.has(ing.ingredient_id)) return true;
     if (pantryNameSet.has(ing.name.toLowerCase())) return true;
     return false;
+  }
+
+  function findPantryItem(ing: RecipeIngredient): PantryItem | undefined {
+    if (ing.ingredient_id) {
+      const byId = pantryItems.find((p) => p.ingredient_id === ing.ingredient_id);
+      if (byId) return byId;
+    }
+    return pantryItems.find((p) => p.name === ing.name.toLowerCase());
+  }
+
+  /** Returns the amount still needed after subtracting pantry stock. null = no amount tracking. */
+  function neededAmount(ing: RecipeIngredient, ratio: number): number | null {
+    if (ing.amount == null) return null;
+    const scaled = ing.amount * ratio;
+    const pantry = findPantryItem(ing);
+    if (!pantry || pantry.amount == null) return scaled;
+    // Only subtract if units match (or both empty)
+    if ((ing.unit || "") !== (pantry.unit || "")) return scaled;
+    const needed = scaled - pantry.amount;
+    return needed > 0 ? needed : 0;
   }
   const addedToList = useSignal<string | null>(null);
   const targetValue = useSignal(baseQuantity.value);
@@ -374,13 +408,33 @@ export default function RecipeView(
 
   async function addAllToShoppingList() {
     const ratio = getCurrentRatio();
+    // Build list of items with pantry-adjusted amounts
+    const items = ingredients
+      .map((ing) => {
+        const needed = neededAmount(ing, ratio);
+        if (needed === 0) return null; // fully covered by pantry
+        return {
+          ingredient_id: ing.ingredient_id ?? null,
+          name: ing.name,
+          amount: needed,
+          unit: ing.unit || null,
+        };
+      })
+      .filter((x) => x != null);
+
+    if (items.length === 0) {
+      addedToList.value = "all";
+      setTimeout(() => { addedToList.value = null; }, 2000);
+      return;
+    }
+
     const res = await fetch("/api/shopping-list", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "add_recipe",
         recipe_id: recipeId,
-        scale: ratio,
+        items,
       }),
     });
     if (res.ok) {
@@ -391,6 +445,12 @@ export default function RecipeView(
 
   async function addOneToShoppingList(ing: RecipeIngredient) {
     const ratio = getCurrentRatio();
+    const needed = neededAmount(ing, ratio);
+    if (needed === 0) {
+      addedToList.value = ing.key;
+      setTimeout(() => { addedToList.value = null; }, 1500);
+      return;
+    }
     await fetch("/api/shopping-list", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -398,13 +458,41 @@ export default function RecipeView(
         action: "add_ingredient",
         ingredient_id: ing.ingredient_id ?? null,
         name: ing.name,
-        amount: ing.amount != null ? ing.amount * ratio : null,
+        amount: needed,
         unit: ing.unit || null,
         recipe_id: recipeId,
       }),
     });
     addedToList.value = ing.key;
     setTimeout(() => { addedToList.value = null; }, 1500);
+  }
+
+  const cookedStatus = useSignal<"idle" | "loading" | "done">("idle");
+
+  async function markCooked() {
+    if (!householdId) return;
+    cookedStatus.value = "loading";
+    const ratio = getCurrentRatio();
+    const items = ingredients
+      .filter((ing) => ing.amount != null)
+      .map((ing) => ({
+        ingredient_id: ing.ingredient_id ?? null,
+        name: ing.name,
+        amount: ing.amount * ratio,
+        unit: ing.unit || null,
+      }));
+
+    await fetch("/api/pantry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "deduct_recipe",
+        household_id: householdId,
+        items,
+      }),
+    });
+    cookedStatus.value = "done";
+    setTimeout(() => { cookedStatus.value = "idle"; }, 2000);
   }
 
   return (
@@ -436,13 +524,25 @@ export default function RecipeView(
             <div class="flex items-center justify-between mb-2">
               <h2 class="font-semibold">Ingredients</h2>
               {loggedIn && (
-                <button
-                  type="button"
-                  class="text-xs text-orange-600 hover:underline cursor-pointer"
-                  onClick={addAllToShoppingList}
-                >
-                  {addedToList.value === "all" ? "Added!" : "Add all to list"}
-                </button>
+                <div class="flex gap-3">
+                  {householdId && (
+                    <button
+                      type="button"
+                      class="text-xs text-stone-500 hover:underline cursor-pointer"
+                      disabled={cookedStatus.value === "loading"}
+                      onClick={markCooked}
+                    >
+                      {cookedStatus.value === "done" ? "Deducted!" : "I cooked this"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    class="text-xs text-orange-600 hover:underline cursor-pointer"
+                    onClick={addAllToShoppingList}
+                  >
+                    {addedToList.value === "all" ? "Added!" : "Add missing to list"}
+                  </button>
+                </div>
               )}
             </div>
             <ul class="space-y-1.5">

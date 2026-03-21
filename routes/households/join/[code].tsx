@@ -1,5 +1,6 @@
-import { page, HttpError } from "fresh";
+import { page } from "fresh";
 import { define } from "../../../utils.ts";
+import type { HouseholdInvite, HouseholdMember } from "../../../db/types.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -12,7 +13,7 @@ export const handler = define.handlers({
 
     const code = ctx.params.code;
 
-    const inviteRes = await ctx.state.db.query(
+    const inviteRes = await ctx.state.db.query<HouseholdInvite>(
       `SELECT hi.*, h.name as household_name
        FROM household_invites hi
        JOIN households h ON h.id = hi.household_id
@@ -35,12 +36,12 @@ export const handler = define.handlers({
     if (existingRes.rows.length > 0) {
       return new Response(null, {
         status: 303,
-        headers: { Location: `/households/${invite.household_id}` },
+        headers: { Location: `/household` },
       });
     }
 
     // Check if user already belongs to another household
-    const membershipRes = await ctx.state.db.query(
+    const membershipRes = await ctx.state.db.query<Pick<HouseholdMember, "household_id">>(
       "SELECT household_id FROM household_members WHERE user_id = $1",
       [ctx.state.user.id],
     );
@@ -63,7 +64,7 @@ export const handler = define.handlers({
 
     const code = ctx.params.code;
 
-    const inviteRes = await ctx.state.db.query(
+    const inviteRes = await ctx.state.db.query<HouseholdInvite>(
       `SELECT * FROM household_invites WHERE code = $1 AND expires_at > now()`,
       [code],
     );
@@ -83,12 +84,12 @@ export const handler = define.handlers({
     if (existingRes.rows.length > 0) {
       return new Response(null, {
         status: 303,
-        headers: { Location: `/households/${invite.household_id}` },
+        headers: { Location: `/household` },
       });
     }
 
     // Check if user already belongs to another household
-    const membershipRes = await ctx.state.db.query(
+    const membershipRes = await ctx.state.db.query<Pick<HouseholdMember, "household_id">>(
       "SELECT household_id FROM household_members WHERE user_id = $1",
       [ctx.state.user.id],
     );
@@ -106,7 +107,7 @@ export const handler = define.handlers({
 
     return new Response(null, {
       status: 303,
-      headers: { Location: `/households/${invite.household_id}` },
+      headers: { Location: `/household` },
     });
   },
 });
@@ -115,7 +116,7 @@ export default define.page<typeof handler>(function JoinHouseholdPage(
   { data },
 ) {
   const { invite, error } = data as {
-    invite?: Record<string, unknown>;
+    invite?: HouseholdInvite;
     error?: string;
   };
 
@@ -137,7 +138,7 @@ export default define.page<typeof handler>(function JoinHouseholdPage(
       <p class="text-stone-500 mb-6">
         You've been invited to join{" "}
         <span class="font-semibold text-stone-700 dark:text-stone-300">
-          {String(invite!.household_name)}
+          {invite!.household_name}
         </span>
       </p>
       <form method="POST">

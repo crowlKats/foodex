@@ -5,41 +5,48 @@ import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import type {
+  Ingredient,
+  IngredientBrand,
+  IngredientPrice,
+  Store,
+} from "../../db/types.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
     const id = parseInt(ctx.params.id);
-    const ingredientRes = await ctx.state.db.query(
-      "SELECT * FROM ingredients WHERE id = $1",
-      [id],
-    );
+    const [ingredientRes, brandsRes, pricesRes, storesRes, otherIngredientsRes] =
+      await Promise.all([
+        ctx.state.db.query<Ingredient>("SELECT * FROM ingredients WHERE id = $1", [id]),
+        ctx.state.db.query<IngredientBrand>(
+          "SELECT * FROM ingredient_brands WHERE ingredient_id = $1 ORDER BY brand",
+          [id],
+        ),
+        ctx.state.db.query<IngredientPrice>(
+          `SELECT gp.*, s.name as store_name, s.currency as store_currency,
+                  ib.brand as brand_name
+           FROM ingredient_prices gp
+           JOIN stores s ON s.id = gp.store_id
+           LEFT JOIN ingredient_brands ib ON ib.id = gp.brand_id
+           WHERE gp.ingredient_id = $1
+           ORDER BY ib.brand, gp.price ASC`,
+          [id],
+        ),
+        ctx.state.db.query<Store>("SELECT * FROM stores ORDER BY name"),
+        ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
+          "SELECT id, name, unit FROM ingredients WHERE id != $1 ORDER BY name",
+          [id],
+        ),
+      ]);
     if (ingredientRes.rows.length === 0) throw new HttpError(404);
 
-    const brandsRes = await ctx.state.db.query(
-      "SELECT * FROM ingredient_brands WHERE ingredient_id = $1 ORDER BY brand",
-      [id],
-    );
-
-    const pricesRes = await ctx.state.db.query(
-      `SELECT gp.*, s.name as store_name, s.currency as store_currency,
-              ib.brand as brand_name
-       FROM ingredient_prices gp
-       JOIN stores s ON s.id = gp.store_id
-       LEFT JOIN ingredient_brands ib ON ib.id = gp.brand_id
-       WHERE gp.ingredient_id = $1
-       ORDER BY ib.brand, gp.price ASC`,
-      [id],
-    );
-
-    const storesRes = await ctx.state.db.query(
-      "SELECT * FROM stores ORDER BY name",
-    );
-
+    ctx.state.pageTitle = ingredientRes.rows[0].name;
     return page({
       ingredient: ingredientRes.rows[0],
       brands: brandsRes.rows,
       prices: pricesRes.rows,
       stores: storesRes.rows,
+      otherIngredients: otherIngredientsRes.rows,
     });
   },
   async POST(ctx) {
@@ -52,6 +59,54 @@ export const handler = define.handlers({
       return new Response(null, {
         status: 303,
         headers: { Location: "/ingredients" },
+      });
+    }
+
+    if (method === "MERGE") {
+      const targetId = parseInt(form.get("target_id") as string);
+      if (!targetId || targetId === id) {
+        return new Response(null, {
+          status: 303,
+          headers: { Location: `/ingredients/${id}` },
+        });
+      }
+
+      // Reparent all references from this ingredient to the target
+      await Promise.all([
+        ctx.state.db.query(
+          "UPDATE recipe_ingredients SET ingredient_id = $1 WHERE ingredient_id = $2",
+          [targetId, id],
+        ),
+        ctx.state.db.query(
+          "UPDATE shopping_list_items SET ingredient_id = $1 WHERE ingredient_id = $2",
+          [targetId, id],
+        ),
+        ctx.state.db.query(
+          "UPDATE pantry_items SET ingredient_id = $1 WHERE ingredient_id = $2",
+          [targetId, id],
+        ),
+        // Move brands that don't conflict
+        ctx.state.db.query(
+          `UPDATE ingredient_brands SET ingredient_id = $1
+           WHERE ingredient_id = $2
+             AND brand NOT IN (SELECT brand FROM ingredient_brands WHERE ingredient_id = $1)`,
+          [targetId, id],
+        ),
+        // Move prices that don't conflict on (ingredient_id, store_id)
+        ctx.state.db.query(
+          `UPDATE ingredient_prices SET ingredient_id = $1
+           WHERE ingredient_id = $2
+             AND store_id NOT IN (SELECT store_id FROM ingredient_prices WHERE ingredient_id = $1)`,
+          [targetId, id],
+        ),
+      ]);
+
+      // Delete the source ingredient (cascades remaining brands/prices)
+      await ctx.state.db.query("DELETE FROM ingredients WHERE id = $1", [id]);
+
+      return new Response(null, {
+        status: 303,
+        headers: { Location: `/ingredients/${targetId}` },
       });
     }
 
@@ -135,21 +190,22 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function IngredientDetail({ data }) {
-  const { ingredient, brands, prices, stores } = data as {
-    ingredient: Record<string, unknown>;
-    brands: Record<string, unknown>[];
-    prices: Record<string, unknown>[];
-    stores: Record<string, unknown>[];
+  const { ingredient, brands, prices, stores, otherIngredients } = data as {
+    ingredient: Ingredient;
+    brands: IngredientBrand[];
+    prices: IngredientPrice[];
+    stores: Store[];
+    otherIngredients: Pick<Ingredient, "id" | "name" | "unit">[];
   };
   return (
     <div>
       <BackLink href="/ingredients" label="Back to Ingredients" />
 
       <h1 class="text-2xl font-bold mt-4">
-        {String(ingredient.name)}
+        {ingredient.name}
         {ingredient.unit && (
           <span class="text-stone-400 text-lg font-normal ml-2">
-            ({String(ingredient.unit)})
+            ({ingredient.unit})
           </span>
         )}
       </h1>
@@ -163,7 +219,7 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
                 <input
                   type="text"
                   name="name"
-                  value={String(ingredient.name)}
+                  value={ingredient.name}
                   required
                   class="w-full"
                 />
@@ -171,7 +227,7 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
               <FormField label="Unit">
                 <UnitSelect
                   name="unit"
-                  value={String(ingredient.unit ?? "")}
+                  value={ingredient.unit ?? ""}
                   class="w-full"
                   required
                 />
@@ -190,6 +246,33 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
           </div>
 
           <div>
+            <h2 class="text-lg font-semibold mb-3">Merge Into</h2>
+            <p class="text-xs text-stone-500 mb-3">
+              Replace this ingredient with another. All recipes, pantry items,
+              and shopping list references will be moved to the target. This
+              ingredient will be deleted.
+            </p>
+            <form method="POST" class="flex gap-2">
+              <input type="hidden" name="_method" value="MERGE" />
+              <select name="target_id" required class="flex-1 text-sm">
+                <option value="">Select target...</option>
+                {otherIngredients.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                    {i.unit ? ` (${i.unit})` : ""}
+                  </option>
+                ))}
+              </select>
+              <ConfirmButton
+                message={`Merge "${ingredient.name}" into another ingredient? This cannot be undone.`}
+                class="btn btn-danger text-sm"
+              >
+                Merge
+              </ConfirmButton>
+            </form>
+          </div>
+
+          <div>
             <h2 class="text-lg font-semibold mb-3">
               Brands ({brands.length})
             </h2>
@@ -197,10 +280,10 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
               <div class="space-y-2 mb-3">
                 {brands.map((b) => (
                   <div
-                    key={String(b.id)}
+                    key={b.id}
                     class="card p-3 flex justify-between items-center"
                   >
-                    <span class="text-sm font-medium">{String(b.brand)}</span>
+                    <span class="text-sm font-medium">{b.brand}</span>
                     <form method="POST">
                       <input
                         type="hidden"
@@ -210,7 +293,7 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
                       <input
                         type="hidden"
                         name="brand_id"
-                        value={String(b.id)}
+                        value={b.id}
                       />
                       <button
                         type="submit"
@@ -245,31 +328,31 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
             <div class="space-y-2 mb-4">
               {prices.map((p, i) => (
                 <div
-                  key={String(p.id)}
+                  key={p.id}
                   class={`card flex justify-between items-center ${
                     i === 0 ? "ring-2 ring-orange-400" : ""
                   }`}
                 >
                   <div class="flex items-center gap-4">
                     <div class="text-xl font-bold text-orange-600">
-                      {getCurrencySymbol(String(p.store_currency ?? "EUR"))}
-                      {String(p.price)}
+                      {getCurrencySymbol(p.store_currency ?? "EUR")}
+                      {p.price}
                     </div>
                     <div>
                       <a
                         href={`/stores/${p.store_id}`}
                         class="font-medium link"
                       >
-                        {String(p.store_name)}
+                        {p.store_name}
                       </a>
                       {p.brand_name && (
                         <span class="text-stone-400 ml-1">
-                          ({String(p.brand_name)})
+                          ({p.brand_name})
                         </span>
                       )}
                       {p.amount && (
                         <div class="text-sm text-stone-500">
-                          per {String(p.amount)} {String(ingredient.unit ?? "")}
+                          per {p.amount} {ingredient.unit ?? ""}
                         </div>
                       )}
                       {i === 0 && prices.length > 1 && (
@@ -284,7 +367,7 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
                     <input
                       type="hidden"
                       name="price_id"
-                      value={String(p.id)}
+                      value={p.id}
                     />
                     <button
                       type="submit"
@@ -306,8 +389,8 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
                 <select name="store_id" required class="w-full">
                   <option value="">Select a store...</option>
                   {stores.map((s) => (
-                    <option key={String(s.id)} value={String(s.id)}>
-                      {String(s.name)}
+                    <option key={s.id} value={s.id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>
@@ -316,8 +399,8 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
                 <select name="brand_id" class="w-full">
                   <option value="">-- No brand --</option>
                   {brands.map((b) => (
-                    <option key={String(b.id)} value={String(b.id)}>
-                      {String(b.brand)}
+                    <option key={b.id} value={b.id}>
+                      {b.brand}
                     </option>
                   ))}
                 </select>

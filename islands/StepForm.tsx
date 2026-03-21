@@ -69,7 +69,7 @@ export default function StepForm({ initialSteps }: StepFormProps) {
             url: String(data.url),
           }],
         };
-      } catch {}
+      } catch { /* upload failed, skip */ }
     }
     items.value = next;
     uploading.value = null;

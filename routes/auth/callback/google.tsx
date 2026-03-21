@@ -1,14 +1,18 @@
 import { define } from "../../../utils.ts";
 import {
+  clearOAuthStateCookie,
   createSessionCookie,
   exchangeGoogleCode,
   generateSessionId,
+  getOAuthStateFromRequest,
 } from "../../../lib/auth.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
     const code = ctx.url.searchParams.get("code");
-    if (!code) {
+    const state = ctx.url.searchParams.get("state");
+    const storedState = getOAuthStateFromRequest(ctx.req);
+    if (!code || !state || !storedState || state !== storedState) {
       return new Response(null, {
         status: 303,
         headers: { Location: "/auth/login" },
@@ -39,12 +43,11 @@ export const handler = define.handlers({
       [sessionId, userId],
     );
 
-    return new Response(null, {
-      status: 303,
-      headers: {
-        Location: "/recipes",
-        "Set-Cookie": createSessionCookie(sessionId),
-      },
+    const headers = new Headers({
+      Location: "/recipes",
     });
+    headers.append("Set-Cookie", createSessionCookie(sessionId));
+    headers.append("Set-Cookie", clearOAuthStateCookie());
+    return new Response(null, { status: 303, headers });
   },
 });

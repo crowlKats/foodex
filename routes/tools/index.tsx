@@ -1,42 +1,60 @@
 import { page } from "fresh";
-import { define } from "../../utils.ts";
+import { define, escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { getPage, Pagination, paginationParams } from "../../components/Pagination.tsx";
+import type { Tool } from "../../db/types.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
-    if (!ctx.state.user || !ctx.state.householdId) {
-      return new Response(null, {
-        status: 303,
-        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
-      });
-    }
-
     const q = ctx.url.searchParams.get("q")?.trim() || "";
+    const currentPage = getPage(ctx.url);
+    const { limit, offset } = paginationParams(currentPage);
 
-    let result;
+    let result, countRes;
     if (q) {
-      result = await ctx.state.db.query(
-        `SELECT * FROM tools
-         WHERE household_id = $2
-           AND (name ILIKE '%' || $1 || '%' OR description ILIKE '%' || $1 || '%')
-         ORDER BY name`,
-        [q, ctx.state.householdId],
-      );
+      const escaped = escapeLike(q);
+      [result, countRes] = await Promise.all([
+        ctx.state.db.query<Tool>(
+          `SELECT * FROM tools
+           WHERE name ILIKE '%' || $1 || '%' ESCAPE '\\' OR description ILIKE '%' || $1 || '%' ESCAPE '\\'
+           ORDER BY name LIMIT $2 OFFSET $3`,
+          [escaped, limit, offset],
+        ),
+        ctx.state.db.query<{ cnt: number }>(
+          `SELECT COUNT(*) as cnt FROM tools
+           WHERE name ILIKE '%' || $1 || '%' ESCAPE '\\' OR description ILIKE '%' || $1 || '%' ESCAPE '\\'`,
+          [escaped],
+        ),
+      ]);
     } else {
-      result = await ctx.state.db.query(
-        "SELECT * FROM tools WHERE household_id = $1 ORDER BY name",
+      [result, countRes] = await Promise.all([
+        ctx.state.db.query<Tool>("SELECT * FROM tools ORDER BY name LIMIT $1 OFFSET $2", [limit, offset]),
+        ctx.state.db.query<{ cnt: number }>("SELECT COUNT(*) as cnt FROM tools"),
+      ]);
+    }
+    const totalCount = Number(countRes.rows[0].cnt);
+
+    const ownedToolIds = new Set<number>();
+    if (ctx.state.householdId) {
+      const htRes = await ctx.state.db.query<{ tool_id: number }>(
+        "SELECT tool_id FROM household_tools WHERE household_id = $1",
         [ctx.state.householdId],
       );
+      for (const row of htRes.rows) {
+        ownedToolIds.add(row.tool_id);
+      }
     }
 
-    return page({ tools: result.rows, q });
+    const error = ctx.url.searchParams.get("error") || undefined;
+    ctx.state.pageTitle = "Tools";
+    return page({ tools: result.rows, q, ownedToolIds: [...ownedToolIds], currentPage, totalCount, error });
   },
   async POST(ctx) {
-    if (!ctx.state.user || !ctx.state.householdId) {
+    if (!ctx.state.user) {
       return new Response(null, {
         status: 303,
-        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
+        headers: { Location: "/auth/login" },
       });
     }
 
@@ -44,29 +62,41 @@ export const handler = define.handlers({
     const name = form.get("name") as string;
     const description = form.get("description") as string;
     if (!name?.trim()) {
-      const result = await ctx.state.db.query(
-        "SELECT * FROM tools WHERE household_id = $1 ORDER BY name",
-        [ctx.state.householdId],
-      );
-      return page({ tools: result.rows, error: "Name is required" });
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/tools?error=Name+is+required" },
+      });
     }
-    await ctx.state.db.query(
-      "INSERT INTO tools (name, description, household_id) VALUES ($1, $2, $3)",
-      [name.trim(), description?.trim() || null, ctx.state.householdId],
+    const toolRes = await ctx.state.db.query<{ id: number }>(
+      "INSERT INTO tools (name, description) VALUES ($1, $2) RETURNING id",
+      [name.trim(), description?.trim() || null],
     );
+
+    // Auto-add to household
+    if (ctx.state.householdId) {
+      await ctx.state.db.query(
+        "INSERT INTO household_tools (household_id, tool_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [ctx.state.householdId, toolRes.rows[0].id],
+      );
+    }
+
     return new Response(null, {
       status: 303,
-      headers: { Location: "/tools" },
+      headers: { Location: `/tools/${toolRes.rows[0].id}` },
     });
   },
 });
 
-export default define.page<typeof handler>(function ToolsPage({ data }) {
-  const { tools, error, q } = data as {
-    tools: Record<string, unknown>[];
+export default define.page<typeof handler>(function ToolsPage({ data, url }) {
+  const { tools, error, q, ownedToolIds, currentPage, totalCount } = data as {
+    tools: Tool[];
     error?: string;
     q: string;
+    ownedToolIds?: number[];
+    currentPage: number;
+    totalCount: number;
   };
+  const ownedSet = new Set(ownedToolIds ?? []);
   return (
     <div>
       <PageHeader title="Tools" query={q} />
@@ -110,7 +140,7 @@ export default define.page<typeof handler>(function ToolsPage({ data }) {
 
         <div>
           <h2 class="text-lg font-semibold mb-3">
-            Tools ({tools.length})
+            All Tools ({totalCount})
           </h2>
           {tools.length === 0
             ? <p class="text-stone-500">No tools yet.</p>
@@ -118,20 +148,28 @@ export default define.page<typeof handler>(function ToolsPage({ data }) {
               <div class="space-y-2">
                 {tools.map((m) => (
                   <a
-                    key={String(m.id)}
+                    key={m.id}
                     href={`/tools/${m.id}`}
                     class="block card card-hover"
                   >
-                    <div class="font-medium">{String(m.name)}</div>
+                    <div class="flex items-center gap-2">
+                      <div class="font-medium flex-1">{m.name}</div>
+                      {ownedSet.has(m.id) && (
+                        <span class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
+                          owned
+                        </span>
+                      )}
+                    </div>
                     {m.description && (
                       <div class="text-sm text-stone-500 truncate">
-                        {String(m.description)}
+                        {m.description}
                       </div>
                     )}
                   </a>
                 ))}
               </div>
             )}
+          <Pagination currentPage={currentPage} totalCount={totalCount} url={url} />
         </div>
       </div>
     </div>

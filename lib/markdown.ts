@@ -1,4 +1,6 @@
 import { marked } from "marked";
+
+marked.use({ renderer: { html: () => "" } });
 import { evaluateTemplate, type IngredientVar } from "./template.ts";
 
 export interface RecipeRef {

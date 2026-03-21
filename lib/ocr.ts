@@ -1,6 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { ALL_UNITS } from "./units.ts";
-import { DOCS as TEMPLATE_DOCS } from "../routes/docs/templates.md.tsx";
+import { recipeJsonSchema, RECIPE_FIELD_RULES } from "./recipe-prompt.ts";
 
 export interface CoverImageBounds {
   image_index: number;
@@ -26,39 +25,13 @@ export interface OcrRecipeData {
 const SYSTEM_PROMPT =
   `You are a recipe extraction assistant. Given an image of a recipe (from a cookbook, screenshot, handwritten note, etc.), extract the recipe data as structured JSON.
 
-Return ONLY valid JSON with this exact shape:
-{
-  "title": "Recipe title",
-  "description": "Brief description of the dish",
-  "prep_time": <number in minutes or null>,
-  "cook_time": <number in minutes or null>,
-  "quantity_type": "servings",
-  "quantity_value": <number>,
-  "quantity_unit": "servings",
-  "ingredients": [
-    { "key": "snake_case_key", "name": "Ingredient name", "amount": "numeric amount as string", "unit": "unit" }
-  ],
-  "steps": [
-    { "title": "Step title (short)", "body": "Detailed step instructions" }
-  ],
-  "cover_image": { "image_index": 0, "x": 0.1, "y": 0.05, "width": 0.8, "height": 0.4 } or null
-}
+${recipeJsonSchema({ coverImage: true })}
 
 Rules:
-- "key" must be a unique snake_case identifier derived from the ingredient name (e.g. "all_purpose_flour", "olive_oil")
-- "amount" must be a numeric string (e.g. "200", "1.5") or empty string if unspecified
-- "unit" must be one of these exact values: ${
-    ALL_UNITS.join(", ")
-  } — or empty string if no unit applies
-- "quantity_type" should be "servings" unless the recipe specifies weight/volume/dimensions
-- If prep or cook time is not specified, use null
-- Step titles should be short (2-4 words). Step bodies support Markdown and a template syntax for dynamic ingredient scaling. Only use template refs when an ingredient amount is explicitly mentioned in a step — if a step just names an ingredient without a specific quantity, use plain text.
-- Template syntax reference:
-${TEMPLATE_DOCS}
+${RECIPE_FIELD_RULES}
 - "cover_image": If the image(s) contain a photograph of food, return its bounding box as { "image_index": <0-based index of which image>, "x": <left edge 0-1>, "y": <top edge 0-1>, "width": <0-1>, "height": <0-1> } where all values are fractions of the image dimensions. Crop closely to the food photo, minimizing surrounding text or whitespace, but it's OK to include a small margin. Photos embedded in recipe pages, cookbook scans, or screenshots all count. If there is no food photo at all, return null.
 - If the image contains multiple recipes, extract only the most prominent one
-- The recipe may be in ANY language — ALWAYS translate all text (title, description, ingredient names, step instructions) to English
-- Return ONLY the JSON object, no markdown fences or extra text`;
+- The recipe may be in ANY language — ALWAYS translate all text (title, description, ingredient names, step instructions) to English`;
 
 interface ImageInput {
   bytes: Uint8Array;

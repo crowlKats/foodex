@@ -19,11 +19,11 @@ export default define.page(function App({ Component, state }) {
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Foodex</title>
+        <title>{state.pageTitle === "Foodex" ? "Foodex" : `${state.pageTitle} - Foodex`}</title>
         <DarkModeScript />
       </head>
       <body class="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
-        <Nav user={state.user} shoppingListCount={state.shoppingListCount} pantryUrl={state.pantryUrl} householdId={state.householdId} />
+        <Nav user={state.user} shoppingListCount={state.shoppingListCount} hasHousehold={state.householdId != null} />
         <main class="max-w-6xl mx-auto px-4 py-6">
           <Component />
         </main>

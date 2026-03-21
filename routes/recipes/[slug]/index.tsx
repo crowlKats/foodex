@@ -1,5 +1,6 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
+import type { RecipeIngredient, RecipeReference, RecipeStep, RecipeTag, RecipeTool, RecipeWithCover } from "../../../db/types.ts";
 import { renderRecipeSteps } from "../../../lib/markdown.ts";
 import { formatDuration } from "../../../lib/duration.ts";
 import { scaleIngredients } from "../../../lib/template.ts";
@@ -10,12 +11,13 @@ import RecipeView from "../../../islands/RecipeView.tsx";
 import ImageLightbox from "../../../islands/ImageLightbox.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
+import FavoriteButton from "../../../islands/FavoriteButton.tsx";
 import TbEdit from "tb-icons/TbEdit";
 
 export const handler = define.handlers({
   async GET(ctx) {
     const slug = ctx.params.slug;
-    const recipeRes = await ctx.state.db.query(
+    const recipeRes = await ctx.state.db.query<RecipeWithCover>(
       `SELECT r.*, m.url as cover_image_url
        FROM recipes r
        LEFT JOIN media m ON m.id = r.cover_image_id
@@ -25,7 +27,12 @@ export const handler = define.handlers({
     if (recipeRes.rows.length === 0) throw new HttpError(404);
     const recipe = recipeRes.rows[0];
 
-    const ingredientsRes = await ctx.state.db.query(
+    // Block access to private recipes from non-members
+    if (recipe.private && recipe.household_id !== ctx.state.householdId) {
+      throw new HttpError(404);
+    }
+
+    const ingredientsRes = await ctx.state.db.query<RecipeIngredient>(
       `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit
        FROM recipe_ingredients ri
        LEFT JOIN ingredients g ON g.id = ri.ingredient_id
@@ -34,7 +41,7 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const toolsRes = await ctx.state.db.query(
+    const toolsRes = await ctx.state.db.query<RecipeTool>(
       `SELECT rt.*, t.name as tool_name, t.description as tool_description
        FROM recipe_tools rt
        JOIN tools t ON t.id = rt.tool_id
@@ -43,12 +50,12 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const stepsRes = await ctx.state.db.query(
+    const stepsRes = await ctx.state.db.query<RecipeStep>(
       `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
       [recipe.id],
     );
 
-    const stepMediaRes = await ctx.state.db.query(
+    const stepMediaRes = await ctx.state.db.query<{ step_id: number; media_id: number; url: string }>(
       `SELECT rsm.step_id, m.id as media_id, m.url
        FROM recipe_step_media rsm
        JOIN media m ON m.id = rsm.media_id
@@ -67,7 +74,7 @@ export const handler = define.handlers({
       });
     }
 
-    const refsRes = await ctx.state.db.query(
+    const refsRes = await ctx.state.db.query<RecipeReference>(
       `SELECT rr.*, r.title as ref_title, r.slug as ref_slug
        FROM recipe_references rr
        JOIN recipes r ON r.id = rr.referenced_recipe_id
@@ -76,31 +83,42 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
+    const tagsRes = await ctx.state.db.query<RecipeTag>(
+      "SELECT tag_type, tag_value FROM recipe_tags WHERE recipe_id = $1",
+      [recipe.id],
+    );
+    const mealTypes = tagsRes.rows
+      .filter((t) => t.tag_type === "meal_type")
+      .map((t) => t.tag_value);
+    const dietaryTags = tagsRes.rows
+      .filter((t) => t.tag_type === "dietary")
+      .map((t) => t.tag_value);
+
     const baseQuantity: RecipeQuantity = {
-      type: String(
-        recipe.quantity_type || "servings",
-      ) as RecipeQuantity["type"],
-      value: Number(recipe.quantity_value ?? 4),
-      unit: String(recipe.quantity_unit || "servings"),
-      value2: recipe.quantity_value2 != null
-        ? Number(recipe.quantity_value2)
-        : undefined,
-      value3: recipe.quantity_value3 != null
-        ? Number(recipe.quantity_value3)
-        : undefined,
-      unit2: recipe.quantity_unit2 ? String(recipe.quantity_unit2) : undefined,
+      type: (recipe.quantity_type || "servings") as RecipeQuantity["type"],
+      value: recipe.quantity_value ?? 4,
+      unit: recipe.quantity_unit || "servings",
+      value2: recipe.quantity_value2 ?? undefined,
+      value3: recipe.quantity_value3 ?? undefined,
+      unit2: recipe.quantity_unit2 ?? undefined,
     };
 
     const ingredientIds = ingredientsRes.rows
       .filter((i) => i.ingredient_id != null)
-      .map((i) => Number(i.ingredient_id));
+      .map((i) => i.ingredient_id!);
 
     const priceMap = new Map<
       number,
       { price: number; amount: number; priceUnit: string; currency: string }
     >();
     if (ingredientIds.length > 0) {
-      const pricesRes = await ctx.state.db.query(
+      const pricesRes = await ctx.state.db.query<{
+        ingredient_id: number;
+        price: number;
+        amount: number;
+        price_unit: string | null;
+        currency: string;
+      }>(
         `SELECT DISTINCT ON (gp.ingredient_id)
            gp.ingredient_id, gp.price, gp.amount, coalesce(gp.unit, g.unit) as price_unit, s.currency
          FROM ingredient_prices gp
@@ -111,11 +129,11 @@ export const handler = define.handlers({
         [ingredientIds],
       );
       for (const row of pricesRes.rows) {
-        priceMap.set(Number(row.ingredient_id), {
-          price: Number(row.price),
-          amount: Number(row.amount) || 1,
-          priceUnit: String(row.price_unit ?? ""),
-          currency: String(row.currency ?? "EUR"),
+        priceMap.set(row.ingredient_id, {
+          price: row.price,
+          amount: row.amount || 1,
+          priceUnit: row.price_unit ?? "",
+          currency: row.currency ?? "EUR",
         });
       }
     }
@@ -123,12 +141,10 @@ export const handler = define.handlers({
     const ingredientsForTemplate = ingredientsRes.rows
       .filter((i) => i.key && i.amount != null)
       .map((i) => {
-        const ingredientId = i.ingredient_id
-          ? Number(i.ingredient_id)
-          : undefined;
+        const ingredientId = i.ingredient_id ?? undefined;
         const priceInfo = ingredientId ? priceMap.get(ingredientId) : undefined;
-        const ingAmount = Number(i.amount);
-        const ingUnit = String(i.unit ?? "");
+        const ingAmount = i.amount!;
+        const ingUnit = i.unit ?? "";
         const baseCost = priceInfo
           ? computeIngredientCost(
             ingAmount,
@@ -139,10 +155,10 @@ export const handler = define.handlers({
           )
           : undefined;
         return {
-          key: String(i.key),
+          key: i.key!,
           amount: ingAmount,
           unit: ingUnit,
-          name: String(i.ingredient_name ?? i.name),
+          name: i.ingredient_name ?? i.name,
           ingredient_id: ingredientId,
           base_cost: baseCost ?? undefined,
           currency: priceInfo?.currency,
@@ -155,12 +171,12 @@ export const handler = define.handlers({
     );
 
     const hasSubRecipes = stepsRes.rows.some((s) =>
-      /@recipe\([a-z0-9_-]+\)/.test(String(s.body))
+      /@recipe\([a-z0-9_-]+\)/.test(s.body)
     );
 
-    const stepsData = stepsRes.rows.map((s: Record<string, unknown>) => ({
-      title: String(s.title),
-      body: String(s.body),
+    const stepsData = stepsRes.rows.map((s) => ({
+      title: s.title,
+      body: s.body,
       media: stepMediaMap.get(String(s.id)) ?? [],
     }));
 
@@ -169,14 +185,14 @@ export const handler = define.handlers({
       { ratio: 1 },
       scaledIngredients,
       async (refSlug) => {
-        const res = await ctx.state.db.query(
+        const res = await ctx.state.db.query<{ title: string; slug: string }>(
           "SELECT title, slug FROM recipes WHERE slug = $1",
           [refSlug],
         );
         if (res.rows.length === 0) return null;
         return {
-          title: String(res.rows[0].title),
-          slug: String(res.rows[0].slug),
+          title: res.rows[0].title,
+          slug: res.rows[0].slug,
         };
       },
     );
@@ -184,36 +200,59 @@ export const handler = define.handlers({
     const isOwner = ctx.state.householdId != null &&
       recipe.household_id === ctx.state.householdId;
 
-    // Load pantry items from user's households
-    let pantryIngredientIds: number[] = [];
-    let pantryIngredientNames: string[] = [];
-    if (ctx.state.user) {
-      const pantryRes = await ctx.state.db.query(
-        `SELECT DISTINCT pi.ingredient_id, lower(pi.name) as name
+    // Load pantry items from user's household
+    let pantryItems: { ingredient_id?: number; name: string; amount?: number; unit?: string }[] = [];
+    if (ctx.state.householdId) {
+      const pantryRes = await ctx.state.db.query<{
+        ingredient_id: number | null;
+        name: string;
+        amount: number | null;
+        unit: string | null;
+      }>(
+        `SELECT pi.ingredient_id, lower(pi.name) as name, pi.amount, pi.unit
          FROM pantry_items pi
-         JOIN household_members hm ON hm.household_id = pi.household_id
-         WHERE hm.user_id = $1`,
-        [ctx.state.user.id],
+         WHERE pi.household_id = $1`,
+        [ctx.state.householdId],
       );
-      pantryIngredientIds = pantryRes.rows
-        .filter((r) => r.ingredient_id != null)
-        .map((r) => Number(r.ingredient_id));
-      pantryIngredientNames = pantryRes.rows.map((r) => String(r.name));
+      pantryItems = pantryRes.rows.map((r) => ({
+        ingredient_id: r.ingredient_id ?? undefined,
+        name: r.name,
+        amount: r.amount ?? undefined,
+        unit: r.unit ?? undefined,
+      }));
+    }
+    const pantryIngredientIds = pantryItems
+      .filter((r) => r.ingredient_id != null)
+      .map((r) => r.ingredient_id!);
+    const pantryIngredientNames = pantryItems.map((r) => r.name);
+
+    let isFavorited = false;
+    if (ctx.state.user) {
+      const favRes = await ctx.state.db.query(
+        "SELECT 1 FROM recipe_favorites WHERE user_id = $1 AND recipe_id = $2",
+        [ctx.state.user.id, recipe.id],
+      );
+      isFavorited = favRes.rows.length > 0;
     }
 
+    ctx.state.pageTitle = recipe.title;
     return page({
       recipe,
       ingredientsForTemplate,
       tools: toolsRes.rows,
       steps: stepsData,
       refs: refsRes.rows,
+      mealTypes,
+      dietaryTags,
       renderedHtml,
       hasSubRecipes,
       baseQuantity,
       isOwner,
+      isFavorited,
       loggedIn: ctx.state.user != null,
       pantryIngredientIds,
       pantryIngredientNames,
+      pantryItems,
       householdId: ctx.state.householdId,
     });
   },
@@ -223,7 +262,7 @@ export const handler = define.handlers({
     const method = form.get("_method");
 
     if (method === "DELETE") {
-      const recipeRes = await ctx.state.db.query(
+      const recipeRes = await ctx.state.db.query<{ household_id: number }>(
         "SELECT household_id FROM recipes WHERE slug = $1",
         [slug],
       );
@@ -257,11 +296,14 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
     tools,
     steps,
     refs,
+    mealTypes,
+    dietaryTags,
     renderedHtml,
     hasSubRecipes,
     isOwner,
+    isFavorited,
   } = data as {
-    recipe: Record<string, unknown>;
+    recipe: RecipeWithCover;
     ingredientsForTemplate: {
       key: string;
       amount: number;
@@ -269,13 +311,16 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
       name: string;
       ingredient_id?: number;
     }[];
-    tools: Record<string, unknown>[];
+    tools: RecipeTool[];
     steps: { title: string; body: string }[];
-    refs: Record<string, unknown>[];
+    refs: RecipeReference[];
+    mealTypes: string[];
+    dietaryTags: string[];
     renderedHtml: string;
     hasSubRecipes: boolean;
     baseQuantity: RecipeQuantity;
     isOwner: boolean;
+    isFavorited: boolean;
     loggedIn: boolean;
     pantryIngredientIds: number[];
     pantryIngredientNames: string[];
@@ -288,15 +333,26 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
       {recipe.cover_image_url && (
         <div class="mt-4">
           <ImageLightbox
-            src={String(recipe.cover_image_url)}
-            alt={String(recipe.title)}
+            src={recipe.cover_image_url}
+            alt={recipe.title}
             class="w-full h-64 object-cover"
           />
         </div>
       )}
 
       <div class="flex items-center gap-3 mt-4 mb-2 flex-wrap">
-        <h1 class="text-3xl font-bold flex-1">{String(recipe.title)}</h1>
+        <h1 class="text-3xl font-bold flex-1">{recipe.title}</h1>
+        {recipe.private && (
+          <span class="text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-2 py-1 rounded">
+            private
+          </span>
+        )}
+        {data.loggedIn && (
+          <FavoriteButton
+            recipeId={recipe.id}
+            initialFavorited={isFavorited}
+          />
+        )}
         {isOwner && (
           <>
             <a
@@ -318,46 +374,61 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
         )}
       </div>
       {recipe.description && (
-        <p class="text-stone-600 mt-1">{String(recipe.description)}</p>
+        <p class="text-stone-600 mt-1">{recipe.description}</p>
+      )}
+
+      {(mealTypes.length > 0 || dietaryTags.length > 0) && (
+        <div class="flex flex-wrap gap-1.5 mt-2">
+          {mealTypes.map((mt) => (
+            <span key={mt} class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded capitalize">
+              {mt}
+            </span>
+          ))}
+          {dietaryTags.map((dt) => (
+            <span key={dt} class="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded capitalize">
+              {dt}
+            </span>
+          ))}
+        </div>
       )}
 
       <div class="flex gap-2 sm:gap-4 text-sm text-stone-500 mt-2 flex-wrap">
         <span>{formatQuantity(data.baseQuantity)}</span>
         {recipe.prep_time != null && (
-          <span>Prep: {formatDuration(Number(recipe.prep_time))}</span>
+          <span>Prep: {formatDuration(recipe.prep_time)}</span>
         )}
         {recipe.cook_time != null && (
-          <span>Cook: {formatDuration(Number(recipe.cook_time))}</span>
+          <span>Cook: {formatDuration(recipe.cook_time)}</span>
         )}
       </div>
 
       <div class="mt-6">
         <RecipeView
           steps={steps.map((s) => ({
-            title: String(s.title),
-            body: String(s.body),
+            title: s.title,
+            body: s.body,
           }))}
           ingredients={ingredientsForTemplate}
           tools={tools.map((m) => ({
-            id: Number(m.tool_id),
-            name: String(m.tool_name),
-            settings: m.settings ? String(m.settings) : undefined,
-            usage: m.usage_description
-              ? String(m.usage_description)
-              : undefined,
+            id: m.tool_id,
+            name: m.tool_name,
+            settings: m.settings ?? undefined,
+            usage: m.usage_description ?? undefined,
           }))}
           refs={refs.map((r) => ({
-            slug: String(r.ref_slug),
-            title: String(r.ref_title),
+            slug: r.ref_slug,
+            title: r.ref_title,
           }))}
           baseQuantity={data.baseQuantity}
-          slug={String(recipe.slug)}
+          slug={recipe.slug}
           hasSubRecipes={hasSubRecipes}
           initialHtml={renderedHtml}
-          recipeId={Number(recipe.id)}
+          recipeId={recipe.id}
           loggedIn={data.loggedIn}
           pantryIngredientIds={data.pantryIngredientIds}
           pantryIngredientNames={data.pantryIngredientNames}
+          pantryItems={data.pantryItems}
+          householdId={data.householdId}
         />
       </div>
     </div>

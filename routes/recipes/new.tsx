@@ -1,6 +1,7 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
-import { parseFormArray } from "../../lib/form.ts";
+import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
+import { saveRecipeChildren } from "../../lib/recipe-save.ts";
 import QuantityInput from "../../islands/QuantityInput.tsx";
 import IngredientForm from "../../islands/IngredientForm.tsx";
 import ToolForm from "../../islands/ToolForm.tsx";
@@ -30,18 +31,17 @@ export const handler = define.handlers({
       });
     }
 
-    const ingredientsRes = await ctx.state.db.query(
+    const ingredientsRes = await ctx.state.db.query<Ingredient>(
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
-    const allToolsRes = await ctx.state.db.query(
-      "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
-      [ctx.state.householdId],
+    const allToolsRes = await ctx.state.db.query<Tool>(
+      "SELECT id, name FROM tools ORDER BY name",
     );
-    const allRecipesRes = await ctx.state.db.query(
-      "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
-      [ctx.state.householdId],
+    const allRecipesRes = await ctx.state.db.query<Recipe>(
+      "SELECT id, title, slug FROM recipes ORDER BY title",
     );
 
+    ctx.state.pageTitle = "New Recipe";
     return page({
       ingredients: ingredientsRes.rows,
       allTools: allToolsRes.rows,
@@ -89,18 +89,17 @@ export const handler = define.handlers({
       )
       : null;
     const coverImageId = form.get("cover_image_id") as string;
+    const isPrivate = form.get("private") === "on";
 
     if (!title?.trim()) {
-      const ingredientsRes = await ctx.state.db.query(
+      const ingredientsRes = await ctx.state.db.query<Ingredient>(
         "SELECT id, name, unit FROM ingredients ORDER BY name",
       );
-      const allToolsRes = await ctx.state.db.query(
-        "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
-        [ctx.state.householdId],
+      const allToolsRes = await ctx.state.db.query<Tool>(
+        "SELECT id, name FROM tools ORDER BY name",
       );
-      const allRecipesRes = await ctx.state.db.query(
-        "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
-        [ctx.state.householdId],
+      const allRecipesRes = await ctx.state.db.query<Recipe>(
+        "SELECT id, title, slug FROM recipes ORDER BY title",
       );
       return page({
         ingredients: ingredientsRes.rows,
@@ -110,42 +109,38 @@ export const handler = define.handlers({
       });
     }
 
-    let recipeId: number;
     try {
-      const res = await ctx.state.db.query(
-        `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, household_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-         RETURNING id`,
-        [
-          title.trim(),
-          slug,
-          description?.trim() || null,
-          quantityType,
-          quantityValue,
-          quantityUnit,
-          quantityValue2,
-          quantityValue3,
-          quantityUnit2,
-          prepTime,
-          cookTime,
-          coverImageId ? parseInt(coverImageId) : null,
-          ctx.state.householdId,
-        ],
-      );
-      recipeId = res.rows[0].id as number;
+      await ctx.state.db.transaction(async (q) => {
+        const res = await q<{ id: number }>(
+          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, household_id, private)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+           RETURNING id`,
+          [
+            title.trim(),
+            slug,
+            description?.trim() || null,
+            quantityType,
+            quantityValue,
+            quantityUnit,
+            quantityValue2,
+            quantityValue3,
+            quantityUnit2,
+            prepTime,
+            cookTime,
+            coverImageId ? parseInt(coverImageId) : null,
+            ctx.state.householdId,
+            isPrivate,
+          ],
+        );
+        await saveRecipeChildren(q, res.rows[0].id, form);
+      });
     } catch (err) {
       if (String(err).includes("unique")) {
-        const ingredientsRes = await ctx.state.db.query(
-          "SELECT id, name, unit FROM ingredients ORDER BY name",
-        );
-        const allToolsRes = await ctx.state.db.query(
-          "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
-          [ctx.state.householdId],
-        );
-        const allRecipesRes = await ctx.state.db.query(
-          "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
-          [ctx.state.householdId],
-        );
+        const [ingredientsRes, allToolsRes, allRecipesRes] = await Promise.all([
+          ctx.state.db.query<Ingredient>("SELECT id, name, unit FROM ingredients ORDER BY name"),
+          ctx.state.db.query<Tool>("SELECT id, name FROM tools ORDER BY name"),
+          ctx.state.db.query<Recipe>("SELECT id, title, slug FROM recipes ORDER BY title"),
+        ]);
         return page({
           ingredients: ingredientsRes.rows,
           allTools: allToolsRes.rows,
@@ -154,84 +149,6 @@ export const handler = define.handlers({
         });
       }
       throw err;
-    }
-
-    const ingredients = parseFormArray(form, "ingredients");
-    for (let i = 0; i < ingredients.length; i++) {
-      const ing = ingredients[i];
-      if (!ing.name?.trim()) continue;
-      const ingredientId = ing.ingredient_id ? parseInt(ing.ingredient_id) : null;
-      await ctx.state.db.query(
-        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          recipeId,
-          ingredientId,
-          ing.key?.trim() || null,
-          ing.name.trim(),
-          ing.amount ? parseFloat(ing.amount) : null,
-          ing.unit?.trim() || null,
-          i,
-        ],
-      );
-    }
-
-    const toolEntries = parseFormArray(form, "tools");
-    for (let i = 0; i < toolEntries.length; i++) {
-      const t = toolEntries[i];
-      if (!t.tool_id) continue;
-      await ctx.state.db.query(
-        `INSERT INTO recipe_tools (recipe_id, tool_id, usage_description, settings, sort_order)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [
-          recipeId,
-          parseInt(t.tool_id),
-          t.usage_description?.trim() || null,
-          t.settings?.trim() || null,
-          i,
-        ],
-      );
-    }
-
-    const steps = parseFormArray(form, "steps");
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps[i];
-      if (!step.title?.trim() && !step.body?.trim()) continue;
-      const stepRes = await ctx.state.db.query(
-        `INSERT INTO recipe_steps (recipe_id, title, body, sort_order)
-         VALUES ($1, $2, $3, $4) RETURNING id`,
-        [
-          recipeId,
-          step.title?.trim() || "",
-          step.body?.trim() || "",
-          i,
-        ],
-      );
-      const stepId = stepRes.rows[0].id;
-      let mi = 0;
-      while (form.has(`steps[${i}][media][${mi}]`)) {
-        const mediaId = form.get(`steps[${i}][media][${mi}]`) as string;
-        if (mediaId) {
-          await ctx.state.db.query(
-            `INSERT INTO recipe_step_media (step_id, media_id, sort_order)
-             VALUES ($1, $2, $3)`,
-            [stepId, parseInt(mediaId), mi],
-          );
-        }
-        mi++;
-      }
-    }
-
-    const refEntries = parseFormArray(form, "refs");
-    for (let i = 0; i < refEntries.length; i++) {
-      const ref = refEntries[i];
-      if (!ref.referenced_recipe_id) continue;
-      await ctx.state.db.query(
-        `INSERT INTO recipe_references (recipe_id, referenced_recipe_id, sort_order)
-         VALUES ($1, $2, $3)
-         ON CONFLICT DO NOTHING`,
-        [recipeId, parseInt(ref.referenced_recipe_id), i],
-      );
     }
 
     return new Response(null, {
@@ -243,9 +160,9 @@ export const handler = define.handlers({
 
 export default define.page<typeof handler>(function NewRecipePage({ data }) {
   const { ingredients, allTools, allRecipes, error } = data as {
-    ingredients: Record<string, unknown>[];
-    allTools: Record<string, unknown>[];
-    allRecipes: Record<string, unknown>[];
+    ingredients: Ingredient[];
+    allTools: Tool[];
+    allRecipes: Recipe[];
     error?: string;
   };
 
@@ -296,6 +213,44 @@ export default define.page<typeof handler>(function NewRecipePage({ data }) {
             <DurationInput name="prep_time" label="Prep time" />
             <DurationInput name="cook_time" label="Cook time" />
           </div>
+          <label class="flex items-center gap-2 mt-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="private"
+              class="size-4 accent-orange-600"
+            />
+            <span class="text-sm">Private (only visible to household members)</span>
+          </label>
+          <FormField label="Meal Type">
+            <div class="flex flex-wrap gap-2">
+              {["breakfast", "lunch", "dinner", "snack", "dessert", "appetizer", "side", "drink"].map((mt) => (
+                <label key={mt} class="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="meal_type"
+                    value={mt}
+                    class="size-4 accent-orange-600"
+                  />
+                  <span class="text-sm capitalize">{mt}</span>
+                </label>
+              ))}
+            </div>
+          </FormField>
+          <FormField label="Dietary">
+            <div class="flex flex-wrap gap-2">
+              {["vegetarian", "vegan", "gluten-free", "dairy-free", "nut-free", "low-carb", "keto", "paleo"].map((dt) => (
+                <label key={dt} class="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="dietary"
+                    value={dt}
+                    class="size-4 accent-orange-600"
+                  />
+                  <span class="text-sm capitalize">{dt}</span>
+                </label>
+              ))}
+            </div>
+          </FormField>
         </div>
 
         <div class="card">
@@ -304,8 +259,8 @@ export default define.page<typeof handler>(function NewRecipePage({ data }) {
             initialIngredients={[]}
             ingredients={ingredients.map((g) => ({
               id: String(g.id),
-              name: String(g.name),
-              unit: String(g.unit ?? ""),
+              name: g.name,
+              unit: g.unit ?? "",
             }))}
           />
         </div>
@@ -316,7 +271,7 @@ export default define.page<typeof handler>(function NewRecipePage({ data }) {
             initialTools={[]}
             tools={allTools.map((m) => ({
               id: String(m.id),
-              name: String(m.name),
+              name: m.name,
             }))}
           />
         </div>
@@ -339,7 +294,7 @@ export default define.page<typeof handler>(function NewRecipePage({ data }) {
             initialRefs={[]}
             recipes={allRecipes.map((r) => ({
               id: String(r.id),
-              title: String(r.title),
+              title: r.title,
             }))}
           />
         </div>

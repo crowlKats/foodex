@@ -1,6 +1,8 @@
 import { useSignal } from "@preact/signals";
 import { evaluateTemplate, scaleIngredients } from "../lib/template.ts";
 import { marked } from "marked";
+
+marked.use({ renderer: { html: () => "" } });
 import TbEye from "tb-icons/TbEye";
 import TbX from "tb-icons/TbX";
 

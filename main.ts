@@ -1,22 +1,30 @@
 import { App, staticFiles } from "fresh";
-import { define, type State } from "./utils.ts";
-import { query } from "./db/mod.ts";
+import { define, type State, type User } from "./utils.ts";
+import { cleanupOrphanedMedia, query, transaction } from "./db/mod.ts";
 import { getSessionIdFromRequest } from "./lib/auth.ts";
+import { deleteFile } from "./lib/s3.ts";
+import type { Household } from "./db/types.ts";
 
 export const app = new App<State>();
 
 app.use(staticFiles());
 
 app.use(define.middleware(async (ctx) => {
-  ctx.state.db = { query };
+  ctx.state.db = { query, transaction };
   ctx.state.user = null;
   ctx.state.shoppingListCount = 0;
-  ctx.state.pantryUrl = null;
   ctx.state.householdId = null;
+  ctx.state.pageTitle = "Foodex";
 
   const sessionId = getSessionIdFromRequest(ctx.req);
   if (sessionId) {
-    const result = await query(
+    // Opportunistic cleanup (~1% of requests)
+    if (Math.random() < 0.01) {
+      query("DELETE FROM sessions WHERE expires_at < now()").catch(() => {});
+      cleanupOrphanedMedia(deleteFile).catch(() => {});
+    }
+
+    const result = await query<User>(
       `SELECT u.id, u.name, u.email, u.avatar_url
        FROM sessions s
        JOIN users u ON u.id = s.user_id
@@ -26,30 +34,28 @@ app.use(define.middleware(async (ctx) => {
     if (result.rows.length > 0) {
       const row = result.rows[0];
       ctx.state.user = {
-        id: row.id as number,
-        name: row.name as string,
-        email: row.email as string | null,
-        avatar_url: row.avatar_url as string | null,
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        avatar_url: row.avatar_url,
       };
 
-      const countRes = await query(
-        `SELECT COUNT(*) as cnt FROM shopping_list_items sli
-         JOIN shopping_lists sl ON sl.id = sli.shopping_list_id
-         WHERE sl.user_id = $1 AND sli.checked = false`,
-        [row.id],
-      );
-      ctx.state.shoppingListCount = Number(countRes.rows[0].cnt);
-
-      const householdRes = await query(
+      const householdRes = await query<Pick<Household, "id">>(
         `SELECT h.id FROM households h
          JOIN household_members hm ON hm.household_id = h.id
          WHERE hm.user_id = $1`,
         [row.id],
       );
       if (householdRes.rows.length > 0) {
-        const hid = householdRes.rows[0].id as number;
-        ctx.state.householdId = hid;
-        ctx.state.pantryUrl = `/households/${hid}/pantry`;
+        ctx.state.householdId = householdRes.rows[0].id;
+
+        const countRes = await query<{ cnt: number }>(
+          `SELECT COUNT(*) as cnt FROM shopping_list_items sli
+           JOIN shopping_lists sl ON sl.id = sli.shopping_list_id
+           WHERE sl.household_id = $1 AND sli.checked = false`,
+          [ctx.state.householdId],
+        );
+        ctx.state.shoppingListCount = countRes.rows[0].cnt;
       }
     }
   }

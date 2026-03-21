@@ -1,5 +1,6 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
+import type { Ingredient, Media, Recipe, Tool } from "../../db/types.ts";
 import type { OcrRecipeData } from "../../lib/ocr.ts";
 import QuantityInput from "../../islands/QuantityInput.tsx";
 import IngredientForm from "../../islands/IngredientForm.tsx";
@@ -22,18 +23,17 @@ export const handler = define.handlers({
       });
     }
 
-    const ingredientsRes = await ctx.state.db.query(
+    const ingredientsRes = await ctx.state.db.query<Ingredient>(
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
-    const allToolsRes = await ctx.state.db.query(
-      "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
-      [ctx.state.householdId],
+    const allToolsRes = await ctx.state.db.query<Tool>(
+      "SELECT id, name FROM tools ORDER BY name",
     );
-    const allRecipesRes = await ctx.state.db.query(
-      "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
-      [ctx.state.householdId],
+    const allRecipesRes = await ctx.state.db.query<Recipe>(
+      "SELECT id, title, slug FROM recipes ORDER BY title",
     );
 
+    ctx.state.pageTitle = "Import Recipe";
     return page({
       ingredients: ingredientsRes.rows,
       allTools: allToolsRes.rows,
@@ -48,16 +48,14 @@ export const handler = define.handlers({
     const ocrJson = form.get("ocr_result") as string | null;
     const coverImageId = form.get("cover_image_id") as string | null;
 
-    const ingredientsRes = await ctx.state.db.query(
+    const ingredientsRes = await ctx.state.db.query<Ingredient>(
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
-    const allToolsRes = await ctx.state.db.query(
-      "SELECT id, name FROM tools WHERE household_id = $1 ORDER BY name",
-      [ctx.state.householdId],
+    const allToolsRes = await ctx.state.db.query<Tool>(
+      "SELECT id, name FROM tools ORDER BY name",
     );
-    const allRecipesRes = await ctx.state.db.query(
-      "SELECT id, title, slug FROM recipes WHERE household_id = $1 ORDER BY title",
-      [ctx.state.householdId],
+    const allRecipesRes = await ctx.state.db.query<Recipe>(
+      "SELECT id, title, slug FROM recipes ORDER BY title",
     );
 
     const baseData = {
@@ -85,7 +83,7 @@ export const handler = define.handlers({
         content_type: string;
       } | null = null;
       if (coverImageId) {
-        const mediaRes = await ctx.state.db.query(
+        const mediaRes = await ctx.state.db.query<Media>(
           "SELECT id, url, filename, content_type FROM media WHERE id = $1",
           [parseInt(coverImageId)],
         );
@@ -93,9 +91,9 @@ export const handler = define.handlers({
           const m = mediaRes.rows[0];
           coverImage = {
             id: String(m.id),
-            url: String(m.url),
-            filename: String(m.filename),
-            content_type: String(m.content_type),
+            url: m.url,
+            filename: m.filename ?? "",
+            content_type: m.content_type,
           };
         }
       }
@@ -115,9 +113,9 @@ export const handler = define.handlers({
 export default define.page<typeof handler>(function ImportRecipePage({ data }) {
   const { ingredients, allTools, allRecipes, ocr, coverImage, error } =
     data as {
-      ingredients: Record<string, unknown>[];
-      allTools: Record<string, unknown>[];
-      allRecipes: Record<string, unknown>[];
+      ingredients: Ingredient[];
+      allTools: Tool[];
+      allRecipes: Recipe[];
       ocr: OcrRecipeData | null;
       coverImage: {
         id: string;
@@ -234,8 +232,8 @@ export default define.page<typeof handler>(function ImportRecipePage({ data }) {
                 }))}
                 ingredients={ingredients.map((g) => ({
                   id: String(g.id),
-                  name: String(g.name),
-                  unit: String(g.unit ?? ""),
+                  name: g.name,
+                  unit: g.unit ?? "",
                 }))}
               />
             </div>
@@ -246,7 +244,7 @@ export default define.page<typeof handler>(function ImportRecipePage({ data }) {
                 initialTools={[]}
                 tools={allTools.map((m) => ({
                   id: String(m.id),
-                  name: String(m.name),
+                  name: m.name,
                 }))}
               />
             </div>
@@ -290,7 +288,7 @@ export default define.page<typeof handler>(function ImportRecipePage({ data }) {
                 initialRefs={[]}
                 recipes={allRecipes.map((r) => ({
                   id: String(r.id),
-                  title: String(r.title),
+                  title: r.title,
                 }))}
               />
             </div>

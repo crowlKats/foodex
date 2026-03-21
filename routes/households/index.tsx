@@ -2,6 +2,7 @@ import { page } from "fresh";
 import { define } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import type { Household, HouseholdInvite } from "../../db/types.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -13,7 +14,7 @@ export const handler = define.handlers({
     }
 
     // If user already belongs to a household, redirect to it
-    const result = await ctx.state.db.query(
+    const result = await ctx.state.db.query<Pick<Household, "id">>(
       `SELECT h.id FROM households h
        JOIN household_members hm ON hm.household_id = h.id AND hm.user_id = $1`,
       [ctx.state.user.id],
@@ -22,10 +23,11 @@ export const handler = define.handlers({
     if (result.rows.length > 0) {
       return new Response(null, {
         status: 303,
-        headers: { Location: `/households/${result.rows[0].id}` },
+        headers: { Location: `/household` },
       });
     }
 
+    ctx.state.pageTitle = "Join or Create Household";
     return page({});
   },
   async POST(ctx) {
@@ -37,7 +39,7 @@ export const handler = define.handlers({
     }
 
     // If user already belongs to a household, redirect to it
-    const existing = await ctx.state.db.query(
+    const existing = await ctx.state.db.query<Pick<Household, "id">>(
       `SELECT h.id FROM households h
        JOIN household_members hm ON hm.household_id = h.id AND hm.user_id = $1`,
       [ctx.state.user.id],
@@ -45,7 +47,7 @@ export const handler = define.handlers({
     if (existing.rows.length > 0) {
       return new Response(null, {
         status: 303,
-        headers: { Location: `/households/${existing.rows[0].id}` },
+        headers: { Location: `/household` },
       });
     }
 
@@ -58,7 +60,7 @@ export const handler = define.handlers({
         return page({ error: "Invite code is required" });
       }
 
-      const inviteRes = await ctx.state.db.query(
+      const inviteRes = await ctx.state.db.query<Pick<HouseholdInvite, "household_id">>(
         `SELECT hi.household_id FROM household_invites hi
          WHERE hi.code = $1 AND hi.expires_at > now()`,
         [code],
@@ -75,7 +77,7 @@ export const handler = define.handlers({
 
       return new Response(null, {
         status: 303,
-        headers: { Location: `/households/${householdId}` },
+        headers: { Location: `/household` },
       });
     }
 
@@ -85,7 +87,7 @@ export const handler = define.handlers({
       return page({ error: "Name is required" });
     }
 
-    const houseRes = await ctx.state.db.query(
+    const houseRes = await ctx.state.db.query<Pick<Household, "id">>(
       "INSERT INTO households (name, created_by) VALUES ($1, $2) RETURNING id",
       [name.trim(), ctx.state.user.id],
     );
@@ -98,7 +100,7 @@ export const handler = define.handlers({
 
     return new Response(null, {
       status: 303,
-      headers: { Location: `/households/${householdId}` },
+      headers: { Location: `/household` },
     });
   },
 });
@@ -108,7 +110,7 @@ export default define.page<typeof handler>(function HouseholdsPage({ data }) {
 
   return (
     <div class="max-w-md mx-auto mt-12">
-      <PageHeader title="Get Started" />
+      <PageHeader title="Get Started" noSearch />
 
       <p class="text-stone-500 mb-6">
         Create a new household or join an existing one to manage recipes, tools,

@@ -8,11 +8,33 @@ function getBaseUrl(req: Request): string {
   return `${url.protocol}//${url.host}`;
 }
 
-export function getGitHubAuthUrl(req: Request): string {
+export function generateOAuthState(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export function createOAuthStateCookie(state: string): string {
+  return `oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=600`;
+}
+
+export function clearOAuthStateCookie(): string {
+  return "oauth_state=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0";
+}
+
+export function getOAuthStateFromRequest(req: Request): string | null {
+  const cookie = req.headers.get("cookie");
+  if (!cookie) return null;
+  const match = cookie.match(/(?:^|;\s*)oauth_state=([^;]+)/);
+  return match ? match[1] : null;
+}
+
+export function getGitHubAuthUrl(req: Request, state: string): string {
   const params = new URLSearchParams({
     client_id: GITHUB_CLIENT_ID,
     redirect_uri: `${getBaseUrl(req)}/auth/callback/github`,
     scope: "read:user user:email",
+    state,
   });
   return `https://github.com/login/oauth/authorize?${params}`;
 }
@@ -63,13 +85,14 @@ export async function exchangeGitHubCode(
   };
 }
 
-export function getGoogleAuthUrl(req: Request): string {
+export function getGoogleAuthUrl(req: Request, state: string): string {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: `${getBaseUrl(req)}/auth/callback/google`,
     response_type: "code",
     scope: "openid email profile",
     access_type: "offline",
+    state,
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
@@ -116,11 +139,11 @@ export function generateSessionId(): string {
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
 export function createSessionCookie(sessionId: string): string {
-  return `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`;
+  return `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${SESSION_MAX_AGE}`;
 }
 
 export function clearSessionCookie(): string {
-  return "session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
+  return "session=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0";
 }
 
 export function getSessionIdFromRequest(req: Request): string | null {

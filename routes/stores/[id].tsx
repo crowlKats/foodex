@@ -4,29 +4,23 @@ import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { CURRENCIES, getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import type { IngredientPrice, Store, StoreLocation } from "../../db/types.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
-    if (!ctx.state.user || !ctx.state.householdId) {
-      return new Response(null, {
-        status: 303,
-        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
-      });
-    }
-
     const id = parseInt(ctx.params.id);
-    const storeRes = await ctx.state.db.query(
-      "SELECT * FROM stores WHERE id = $1 AND household_id = $2",
-      [id, ctx.state.householdId],
+    const storeRes = await ctx.state.db.query<Store>(
+      "SELECT * FROM stores WHERE id = $1",
+      [id],
     );
     if (storeRes.rows.length === 0) throw new HttpError(404);
 
-    const locationsRes = await ctx.state.db.query(
+    const locationsRes = await ctx.state.db.query<StoreLocation>(
       "SELECT * FROM store_locations WHERE store_id = $1 ORDER BY created_at",
       [id],
     );
 
-    const pricesRes = await ctx.state.db.query(
+    const pricesRes = await ctx.state.db.query<IngredientPrice>(
       `SELECT gp.*, g.name as ingredient_name, g.unit as ingredient_unit
        FROM ingredient_prices gp
        JOIN ingredients g ON g.id = gp.ingredient_id
@@ -35,31 +29,50 @@ export const handler = define.handlers({
       [id],
     );
 
+    let householdHasStore = false;
+    if (ctx.state.householdId) {
+      const hsRes = await ctx.state.db.query(
+        "SELECT 1 FROM household_stores WHERE household_id = $1 AND store_id = $2",
+        [ctx.state.householdId, id],
+      );
+      householdHasStore = hsRes.rows.length > 0;
+    }
+
+    ctx.state.pageTitle = storeRes.rows[0].name;
     return page({
       store: storeRes.rows[0],
       locations: locationsRes.rows,
       prices: pricesRes.rows,
+      householdHasStore,
+      loggedIn: ctx.state.user != null,
     });
   },
   async POST(ctx) {
-    if (!ctx.state.user || !ctx.state.householdId) {
-      return new Response(null, {
-        status: 303,
-        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
-      });
-    }
-
     const id = parseInt(ctx.params.id);
-
-    // Verify store belongs to household
-    const storeCheck = await ctx.state.db.query(
-      "SELECT 1 FROM stores WHERE id = $1 AND household_id = $2",
-      [id, ctx.state.householdId],
-    );
-    if (storeCheck.rows.length === 0) throw new HttpError(404);
-
     const form = await ctx.req.formData();
     const method = form.get("_method");
+
+    if (method === "TOGGLE_OWNED" && ctx.state.householdId) {
+      const existing = await ctx.state.db.query(
+        "SELECT 1 FROM household_stores WHERE household_id = $1 AND store_id = $2",
+        [ctx.state.householdId, id],
+      );
+      if (existing.rows.length > 0) {
+        await ctx.state.db.query(
+          "DELETE FROM household_stores WHERE household_id = $1 AND store_id = $2",
+          [ctx.state.householdId, id],
+        );
+      } else {
+        await ctx.state.db.query(
+          "INSERT INTO household_stores (household_id, store_id) VALUES ($1, $2)",
+          [ctx.state.householdId, id],
+        );
+      }
+      return new Response(null, {
+        status: 303,
+        headers: { Location: `/stores/${id}` },
+      });
+    }
 
     if (method === "DELETE") {
       await ctx.state.db.query("DELETE FROM stores WHERE id = $1", [id]);
@@ -115,10 +128,12 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function StoreDetail({ data }) {
-  const { store, locations, prices } = data as {
-    store: Record<string, unknown>;
-    locations: Record<string, unknown>[];
-    prices: Record<string, unknown>[];
+  const { store, locations, prices, householdHasStore, loggedIn } = data as {
+    store: Store;
+    locations: StoreLocation[];
+    prices: IngredientPrice[];
+    householdHasStore: boolean;
+    loggedIn: boolean;
   };
   return (
     <div>
@@ -136,7 +151,7 @@ export default define.page<typeof handler>(function StoreDetail({ data }) {
                 <input
                   type="text"
                   name="name"
-                  value={String(store.name)}
+                  value={store.name}
                   required
                   class="w-full"
                 />
@@ -147,7 +162,7 @@ export default define.page<typeof handler>(function StoreDetail({ data }) {
                     <option
                       key={c.code}
                       value={c.code}
-                      selected={c.code === String(store.currency ?? "EUR")}
+                      selected={c.code === (store.currency ?? "EUR")}
                     >
                       {c.symbol} {c.name}
                     </option>
@@ -163,6 +178,20 @@ export default define.page<typeof handler>(function StoreDetail({ data }) {
                 </button>
               </div>
             </form>
+
+            {loggedIn && (
+              <form method="POST" class="mt-4">
+                <input type="hidden" name="_method" value="TOGGLE_OWNED" />
+                <button
+                  type="submit"
+                  class={`btn w-full ${
+                    householdHasStore ? "btn-outline" : "btn-primary"
+                  }`}
+                >
+                  {householdHasStore ? "Remove from household" : "We shop here"}
+                </button>
+              </form>
+            )}
 
             <form method="POST" class="mt-4">
               <input type="hidden" name="_method" value="DELETE" />
@@ -183,10 +212,10 @@ export default define.page<typeof handler>(function StoreDetail({ data }) {
               <div class="space-y-2 mb-3">
                 {locations.map((loc) => (
                   <div
-                    key={String(loc.id)}
+                    key={loc.id}
                     class="card p-3 flex justify-between items-center"
                   >
-                    <span class="text-sm">{String(loc.address)}</span>
+                    <span class="text-sm">{loc.address}</span>
                     <form method="POST">
                       <input
                         type="hidden"
@@ -196,7 +225,7 @@ export default define.page<typeof handler>(function StoreDetail({ data }) {
                       <input
                         type="hidden"
                         name="location_id"
-                        value={String(loc.id)}
+                        value={loc.id}
                       />
                       <button
                         type="submit"
@@ -232,22 +261,20 @@ export default define.page<typeof handler>(function StoreDetail({ data }) {
               <div class="space-y-2">
                 {prices.map((p) => (
                   <div
-                    key={String(p.id)}
+                    key={p.id}
                     class="card p-3"
                   >
                     <a
                       href={`/ingredients/${p.ingredient_id}`}
                       class="font-medium link"
                     >
-                      {String(p.ingredient_name)}
+                      {p.ingredient_name}
                     </a>
                     <div class="text-sm text-stone-600">
-                      {getCurrencySymbol(String(store.currency ?? "EUR"))}
-                      {String(p.price)}
+                      {getCurrencySymbol(store.currency ?? "EUR")}
+                      {p.price}
                       {p.amount &&
-                        ` / ${String(p.amount)} ${
-                          String(p.ingredient_unit ?? "")
-                        }`}
+                        ` / ${p.amount} ${p.ingredient_unit ?? ""}`}
                     </div>
                   </div>
                 ))}

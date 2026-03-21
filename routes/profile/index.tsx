@@ -1,5 +1,6 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
+import type { Household } from "../../db/types.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -12,15 +13,16 @@ export const handler = define.handlers({
 
     let householdName: string | null = null;
     if (ctx.state.householdId) {
-      const res = await ctx.state.db.query(
+      const res = await ctx.state.db.query<Pick<Household, "name">>(
         "SELECT name FROM households WHERE id = $1",
         [ctx.state.householdId],
       );
       if (res.rows.length > 0) {
-        householdName = res.rows[0].name as string;
+        householdName = res.rows[0].name;
       }
     }
 
+    ctx.state.pageTitle = "Profile";
     return page({ householdName });
   },
 });
@@ -51,7 +53,7 @@ export default define.page<typeof handler>(function ProfilePage({ data, state })
         <div class="card">
           <h2 class="text-lg font-semibold mb-2">Household</h2>
           <a
-            href={`/households/${state.householdId}`}
+            href="/household"
             class="link"
           >
             {householdName}

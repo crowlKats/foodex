@@ -63,6 +63,55 @@ export const handler = define.handlers({
       );
     }
 
+    if (body.action === "deduct_recipe") {
+      const items = body.items as {
+        ingredient_id: number | null;
+        name: string;
+        amount: number | null;
+        unit: string | null;
+      }[];
+
+      for (const item of items) {
+        if (item.amount == null || item.amount <= 0) continue;
+
+        let existing;
+        if (item.ingredient_id) {
+          existing = await ctx.state.db.query(
+            `SELECT id, amount FROM pantry_items
+             WHERE household_id = $1 AND ingredient_id = $2 AND COALESCE(unit, '') = COALESCE($3, '')`,
+            [householdId, item.ingredient_id, item.unit],
+          );
+        } else {
+          existing = await ctx.state.db.query(
+            `SELECT id, amount FROM pantry_items
+             WHERE household_id = $1 AND lower(name) = lower($2) AND COALESCE(unit, '') = COALESCE($3, '')`,
+            [householdId, item.name, item.unit],
+          );
+        }
+
+        if (existing.rows.length > 0) {
+          const currentAmount = Number(existing.rows[0].amount) || 0;
+          const newAmount = currentAmount - item.amount;
+          if (newAmount <= 0) {
+            await ctx.state.db.query(
+              "DELETE FROM pantry_items WHERE id = $1",
+              [existing.rows[0].id],
+            );
+          } else {
+            await ctx.state.db.query(
+              "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
+              [newAmount, existing.rows[0].id],
+            );
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },

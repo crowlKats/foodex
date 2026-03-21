@@ -48,7 +48,7 @@ export default function MediaUpload(
         } else {
           items.value = [newItem];
         }
-      } catch {}
+      } catch { /* upload failed, ignore */ }
     }
 
     uploading.value = false;

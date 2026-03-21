@@ -4,43 +4,55 @@ import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
+import { getPage, Pagination, paginationParams } from "../../components/Pagination.tsx";
+
+const INGREDIENT_SELECT = `SELECT g.*,
+  (SELECT COUNT(*) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as store_count,
+  (SELECT MIN(gp.price) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as min_price,
+  (SELECT s.name FROM ingredient_prices gp JOIN stores s ON s.id = gp.store_id
+   WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_store,
+  (SELECT s.currency FROM ingredient_prices gp JOIN stores s ON s.id = gp.store_id
+   WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_currency
+FROM ingredients g`;
 
 export const handler = define.handlers({
   async GET(ctx) {
     const q = ctx.url.searchParams.get("q")?.trim() || "";
+    const currentPage = getPage(ctx.url);
+    const { limit, offset } = paginationParams(currentPage);
 
-    let result;
+    let result, countRes;
     if (q) {
-      result = await ctx.state.db.query(
-        `SELECT g.*,
-          (SELECT COUNT(*) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as store_count,
-          (SELECT MIN(gp.price) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as min_price,
-          (SELECT s.name FROM ingredient_prices gp JOIN stores s ON s.id = gp.store_id
-           WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_store,
-          (SELECT s.currency FROM ingredient_prices gp JOIN stores s ON s.id = gp.store_id
-           WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_currency
-         FROM ingredients g
-         WHERE g.search_vector @@ plainto_tsquery('english', $1)
-         ORDER BY g.name`,
-        [q],
-      );
+      [result, countRes] = await Promise.all([
+        ctx.state.db.query(
+          `${INGREDIENT_SELECT}
+           WHERE g.search_vector @@ plainto_tsquery('english', $1)
+           ORDER BY g.name LIMIT $2 OFFSET $3`,
+          [q, limit, offset],
+        ),
+        ctx.state.db.query(
+          `SELECT COUNT(*) as cnt FROM ingredients
+           WHERE search_vector @@ plainto_tsquery('english', $1)`,
+          [q],
+        ),
+      ]);
     } else {
-      result = await ctx.state.db.query(
-        `SELECT g.*,
-          (SELECT COUNT(*) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as store_count,
-          (SELECT MIN(gp.price) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as min_price,
-          (SELECT s.name FROM ingredient_prices gp JOIN stores s ON s.id = gp.store_id
-           WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_store,
-          (SELECT s.currency FROM ingredient_prices gp JOIN stores s ON s.id = gp.store_id
-           WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_currency
-         FROM ingredients g
-         ORDER BY g.name`,
-      );
+      [result, countRes] = await Promise.all([
+        ctx.state.db.query(
+          `${INGREDIENT_SELECT} ORDER BY g.name LIMIT $1 OFFSET $2`,
+          [limit, offset],
+        ),
+        ctx.state.db.query("SELECT COUNT(*) as cnt FROM ingredients"),
+      ]);
     }
+    const totalCount = Number(countRes.rows[0].cnt);
+
     const storesRes = await ctx.state.db.query(
       "SELECT * FROM stores ORDER BY name",
     );
-    return page({ ingredients: result.rows, stores: storesRes.rows, q });
+    const error = ctx.url.searchParams.get("error") || undefined;
+    ctx.state.pageTitle = "Ingredients";
+    return page({ ingredients: result.rows, stores: storesRes.rows, q, currentPage, totalCount, error });
   },
   async POST(ctx) {
     const form = await ctx.req.formData();
@@ -51,23 +63,9 @@ export const handler = define.handlers({
     const amount = form.get("amount") as string;
 
     if (!name?.trim()) {
-      const result = await ctx.state.db.query(
-        `SELECT g.*,
-          (SELECT COUNT(*) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as store_count,
-          (SELECT MIN(gp.price) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as min_price,
-          (SELECT s.name FROM ingredient_prices gp JOIN stores s ON s.id = gp.store_id
-           WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_store,
-          (SELECT s.currency FROM ingredient_prices gp JOIN stores s ON s.id = gp.store_id
-           WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_currency
-         FROM ingredients g ORDER BY g.name`,
-      );
-      const storesRes = await ctx.state.db.query(
-        "SELECT * FROM stores ORDER BY name",
-      );
-      return page({
-        ingredients: result.rows,
-        stores: storesRes.rows,
-        error: "Name is required",
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/ingredients?error=Name+is+required" },
       });
     }
 
@@ -100,12 +98,14 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function IngredientsPage({ data }) {
-  const { ingredients, stores, error, q } = data as {
+export default define.page<typeof handler>(function IngredientsPage({ data, url }) {
+  const { ingredients, stores, error, q, currentPage, totalCount } = data as {
     ingredients: Record<string, unknown>[];
     stores: Record<string, unknown>[];
     error?: string;
     q: string;
+    currentPage: number;
+    totalCount: number;
   };
 
   return (
@@ -180,7 +180,7 @@ export default define.page<typeof handler>(function IngredientsPage({ data }) {
 
         <div class="lg:col-span-2">
           <h2 class="text-lg font-semibold mb-3">
-            All Ingredients ({ingredients.length})
+            All Ingredients ({totalCount})
           </h2>
           {ingredients.length === 0
             ? <p class="text-stone-500">No ingredients yet.</p>
@@ -233,6 +233,7 @@ export default define.page<typeof handler>(function IngredientsPage({ data }) {
                 ))}
               </div>
             )}
+          <Pagination currentPage={currentPage} totalCount={totalCount} url={url} />
         </div>
       </div>
     </div>

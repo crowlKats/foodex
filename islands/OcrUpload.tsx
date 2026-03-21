@@ -92,7 +92,7 @@ export default function OcrUpload() {
             files.value[data.cover_image.image_index],
             data.cover_image,
           );
-        } catch {}
+        } catch { /* crop failed, skip cover */ }
       }
 
       const form = document.createElement("form");

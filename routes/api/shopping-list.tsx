@@ -1,63 +1,55 @@
 import { define } from "../../utils.ts";
+import type { QueryFn } from "../../db/mod.ts";
+import type { ShoppingList, ShoppingListItem, PantryItem } from "../../db/types.ts";
 
 async function getOrCreateList(
-  db: { query: (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }> },
-  userId: number,
+  db: { query: QueryFn },
+  householdId: number,
 ): Promise<number> {
-  const res = await db.query(
-    "SELECT id FROM shopping_lists WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1",
-    [userId],
+  const res = await db.query<Pick<ShoppingList, "id">>(
+    "SELECT id FROM shopping_lists WHERE household_id = $1 ORDER BY created_at DESC LIMIT 1",
+    [householdId],
   );
-  if (res.rows.length > 0) return res.rows[0].id as number;
-  const create = await db.query(
-    "INSERT INTO shopping_lists (user_id) VALUES ($1) RETURNING id",
-    [userId],
+  if (res.rows.length > 0) return res.rows[0].id;
+  const create = await db.query<Pick<ShoppingList, "id">>(
+    "INSERT INTO shopping_lists (household_id) VALUES ($1) RETURNING id",
+    [householdId],
   );
-  return create.rows[0].id as number;
+  return create.rows[0].id;
 }
 
 export const handler = define.handlers({
   async POST(ctx) {
-    if (!ctx.state.user) {
+    if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, { status: 401 });
     }
 
     const body = await ctx.req.json();
-    const listId = await getOrCreateList(ctx.state.db, ctx.state.user.id);
+    const listId = await getOrCreateList(ctx.state.db, ctx.state.householdId);
 
     if (body.action === "add_recipe") {
-      const { recipe_id, scale } = body as {
+      const { recipe_id, items } = body as {
         recipe_id: number;
-        scale: number;
+        items: { ingredient_id: number | null; name: string; amount: number | null; unit: string | null }[];
         action: string;
       };
-      const ratio = scale || 1;
 
-      const ingredientsRes = await ctx.state.db.query(
-        `SELECT ri.ingredient_id, ri.name, ri.amount, ri.unit
-         FROM recipe_ingredients ri
-         WHERE ri.recipe_id = $1
-         ORDER BY ri.sort_order`,
-        [recipe_id],
-      );
-
-      const maxRes = await ctx.state.db.query(
+      const maxRes = await ctx.state.db.query<{ max_order: number }>(
         "SELECT COALESCE(MAX(sort_order), -1) as max_order FROM shopping_list_items WHERE shopping_list_id = $1",
         [listId],
       );
-      let sortOrder = (maxRes.rows[0].max_order as number) + 1;
+      let sortOrder = maxRes.rows[0].max_order + 1;
 
-      for (const ing of ingredientsRes.rows) {
-        const amount = ing.amount != null ? Number(ing.amount) * ratio : null;
+      for (const item of items) {
         await ctx.state.db.query(
           `INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, name, amount, unit, recipe_id, sort_order)
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             listId,
-            ing.ingredient_id ?? null,
-            String(ing.name),
-            amount,
-            ing.unit ?? null,
+            item.ingredient_id ?? null,
+            item.name,
+            item.amount,
+            item.unit ?? null,
             recipe_id,
             sortOrder++,
           ],
@@ -72,15 +64,16 @@ export const handler = define.handlers({
     if (body.action === "add_ingredient") {
       const { ingredient_id, name, amount, unit, recipe_id } = body;
 
-      const maxRes = await ctx.state.db.query(
+      const maxRes = await ctx.state.db.query<{ max_order: number }>(
         "SELECT COALESCE(MAX(sort_order), -1) as max_order FROM shopping_list_items WHERE shopping_list_id = $1",
         [listId],
       );
-      const sortOrder = (maxRes.rows[0].max_order as number) + 1;
+      const sortOrder = maxRes.rows[0].max_order + 1;
 
-      await ctx.state.db.query(
+      const insertRes = await ctx.state.db.query<Pick<ShoppingListItem, "id">>(
         `INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, name, amount, unit, recipe_id, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id`,
         [
           listId,
           ingredient_id ?? null,
@@ -92,7 +85,7 @@ export const handler = define.handlers({
         ],
       );
 
-      return new Response(JSON.stringify({ ok: true, list_id: listId }), {
+      return new Response(JSON.stringify({ ok: true, list_id: listId, item_id: insertRes.rows[0].id }), {
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -110,6 +103,62 @@ export const handler = define.handlers({
           "UPDATE shopping_list_items SET checked = $1 WHERE id = $2 AND shopping_list_id = $3",
           [checked, item_id, listId],
         );
+
+        // When checking off (buying), add to pantry
+        if (checked && ctx.state.householdId) {
+          const itemRes = await ctx.state.db.query<Pick<ShoppingListItem, "ingredient_id" | "name" | "amount" | "unit">>(
+            "SELECT ingredient_id, name, amount, unit FROM shopping_list_items WHERE id = $1",
+            [item_id],
+          );
+          if (itemRes.rows.length > 0) {
+            const item = itemRes.rows[0];
+            // If ingredient already in pantry with same unit, add amount
+            if (item.ingredient_id) {
+              const existing = await ctx.state.db.query<Pick<PantryItem, "id" | "amount">>(
+                `SELECT id, amount FROM pantry_items
+                 WHERE household_id = $1 AND ingredient_id = $2 AND COALESCE(unit, '') = COALESCE($3, '')`,
+                [ctx.state.householdId, item.ingredient_id, item.unit],
+              );
+              if (existing.rows.length > 0) {
+                const newAmount = item.amount != null
+                  ? (existing.rows[0].amount || 0) + item.amount
+                  : existing.rows[0].amount;
+                await ctx.state.db.query(
+                  "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
+                  [newAmount, existing.rows[0].id],
+                );
+              } else {
+                await ctx.state.db.query(
+                  `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit)
+                   VALUES ($1, $2, $3, $4, $5)`,
+                  [ctx.state.householdId, item.ingredient_id, item.name, item.amount, item.unit],
+                );
+              }
+            } else {
+              // No ingredient_id, match by name
+              const existing = await ctx.state.db.query<Pick<PantryItem, "id" | "amount">>(
+                `SELECT id, amount FROM pantry_items
+                 WHERE household_id = $1 AND lower(name) = lower($2) AND COALESCE(unit, '') = COALESCE($3, '')`,
+                [ctx.state.householdId, item.name, item.unit],
+              );
+              if (existing.rows.length > 0) {
+                const newAmount = item.amount != null
+                  ? (existing.rows[0].amount || 0) + item.amount
+                  : existing.rows[0].amount;
+                await ctx.state.db.query(
+                  "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
+                  [newAmount, existing.rows[0].id],
+                );
+              } else {
+                await ctx.state.db.query(
+                  `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit)
+                   VALUES ($1, $2, $3, $4, $5)`,
+                  [ctx.state.householdId, null, item.name, item.amount, item.unit],
+                );
+              }
+            }
+          }
+        }
       }
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json" },

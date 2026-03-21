@@ -1,6 +1,11 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
-import { getGitHubAuthUrl, getGoogleAuthUrl } from "../../lib/auth.ts";
+import {
+  createOAuthStateCookie,
+  generateOAuthState,
+  getGitHubAuthUrl,
+  getGoogleAuthUrl,
+} from "../../lib/auth.ts";
 import TbBrandGithub from "tb-icons/TbBrandGithub";
 import TbBrandGoogle from "tb-icons/TbBrandGoogle";
 
@@ -12,10 +17,14 @@ export const handler = define.handlers({
         headers: { Location: "/" },
       });
     }
+    const state = generateOAuthState();
     const baseUrl = `${ctx.url.protocol}//${ctx.url.host}`;
+    const req = new Request(baseUrl);
+    ctx.resp.headers.set("Set-Cookie", createOAuthStateCookie(state));
+    ctx.state.pageTitle = "Sign In";
     return page({
-      githubUrl: getGitHubAuthUrl(new Request(baseUrl)),
-      googleUrl: getGoogleAuthUrl(new Request(baseUrl)),
+      githubUrl: getGitHubAuthUrl(req, state),
+      googleUrl: getGoogleAuthUrl(req, state),
     });
   },
 });

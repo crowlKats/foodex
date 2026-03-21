@@ -1,6 +1,9 @@
 import { useSignal } from "@preact/signals";
 import { computeIngredientCost } from "../lib/unit-convert.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
+import SearchSelect from "./SearchSelect.tsx";
+import type { SearchSelectOption } from "./SearchSelect.tsx";
+import { UNIT_GROUPS } from "../lib/units.ts";
 
 interface ShoppingItem {
   id: number;
@@ -28,11 +31,18 @@ interface PriceInfo {
   currency: string;
 }
 
+interface IngredientOption {
+  id: string;
+  name: string;
+  unit?: string;
+}
+
 interface Props {
   initialItems: ShoppingItem[];
   stores: Store[];
   pricesMap: Record<string, PriceInfo[]>;
   initialViewMode: ViewMode;
+  ingredients: IngredientOption[];
 }
 
 type ViewMode = "recipe" | "store";
@@ -52,10 +62,15 @@ const REMOVE_COL = "w-5 shrink-0 text-center";
 const CHECK_COL = "w-5 shrink-0";
 
 export default function ShoppingListView(
-  { initialItems, stores, pricesMap, initialViewMode }: Props,
+  { initialItems, stores, pricesMap, initialViewMode, ingredients }: Props,
 ) {
   const items = useSignal<ShoppingItem[]>(initialItems);
   const viewMode = useSignal<ViewMode>(initialViewMode);
+  const addSelected = useSignal<{ id: string; name: string }>({ id: "", name: "" });
+  const addName = useSignal("");
+  const addAmount = useSignal("");
+  const addUnit = useSignal("");
+  const adding = useSignal(false);
 
   function setViewMode(mode: ViewMode) {
     viewMode.value = mode;
@@ -124,6 +139,57 @@ export default function ShoppingListView(
   async function clearAll() {
     items.value = [];
     await apiCall({ action: "clear_all" });
+  }
+
+  const addOptions: SearchSelectOption[] = ingredients.map((i) => ({
+    id: i.id,
+    name: i.name,
+    detail: i.unit,
+  }));
+
+  async function addItem() {
+    const name = addSelected.value.id
+      ? addSelected.value.name
+      : addName.value.trim();
+    if (!name) return;
+
+    adding.value = true;
+    const ingredientId = addSelected.value.id
+      ? parseInt(addSelected.value.id)
+      : null;
+    const amount = addAmount.value ? parseFloat(addAmount.value) : null;
+    const unit = addUnit.value || null;
+
+    const res = await apiCall({
+      action: "add_ingredient",
+      ingredient_id: ingredientId,
+      name,
+      amount,
+      unit,
+      recipe_id: null,
+    });
+
+    if (res.ok) {
+      items.value = [
+        ...items.value,
+        {
+          id: res.item_id as number,
+          ingredient_id: ingredientId,
+          name,
+          amount,
+          unit,
+          store_id: null,
+          checked: false,
+          recipe_title: null,
+          recipe_slug: null,
+        },
+      ];
+      addSelected.value = { id: "", name: "" };
+      addName.value = "";
+      addAmount.value = "";
+      addUnit.value = "";
+    }
+    adding.value = false;
   }
 
   function formatAmount(amount: number): string {
@@ -469,13 +535,79 @@ export default function ShoppingListView(
 
   return (
     <div>
+      <div class="card mb-4">
+        <div class="flex gap-2 items-end">
+          <div class="flex-1 min-w-0">
+            <label class="block text-xs font-medium mb-1">Item</label>
+            <SearchSelect
+              value={addSelected.value}
+              options={addOptions}
+              placeholder="Search or type a name..."
+              onSelect={(o) => {
+                addSelected.value = { id: o.id, name: o.name };
+                addName.value = o.name;
+                const ing = ingredients.find((i) => i.id === o.id);
+                if (ing?.unit) addUnit.value = ing.unit;
+              }}
+              onClear={() => {
+                addSelected.value = { id: "", name: "" };
+                addName.value = "";
+              }}
+              onChange={(text) => {
+                addName.value = text;
+              }}
+            />
+          </div>
+          <div class="w-20">
+            <label class="block text-xs font-medium mb-1">Qty</label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={addAmount}
+              class="w-full"
+              onInput={(e) => {
+                addAmount.value = (e.target as HTMLInputElement).value;
+              }}
+            />
+          </div>
+          <div class="w-24">
+            <label class="block text-xs font-medium mb-1">Unit</label>
+            <select
+              value={addUnit}
+              class="w-full"
+              onChange={(e) => {
+                addUnit.value = (e.target as HTMLSelectElement).value;
+              }}
+            >
+              <option value="">—</option>
+              {UNIT_GROUPS.map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.units.map((u) => (
+                    <option key={u.name} value={u.name}>
+                      {u.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            class="btn btn-primary"
+            disabled={adding.value ||
+              (!addSelected.value.id && !addName.value.trim())}
+            onClick={addItem}
+          >
+            Add
+          </button>
+        </div>
+      </div>
+
       {items.value.length === 0
         ? (
           <div class="card text-center py-8">
-            <p class="text-stone-500 mb-2">Your shopping list is empty.</p>
-            <p class="text-sm text-stone-400">
-              Add ingredients from any recipe page.
-            </p>
+            <p class="text-stone-500">Your shopping list is empty.</p>
           </div>
         )
         : (

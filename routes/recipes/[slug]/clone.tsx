@@ -144,6 +144,20 @@ export const handler = define.handlers({
       );
     }
 
+    // Clone tags
+    const tagsRes = await ctx.state.db.query(
+      `SELECT * FROM recipe_tags WHERE recipe_id = $1`,
+      [recipe.id],
+    );
+    for (const tag of tagsRes.rows) {
+      await ctx.state.db.query(
+        `INSERT INTO recipe_tags (recipe_id, tag_type, tag_value)
+         VALUES ($1, $2, $3)
+         ON CONFLICT DO NOTHING`,
+        [newRecipeId, tag.tag_type, tag.tag_value],
+      );
+    }
+
     return new Response(null, {
       status: 303,
       headers: { Location: `/recipes/${newSlug}/edit` },
