@@ -15,11 +15,18 @@ import { PageHeader } from "../../components/PageHeader.tsx";
 import { formatDuration } from "../../lib/duration.ts";
 import { formatQuantity } from "../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../lib/quantity.ts";
+import {
+  DIETARY_TAGS,
+  DIFFICULTY_LEVELS,
+  MEAL_TYPES,
+} from "../../lib/recipe-tags.ts";
 import TbClock from "tb-icons/TbClock";
 import TbFlame from "tb-icons/TbFlame";
 import TbHeart from "tb-icons/TbHeart";
 import TbHeartFilled from "tb-icons/TbHeartFilled";
 import TbUsers from "tb-icons/TbUsers";
+import TbFilter from "tb-icons/TbFilter";
+import TbX from "tb-icons/TbX";
 
 function buildRecipeQuery(opts: {
   householdId: number | null;
@@ -27,6 +34,9 @@ function buildRecipeQuery(opts: {
   favoritesOnly: boolean;
   userId?: number;
   cookableOnly: boolean;
+  difficulty: string[];
+  mealTypes: string[];
+  dietary: string[];
 }) {
   const joins: string[] = ["LEFT JOIN media m ON m.id = r.cover_image_id"];
   const wheres: string[] = [];
@@ -82,6 +92,31 @@ function buildRecipeQuery(opts: {
     p++;
   }
 
+  // Difficulty filter
+  if (opts.difficulty.length > 0) {
+    wheres.push(`r.difficulty = ANY($${p})`);
+    params.push(opts.difficulty);
+    p++;
+  }
+
+  // Meal type filter (recipe must have ALL selected meal types)
+  for (const mt of opts.mealTypes) {
+    wheres.push(
+      `EXISTS (SELECT 1 FROM recipe_tags rt WHERE rt.recipe_id = r.id AND rt.tag_type = 'meal_type' AND rt.tag_value = $${p})`,
+    );
+    params.push(mt);
+    p++;
+  }
+
+  // Dietary filter (recipe must have ALL selected dietary tags)
+  for (const dt of opts.dietary) {
+    wheres.push(
+      `EXISTS (SELECT 1 FROM recipe_tags rt WHERE rt.recipe_id = r.id AND rt.tag_type = 'dietary' AND rt.tag_value = $${p})`,
+    );
+    params.push(dt);
+    p++;
+  }
+
   const joinSql = joins.join("\n             ");
   const whereSql = wheres.join(" AND ");
   const distinct = needsDistinct ? "DISTINCT " : "";
@@ -99,6 +134,17 @@ function buildRecipeQuery(opts: {
   };
 }
 
+/** Parse a multi-value param (comma-separated or repeated keys), validated against allowed values. */
+function parseMultiParam(
+  url: URL,
+  key: string,
+  allowed: readonly string[],
+): string[] {
+  const vals = url.searchParams.getAll(key).flatMap((v) => v.split(","));
+  const set = new Set(allowed);
+  return vals.filter((v) => set.has(v));
+}
+
 export const handler = define.handlers({
   async GET(ctx) {
     const q = ctx.url.searchParams.get("q")?.trim() || "";
@@ -110,12 +156,23 @@ export const handler = define.handlers({
     const cookableOnly =
       !!(ctx.url.searchParams.get("cookable") === "1" && ctx.state.householdId);
 
+    const difficulty = parseMultiParam(
+      ctx.url,
+      "difficulty",
+      DIFFICULTY_LEVELS,
+    );
+    const mealTypes = parseMultiParam(ctx.url, "meal_type", MEAL_TYPES);
+    const dietary = parseMultiParam(ctx.url, "dietary", DIETARY_TAGS);
+
     const built = buildRecipeQuery({
       householdId,
       q,
       favoritesOnly,
       userId: ctx.state.user?.id,
       cookableOnly,
+      difficulty,
+      mealTypes,
+      dietary,
     });
 
     const [result, countRes] = await Promise.all([
@@ -176,17 +233,64 @@ export const handler = define.handlers({
       cookableOnly,
       hasHousehold: !!householdId,
       drafts,
+      difficulty,
+      mealTypes,
+      dietary,
     });
   },
 });
 
-function filterUrl(base: Record<string, string | undefined>): string {
+/** Build a URL preserving all current filter state, with overrides applied. */
+function filterUrl(
+  current: {
+    q?: string;
+    favorites?: boolean;
+    cookable?: boolean;
+    difficulty?: string[];
+    mealTypes?: string[];
+    dietary?: string[];
+  },
+  overrides: Record<string, string | string[] | undefined>,
+): string {
   const p = new URLSearchParams();
-  for (const [k, v] of Object.entries(base)) {
-    if (v) p.set(k, v);
+  // Merge current state
+  if (current.q) p.set("q", current.q);
+  if (current.favorites) p.set("favorites", "1");
+  if (current.cookable) p.set("cookable", "1");
+  for (const v of current.difficulty ?? []) p.append("difficulty", v);
+  for (const v of current.mealTypes ?? []) p.append("meal_type", v);
+  for (const v of current.dietary ?? []) p.append("dietary", v);
+  // Apply overrides (undefined = remove, string = set, string[] = replace all)
+  for (const [k, v] of Object.entries(overrides)) {
+    p.delete(k);
+    if (v === undefined) continue;
+    if (Array.isArray(v)) {
+      for (const val of v) p.append(k, val);
+    } else {
+      p.set(k, v);
+    }
   }
+  // Always reset to page 1 when filters change
+  p.delete("page");
   const s = p.toString();
   return `/recipes${s ? `?${s}` : ""}`;
+}
+
+function FilterChip(
+  { label, href, active }: { label: string; href: string; active: boolean },
+) {
+  return (
+    <a
+      href={href}
+      class={`inline-block text-xs px-2 py-1 rounded-full border transition-colors capitalize ${
+        active
+          ? "bg-orange-100 dark:bg-orange-900 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300"
+          : "border-stone-300 dark:border-stone-600 text-stone-600 dark:text-stone-400 hover:border-stone-400 dark:hover:border-stone-500"
+      }`}
+    >
+      {label}
+    </a>
+  );
 }
 
 export default define.page<typeof handler>(function RecipesPage({
@@ -200,10 +304,35 @@ export default define.page<typeof handler>(function RecipesPage({
     cookableOnly,
     hasHousehold,
     drafts,
+    difficulty,
+    mealTypes,
+    dietary,
   },
   url,
 }) {
-  const qParam = q || undefined;
+  const current = {
+    q: q || undefined,
+    favorites: favoritesOnly,
+    cookable: cookableOnly,
+    difficulty,
+    mealTypes,
+    dietary,
+  };
+
+  const hasFilters = difficulty.length > 0 || mealTypes.length > 0 ||
+    dietary.length > 0;
+
+  function toggleArrayFilter(
+    key: string,
+    value: string,
+    arr: string[],
+  ): string {
+    const next = arr.includes(value)
+      ? arr.filter((v) => v !== value)
+      : [...arr, value];
+    return filterUrl(current, { [key]: next.length > 0 ? next : undefined });
+  }
+
   return (
     <div>
       <PageHeader title="Recipes" query={q}>
@@ -211,16 +340,9 @@ export default define.page<typeof handler>(function RecipesPage({
           <>
             {hasHousehold && (
               <a
-                href={cookableOnly
-                  ? filterUrl({
-                    q: qParam,
-                    favorites: favoritesOnly ? "1" : undefined,
-                  })
-                  : filterUrl({
-                    q: qParam,
-                    favorites: favoritesOnly ? "1" : undefined,
-                    cookable: "1",
-                  })}
+                href={filterUrl(current, {
+                  cookable: cookableOnly ? undefined : "1",
+                })}
                 class={`btn ${cookableOnly ? "btn-primary" : "btn-outline"}`}
                 title={cookableOnly ? "Show all recipes" : "Show cookable now"}
               >
@@ -228,16 +350,9 @@ export default define.page<typeof handler>(function RecipesPage({
               </a>
             )}
             <a
-              href={favoritesOnly
-                ? filterUrl({
-                  q: qParam,
-                  cookable: cookableOnly ? "1" : undefined,
-                })
-                : filterUrl({
-                  q: qParam,
-                  cookable: cookableOnly ? "1" : undefined,
-                  favorites: "1",
-                })}
+              href={filterUrl(current, {
+                favorites: favoritesOnly ? undefined : "1",
+              })}
               class={`btn ${favoritesOnly ? "btn-primary" : "btn-outline"}`}
               title={favoritesOnly ? "Show all recipes" : "Show favorites"}
             >
@@ -260,6 +375,81 @@ export default define.page<typeof handler>(function RecipesPage({
           </>
         )}
       </PageHeader>
+
+      <details
+        class="mb-4 group"
+        open={hasFilters || undefined}
+      >
+        <summary class="cursor-pointer select-none flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
+          <TbFilter class="size-4" />
+          <span>Filters</span>
+          {hasFilters && (
+            <span class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-full">
+              {difficulty.length + mealTypes.length + dietary.length}
+            </span>
+          )}
+        </summary>
+        <div class="mt-3 card space-y-3">
+          <div>
+            <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
+              Difficulty
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              {DIFFICULTY_LEVELS.map((d) => (
+                <FilterChip
+                  key={d}
+                  label={d}
+                  active={difficulty.includes(d)}
+                  href={toggleArrayFilter("difficulty", d, difficulty)}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
+              Meal Type
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              {MEAL_TYPES.map((mt) => (
+                <FilterChip
+                  key={mt}
+                  label={mt}
+                  active={mealTypes.includes(mt)}
+                  href={toggleArrayFilter("meal_type", mt, mealTypes)}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
+              Dietary
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              {DIETARY_TAGS.map((dt) => (
+                <FilterChip
+                  key={dt}
+                  label={dt}
+                  active={dietary.includes(dt)}
+                  href={toggleArrayFilter("dietary", dt, dietary)}
+                />
+              ))}
+            </div>
+          </div>
+          {hasFilters && (
+            <a
+              href={filterUrl(current, {
+                difficulty: undefined,
+                meal_type: undefined,
+                dietary: undefined,
+              })}
+              class="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
+            >
+              <TbX class="size-3.5" />
+              Clear all filters
+            </a>
+          )}
+        </div>
+      </details>
 
       {drafts.length > 0 && (
         <div class="mb-6">
@@ -309,7 +499,7 @@ export default define.page<typeof handler>(function RecipesPage({
           </h2>
         )}
         {recipes.length === 0
-          ? <p class="text-stone-500">No recipes yet.</p>
+          ? <p class="text-stone-500">No recipes found.</p>
           : (
             <div class="space-y-2">
               {recipes.map((r) => (

@@ -157,7 +157,7 @@ export const handler = define.handlers({
       for (const item of items) {
         if (item.amount == null || item.amount <= 0) continue;
 
-        // Find matching pantry item — first try exact unit match, then any unit
+        // Find all matching pantry items, soonest-expiring first
         let existing;
         if (item.ingredient_id) {
           existing = await ctx.state.db.query<{
@@ -169,7 +169,8 @@ export const handler = define.handlers({
             `SELECT pi.id, pi.amount, pi.unit, g.density
              FROM pantry_items pi
              LEFT JOIN ingredients g ON g.id = pi.ingredient_id
-             WHERE pi.household_id = $1 AND pi.ingredient_id = $2`,
+             WHERE pi.household_id = $1 AND pi.ingredient_id = $2
+             ORDER BY pi.expires_at ASC NULLS LAST`,
             [householdId, item.ingredient_id],
           );
         } else {
@@ -181,21 +182,24 @@ export const handler = define.handlers({
           }>(
             `SELECT pi.id, pi.amount, pi.unit, null as density
              FROM pantry_items pi
-             WHERE pi.household_id = $1 AND lower(pi.name) = lower($2)`,
+             WHERE pi.household_id = $1 AND lower(pi.name) = lower($2)
+             ORDER BY pi.expires_at ASC NULLS LAST`,
             [householdId, item.name],
           );
         }
 
-        if (existing.rows.length > 0) {
-          const row = existing.rows[0];
+        let remaining = item.amount;
+        for (const row of existing.rows) {
+          if (remaining <= 0) break;
+
           const currentAmount = Number(row.amount) || 0;
           const pantryUnit = row.unit || "";
           const recipeUnit = item.unit || "";
 
-          let deductAmount = item.amount;
+          let deductAmount = remaining;
           if (pantryUnit !== recipeUnit) {
             const converted = convertAmount(
-              item.amount,
+              remaining,
               recipeUnit,
               pantryUnit,
               row.density,
@@ -210,17 +214,140 @@ export const handler = define.handlers({
               "DELETE FROM pantry_items WHERE id = $1",
               [row.id],
             );
+            // Calculate how much was actually consumed in recipe units
+            const consumed = deductAmount + newAmount; // newAmount is negative or zero
+            if (pantryUnit !== recipeUnit) {
+              const back = convertAmount(
+                consumed,
+                pantryUnit,
+                recipeUnit,
+                row.density,
+              );
+              remaining -= back ?? remaining;
+            } else {
+              remaining -= consumed;
+            }
           } else {
             await ctx.state.db.query(
               "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
               [newAmount, row.id],
             );
+            remaining = 0;
           }
         }
       }
 
       return new Response(
         JSON.stringify({ ok: true }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (body.action === "merge") {
+      const targetId = body.target_id as number;
+      const sourceIds = body.source_ids as number[];
+
+      if (!targetId || !sourceIds?.length) {
+        return new Response(
+          JSON.stringify({ error: "target_id and source_ids required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      // Fetch all involved items (target + sources) in one query
+      const allIds = [targetId, ...sourceIds];
+      const rows = await ctx.state.db.query<{
+        id: number;
+        amount: number | null;
+        unit: string | null;
+        expires_at: string | null;
+        density: number | null;
+      }>(
+        `SELECT pi.id, pi.amount, pi.unit, pi.expires_at, g.density
+         FROM pantry_items pi
+         LEFT JOIN ingredients g ON g.id = pi.ingredient_id
+         WHERE pi.id = ANY($1) AND pi.household_id = $2`,
+        [allIds, householdId],
+      );
+
+      const rowMap = new Map(rows.rows.map((r) => [r.id, r]));
+      const target = rowMap.get(targetId);
+      if (!target) {
+        return new Response(
+          JSON.stringify({ error: "Target item not found" }),
+          { status: 404, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      const targetUnit = target.unit || "";
+      let totalAmount: number | null = target.amount != null
+        ? Number(target.amount)
+        : null;
+      let latestExpiry: string | null = target.expires_at;
+
+      const validSourceIds: number[] = [];
+      for (const srcId of sourceIds) {
+        const src = rowMap.get(srcId);
+        if (!src) continue;
+
+        // Sum amounts with unit conversion
+        if (src.amount != null) {
+          const srcUnit = src.unit || "";
+          let srcAmount = Number(src.amount);
+          if (srcUnit !== targetUnit && targetUnit && srcUnit) {
+            const converted = convertAmount(
+              srcAmount,
+              srcUnit,
+              targetUnit,
+              src.density,
+            );
+            if (converted != null) {
+              srcAmount = converted;
+            } else {
+              // Can't convert — skip amount summing, just add as-is
+              // (better to approximate than lose the amount)
+              srcAmount = Number(src.amount);
+            }
+          }
+          totalAmount = (totalAmount ?? 0) + srcAmount;
+        }
+
+        // Keep the latest expiration date
+        if (src.expires_at) {
+          if (!latestExpiry || src.expires_at > latestExpiry) {
+            latestExpiry = src.expires_at;
+          }
+        }
+
+        validSourceIds.push(srcId);
+      }
+
+      if (validSourceIds.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "No valid source items" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      // Update target with merged values
+      await ctx.state.db.query(
+        `UPDATE pantry_items SET amount = $1, expires_at = $2, updated_at = now()
+         WHERE id = $3 AND household_id = $4`,
+        [totalAmount, latestExpiry, targetId, householdId],
+      );
+
+      // Delete source items
+      await ctx.state.db.query(
+        `DELETE FROM pantry_items WHERE id = ANY($1) AND household_id = $2`,
+        [validSourceIds, householdId],
+      );
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          amount: totalAmount,
+          expires_at: latestExpiry,
+        }),
         { headers: { "Content-Type": "application/json" } },
       );
     }

@@ -13,6 +13,11 @@ import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { DurationInput } from "../../components/DurationInput.tsx";
 import { RefForm } from "../../components/RefForm.tsx";
+import {
+  DIETARY_TAGS,
+  DIFFICULTY_LEVELS,
+  MEAL_TYPES,
+} from "../../lib/recipe-tags.ts";
 
 function slugify(text: string): string {
   return text
@@ -224,9 +229,9 @@ export default define.page<typeof handler>(
             <FormField label="Difficulty">
               <select name="difficulty" class="w-full">
                 <option value="">—</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
+                {DIFFICULTY_LEVELS.map((d) => (
+                  <option key={d} value={d} class="capitalize">{d[0].toUpperCase() + d.slice(1)}</option>
+                ))}
               </select>
             </FormField>
             <label class="flex items-center gap-2 mt-3 cursor-pointer">
@@ -242,32 +247,14 @@ export default define.page<typeof handler>(
             <FormField label="Meal Type">
               <MultiSearchSelect
                 name="meal_type"
-                options={[
-                  "breakfast",
-                  "lunch",
-                  "dinner",
-                  "snack",
-                  "dessert",
-                  "appetizer",
-                  "side",
-                  "drink",
-                ]}
+                options={[...MEAL_TYPES]}
                 placeholder="Search meal types..."
               />
             </FormField>
             <FormField label="Dietary">
               <MultiSearchSelect
                 name="dietary"
-                options={[
-                  "vegetarian",
-                  "vegan",
-                  "gluten-free",
-                  "dairy-free",
-                  "nut-free",
-                  "low-carb",
-                  "keto",
-                  "paleo",
-                ]}
+                options={[...DIETARY_TAGS]}
                 placeholder="Search dietary tags..."
               />
             </FormField>

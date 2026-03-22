@@ -7,6 +7,7 @@ import { formatInputValue } from "../lib/format.ts";
 import TbTrash from "tb-icons/TbTrash";
 import TbAlertTriangle from "tb-icons/TbAlertTriangle";
 import TbScan from "tb-icons/TbScan";
+import TbArrowMerge from "tb-icons/TbArrowMerge";
 
 interface PantryItem {
   id: number;
@@ -63,6 +64,9 @@ export default function PantryManager(
   const newExpiresAt = useSignal("");
   const saving = useSignal(false);
   const scanning = useSignal(false);
+  // ID of the item currently showing its merge panel (null = none open)
+  const mergingItemId = useSignal<number | null>(null);
+  const search = useSignal("");
 
   const expiringSoonCount = useComputed(() =>
     items.value.filter((i) => {
@@ -70,6 +74,12 @@ export default function PantryManager(
       return s === "soon" || s === "expired";
     }).length
   );
+
+  const filteredItems = useComputed(() => {
+    const q = search.value.trim().toLowerCase();
+    if (!q) return items.value;
+    return items.value.filter((i) => i.name.toLowerCase().includes(q));
+  });
 
   const options: SearchSelectOption[] = ingredients.map((i) => ({
     id: i.id,
@@ -156,6 +166,45 @@ export default function PantryManager(
         }
         : i
     );
+  }
+
+  /** Find other pantry items that represent the same ingredient. */
+  function getSiblings(item: PantryItem): PantryItem[] {
+    return items.value.filter((other) => {
+      if (other.id === item.id) return false;
+      if (item.ingredient_id && other.ingredient_id) {
+        return item.ingredient_id === other.ingredient_id;
+      }
+      return other.name.toLowerCase() === item.name.toLowerCase();
+    });
+  }
+
+  async function mergeItems(targetId: number, sourceIds: number[]) {
+    const res = await fetch(`/api/pantry`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "merge",
+        household_id: householdId,
+        target_id: targetId,
+        source_ids: sourceIds,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      items.value = items.value
+        .filter((i) => !sourceIds.includes(i.id))
+        .map((i) =>
+          i.id === targetId
+            ? {
+              ...i,
+              amount: data.amount ?? undefined,
+              expires_at: data.expires_at ?? undefined,
+            }
+            : i
+        );
+      mergingItemId.value = null;
+    }
   }
 
   async function removeItem(itemId: number) {
@@ -299,9 +348,22 @@ export default function PantryManager(
       </div>
 
       <div>
-        <h2 class="text-lg font-semibold mb-3">
-          In Stock ({items.value.length})
-        </h2>
+        <div class="flex items-center gap-3 mb-3">
+          <h2 class="text-lg font-semibold shrink-0">
+            In Stock ({items.value.length})
+          </h2>
+          {items.value.length > 0 && (
+            <input
+              type="search"
+              placeholder="Search pantry..."
+              value={search}
+              class="flex-1"
+              onInput={(e) => {
+                search.value = (e.target as HTMLInputElement).value;
+              }}
+            />
+          )}
+        </div>
         {expiringSoonCount.value > 0 && (
           <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm mb-3">
             <TbAlertTriangle class="size-4 shrink-0" />
@@ -318,93 +380,160 @@ export default function PantryManager(
               Your pantry is empty. Add ingredients you have on hand.
             </p>
           )
+          : filteredItems.value.length === 0
+          ? (
+            <p class="text-stone-500">
+              No items match "{search.value}".
+            </p>
+          )
           : (
             <div class="space-y-1">
-              {items.value.map((item) => {
+              {filteredItems.value.map((item) => {
                 const status = expiryStatus(item.expires_at);
+                const siblings = getSiblings(item);
+                const isMerging = mergingItemId.value === item.id;
                 return (
-                  <div
-                    key={item.id}
-                    class={`card flex flex-wrap items-center gap-2 py-2${
-                      status === "expired"
-                        ? " border-red-300 dark:border-red-700"
-                        : status === "soon"
-                        ? " border-amber-300 dark:border-amber-700"
-                        : ""
-                    }`}
-                  >
-                    <div class="flex-1 min-w-0">
-                      <span class="font-medium text-sm">{item.name}</span>
-                      {status === "expired" && (
-                        <span class="ml-2 text-xs text-red-600 dark:text-red-400">
-                          Expired
-                        </span>
+                  <div key={item.id}>
+                    <div
+                      class={`card flex flex-wrap items-center gap-2 py-2${
+                        status === "expired"
+                          ? " border-red-300 dark:border-red-700"
+                          : status === "soon"
+                          ? " border-amber-300 dark:border-amber-700"
+                          : ""
+                      }`}
+                    >
+                      <div class="flex-1 min-w-0">
+                        <span class="font-medium text-sm">{item.name}</span>
+                        {status === "expired" && (
+                          <span class="ml-2 text-xs text-red-600 dark:text-red-400">
+                            Expired
+                          </span>
+                        )}
+                        {status === "soon" && (
+                          <span class="ml-2 text-xs text-amber-600 dark:text-amber-400">
+                            Use soon
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={formatInputValue(item.amount)}
+                        placeholder="Qty"
+                        class="w-20"
+                        onBlur={(e) => {
+                          const val = (e.target as HTMLInputElement).value;
+                          const amount = val ? parseFloat(val) : null;
+                          if (amount !== (item.amount ?? null)) {
+                            updateItem(item, amount, item.unit ?? null);
+                          }
+                        }}
+                      />
+                      <select
+                        value={item.unit ?? ""}
+                        class="w-24"
+                        onChange={(e) => {
+                          const unit = (e.target as HTMLSelectElement).value ||
+                            null;
+                          updateItem(item, item.amount ?? null, unit);
+                        }}
+                      >
+                        <option value="">—</option>
+                        {UNIT_GROUPS.map((g) => (
+                          <optgroup key={g.label} label={g.label}>
+                            {g.units.map((u) => (
+                              <option key={u.name} value={u.name}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      <input
+                        type="date"
+                        value={item.expires_at ?? ""}
+                        title="Best before"
+                        class="w-36"
+                        onChange={(e) => {
+                          const val = (e.target as HTMLInputElement).value ||
+                            null;
+                          updateItem(
+                            item,
+                            item.amount ?? null,
+                            item.unit ?? null,
+                            val,
+                          );
+                        }}
+                      />
+                      {siblings.length > 0 && (
+                        <button
+                          type="button"
+                          class={`p-1 cursor-pointer ${
+                            isMerging
+                              ? "text-orange-600 dark:text-orange-400"
+                              : "text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
+                          }`}
+                          title="Merge duplicates into this item"
+                          onClick={() => {
+                            mergingItemId.value = isMerging ? null : item.id;
+                          }}
+                        >
+                          <TbArrowMerge class="size-4" />
+                        </button>
                       )}
-                      {status === "soon" && (
-                        <span class="ml-2 text-xs text-amber-600 dark:text-amber-400">
-                          Use soon
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        class="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                        title="Remove"
+                        onClick={() => removeItem(item.id)}
+                      >
+                        <TbTrash class="size-4" />
+                      </button>
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={formatInputValue(item.amount)}
-                      placeholder="Qty"
-                      class="w-20"
-                      onBlur={(e) => {
-                        const val = (e.target as HTMLInputElement).value;
-                        const amount = val ? parseFloat(val) : null;
-                        if (amount !== (item.amount ?? null)) {
-                          updateItem(item, amount, item.unit ?? null);
-                        }
-                      }}
-                    />
-                    <select
-                      value={item.unit ?? ""}
-                      class="w-24"
-                      onChange={(e) => {
-                        const unit = (e.target as HTMLSelectElement).value ||
-                          null;
-                        updateItem(item, item.amount ?? null, unit);
-                      }}
-                    >
-                      <option value="">—</option>
-                      {UNIT_GROUPS.map((g) => (
-                        <optgroup key={g.label} label={g.label}>
-                          {g.units.map((u) => (
-                            <option key={u.name} value={u.name}>
-                              {u.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                    <input
-                      type="date"
-                      value={item.expires_at ?? ""}
-                      title="Best before"
-                      class="w-36"
-                      onChange={(e) => {
-                        const val = (e.target as HTMLInputElement).value ||
-                          null;
-                        updateItem(
-                          item,
-                          item.amount ?? null,
-                          item.unit ?? null,
-                          val,
-                        );
-                      }}
-                    />
-                    <button
-                      type="button"
-                      class="text-red-500 hover:text-red-700 p-1 cursor-pointer"
-                      title="Remove"
-                      onClick={() => removeItem(item.id)}
-                    >
-                      <TbTrash class="size-4" />
-                    </button>
+                    {isMerging && (
+                      <div class="ml-4 mt-1 mb-2 p-2 rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 space-y-1.5">
+                        <div class="text-xs font-medium text-stone-600 dark:text-stone-400">
+                          Merge into "{item.name}" ({formatInputValue(item.amount)}{" "}
+                          {item.unit ?? ""}):
+                        </div>
+                        {siblings.map((sib) => (
+                          <div
+                            key={sib.id}
+                            class="flex items-center gap-2 text-sm"
+                          >
+                            <span class="flex-1 min-w-0 truncate">
+                              {formatInputValue(sib.amount)}{" "}
+                              {sib.unit ?? ""}{" "}
+                              {sib.expires_at
+                                ? `(exp. ${sib.expires_at})`
+                                : ""}
+                            </span>
+                            <button
+                              type="button"
+                              class="btn btn-primary text-xs py-0.5 px-2"
+                              onClick={() => mergeItems(item.id, [sib.id])}
+                            >
+                              Merge
+                            </button>
+                          </div>
+                        ))}
+                        {siblings.length > 1 && (
+                          <button
+                            type="button"
+                            class="btn btn-primary text-xs py-0.5 px-2 w-full"
+                            onClick={() =>
+                              mergeItems(
+                                item.id,
+                                siblings.map((s) => s.id),
+                              )}
+                          >
+                            Merge all ({siblings.length})
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

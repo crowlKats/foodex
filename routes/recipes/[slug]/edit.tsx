@@ -23,6 +23,11 @@ import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
 import { DurationInput } from "../../../components/DurationInput.tsx";
 import { RefForm } from "../../../components/RefForm.tsx";
+import {
+  DIETARY_TAGS,
+  DIFFICULTY_LEVELS,
+  MEAL_TYPES,
+} from "../../../lib/recipe-tags.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -351,15 +356,11 @@ export default define.page<typeof handler>(function RecipeEdit({
           <FormField label="Difficulty">
             <select name="difficulty" class="w-full">
               <option value="">—</option>
-              <option value="easy" selected={recipe.difficulty === "easy"}>
-                Easy
-              </option>
-              <option value="medium" selected={recipe.difficulty === "medium"}>
-                Medium
-              </option>
-              <option value="hard" selected={recipe.difficulty === "hard"}>
-                Hard
-              </option>
+              {DIFFICULTY_LEVELS.map((d) => (
+                <option key={d} value={d} selected={recipe.difficulty === d}>
+                  {d[0].toUpperCase() + d.slice(1)}
+                </option>
+              ))}
             </select>
           </FormField>
           <label class="flex items-center gap-2 mt-3 cursor-pointer">
@@ -376,16 +377,7 @@ export default define.page<typeof handler>(function RecipeEdit({
           <FormField label="Meal Type">
             <MultiSearchSelect
               name="meal_type"
-              options={[
-                "breakfast",
-                "lunch",
-                "dinner",
-                "snack",
-                "dessert",
-                "appetizer",
-                "side",
-                "drink",
-              ]}
+              options={[...MEAL_TYPES]}
               initialSelected={mealTypes}
               placeholder="Search meal types..."
             />
@@ -393,16 +385,7 @@ export default define.page<typeof handler>(function RecipeEdit({
           <FormField label="Dietary">
             <MultiSearchSelect
               name="dietary"
-              options={[
-                "vegetarian",
-                "vegan",
-                "gluten-free",
-                "dairy-free",
-                "nut-free",
-                "low-carb",
-                "keto",
-                "paleo",
-              ]}
+              options={[...DIETARY_TAGS]}
               initialSelected={dietaryTags}
               placeholder="Search dietary tags..."
             />

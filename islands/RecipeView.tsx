@@ -217,36 +217,43 @@ export default function RecipeView(
     return false;
   }
 
-  function findPantryItem(ing: RecipeIngredient): PantryItem | undefined {
+  function findMatchingPantryItems(ing: RecipeIngredient): PantryItem[] {
     if (ing.ingredient_id) {
-      const byId = pantryItems.find((p) =>
+      const byId = pantryItems.filter((p) =>
         p.ingredient_id === ing.ingredient_id
       );
-      if (byId) return byId;
+      if (byId.length > 0) return byId;
     }
-    return pantryItems.find((p) => p.name === ing.name.toLowerCase());
+    return pantryItems.filter((p) => p.name === ing.name.toLowerCase());
   }
 
   /** Returns the amount still needed after subtracting pantry stock. null = no amount tracking. */
   function neededAmount(ing: RecipeIngredient, ratio: number): number | null {
     if (ing.amount == null) return null;
     const scaled = ing.amount * ratio;
-    const pantry = findPantryItem(ing);
-    if (!pantry || pantry.amount == null) return scaled;
+    const matches = findMatchingPantryItems(ing);
+    if (matches.length === 0) return scaled;
+
     const ingUnit = ing.unit || "";
-    const pantryUnit = pantry.unit || "";
-    let pantryInIngUnit = pantry.amount;
-    if (ingUnit !== pantryUnit) {
-      const converted = convertAmount(
-        pantry.amount,
-        pantryUnit,
-        ingUnit,
-        ing.density,
-      );
-      if (converted == null) return scaled;
-      pantryInIngUnit = converted;
+    let totalPantryInIngUnit = 0;
+    for (const pantry of matches) {
+      if (pantry.amount == null) continue;
+      const pantryUnit = pantry.unit || "";
+      if (ingUnit !== pantryUnit) {
+        const converted = convertAmount(
+          pantry.amount,
+          pantryUnit,
+          ingUnit,
+          ing.density,
+        );
+        if (converted != null) totalPantryInIngUnit += converted;
+      } else {
+        totalPantryInIngUnit += pantry.amount;
+      }
     }
-    const needed = scaled - pantryInIngUnit;
+
+    if (totalPantryInIngUnit === 0) return scaled;
+    const needed = scaled - totalPantryInIngUnit;
     return needed > 0 ? needed : 0;
   }
   const addedToList = useSignal<string | null>(null);
@@ -422,13 +429,13 @@ export default function RecipeView(
       return (
         <div>
           <label class="text-sm font-medium mr-3">Tray (W x L x D):</label>
-          <div class="flex items-center gap-1 flex-wrap">
+          <div class="flex items-center gap-1 flex-nowrap">
             <input
               type="number"
               min="1"
               step="0.5"
               value={formatInputValue(targetValue.value)}
-              class="w-12 text-center text-xs"
+              class="w-12 text-center text-xs grow"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
                 if (v > 0) {
@@ -437,13 +444,13 @@ export default function RecipeView(
                 }
               }}
             />
-            <span class="text-stone-500 text-xs">&times;</span>
+            <span class="text-stone-500 text-xs select-none">&times;</span>
             <input
               type="number"
               min="1"
               step="0.5"
               value={formatInputValue(targetValue2.value)}
-              class="w-12 text-center text-xs"
+              class="w-12 text-center text-xs grow"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
                 if (v > 0) {
@@ -452,13 +459,13 @@ export default function RecipeView(
                 }
               }}
             />
-            <span class="text-stone-500 text-xs">&times;</span>
+            <span class="text-stone-500 text-xs select-none">&times;</span>
             <input
               type="number"
               min="1"
               step="0.5"
               value={formatInputValue(targetValue3.value)}
-              class="w-12 text-center text-xs"
+              class="w-12 text-center text-xs grow"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
                 if (v > 0) {
@@ -467,7 +474,7 @@ export default function RecipeView(
                 }
               }}
             />
-            <span class="text-stone-500 text-xs">cm</span>
+            <span class="text-stone-500 text-xs select-none">cm</span>
             {loading.value && (
               <span class="text-xs text-stone-400 ml-2">updating...</span>
             )}
