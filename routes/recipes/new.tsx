@@ -116,8 +116,8 @@ export const handler = define.handlers({
     try {
       await ctx.state.db.transaction(async (q) => {
         const res = await q<{ id: number }>(
-          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, household_id, private)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, private)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
            RETURNING id`,
           [
             title.trim(),
@@ -132,6 +132,7 @@ export const handler = define.handlers({
             prepTime,
             cookTime,
             coverImageId ? parseInt(coverImageId) : null,
+            difficulty,
             ctx.state.householdId,
             isPrivate,
           ],
@@ -220,6 +221,14 @@ export default define.page<typeof handler>(
               <DurationInput name="prep_time" label="Prep time" />
               <DurationInput name="cook_time" label="Cook time" />
             </div>
+            <FormField label="Difficulty">
+              <select name="difficulty" class="w-full">
+                <option value="">—</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </FormField>
             <label class="flex items-center gap-2 mt-3 cursor-pointer">
               <input
                 type="checkbox"

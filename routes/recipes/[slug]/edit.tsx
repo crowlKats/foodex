@@ -194,13 +194,14 @@ export const handler = define.handlers({
       )
       : null;
     const coverImageId = form.get("cover_image_id") as string;
+    const difficulty = (form.get("difficulty") as string) || null;
     const isPrivate = form.get("private") === "on";
 
     await ctx.state.db.transaction(async (q) => {
       await q(
         `UPDATE recipes SET title=$1, description=$2,
          quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
-         prep_time=$9, cook_time=$10, cover_image_id=$11, private=$13, updated_at=now()
+         prep_time=$9, cook_time=$10, cover_image_id=$11, difficulty=$13, private=$14, updated_at=now()
          WHERE id=$12`,
         [
           title?.trim(),
@@ -215,6 +216,7 @@ export const handler = define.handlers({
           cookTime,
           coverImageId ? parseInt(coverImageId) : null,
           recipeId,
+          difficulty,
           isPrivate,
         ],
       );
