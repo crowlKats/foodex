@@ -147,15 +147,20 @@
 
 ## Database Schema (key tables)
 
-- **recipes** — title, slug, description, quantity_type/value/unit (+ value2/value3/unit2 for dimensions), prep_time, cook_time, difficulty, cover_image_id, household_id, private
-- **recipe_ingredients** — recipe_id, ingredient_id (nullable), name, amount, unit, key, sort_order
-- **recipe_steps** — recipe_id, title, body (markdown + template syntax), sort_order
+- **recipes** — title, slug, description, quantity_type/value/unit (+
+  value2/value3/unit2 for dimensions), prep_time, cook_time, difficulty,
+  cover_image_id, household_id, private
+- **recipe_ingredients** — recipe_id, ingredient_id (nullable), name, amount,
+  unit, key, sort_order
+- **recipe_steps** — recipe_id, title, body (markdown + template syntax),
+  sort_order
 - **recipe_step_media** — step_id, media_id, sort_order
 - **recipe_tools** — recipe_id, tool_id, usage_description, settings, sort_order
 - **recipe_references** — recipe_id, referenced_recipe_id, sort_order
 - **recipe_tags** — recipe_id, tag_type (meal_type|dietary), tag_value
 - **recipe_favorites** — user_id, recipe_id
-- **recipe_drafts** — id (uuid), household_id, recipe_data (JSONB), ai_messages, source (manual|ocr|generate)
+- **recipe_drafts** — id (uuid), household_id, recipe_data (JSONB), ai_messages,
+  source (manual|ocr|generate)
 - **ingredients** — name, unit, density
 - **ingredient_brands** — ingredient_id, brand
 - **ingredient_prices** — ingredient_id, brand_id, store_id, price, amount, unit
@@ -165,9 +170,11 @@
 - **households** — name, created_by
 - **household_members** — household_id, user_id, role (owner|member)
 - **household_invites** — household_id, code, expires_at
-- **pantry_items** — household_id, ingredient_id (nullable), name, amount, unit, expires_at
+- **pantry_items** — household_id, ingredient_id (nullable), name, amount, unit,
+  expires_at
 - **shopping_lists** — household_id, name
-- **shopping_list_items** — shopping_list_id, ingredient_id, name, amount, unit, store_id, checked, recipe_id, sort_order
+- **shopping_list_items** — shopping_list_id, ingredient_id, name, amount, unit,
+  store_id, checked, recipe_id, sort_order
 - **media** — key, url, content_type, filename, size_bytes
 - **users** — name, email, avatar_url, github_id, google_id, unit_system
 - **sessions** — user_id, token, expires_at
@@ -178,13 +185,16 @@
 - `{{ Key }}` — capitalized variant
 - `{{ key.name }}` — name only
 - `{{ key.amount }}` — numeric amount only
-- `{{ expr }}` — arithmetic: `+`, `-`, `*`, `/`, `()`, functions: `round`, `ceil`, `floor`, `min`, `max`, `abs`
+- `{{ expr }}` — arithmetic: `+`, `-`, `*`, `/`, `()`, functions: `round`,
+  `ceil`, `floor`, `min`, `max`, `abs`
 - `@step(N)` — link to step N
 - `@recipe(slug)` — link to another recipe
-- `@timer(duration)` — interactive countdown button (e.g. `@timer(15m)`, `@timer(1h30m)`)
+- `@timer(duration)` — interactive countdown button (e.g. `@timer(15m)`,
+  `@timer(1h30m)`)
 - Standard Markdown for formatting
 
-Processing order: template eval → @step/@recipe resolution → marked parse → @timer replacement (after marked, since marked strips raw HTML)
+Processing order: template eval → @step/@recipe resolution → marked parse →
+@timer replacement (after marked, since marked strips raw HTML)
 
 ## Recipe Field Touch Points
 
@@ -204,7 +214,12 @@ Adding a new recipe-level field requires changes in:
 
 ## Key Conventions
 
-- **Number formatting:** Always use `lib/format.ts` — `formatAmount()`, `formatCurrency()`, `formatInputValue()`. Never use raw numbers or inline `.toFixed()`. Wrap with `Number()` for SSR safety (Preact passes signal objects during SSR).
+- **Number formatting:** Always use `lib/format.ts` — `formatAmount()`,
+  `formatCurrency()`, `formatInputValue()`. Never use raw numbers or inline
+  `.toFixed()`. Wrap with `Number()` for SSR safety (Preact passes signal
+  objects during SSR).
 - **Migrations:** Never modify existing migration files. Always create new ones.
-- **UI style:** No rounded corners, `border-2` borders, sharp-cornered `.card` class. Orange accent color.
-- **Pantry API actions:** `add`, `update`, `remove`, `deduct_recipe` (POST to `/api/pantry`)
+- **UI style:** No rounded corners, `border-2` borders, sharp-cornered `.card`
+  class. Orange accent color.
+- **Pantry API actions:** `add`, `update`, `remove`, `deduct_recipe` (POST to
+  `/api/pantry`)

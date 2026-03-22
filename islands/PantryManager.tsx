@@ -1,10 +1,12 @@
 import { useComputed, useSignal } from "@preact/signals";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
+import BarcodeScanner from "./BarcodeScanner.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import { formatInputValue } from "../lib/format.ts";
 import TbTrash from "tb-icons/TbTrash";
 import TbAlertTriangle from "tb-icons/TbAlertTriangle";
+import TbScan from "tb-icons/TbScan";
 
 interface PantryItem {
   id: number;
@@ -35,14 +37,20 @@ interface PantryIngredient {
   unit?: string;
 }
 
+interface PantryStore {
+  id: string;
+  name: string;
+}
+
 interface PantryManagerProps {
   householdId: number;
   initialItems: PantryItem[];
   ingredients: PantryIngredient[];
+  stores: PantryStore[];
 }
 
 export default function PantryManager(
-  { householdId, initialItems, ingredients }: PantryManagerProps,
+  { householdId, initialItems, ingredients, stores }: PantryManagerProps,
 ) {
   const items = useSignal<PantryItem[]>(initialItems);
   const selectedIngredient = useSignal<{ id: string; name: string }>({
@@ -54,6 +62,7 @@ export default function PantryManager(
   const newUnit = useSignal("");
   const newExpiresAt = useSignal("");
   const saving = useSignal(false);
+  const scanning = useSignal(false);
 
   const expiringSoonCount = useComputed(() =>
     items.value.filter((i) => {
@@ -164,8 +173,45 @@ export default function PantryManager(
 
   return (
     <div class="grid gap-6 md:grid-cols-2">
+      {scanning.value && (
+        <BarcodeScanner
+          householdId={householdId}
+          ingredients={ingredients}
+          stores={stores}
+          onAdd={(result) => {
+            items.value = [
+              ...items.value,
+              {
+                id: result.id,
+                ingredient_id: result.ingredient_id ?? undefined,
+                name: result.name,
+                amount: result.amount ?? undefined,
+                unit: result.unit ?? undefined,
+                expires_at: result.expires_at ?? undefined,
+              },
+            ].sort((a, b) => a.name.localeCompare(b.name));
+            scanning.value = false;
+          }}
+          onClose={() => {
+            scanning.value = false;
+          }}
+        />
+      )}
+
       <div>
-        <h2 class="text-lg font-semibold mb-3">Add Item</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold">Add Item</h2>
+          <button
+            type="button"
+            class="btn btn-primary flex items-center gap-1.5 text-sm py-1 px-2"
+            onClick={() => {
+              scanning.value = true;
+            }}
+          >
+            <TbScan class="size-4" />
+            Scan
+          </button>
+        </div>
         <div class="card space-y-3">
           <div>
             <label class="block text-sm font-medium mb-1">Ingredient</label>

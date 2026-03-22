@@ -2,7 +2,12 @@ import { page } from "fresh";
 import { define } from "../../utils.ts";
 import PantryManager from "../../islands/PantryManager.tsx";
 import GenerateRecipe from "../../islands/GenerateRecipe.tsx";
-import type { Household, Ingredient, PantryItem } from "../../db/types.ts";
+import type {
+  Household,
+  Ingredient,
+  PantryItem,
+  Store,
+} from "../../db/types.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -15,24 +20,30 @@ export const handler = define.handlers({
 
     const id = ctx.state.householdId;
 
-    const [householdRes, pantryRes, ingredientsRes] = await Promise.all([
-      ctx.state.db.query<Household>("SELECT * FROM households WHERE id = $1", [
-        id,
-      ]),
-      ctx.state.db.query<PantryItem>(
-        "SELECT * FROM pantry_items WHERE household_id = $1 ORDER BY name",
-        [id],
-      ),
-      ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
-        "SELECT id, name, unit FROM ingredients ORDER BY name",
-      ),
-    ]);
+    const [householdRes, pantryRes, ingredientsRes, storesRes] = await Promise
+      .all([
+        ctx.state.db.query<Household>(
+          "SELECT * FROM households WHERE id = $1",
+          [id],
+        ),
+        ctx.state.db.query<PantryItem>(
+          "SELECT * FROM pantry_items WHERE household_id = $1 ORDER BY name",
+          [id],
+        ),
+        ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
+          "SELECT id, name, unit FROM ingredients ORDER BY name",
+        ),
+        ctx.state.db.query<Pick<Store, "id" | "name">>(
+          "SELECT id, name FROM stores ORDER BY name",
+        ),
+      ]);
 
     ctx.state.pageTitle = "Pantry";
     return page({
       household: householdRes.rows[0],
       pantryItems: pantryRes.rows,
       ingredients: ingredientsRes.rows,
+      stores: storesRes.rows,
     });
   },
 });
@@ -67,6 +78,10 @@ export default define.page<typeof handler>(function PantryPage({ data }) {
           id: String(i.id),
           name: i.name,
           unit: i.unit ?? undefined,
+        }))}
+        stores={data.stores.map((s) => ({
+          id: String(s.id),
+          name: s.name,
         }))}
       />
 

@@ -23,13 +23,84 @@ export const handler = define.handlers({
     }
 
     if (body.action === "add") {
+      let ingredientId = body.ingredient_id ?? null;
+
+      // Create new ingredient if name provided but no existing ingredient selected
+      if (!ingredientId && body.create_ingredient && body.name?.trim()) {
+        const ingRes = await ctx.state.db.query<{ id: number }>(
+          `INSERT INTO ingredients (name, unit) VALUES ($1, $2) RETURNING id`,
+          [body.name.trim(), body.unit ?? null],
+        );
+        ingredientId = ingRes.rows[0].id;
+
+        // Create brand if provided
+        let brandId: number | null = null;
+        if (body.brand?.trim()) {
+          const brandRes = await ctx.state.db.query<{ id: number }>(
+            `INSERT INTO ingredient_brands (ingredient_id, brand) VALUES ($1, $2) RETURNING id`,
+            [ingredientId, body.brand.trim()],
+          );
+          brandId = brandRes.rows[0].id;
+        }
+
+        // Create price if store and price provided
+        if (body.store_id && body.price != null) {
+          await ctx.state.db.query(
+            `INSERT INTO ingredient_prices (ingredient_id, brand_id, store_id, price, amount, unit)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              ingredientId,
+              brandId,
+              body.store_id,
+              body.price,
+              body.amount ?? null,
+              body.unit ?? null,
+            ],
+          );
+        }
+      } else if (ingredientId) {
+        // Existing ingredient — still add brand + price if provided
+        let brandId: number | null = null;
+        if (body.brand?.trim()) {
+          // Use existing brand or create new one
+          const existingBrand = await ctx.state.db.query<{ id: number }>(
+            `SELECT id FROM ingredient_brands WHERE ingredient_id = $1 AND lower(brand) = lower($2)`,
+            [ingredientId, body.brand.trim()],
+          );
+          if (existingBrand.rows.length > 0) {
+            brandId = existingBrand.rows[0].id;
+          } else {
+            const brandRes = await ctx.state.db.query<{ id: number }>(
+              `INSERT INTO ingredient_brands (ingredient_id, brand) VALUES ($1, $2) RETURNING id`,
+              [ingredientId, body.brand.trim()],
+            );
+            brandId = brandRes.rows[0].id;
+          }
+        }
+
+        if (body.store_id && body.price != null) {
+          await ctx.state.db.query(
+            `INSERT INTO ingredient_prices (ingredient_id, brand_id, store_id, price, amount, unit)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              ingredientId,
+              brandId,
+              body.store_id,
+              body.price,
+              body.amount ?? null,
+              body.unit ?? null,
+            ],
+          );
+        }
+      }
+
       const res = await ctx.state.db.query(
         `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit, expires_at)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id`,
         [
           householdId,
-          body.ingredient_id ?? null,
+          ingredientId,
           body.name,
           body.amount ?? null,
           body.unit ?? null,
@@ -37,7 +108,11 @@ export const handler = define.handlers({
         ],
       );
       return new Response(
-        JSON.stringify({ ok: true, id: res.rows[0].id }),
+        JSON.stringify({
+          ok: true,
+          id: res.rows[0].id,
+          ingredient_id: ingredientId,
+        }),
         { headers: { "Content-Type": "application/json" } },
       );
     }
