@@ -58,10 +58,14 @@ select,
 textarea {
   @apply border-2 border-stone-300 dark:border-stone-700 bg-stone-100
     dark:bg-stone-800 text-stone-900 dark:text-stone-100 px-3 py-2 text-sm
-    leading-normal
-    transition-colors duration-75 focus:outline-none focus:border-orange-600
-    dark:focus:border-orange-500;
+    leading-normal transition-colors duration-75 focus:outline-none
+    focus:border-orange-600 dark:focus:border-orange-500;
   box-sizing: border-box;
+  height: 2.5rem;
+}
+
+textarea {
+  height: auto;
 }
 
 input[type="search"],

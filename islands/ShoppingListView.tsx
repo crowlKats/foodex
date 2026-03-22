@@ -29,6 +29,7 @@ interface PriceInfo {
   amount: number;
   unit: string;
   currency: string;
+  density: number | null;
 }
 
 interface IngredientOption {
@@ -66,7 +67,10 @@ export default function ShoppingListView(
 ) {
   const items = useSignal<ShoppingItem[]>(initialItems);
   const viewMode = useSignal<ViewMode>(initialViewMode);
-  const addSelected = useSignal<{ id: string; name: string }>({ id: "", name: "" });
+  const addSelected = useSignal<{ id: string; name: string }>({
+    id: "",
+    name: "",
+  });
   const addName = useSignal("");
   const addAmount = useSignal("");
   const addUnit = useSignal("");
@@ -98,6 +102,7 @@ export default function ShoppingListView(
       price.price,
       price.amount,
       price.unit,
+      price.density,
     );
     if (cost == null) return null;
     return { cost, currency: price.currency };
@@ -116,14 +121,22 @@ export default function ShoppingListView(
     items.value = items.value.map((i) =>
       i.id === item.id ? { ...i, checked: newChecked } : i
     );
-    await apiCall({ action: "update_item", item_id: item.id, checked: newChecked });
+    await apiCall({
+      action: "update_item",
+      item_id: item.id,
+      checked: newChecked,
+    });
   }
 
   async function updateStore(item: ShoppingItem, storeId: number | null) {
     items.value = items.value.map((i) =>
       i.id === item.id ? { ...i, store_id: storeId } : i
     );
-    await apiCall({ action: "update_item", item_id: item.id, store_id: storeId });
+    await apiCall({
+      action: "update_item",
+      item_id: item.id,
+      store_id: storeId,
+    });
   }
 
   async function removeItem(item: ShoppingItem) {
@@ -197,7 +210,12 @@ export default function ShoppingListView(
   }
 
   function renderItemRow(item: ShoppingItem, showRecipe: boolean) {
-    const costInfo = getCost(item.ingredient_id, item.amount, item.unit, item.store_id);
+    const costInfo = getCost(
+      item.ingredient_id,
+      item.amount,
+      item.unit,
+      item.store_id,
+    );
     const itemStores = getStoresForItem(item.ingredient_id);
     return (
       <div
@@ -298,8 +316,14 @@ export default function ShoppingListView(
         if (item.amount != null) {
           existing.amount = (existing.amount ?? 0) + item.amount;
         }
-        if (item.recipe_title && !existing.recipes.some((r) => r.slug === item.recipe_slug)) {
-          existing.recipes.push({ title: item.recipe_title, slug: item.recipe_slug! });
+        if (
+          item.recipe_title &&
+          !existing.recipes.some((r) => r.slug === item.recipe_slug)
+        ) {
+          existing.recipes.push({
+            title: item.recipe_title,
+            slug: item.recipe_slug!,
+          });
         }
       } else {
         const entry: MergedItem = {
@@ -325,7 +349,12 @@ export default function ShoppingListView(
   }
 
   function renderMergedItemRow(item: MergedItem) {
-    const costInfo = getCost(item.ingredient_id, item.amount, item.unit, item.store_id);
+    const costInfo = getCost(
+      item.ingredient_id,
+      item.amount,
+      item.unit,
+      item.store_id,
+    );
     const itemStores = getStoresForItem(item.ingredient_id);
 
     return (
@@ -525,7 +554,12 @@ export default function ShoppingListView(
   let totalCurrency = "EUR";
   let hasAnyPrice = false;
   for (const item of unchecked) {
-    const info = getCost(item.ingredient_id, item.amount, item.unit, item.store_id);
+    const info = getCost(
+      item.ingredient_id,
+      item.amount,
+      item.unit,
+      item.store_id,
+    );
     if (info) {
       totalCost += info.cost;
       totalCurrency = info.currency;

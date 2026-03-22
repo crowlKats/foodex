@@ -5,7 +5,10 @@ const pool = new pg.Pool({
   max: 10,
 });
 
-export type QueryFn = <T = Record<string, unknown>>(text: string, params?: unknown[]) => Promise<{ rows: T[] }>;
+export type QueryFn = <T = Record<string, unknown>>(
+  text: string,
+  params?: unknown[],
+) => Promise<{ rows: T[] }>;
 
 // deno-lint-ignore no-explicit-any
 export const query: QueryFn = (text, params) => pool.query(text, params) as any;
@@ -16,8 +19,9 @@ export async function transaction<T>(
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    // deno-lint-ignore no-explicit-any
-    const q: QueryFn = ((text: string, params?: unknown[]) => client.query(text, params)) as any;
+    const q: QueryFn = ((text: string, params?: unknown[]) =>
+      // deno-lint-ignore no-explicit-any
+      client.query(text, params)) as any;
     const result = await fn(q);
     await client.query("COMMIT");
     return result;
@@ -40,6 +44,9 @@ export async function cleanupOrphanedMedia(
      )
      AND id NOT IN (
        SELECT media_id FROM recipe_step_media
+     )
+     AND id NOT IN (
+       SELECT cover_image_id FROM recipe_drafts WHERE cover_image_id IS NOT NULL
      )
      RETURNING key`,
   );

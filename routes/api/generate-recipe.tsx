@@ -34,18 +34,26 @@ export const handler = define.handlers({
     }));
 
     try {
-      const { recipe, usage } = await generateRecipeFromPantry(ingredients, {
-        maxMinutes,
-        instructions,
-      });
+      const { recipe, thinking, usage } = await generateRecipeFromPantry(
+        ingredients,
+        {
+          maxMinutes,
+          instructions,
+        },
+      );
 
       await ctx.state.db.query(
         `INSERT INTO ocr_usage (user_id, input_tokens, output_tokens, model)
          VALUES ($1, $2, $3, $4)`,
-        [ctx.state.user.id, usage.input_tokens, usage.output_tokens, usage.model],
+        [
+          ctx.state.user.id,
+          usage.input_tokens,
+          usage.output_tokens,
+          usage.model,
+        ],
       );
 
-      return new Response(JSON.stringify(recipe), {
+      return new Response(JSON.stringify({ recipe, thinking }), {
         headers: { "Content-Type": "application/json" },
       });
     } catch (err) {

@@ -42,7 +42,9 @@ export function getGitHubAuthUrl(req: Request, state: string): string {
 export async function exchangeGitHubCode(
   req: Request,
   code: string,
-): Promise<{ githubId: string; email: string | null; name: string; avatarUrl: string }> {
+): Promise<
+  { githubId: string; email: string | null; name: string; avatarUrl: string }
+> {
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
     headers: {
@@ -100,7 +102,9 @@ export function getGoogleAuthUrl(req: Request, state: string): string {
 export async function exchangeGoogleCode(
   req: Request,
   code: string,
-): Promise<{ googleId: string; email: string | null; name: string; avatarUrl: string }> {
+): Promise<
+  { googleId: string; email: string | null; name: string; avatarUrl: string }
+> {
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

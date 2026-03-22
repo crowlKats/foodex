@@ -4,17 +4,22 @@ interface ConfirmButtonProps {
   message: string;
   class?: string;
   children?: ComponentChildren;
+  onClick?: () => void;
 }
 
 export default function ConfirmButton(
-  { message, class: className, children }: ConfirmButtonProps,
+  { message, class: className, children, onClick }: ConfirmButtonProps,
 ) {
   return (
     <button
-      type="submit"
+      type={onClick ? "button" : "submit"}
       class={className}
       onClick={(e) => {
-        if (!confirm(message)) e.preventDefault();
+        if (!confirm(message)) {
+          e.preventDefault();
+          return;
+        }
+        if (onClick) onClick();
       }}
     >
       {children}

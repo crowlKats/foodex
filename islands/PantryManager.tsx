@@ -88,7 +88,11 @@ export default function PantryManager(
     saving.value = false;
   }
 
-  async function updateItem(item: PantryItem, amount: number | null, unit: string | null) {
+  async function updateItem(
+    item: PantryItem,
+    amount: number | null,
+    unit: string | null,
+  ) {
     await fetch(`/api/pantry`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -236,8 +240,8 @@ export default function PantryManager(
                     value={item.unit ?? ""}
                     class="w-24"
                     onChange={(e) => {
-                      const unit =
-                        (e.target as HTMLSelectElement).value || null;
+                      const unit = (e.target as HTMLSelectElement).value ||
+                        null;
                       updateItem(item, item.amount ?? null, unit);
                     }}
                   >

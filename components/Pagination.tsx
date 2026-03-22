@@ -5,7 +5,9 @@ export function getPage(url: URL): number {
   return p > 0 ? p : 1;
 }
 
-export function paginationParams(pageNum: number): { limit: number; offset: number } {
+export function paginationParams(
+  pageNum: number,
+): { limit: number; offset: number } {
   return { limit: PAGE_SIZE, offset: (pageNum - 1) * PAGE_SIZE };
 }
 

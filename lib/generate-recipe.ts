@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { recipeJsonSchema, RECIPE_FIELD_RULES } from "./recipe-prompt.ts";
+import { RECIPE_FIELD_RULES, recipeJsonSchema } from "./recipe-prompt.ts";
 import type { OcrRecipeData, OcrUsage } from "./ocr.ts";
 
 const SYSTEM_PROMPT =
@@ -22,7 +22,9 @@ interface PantryIngredient {
 export async function generateRecipeFromPantry(
   ingredients: PantryIngredient[],
   opts: { maxMinutes?: number; instructions?: string },
-): Promise<{ recipe: OcrRecipeData; usage: OcrUsage }> {
+): Promise<
+  { recipe: OcrRecipeData; thinking: string | null; usage: OcrUsage }
+> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY environment variable is not set");
@@ -37,7 +39,9 @@ export async function generateRecipeFromPantry(
   const ingredientList = ingredients
     .map((i) => {
       let s = i.name;
-      if (i.amount != null) s += ` (${i.amount}${i.unit ? ` ${i.unit}` : ""} available)`;
+      if (i.amount != null) {
+        s += ` (${i.amount}${i.unit ? ` ${i.unit}` : ""} available)`;
+      }
       return `- ${s}`;
     })
     .join("\n");
@@ -46,7 +50,9 @@ export async function generateRecipeFromPantry(
     `Here are the ingredients I have:\n${ingredientList}`,
   ];
   if (opts.maxMinutes) {
-    parts.push(`\nTotal time (prep + cook) must not exceed ${opts.maxMinutes} minutes.`);
+    parts.push(
+      `\nTotal time (prep + cook) must not exceed ${opts.maxMinutes} minutes.`,
+    );
   }
   if (opts.instructions?.trim()) {
     parts.push(`\nAdditional instructions: ${opts.instructions.trim()}`);
@@ -69,11 +75,12 @@ export async function generateRecipeFromPantry(
     system: SYSTEM_PROMPT,
   });
 
-  for (const block of response.content) {
-    if (block.type === "thinking") {
-      console.log("[generate-recipe] thinking:", block.thinking);
-    }
-  }
+  const thinkingBlock = response.content.find((block) =>
+    block.type === "thinking"
+  );
+  const thinking = thinkingBlock?.type === "thinking"
+    ? thinkingBlock.thinking
+    : null;
 
   const textBlock = response.content.find((block) => block.type === "text");
   if (!textBlock || textBlock.type !== "text") {
@@ -87,6 +94,7 @@ export async function generateRecipeFromPantry(
 
   return {
     recipe: JSON.parse(jsonText) as OcrRecipeData,
+    thinking,
     usage: {
       input_tokens: response.usage.input_tokens,
       output_tokens: response.usage.output_tokens,

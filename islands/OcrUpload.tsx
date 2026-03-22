@@ -52,7 +52,6 @@ export default function OcrUpload() {
   const processing = useSignal(false);
   const error = useSignal<string | null>(null);
   const context = useSignal("");
-
   function addFiles(newFiles: FileList | File[]) {
     const images = Array.from(newFiles).filter((f) =>
       f.type.startsWith("image/")
@@ -85,33 +84,29 @@ export default function OcrUpload() {
         throw new Error(data.error || "OCR failed");
       }
 
-      let coverImageId: string | null = null;
+      let coverId: string | null = null;
       if (data.cover_image) {
         try {
-          coverImageId = await cropAndUpload(
+          coverId = await cropAndUpload(
             files.value[data.cover_image.image_index],
             data.cover_image,
           );
         } catch { /* crop failed, skip cover */ }
       }
 
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = "/recipes/import";
-      const ocrInput = document.createElement("input");
-      ocrInput.type = "hidden";
-      ocrInput.name = "ocr_result";
-      ocrInput.value = JSON.stringify(data);
-      form.appendChild(ocrInput);
-      if (coverImageId) {
-        const coverInput = document.createElement("input");
-        coverInput.type = "hidden";
-        coverInput.name = "cover_image_id";
-        coverInput.value = coverImageId;
-        form.appendChild(coverInput);
-      }
-      document.body.appendChild(form);
-      form.submit();
+      // Create draft and redirect to editor
+      const draftRes = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipe_data: data,
+          ai_messages: [{ role: "assistant", content: JSON.stringify(data) }],
+          cover_image_id: coverId ? parseInt(coverId) : null,
+          source: "ocr",
+        }),
+      });
+      const draft = await draftRes.json();
+      globalThis.location.href = `/recipes/drafts/${draft.id}`;
     } catch (err) {
       error.value = (err as Error).message;
       processing.value = false;

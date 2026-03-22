@@ -56,7 +56,17 @@ export const handler = define.handlers({
       .filter((i) => i.ingredient_id != null)
       .map((i) => i.ingredient_id as number);
 
-    const pricesMap: Record<string, { store_id: number; price: number; amount: number; unit: string; currency: string }[]> = {};
+    const pricesMap: Record<
+      string,
+      {
+        store_id: number;
+        price: number;
+        amount: number;
+        unit: string;
+        currency: string;
+        density: number | null;
+      }[]
+    > = {};
     if (ingredientIds.length > 0 && storeIds.length > 0) {
       const pricesRes = await ctx.state.db.query<{
         ingredient_id: number;
@@ -65,9 +75,10 @@ export const handler = define.handlers({
         amount: number | null;
         unit: string | null;
         currency: string;
+        density: number | null;
       }>(
         `SELECT gp.ingredient_id, gp.store_id, gp.price, gp.amount,
-                coalesce(gp.unit, g.unit) as unit, s.currency
+                coalesce(gp.unit, g.unit) as unit, s.currency, g.density
          FROM ingredient_prices gp
          JOIN stores s ON s.id = gp.store_id
          JOIN ingredients g ON g.id = gp.ingredient_id
@@ -84,6 +95,7 @@ export const handler = define.handlers({
           amount: row.amount || 1,
           unit: row.unit ?? "",
           currency: row.currency ?? "EUR",
+          density: row.density,
         });
       }
     }
@@ -115,7 +127,9 @@ export const handler = define.handlers({
       currency: s.currency ?? "EUR",
     }));
 
-    const ingredientsRes = await ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
+    const ingredientsRes = await ctx.state.db.query<
+      Pick<Ingredient, "id" | "name" | "unit">
+    >(
       "SELECT id, name, unit FROM ingredients ORDER BY name",
     );
 
@@ -139,33 +153,15 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function ShoppingListPage({ data }) {
-  const { items, stores, pricesMap, viewMode, ingredients } = data as {
-    items: {
-      id: number;
-      ingredient_id: number | null;
-      name: string;
-      amount: number | null;
-      unit: string | null;
-      store_id: number | null;
-      checked: boolean;
-      recipe_title: string | null;
-      recipe_slug: string | null;
-    }[];
-    stores: { id: number; name: string; currency: string }[];
-    pricesMap: Record<string, { store_id: number; price: number; amount: number; unit: string; currency: string }[]>;
-    viewMode: "recipe" | "store";
-    ingredients: { id: string; name: string; unit?: string }[];
-  };
-
   return (
     <div>
       <h1 class="text-2xl font-bold mb-4">Shopping List</h1>
       <ShoppingListView
-        initialItems={items}
-        stores={stores}
-        pricesMap={pricesMap}
-        initialViewMode={viewMode}
-        ingredients={ingredients}
+        initialItems={data.items}
+        stores={data.stores}
+        pricesMap={data.pricesMap}
+        initialViewMode={data.viewMode}
+        ingredients={data.ingredients}
       />
     </div>
   );

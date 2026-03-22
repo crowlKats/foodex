@@ -27,39 +27,38 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function ProfilePage({ data, state }) {
-  const { householdName } = data as { householdName: string | null };
-  const user = state.user!;
+export default define.page<typeof handler>(
+  function ProfilePage({ data, state }) {
+    const user = state.user!;
 
-  return (
-    <div class="max-w-md mx-auto">
-      <div class="flex items-center gap-4 mb-6">
-        {user.avatar_url && (
-          <img
-            src={user.avatar_url}
-            alt={user.name}
-            class="size-16 rounded-full"
-          />
-        )}
-        <div>
-          <h1 class="text-2xl font-bold">{user.name}</h1>
-          {user.email && (
-            <p class="text-sm text-stone-500">{user.email}</p>
+    return (
+      <div class="max-w-md mx-auto">
+        <div class="flex items-center gap-4 mb-6">
+          {user.avatar_url && (
+            <img
+              src={user.avatar_url}
+              alt={user.name}
+              class="size-16 rounded-full"
+            />
           )}
+          <div>
+            <h1 class="text-2xl font-bold">{user.name}</h1>
+            {user.email && <p class="text-sm text-stone-500">{user.email}</p>}
+          </div>
         </div>
-      </div>
 
-      {householdName && (
-        <div class="card">
-          <h2 class="text-lg font-semibold mb-2">Household</h2>
-          <a
-            href="/household"
-            class="link"
-          >
-            {householdName}
-          </a>
-        </div>
-      )}
-    </div>
-  );
-});
+        {data.householdName && (
+          <div class="card">
+            <h2 class="text-lg font-semibold mb-2">Household</h2>
+            <a
+              href="/household"
+              class="link"
+            >
+              {data.householdName}
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  },
+);

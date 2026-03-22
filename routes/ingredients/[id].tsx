@@ -5,6 +5,8 @@ import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { toBaseUnit } from "../../lib/unit-convert.ts";
+import { VOLUME_UNITS, WEIGHT_UNITS } from "../../lib/units.ts";
 import type {
   Ingredient,
   IngredientBrand,
@@ -15,29 +17,37 @@ import type {
 export const handler = define.handlers({
   async GET(ctx) {
     const id = parseInt(ctx.params.id);
-    const [ingredientRes, brandsRes, pricesRes, storesRes, otherIngredientsRes] =
-      await Promise.all([
-        ctx.state.db.query<Ingredient>("SELECT * FROM ingredients WHERE id = $1", [id]),
-        ctx.state.db.query<IngredientBrand>(
-          "SELECT * FROM ingredient_brands WHERE ingredient_id = $1 ORDER BY brand",
-          [id],
-        ),
-        ctx.state.db.query<IngredientPrice>(
-          `SELECT gp.*, s.name as store_name, s.currency as store_currency,
+    const [
+      ingredientRes,
+      brandsRes,
+      pricesRes,
+      storesRes,
+      otherIngredientsRes,
+    ] = await Promise.all([
+      ctx.state.db.query<Ingredient>(
+        "SELECT * FROM ingredients WHERE id = $1",
+        [id],
+      ),
+      ctx.state.db.query<IngredientBrand>(
+        "SELECT * FROM ingredient_brands WHERE ingredient_id = $1 ORDER BY brand",
+        [id],
+      ),
+      ctx.state.db.query<IngredientPrice>(
+        `SELECT gp.*, s.name as store_name, s.currency as store_currency,
                   ib.brand as brand_name
            FROM ingredient_prices gp
            JOIN stores s ON s.id = gp.store_id
            LEFT JOIN ingredient_brands ib ON ib.id = gp.brand_id
            WHERE gp.ingredient_id = $1
            ORDER BY ib.brand, gp.price ASC`,
-          [id],
-        ),
-        ctx.state.db.query<Store>("SELECT * FROM stores ORDER BY name"),
-        ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
-          "SELECT id, name, unit FROM ingredients WHERE id != $1 ORDER BY name",
-          [id],
-        ),
-      ]);
+        [id],
+      ),
+      ctx.state.db.query<Store>("SELECT * FROM stores ORDER BY name"),
+      ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
+        "SELECT id, name, unit FROM ingredients WHERE id != $1 ORDER BY name",
+        [id],
+      ),
+    ]);
     if (ingredientRes.rows.length === 0) throw new HttpError(404);
 
     ctx.state.pageTitle = ingredientRes.rows[0].name;
@@ -172,6 +182,20 @@ export const handler = define.handlers({
 
     const name = form.get("name") as string;
     const unit = form.get("unit") as string;
+
+    // Convert user-friendly unit conversion to density (g/ml)
+    const convAmount1 = parseFloat(form.get("conv_amount1") as string);
+    const convUnit1 = form.get("conv_unit1") as string;
+    const convAmount2 = parseFloat(form.get("conv_amount2") as string);
+    const convUnit2 = form.get("conv_unit2") as string;
+    let density: number | null = null;
+    if (convAmount1 > 0 && convAmount2 > 0) {
+      const mass = toBaseUnit(convAmount1, convUnit1); // → grams
+      const volume = toBaseUnit(convAmount2, convUnit2); // → ml
+      if (mass.unit === "g" && volume.unit === "ml" && volume.amount > 0) {
+        density = mass.amount / volume.amount;
+      }
+    }
     if (!name?.trim()) {
       return new Response(null, {
         status: 303,
@@ -179,8 +203,8 @@ export const handler = define.handlers({
       });
     }
     await ctx.state.db.query(
-      "UPDATE ingredients SET name = $1, unit = $2 WHERE id = $3",
-      [name.trim(), unit?.trim() || null, id],
+      "UPDATE ingredients SET name = $1, unit = $2, density = $3 WHERE id = $4",
+      [name.trim(), unit?.trim() || null, density, id],
     );
     return new Response(null, {
       status: 303,
@@ -189,111 +213,235 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function IngredientDetail({ data }) {
-  const { ingredient, brands, prices, stores, otherIngredients } = data as {
-    ingredient: Ingredient;
-    brands: IngredientBrand[];
-    prices: IngredientPrice[];
-    stores: Store[];
-    otherIngredients: Pick<Ingredient, "id" | "name" | "unit">[];
-  };
-  return (
-    <div>
-      <BackLink href="/ingredients" label="Back to Ingredients" />
+export default define.page<typeof handler>(
+  function IngredientDetail(
+    { data: { ingredient, brands, prices, stores, otherIngredients } },
+  ) {
+    return (
+      <div>
+        <BackLink href="/ingredients" label="Back to Ingredients" />
 
-      <h1 class="text-2xl font-bold mt-4">
-        {ingredient.name}
-        {ingredient.unit && (
-          <span class="text-stone-400 text-lg font-normal ml-2">
-            ({ingredient.unit})
-          </span>
-        )}
-      </h1>
+        <h1 class="text-2xl font-bold mt-4">
+          {ingredient.name}
+          {ingredient.unit && (
+            <span class="text-stone-400 text-lg font-normal ml-2">
+              ({ingredient.unit})
+            </span>
+          )}
+        </h1>
 
-      <div class="grid gap-6 lg:grid-cols-3 mt-6">
-        <div class="space-y-6">
-          <div>
-            <h2 class="text-lg font-semibold mb-3">Details</h2>
-            <form method="POST" class="card space-y-3">
-              <FormField label="Name">
+        <div class="grid gap-6 lg:grid-cols-3 mt-6">
+          <div class="space-y-6">
+            <div>
+              <h2 class="text-lg font-semibold mb-3">Details</h2>
+              <form method="POST" class="card space-y-3">
+                <FormField label="Name">
+                  <input
+                    type="text"
+                    name="name"
+                    value={ingredient.name}
+                    required
+                    class="w-full"
+                  />
+                </FormField>
+                <FormField label="Unit">
+                  <UnitSelect
+                    name="unit"
+                    value={ingredient.unit ?? ""}
+                    class="w-full"
+                    required
+                  />
+                </FormField>
+                <fieldset class="space-y-1">
+                  <legend class="text-sm font-medium">
+                    Mass/volume conversion
+                  </legend>
+                  <div class="flex items-center gap-1.5 justify-between">
+                    <div class="flex">
+                      <input
+                        type="number"
+                        name="conv_amount1"
+                        step="any"
+                        min="0"
+                        value={ingredient.density != null
+                          ? +(ingredient.density * 100).toFixed(2)
+                          : ""}
+                        placeholder="Amt"
+                        class="flex-1 w-20"
+                      />
+                      <select name="conv_unit1" class="w-16 text-sm -ml-0.5">
+                        {WEIGHT_UNITS.map((u) => (
+                          <option key={u} value={u} selected={u === "g"}>
+                            {u}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <span class="text-sm text-stone-500 select-none">=</span>
+                    <div class="flex">
+                      <input
+                        type="number"
+                        name="conv_amount2"
+                        step="any"
+                        min="0"
+                        value={ingredient.density != null ? "100" : ""}
+                        placeholder="Amt"
+                        class="flex-1 w-20"
+                      />
+                      <select name="conv_unit2" class="w-16 text-sm -ml-0.5">
+                        {VOLUME_UNITS.map((u) => (
+                          <option key={u} value={u} selected={u === "ml"}>
+                            {u}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <p class="text-xs text-stone-500">
+                    Enables cost calculation when recipe and price use different
+                    unit types.
+                  </p>
+                </fieldset>
+                <button type="submit" class="btn btn-primary">Save</button>
+              </form>
+              <form method="POST" class="mt-3">
+                <input type="hidden" name="_method" value="DELETE" />
+                <ConfirmButton
+                  message="Delete this ingredient and all its brands/prices?"
+                  class="btn btn-danger"
+                >
+                  Delete Ingredient
+                </ConfirmButton>
+              </form>
+            </div>
+
+            <div>
+              <h2 class="text-lg font-semibold mb-3">Merge Into</h2>
+              <p class="text-xs text-stone-500 mb-3">
+                Replace this ingredient with another. All recipes, pantry items,
+                and shopping list references will be moved to the target. This
+                ingredient will be deleted.
+              </p>
+              <form method="POST" class="flex gap-2">
+                <input type="hidden" name="_method" value="MERGE" />
+                <select name="target_id" required class="flex-1 text-sm">
+                  <option value="">Select target...</option>
+                  {otherIngredients.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.name}
+                      {i.unit ? ` (${i.unit})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <ConfirmButton
+                  message={`Merge "${ingredient.name}" into another ingredient? This cannot be undone.`}
+                  class="btn btn-danger text-sm"
+                >
+                  Merge
+                </ConfirmButton>
+              </form>
+            </div>
+
+            <div>
+              <h2 class="text-lg font-semibold mb-3">
+                Brands ({brands.length})
+              </h2>
+              {brands.length > 0 && (
+                <div class="space-y-2 mb-3">
+                  {brands.map((b) => (
+                    <div
+                      key={b.id}
+                      class="card p-3 flex justify-between items-center"
+                    >
+                      <span class="text-sm font-medium">{b.brand}</span>
+                      <form method="POST">
+                        <input
+                          type="hidden"
+                          name="_method"
+                          value="DELETE_BRAND"
+                        />
+                        <input
+                          type="hidden"
+                          name="brand_id"
+                          value={b.id}
+                        />
+                        <button
+                          type="submit"
+                          class="text-red-500 hover:text-red-700 text-sm cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <form method="POST" class="flex gap-2">
+                <input type="hidden" name="_method" value="ADD_BRAND" />
                 <input
                   type="text"
-                  name="name"
-                  value={ingredient.name}
-                  required
-                  class="w-full"
+                  name="brand"
+                  placeholder="Add brand..."
+                  class="flex-1"
                 />
-              </FormField>
-              <FormField label="Unit">
-                <UnitSelect
-                  name="unit"
-                  value={ingredient.unit ?? ""}
-                  class="w-full"
-                  required
-                />
-              </FormField>
-              <button type="submit" class="btn btn-primary">Save</button>
-            </form>
-            <form method="POST" class="mt-3">
-              <input type="hidden" name="_method" value="DELETE" />
-              <ConfirmButton
-                message="Delete this ingredient and all its brands/prices?"
-                class="btn btn-danger"
-              >
-                Delete Ingredient
-              </ConfirmButton>
-            </form>
+                <button type="submit" class="btn btn-primary">Add</button>
+              </form>
+            </div>
           </div>
 
-          <div>
-            <h2 class="text-lg font-semibold mb-3">Merge Into</h2>
-            <p class="text-xs text-stone-500 mb-3">
-              Replace this ingredient with another. All recipes, pantry items,
-              and shopping list references will be moved to the target. This
-              ingredient will be deleted.
-            </p>
-            <form method="POST" class="flex gap-2">
-              <input type="hidden" name="_method" value="MERGE" />
-              <select name="target_id" required class="flex-1 text-sm">
-                <option value="">Select target...</option>
-                {otherIngredients.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name}
-                    {i.unit ? ` (${i.unit})` : ""}
-                  </option>
-                ))}
-              </select>
-              <ConfirmButton
-                message={`Merge "${ingredient.name}" into another ingredient? This cannot be undone.`}
-                class="btn btn-danger text-sm"
-              >
-                Merge
-              </ConfirmButton>
-            </form>
-          </div>
-
-          <div>
+          <div class="lg:col-span-2">
             <h2 class="text-lg font-semibold mb-3">
-              Brands ({brands.length})
+              Prices ({prices.length})
             </h2>
-            {brands.length > 0 && (
-              <div class="space-y-2 mb-3">
-                {brands.map((b) => (
+
+            {prices.length > 0 && (
+              <div class="space-y-2 mb-4">
+                {prices.map((p, i) => (
                   <div
-                    key={b.id}
-                    class="card p-3 flex justify-between items-center"
+                    key={p.id}
+                    class={`card flex justify-between items-center ${
+                      i === 0 ? "ring-2 ring-orange-400" : ""
+                    }`}
                   >
-                    <span class="text-sm font-medium">{b.brand}</span>
+                    <div class="flex items-center gap-4">
+                      <div class="text-xl font-bold text-orange-600">
+                        {getCurrencySymbol(p.store_currency ?? "EUR")}
+                        {p.price}
+                      </div>
+                      <div>
+                        <a
+                          href={`/stores/${p.store_id}`}
+                          class="font-medium link"
+                        >
+                          {p.store_name}
+                        </a>
+                        {p.brand_name && (
+                          <span class="text-stone-400 ml-1">
+                            ({p.brand_name})
+                          </span>
+                        )}
+                        {p.amount && (
+                          <div class="text-sm text-stone-500">
+                            per {p.amount} {ingredient.unit ?? ""}
+                          </div>
+                        )}
+                        {i === 0 && prices.length > 1 && (
+                          <div class="text-xs text-orange-600 font-medium">
+                            Cheapest
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <form method="POST">
                       <input
                         type="hidden"
                         name="_method"
-                        value="DELETE_BRAND"
+                        value="DELETE_PRICE"
                       />
                       <input
                         type="hidden"
-                        name="brand_id"
-                        value={b.id}
+                        name="price_id"
+                        value={p.id}
                       />
                       <button
                         type="submit"
@@ -306,130 +454,57 @@ export default define.page<typeof handler>(function IngredientDetail({ data }) {
                 ))}
               </div>
             )}
-            <form method="POST" class="flex gap-2">
-              <input type="hidden" name="_method" value="ADD_BRAND" />
-              <input
-                type="text"
-                name="brand"
-                placeholder="Add brand..."
-                class="flex-1"
-              />
-              <button type="submit" class="btn btn-primary">Add</button>
+
+            <form method="POST" class="card space-y-3">
+              <input type="hidden" name="_method" value="ADD_PRICE" />
+              <h3 class="text-sm font-semibold">Add Price</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <FormField label="Store">
+                  <select name="store_id" required class="w-full">
+                    <option value="">Select a store...</option>
+                    {stores.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Brand">
+                  <select name="brand_id" class="w-full">
+                    <option value="">-- No brand --</option>
+                    {brands.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.brand}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <FormField label="Price">
+                  <input
+                    type="number"
+                    name="price"
+                    step="0.01"
+                    required
+                    class="w-full"
+                  />
+                </FormField>
+                <FormField label="Per amount">
+                  <input
+                    type="number"
+                    name="amount"
+                    step="any"
+                    placeholder="e.g. 500"
+                    class="w-full"
+                  />
+                </FormField>
+              </div>
+              <button type="submit" class="btn btn-primary">Add Price</button>
             </form>
           </div>
         </div>
-
-        <div class="lg:col-span-2">
-          <h2 class="text-lg font-semibold mb-3">
-            Prices ({prices.length})
-          </h2>
-
-          {prices.length > 0 && (
-            <div class="space-y-2 mb-4">
-              {prices.map((p, i) => (
-                <div
-                  key={p.id}
-                  class={`card flex justify-between items-center ${
-                    i === 0 ? "ring-2 ring-orange-400" : ""
-                  }`}
-                >
-                  <div class="flex items-center gap-4">
-                    <div class="text-xl font-bold text-orange-600">
-                      {getCurrencySymbol(p.store_currency ?? "EUR")}
-                      {p.price}
-                    </div>
-                    <div>
-                      <a
-                        href={`/stores/${p.store_id}`}
-                        class="font-medium link"
-                      >
-                        {p.store_name}
-                      </a>
-                      {p.brand_name && (
-                        <span class="text-stone-400 ml-1">
-                          ({p.brand_name})
-                        </span>
-                      )}
-                      {p.amount && (
-                        <div class="text-sm text-stone-500">
-                          per {p.amount} {ingredient.unit ?? ""}
-                        </div>
-                      )}
-                      {i === 0 && prices.length > 1 && (
-                        <div class="text-xs text-orange-600 font-medium">
-                          Cheapest
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <form method="POST">
-                    <input type="hidden" name="_method" value="DELETE_PRICE" />
-                    <input
-                      type="hidden"
-                      name="price_id"
-                      value={p.id}
-                    />
-                    <button
-                      type="submit"
-                      class="text-red-500 hover:text-red-700 text-sm cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <form method="POST" class="card space-y-3">
-            <input type="hidden" name="_method" value="ADD_PRICE" />
-            <h3 class="text-sm font-semibold">Add Price</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <FormField label="Store">
-                <select name="store_id" required class="w-full">
-                  <option value="">Select a store...</option>
-                  {stores.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField label="Brand">
-                <select name="brand_id" class="w-full">
-                  <option value="">-- No brand --</option>
-                  {brands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.brand}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <FormField label="Price">
-                <input
-                  type="number"
-                  name="price"
-                  step="0.01"
-                  required
-                  class="w-full"
-                />
-              </FormField>
-              <FormField label="Per amount">
-                <input
-                  type="number"
-                  name="amount"
-                  step="any"
-                  placeholder="e.g. 500"
-                  class="w-full"
-                />
-              </FormField>
-            </div>
-            <button type="submit" class="btn btn-primary">Add Price</button>
-          </form>
-        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);

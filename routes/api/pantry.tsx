@@ -1,4 +1,5 @@
 import { define } from "../../utils.ts";
+import { convertAmount } from "../../lib/unit-convert.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -74,33 +75,63 @@ export const handler = define.handlers({
       for (const item of items) {
         if (item.amount == null || item.amount <= 0) continue;
 
+        // Find matching pantry item — first try exact unit match, then any unit
         let existing;
         if (item.ingredient_id) {
-          existing = await ctx.state.db.query(
-            `SELECT id, amount FROM pantry_items
-             WHERE household_id = $1 AND ingredient_id = $2 AND COALESCE(unit, '') = COALESCE($3, '')`,
-            [householdId, item.ingredient_id, item.unit],
+          existing = await ctx.state.db.query<{
+            id: number;
+            amount: number | null;
+            unit: string | null;
+            density: number | null;
+          }>(
+            `SELECT pi.id, pi.amount, pi.unit, g.density
+             FROM pantry_items pi
+             LEFT JOIN ingredients g ON g.id = pi.ingredient_id
+             WHERE pi.household_id = $1 AND pi.ingredient_id = $2`,
+            [householdId, item.ingredient_id],
           );
         } else {
-          existing = await ctx.state.db.query(
-            `SELECT id, amount FROM pantry_items
-             WHERE household_id = $1 AND lower(name) = lower($2) AND COALESCE(unit, '') = COALESCE($3, '')`,
-            [householdId, item.name, item.unit],
+          existing = await ctx.state.db.query<{
+            id: number;
+            amount: number | null;
+            unit: string | null;
+            density: number | null;
+          }>(
+            `SELECT pi.id, pi.amount, pi.unit, null as density
+             FROM pantry_items pi
+             WHERE pi.household_id = $1 AND lower(pi.name) = lower($2)`,
+            [householdId, item.name],
           );
         }
 
         if (existing.rows.length > 0) {
-          const currentAmount = Number(existing.rows[0].amount) || 0;
-          const newAmount = currentAmount - item.amount;
+          const row = existing.rows[0];
+          const currentAmount = Number(row.amount) || 0;
+          const pantryUnit = row.unit || "";
+          const recipeUnit = item.unit || "";
+
+          let deductAmount = item.amount;
+          if (pantryUnit !== recipeUnit) {
+            const converted = convertAmount(
+              item.amount,
+              recipeUnit,
+              pantryUnit,
+              row.density,
+            );
+            if (converted == null) continue;
+            deductAmount = converted;
+          }
+
+          const newAmount = currentAmount - deductAmount;
           if (newAmount <= 0) {
             await ctx.state.db.query(
               "DELETE FROM pantry_items WHERE id = $1",
-              [existing.rows[0].id],
+              [row.id],
             );
           } else {
             await ctx.state.db.query(
               "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
-              [newAmount, existing.rows[0].id],
+              [newAmount, row.id],
             );
           }
         }

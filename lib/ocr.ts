@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { recipeJsonSchema, RECIPE_FIELD_RULES } from "./recipe-prompt.ts";
+import { RECIPE_FIELD_RULES, recipeJsonSchema } from "./recipe-prompt.ts";
 
 export interface CoverImageBounds {
   image_index: number;

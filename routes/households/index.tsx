@@ -60,7 +60,9 @@ export const handler = define.handlers({
         return page({ error: "Invite code is required" });
       }
 
-      const inviteRes = await ctx.state.db.query<Pick<HouseholdInvite, "household_id">>(
+      const inviteRes = await ctx.state.db.query<
+        Pick<HouseholdInvite, "household_id">
+      >(
         `SELECT hi.household_id FROM household_invites hi
          WHERE hi.code = $1 AND hi.expires_at > now()`,
         [code],

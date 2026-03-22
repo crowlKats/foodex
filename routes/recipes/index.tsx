@@ -1,7 +1,16 @@
 import { page } from "fresh";
 import { define, escapeLike } from "../../utils.ts";
-import type { RecipeListItem, RecipeTag, RecipeWithCover } from "../../db/types.ts";
-import { getPage, Pagination, paginationParams } from "../../components/Pagination.tsx";
+import type {
+  RecipeDraft,
+  RecipeListItem,
+  RecipeTag,
+  RecipeWithCover,
+} from "../../db/types.ts";
+import {
+  getPage,
+  Pagination,
+  paginationParams,
+} from "../../components/Pagination.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { formatDuration } from "../../lib/duration.ts";
 import { formatQuantity } from "../../lib/quantity.ts";
@@ -36,8 +45,8 @@ function buildRecipeQuery(opts: {
     joins.push("LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id");
     wheres.push(
       `(r.search_vector @@ plainto_tsquery('english', $${p})` +
-      ` OR rs.body ILIKE '%' || $${p + 1} || '%' ESCAPE '\\\\'` +
-      ` OR ri.name ILIKE '%' || $${p + 1} || '%' ESCAPE '\\\\')`,
+        ` OR rs.body ILIKE '%' || $${p + 1} || '%' ESCAPE '\\\\'` +
+        ` OR ri.name ILIKE '%' || $${p + 1} || '%' ESCAPE '\\\\')`,
     );
     params.push(opts.q, escapeLike(opts.q));
     p += 2;
@@ -46,7 +55,9 @@ function buildRecipeQuery(opts: {
 
   // Favorites
   if (opts.favoritesOnly && opts.userId != null) {
-    joins.push(`JOIN recipe_favorites rf ON rf.recipe_id = r.id AND rf.user_id = $${p}`);
+    joins.push(
+      `JOIN recipe_favorites rf ON rf.recipe_id = r.id AND rf.user_id = $${p}`,
+    );
     params.push(opts.userId);
     p++;
   }
@@ -76,8 +87,13 @@ function buildRecipeQuery(opts: {
   const distinct = needsDistinct ? "DISTINCT " : "";
 
   return {
-    select: `SELECT ${distinct}r.*, m.url as cover_image_url FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}\n             ORDER BY r.updated_at DESC\n             LIMIT $${p} OFFSET $${p + 1}`,
-    count: `SELECT COUNT(${needsDistinct ? "DISTINCT r.id" : "*"}) as cnt FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}`,
+    select:
+      `SELECT ${distinct}r.*, m.url as cover_image_url FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}\n             ORDER BY r.updated_at DESC\n             LIMIT $${p} OFFSET $${
+        p + 1
+      }`,
+    count: `SELECT COUNT(${
+      needsDistinct ? "DISTINCT r.id" : "*"
+    }) as cnt FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}`,
     params,
     limitIdx: p,
   };
@@ -89,8 +105,10 @@ export const handler = define.handlers({
     const currentPage = getPage(ctx.url);
     const { limit, offset } = paginationParams(currentPage);
     const householdId = ctx.state.householdId;
-    const favoritesOnly = !!(ctx.url.searchParams.get("favorites") === "1" && ctx.state.user);
-    const cookableOnly = !!(ctx.url.searchParams.get("cookable") === "1" && ctx.state.householdId);
+    const favoritesOnly =
+      !!(ctx.url.searchParams.get("favorites") === "1" && ctx.state.user);
+    const cookableOnly =
+      !!(ctx.url.searchParams.get("cookable") === "1" && ctx.state.householdId);
 
     const built = buildRecipeQuery({
       householdId,
@@ -113,16 +131,22 @@ export const handler = define.handlers({
     const totalCount = countRes.rows[0].cnt;
 
     const recipeIds = result.rows.map((r) => r.id);
-    const tagsMap: Record<number, { meal_types: string[]; dietary: string[] }> = {};
+    const tagsMap: Record<number, { meal_types: string[]; dietary: string[] }> =
+      {};
     if (recipeIds.length > 0) {
       const tagsRes = await ctx.state.db.query<RecipeTag>(
         "SELECT recipe_id, tag_type, tag_value FROM recipe_tags WHERE recipe_id = ANY($1)",
         [recipeIds],
       );
       for (const t of tagsRes.rows) {
-        if (!tagsMap[t.recipe_id]) tagsMap[t.recipe_id] = { meal_types: [], dietary: [] };
-        if (t.tag_type === "meal_type") tagsMap[t.recipe_id].meal_types.push(t.tag_value);
-        else if (t.tag_type === "dietary") tagsMap[t.recipe_id].dietary.push(t.tag_value);
+        if (!tagsMap[t.recipe_id]) {
+          tagsMap[t.recipe_id] = { meal_types: [], dietary: [] };
+        }
+        if (t.tag_type === "meal_type") {
+          tagsMap[t.recipe_id].meal_types.push(t.tag_value);
+        } else if (t.tag_type === "dietary") {
+          tagsMap[t.recipe_id].dietary.push(t.tag_value);
+        }
       }
     }
     const recipes: RecipeListItem[] = result.rows.map((r) => ({
@@ -130,8 +154,29 @@ export const handler = define.handlers({
       tags: tagsMap[r.id] ?? { meal_types: [], dietary: [] },
     }));
 
+    let drafts: RecipeDraft[] = [];
+    if (householdId) {
+      const draftsRes = await ctx.state.db.query<RecipeDraft>(
+        `SELECT id, recipe_data, source, updated_at
+         FROM recipe_drafts WHERE household_id = $1
+         ORDER BY updated_at DESC`,
+        [householdId],
+      );
+      drafts = draftsRes.rows;
+    }
+
     ctx.state.pageTitle = "Recipes";
-    return page({ recipes, q, loggedIn: ctx.state.user != null, currentPage, totalCount, favoritesOnly, cookableOnly, hasHousehold: !!householdId });
+    return page({
+      recipes,
+      q,
+      loggedIn: ctx.state.user != null,
+      currentPage,
+      totalCount,
+      favoritesOnly,
+      cookableOnly,
+      hasHousehold: !!householdId,
+      drafts,
+    });
   },
 });
 
@@ -144,18 +189,20 @@ function filterUrl(base: Record<string, string | undefined>): string {
   return `/recipes${s ? `?${s}` : ""}`;
 }
 
-export default define.page<typeof handler>(function RecipesPage({ data, url }) {
-  const { recipes, q, loggedIn, currentPage, totalCount, favoritesOnly, cookableOnly, hasHousehold } = data as {
-    recipes: RecipeListItem[];
-    q: string;
-    loggedIn: boolean;
-    currentPage: number;
-    totalCount: number;
-    favoritesOnly: boolean;
-    cookableOnly: boolean;
-    hasHousehold: boolean;
-  };
-
+export default define.page<typeof handler>(function RecipesPage({
+  data: {
+    recipes,
+    q,
+    loggedIn,
+    currentPage,
+    totalCount,
+    favoritesOnly,
+    cookableOnly,
+    hasHousehold,
+    drafts,
+  },
+  url,
+}) {
   const qParam = q || undefined;
   return (
     <div>
@@ -165,8 +212,15 @@ export default define.page<typeof handler>(function RecipesPage({ data, url }) {
             {hasHousehold && (
               <a
                 href={cookableOnly
-                  ? filterUrl({ q: qParam, favorites: favoritesOnly ? "1" : undefined })
-                  : filterUrl({ q: qParam, favorites: favoritesOnly ? "1" : undefined, cookable: "1" })}
+                  ? filterUrl({
+                    q: qParam,
+                    favorites: favoritesOnly ? "1" : undefined,
+                  })
+                  : filterUrl({
+                    q: qParam,
+                    favorites: favoritesOnly ? "1" : undefined,
+                    cookable: "1",
+                  })}
                 class={`btn ${cookableOnly ? "btn-primary" : "btn-outline"}`}
                 title={cookableOnly ? "Show all recipes" : "Show cookable now"}
               >
@@ -175,8 +229,15 @@ export default define.page<typeof handler>(function RecipesPage({ data, url }) {
             )}
             <a
               href={favoritesOnly
-                ? filterUrl({ q: qParam, cookable: cookableOnly ? "1" : undefined })
-                : filterUrl({ q: qParam, cookable: cookableOnly ? "1" : undefined, favorites: "1" })}
+                ? filterUrl({
+                  q: qParam,
+                  cookable: cookableOnly ? "1" : undefined,
+                })
+                : filterUrl({
+                  q: qParam,
+                  cookable: cookableOnly ? "1" : undefined,
+                  favorites: "1",
+                })}
               class={`btn ${favoritesOnly ? "btn-primary" : "btn-outline"}`}
               title={favoritesOnly ? "Show all recipes" : "Show favorites"}
             >
@@ -199,6 +260,47 @@ export default define.page<typeof handler>(function RecipesPage({ data, url }) {
           </>
         )}
       </PageHeader>
+
+      {drafts.length > 0 && (
+        <div class="mb-6">
+          <h2 class="text-lg font-semibold mb-3">
+            Drafts ({drafts.length})
+          </h2>
+          <div class="space-y-2">
+            {drafts.map((d) => {
+              const title = (d.recipe_data as Record<string, unknown>)?.title;
+              const sourceLabel = d.source === "ocr"
+                ? "Imported"
+                : d.source === "generate"
+                ? "Generated"
+                : "Manual";
+              return (
+                <a
+                  key={d.id}
+                  href={`/recipes/drafts/${d.id}`}
+                  class="block card card-hover"
+                >
+                  <div class="flex items-center gap-3">
+                    <div class="flex-1">
+                      <div class="font-medium">
+                        {title ? String(title) : "Untitled draft"}
+                      </div>
+                      <div class="text-xs text-stone-400">
+                        {sourceLabel}
+                        {" \u00b7 "}
+                        {new Date(d.updated_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <span class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded">
+                      draft
+                    </span>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div>
         <h2 class="text-lg font-semibold mb-3">
@@ -236,15 +338,22 @@ export default define.page<typeof handler>(function RecipesPage({ data, url }) {
                           {r.description}
                         </div>
                       )}
-                      {(r.tags.meal_types.length > 0 || r.tags.dietary.length > 0) && (
+                      {(r.tags.meal_types.length > 0 ||
+                        r.tags.dietary.length > 0) && (
                         <div class="flex flex-wrap gap-1 mt-1">
                           {r.tags.meal_types.map((mt) => (
-                            <span key={mt} class="text-[10px] bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded capitalize">
+                            <span
+                              key={mt}
+                              class="text-[10px] bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded capitalize"
+                            >
                               {mt}
                             </span>
                           ))}
                           {r.tags.dietary.map((dt) => (
-                            <span key={dt} class="text-[10px] bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded capitalize">
+                            <span
+                              key={dt}
+                              class="text-[10px] bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded capitalize"
+                            >
                               {dt}
                             </span>
                           ))}
@@ -256,7 +365,9 @@ export default define.page<typeof handler>(function RecipesPage({ data, url }) {
                     <span>
                       <TbUsers class="size-3.5 inline mr-0.5" />
                       {formatQuantity({
-                        type: (r.quantity_type || "servings") as RecipeQuantity["type"],
+                        type: (r.quantity_type || "servings") as RecipeQuantity[
+                          "type"
+                        ],
                         value: r.quantity_value ?? 4,
                         unit: r.quantity_unit || "servings",
                         value2: r.quantity_value2 != null
@@ -285,7 +396,11 @@ export default define.page<typeof handler>(function RecipesPage({ data, url }) {
               ))}
             </div>
           )}
-        <Pagination currentPage={currentPage} totalCount={totalCount} url={url} />
+        <Pagination
+          currentPage={currentPage}
+          totalCount={totalCount}
+          url={url}
+        />
       </div>
     </div>
   );

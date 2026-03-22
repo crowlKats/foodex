@@ -41,14 +41,17 @@ export const handler = define.handlers({
     }
 
     // Check if user already belongs to another household
-    const membershipRes = await ctx.state.db.query<Pick<HouseholdMember, "household_id">>(
+    const membershipRes = await ctx.state.db.query<
+      Pick<HouseholdMember, "household_id">
+    >(
       "SELECT household_id FROM household_members WHERE user_id = $1",
       [ctx.state.user.id],
     );
 
     if (membershipRes.rows.length > 0) {
       return page({
-        error: "You already belong to a household. Leave your current household before joining a new one.",
+        error:
+          "You already belong to a household. Leave your current household before joining a new one.",
       });
     }
 
@@ -89,14 +92,17 @@ export const handler = define.handlers({
     }
 
     // Check if user already belongs to another household
-    const membershipRes = await ctx.state.db.query<Pick<HouseholdMember, "household_id">>(
+    const membershipRes = await ctx.state.db.query<
+      Pick<HouseholdMember, "household_id">
+    >(
       "SELECT household_id FROM household_members WHERE user_id = $1",
       [ctx.state.user.id],
     );
 
     if (membershipRes.rows.length > 0) {
       return page({
-        error: "You already belong to a household. Leave your current household before joining a new one.",
+        error:
+          "You already belong to a household. Leave your current household before joining a new one.",
       });
     }
 

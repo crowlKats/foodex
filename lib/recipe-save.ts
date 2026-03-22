@@ -26,11 +26,17 @@ export async function saveRecipeChildren(
         i,
       ];
     })
-    .filter((r): r is unknown[] => r != null);
+    .filter((r) => r != null);
 
   if (ingRows.length > 0) {
     await bulkInsert(q, "recipe_ingredients", [
-      "recipe_id", "ingredient_id", "key", "name", "amount", "unit", "sort_order",
+      "recipe_id",
+      "ingredient_id",
+      "key",
+      "name",
+      "amount",
+      "unit",
+      "sort_order",
     ], ingRows);
   }
 
@@ -47,11 +53,15 @@ export async function saveRecipeChildren(
         i,
       ];
     })
-    .filter((r): r is unknown[] => r != null);
+    .filter((r) => r != null);
 
   if (toolRows.length > 0) {
     await bulkInsert(q, "recipe_tools", [
-      "recipe_id", "tool_id", "usage_description", "settings", "sort_order",
+      "recipe_id",
+      "tool_id",
+      "usage_description",
+      "settings",
+      "sort_order",
     ], toolRows);
   }
 
@@ -96,7 +106,9 @@ export async function saveRecipeChildren(
     }
     if (mediaRows.length > 0) {
       await bulkInsert(q, "recipe_step_media", [
-        "step_id", "media_id", "sort_order",
+        "step_id",
+        "media_id",
+        "sort_order",
       ], mediaRows);
     }
   }
@@ -108,7 +120,7 @@ export async function saveRecipeChildren(
       if (!ref.referenced_recipe_id) return null;
       return [recipeId, parseInt(ref.referenced_recipe_id), i];
     })
-    .filter((r): r is unknown[] => r != null);
+    .filter((r) => r != null);
 
   if (refRows.length > 0) {
     await bulkInsert(
@@ -121,8 +133,12 @@ export async function saveRecipeChildren(
   }
 
   // Tags
-  const mealTypes = (form.getAll("meal_type") as string[]).filter((v) => v.trim());
-  const dietaryTags = (form.getAll("dietary") as string[]).filter((v) => v.trim());
+  const mealTypes = (form.getAll("meal_type") as string[]).filter((v) =>
+    v.trim()
+  );
+  const dietaryTags = (form.getAll("dietary") as string[]).filter((v) =>
+    v.trim()
+  );
   const tagRows = [
     ...mealTypes.map((v) => [recipeId, "meal_type", v.trim()]),
     ...dietaryTags.map((v) => [recipeId, "dietary", v.trim()]),

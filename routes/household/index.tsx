@@ -42,42 +42,50 @@ export const handler = define.handlers({
     }
     const myRole = memberCheck.rows[0].role;
 
-    const [householdRes, membersRes, invitesRes, toolsRes, storesRes, recipesRes] =
-      await Promise.all([
-        ctx.state.db.query<Household>("SELECT * FROM households WHERE id = $1", [id]),
-        ctx.state.db.query<HouseholdMember>(
-          `SELECT hm.*, u.name, u.email, u.avatar_url
+    const [
+      householdRes,
+      membersRes,
+      invitesRes,
+      toolsRes,
+      storesRes,
+      recipesRes,
+    ] = await Promise.all([
+      ctx.state.db.query<Household>("SELECT * FROM households WHERE id = $1", [
+        id,
+      ]),
+      ctx.state.db.query<HouseholdMember>(
+        `SELECT hm.*, u.name, u.email, u.avatar_url
            FROM household_members hm
            JOIN users u ON u.id = hm.user_id
            WHERE hm.household_id = $1
            ORDER BY hm.role DESC, u.name`,
-          [id],
-        ),
-        ctx.state.db.query<HouseholdInvite>(
-          `SELECT * FROM household_invites
+        [id],
+      ),
+      ctx.state.db.query<HouseholdInvite>(
+        `SELECT * FROM household_invites
            WHERE household_id = $1 AND expires_at > now()
            ORDER BY created_at DESC`,
-          [id],
-        ),
-        ctx.state.db.query<ToolWithOwned>(
-          `SELECT t.id, t.name,
+        [id],
+      ),
+      ctx.state.db.query<ToolWithOwned>(
+        `SELECT t.id, t.name,
                   (EXISTS (SELECT 1 FROM household_tools ht WHERE ht.tool_id = t.id AND ht.household_id = $1)) as owned
            FROM tools t ORDER BY t.name`,
-          [id],
-        ),
-        ctx.state.db.query<StoreWithOwned>(
-          `SELECT s.id, s.name,
+        [id],
+      ),
+      ctx.state.db.query<StoreWithOwned>(
+        `SELECT s.id, s.name,
                   (EXISTS (SELECT 1 FROM household_stores hs WHERE hs.store_id = s.id AND hs.household_id = $1)) as owned
            FROM stores s ORDER BY s.name`,
-          [id],
-        ),
-        ctx.state.db.query<HouseholdRecipe>(
-          `SELECT r.id, r.title, r.slug, r.private FROM recipes r
+        [id],
+      ),
+      ctx.state.db.query<HouseholdRecipe>(
+        `SELECT r.id, r.title, r.slug, r.private FROM recipes r
            WHERE r.household_id = $1
            ORDER BY r.updated_at DESC`,
-          [id],
-        ),
-      ]);
+        [id],
+      ),
+    ]);
 
     const allTools = toolsRes.rows;
     const tools = allTools.filter((t) => t.owned);
@@ -211,29 +219,22 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function HouseholdDetailPage(
-  { data, state, url },
+  {
+    data: {
+      household,
+      members,
+      invites,
+      tools,
+      availableTools,
+      stores,
+      availableStores,
+      recipes,
+      myRole,
+    },
+    state,
+    url,
+  },
 ) {
-  const {
-    household,
-    members,
-    invites,
-    tools,
-    availableTools,
-    stores,
-    availableStores,
-    recipes,
-    myRole,
-  } = data as {
-    household: Household;
-    members: HouseholdMember[];
-    invites: HouseholdInvite[];
-    tools: ToolWithOwned[];
-    availableTools: ToolWithOwned[];
-    stores: StoreWithOwned[];
-    availableStores: StoreWithOwned[];
-    recipes: HouseholdRecipe[];
-    myRole: HouseholdMember["role"];
-  };
   const isOwner = myRole === "owner";
 
   return (
@@ -434,7 +435,11 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                   </span>
                   {isOwner && m.user_id !== state.user!.id && (
                     <form method="POST" class="inline">
-                      <input type="hidden" name="_method" value="REMOVE_MEMBER" />
+                      <input
+                        type="hidden"
+                        name="_method"
+                        value="REMOVE_MEMBER"
+                      />
                       <input
                         type="hidden"
                         name="member_user_id"

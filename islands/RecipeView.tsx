@@ -7,6 +7,7 @@ import {
 import { computeScaleRatio } from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
+import { convertAmount } from "../lib/unit-convert.ts";
 import { marked } from "marked";
 
 marked.use({ renderer: { html: () => "" } });
@@ -35,6 +36,7 @@ interface RecipeIngredient {
   ingredient_id?: number;
   base_cost?: number; // cost at the recipe's default quantity
   currency?: string;
+  density?: number | null;
 }
 
 interface RecipeTool {
@@ -95,10 +97,11 @@ function renderStepsClient(
     });
     const html = marked.parse(evaluated);
     if (typeof html === "string") {
-      let stepHtml =
-        `<h2 id="step-${si + 1}" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
-          si + 1
-        }.</span>${step.title.replace(/</g, "&lt;")}</h2>\n${html}`;
+      let stepHtml = `<h2 id="step-${
+        si + 1
+      }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
+        si + 1
+      }.</span>${step.title.replace(/</g, "&lt;")}</h2>\n${html}`;
       if (step.media && step.media.length > 0) {
         stepHtml += `<div class="flex flex-wrap gap-2 mt-3">${
           step.media.map((m) =>
@@ -155,7 +158,9 @@ export default function RecipeView(
 
   function findPantryItem(ing: RecipeIngredient): PantryItem | undefined {
     if (ing.ingredient_id) {
-      const byId = pantryItems.find((p) => p.ingredient_id === ing.ingredient_id);
+      const byId = pantryItems.find((p) =>
+        p.ingredient_id === ing.ingredient_id
+      );
       if (byId) return byId;
     }
     return pantryItems.find((p) => p.name === ing.name.toLowerCase());
@@ -167,9 +172,20 @@ export default function RecipeView(
     const scaled = ing.amount * ratio;
     const pantry = findPantryItem(ing);
     if (!pantry || pantry.amount == null) return scaled;
-    // Only subtract if units match (or both empty)
-    if ((ing.unit || "") !== (pantry.unit || "")) return scaled;
-    const needed = scaled - pantry.amount;
+    const ingUnit = ing.unit || "";
+    const pantryUnit = pantry.unit || "";
+    let pantryInIngUnit = pantry.amount;
+    if (ingUnit !== pantryUnit) {
+      const converted = convertAmount(
+        pantry.amount,
+        pantryUnit,
+        ingUnit,
+        ing.density,
+      );
+      if (converted == null) return scaled;
+      pantryInIngUnit = converted;
+    }
+    const needed = scaled - pantryInIngUnit;
     return needed > 0 ? needed : 0;
   }
   const addedToList = useSignal<string | null>(null);
@@ -424,7 +440,9 @@ export default function RecipeView(
 
     if (items.length === 0) {
       addedToList.value = "all";
-      setTimeout(() => { addedToList.value = null; }, 2000);
+      setTimeout(() => {
+        addedToList.value = null;
+      }, 2000);
       return;
     }
 
@@ -439,7 +457,9 @@ export default function RecipeView(
     });
     if (res.ok) {
       addedToList.value = "all";
-      setTimeout(() => { addedToList.value = null; }, 2000);
+      setTimeout(() => {
+        addedToList.value = null;
+      }, 2000);
     }
   }
 
@@ -448,7 +468,9 @@ export default function RecipeView(
     const needed = neededAmount(ing, ratio);
     if (needed === 0) {
       addedToList.value = ing.key;
-      setTimeout(() => { addedToList.value = null; }, 1500);
+      setTimeout(() => {
+        addedToList.value = null;
+      }, 1500);
       return;
     }
     await fetch("/api/shopping-list", {
@@ -464,7 +486,9 @@ export default function RecipeView(
       }),
     });
     addedToList.value = ing.key;
-    setTimeout(() => { addedToList.value = null; }, 1500);
+    setTimeout(() => {
+      addedToList.value = null;
+    }, 1500);
   }
 
   const cookedStatus = useSignal<"idle" | "loading" | "done">("idle");
@@ -492,7 +516,9 @@ export default function RecipeView(
       }),
     });
     cookedStatus.value = "done";
-    setTimeout(() => { cookedStatus.value = "idle"; }, 2000);
+    setTimeout(() => {
+      cookedStatus.value = "idle";
+    }, 2000);
   }
 
   return (
@@ -532,7 +558,9 @@ export default function RecipeView(
                       disabled={cookedStatus.value === "loading"}
                       onClick={markCooked}
                     >
-                      {cookedStatus.value === "done" ? "Deducted!" : "I cooked this"}
+                      {cookedStatus.value === "done"
+                        ? "Deducted!"
+                        : "I cooked this"}
                     </button>
                   )}
                   <button
@@ -540,7 +568,9 @@ export default function RecipeView(
                     class="text-xs text-orange-600 hover:underline cursor-pointer"
                     onClick={addAllToShoppingList}
                   >
-                    {addedToList.value === "all" ? "Added!" : "Add missing to list"}
+                    {addedToList.value === "all"
+                      ? "Added!"
+                      : "Add missing to list"}
                   </button>
                 </div>
               )}

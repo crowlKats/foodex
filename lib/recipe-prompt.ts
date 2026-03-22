@@ -29,7 +29,9 @@ ${coverLine}
 export const RECIPE_FIELD_RULES = `\
 - "key" must be a unique snake_case identifier derived from the ingredient name (e.g. "all_purpose_flour", "olive_oil")
 - "amount" must be a numeric string (e.g. "200", "1.5") or empty string if unspecified
-- "unit" must be one of these exact values: ${ALL_UNITS.join(", ")} — or empty string if no unit applies
+- "unit" must be one of these exact values: ${
+  ALL_UNITS.join(", ")
+} — or empty string if no unit applies
 - "quantity_type" should be "servings" unless the recipe specifies weight/volume/dimensions
 - If prep or cook time is not specified, use null
 - Step titles should be short (2-4 words). Step bodies support Markdown and a template syntax for dynamic ingredient scaling. Only use template refs when an ingredient amount is explicitly mentioned in a step — if a step just names an ingredient without a specific quantity, use plain text.

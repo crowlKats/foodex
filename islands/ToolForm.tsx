@@ -93,9 +93,21 @@ export default function ToolForm(
           >
             <TbX class="size-4" />
           </button>
-          <input type="hidden" name={`tools[${i}][tool_id]`} value={item.tool_id} />
-          <input type="hidden" name={`tools[${i}][usage_description]`} value={item.usage_description} />
-          <input type="hidden" name={`tools[${i}][settings]`} value={item.settings} />
+          <input
+            type="hidden"
+            name={`tools[${i}][tool_id]`}
+            value={item.tool_id}
+          />
+          <input
+            type="hidden"
+            name={`tools[${i}][usage_description]`}
+            value={item.usage_description}
+          />
+          <input
+            type="hidden"
+            name={`tools[${i}][settings]`}
+            value={item.settings}
+          />
         </div>
       ))}
       <button

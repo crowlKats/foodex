@@ -1,6 +1,16 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
-import type { Ingredient, Recipe, RecipeIngredient, RecipeReference, RecipeStep, RecipeTag, RecipeTool, RecipeWithCoverMedia, Tool } from "../../../db/types.ts";
+import type {
+  Ingredient,
+  Recipe,
+  RecipeIngredient,
+  RecipeReference,
+  RecipeStep,
+  RecipeTag,
+  RecipeTool,
+  RecipeWithCoverMedia,
+  Tool,
+} from "../../../db/types.ts";
 import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
 import QuantityInput from "../../../islands/QuantityInput.tsx";
 import IngredientForm from "../../../islands/IngredientForm.tsx";
@@ -26,7 +36,9 @@ export const handler = define.handlers({
     if (recipeRes.rows.length === 0) throw new HttpError(404);
     const recipe = recipeRes.rows[0];
 
-    if (!ctx.state.householdId || recipe.household_id !== ctx.state.householdId) {
+    if (
+      !ctx.state.householdId || recipe.household_id !== ctx.state.householdId
+    ) {
       return new Response(null, {
         status: 303,
         headers: { Location: `/recipes/${slug}` },
@@ -56,7 +68,9 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const stepMediaRes = await ctx.state.db.query<{ step_id: number; sort_order: number; media_id: number; url: string }>(
+    const stepMediaRes = await ctx.state.db.query<
+      { step_id: number; sort_order: number; media_id: number; url: string }
+    >(
       `SELECT rsm.step_id, rsm.sort_order, m.id as media_id, m.url
        FROM recipe_step_media rsm
        JOIN media m ON m.id = rsm.media_id
@@ -127,7 +141,9 @@ export const handler = define.handlers({
   },
   async POST(ctx) {
     const slug = ctx.params.slug;
-    const recipeRes = await ctx.state.db.query<{ id: number; household_id: number }>(
+    const recipeRes = await ctx.state.db.query<
+      { id: number; household_id: number }
+    >(
       "SELECT id, household_id FROM recipes WHERE slug = $1",
       [slug],
     );
@@ -220,8 +236,8 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function RecipeEdit({ data }) {
-  const {
+export default define.page<typeof handler>(function RecipeEdit({
+  data: {
     recipe,
     ingredients,
     tools,
@@ -232,19 +248,8 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
     allIngredients,
     allTools,
     allRecipes,
-  } = data as {
-    recipe: RecipeWithCoverMedia;
-    ingredients: RecipeIngredient[];
-    tools: RecipeTool[];
-    steps: (RecipeStep & { media: { id: string; url: string }[] })[];
-    refs: RecipeReference[];
-    mealTypes: string[];
-    dietaryTags: string[];
-    allIngredients: Ingredient[];
-    allTools: Tool[];
-    allRecipes: Recipe[];
-  };
-
+  },
+}) {
   const ingredientData = ingredients.map((i) => ({
     key: i.key ?? "",
     name: i.name,
@@ -347,12 +352,26 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
               checked={recipe.private}
               class="size-4 accent-orange-600"
             />
-            <span class="text-sm">Private (only visible to household members)</span>
+            <span class="text-sm">
+              Private (only visible to household members)
+            </span>
           </label>
           <FormField label="Meal Type">
             <div class="flex flex-wrap gap-2">
-              {["breakfast", "lunch", "dinner", "snack", "dessert", "appetizer", "side", "drink"].map((mt) => (
-                <label key={mt} class="flex items-center gap-1.5 cursor-pointer">
+              {[
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack",
+                "dessert",
+                "appetizer",
+                "side",
+                "drink",
+              ].map((mt) => (
+                <label
+                  key={mt}
+                  class="flex items-center gap-1.5 cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     name="meal_type"
@@ -367,8 +386,20 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
           </FormField>
           <FormField label="Dietary">
             <div class="flex flex-wrap gap-2">
-              {["vegetarian", "vegan", "gluten-free", "dairy-free", "nut-free", "low-carb", "keto", "paleo"].map((dt) => (
-                <label key={dt} class="flex items-center gap-1.5 cursor-pointer">
+              {[
+                "vegetarian",
+                "vegan",
+                "gluten-free",
+                "dairy-free",
+                "nut-free",
+                "low-carb",
+                "keto",
+                "paleo",
+              ].map((dt) => (
+                <label
+                  key={dt}
+                  class="flex items-center gap-1.5 cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     name="dietary"
@@ -442,4 +473,3 @@ export default define.page<typeof handler>(function RecipeEdit({ data }) {
     </div>
   );
 });
-

@@ -17,7 +17,8 @@ interface SearchSelectProps {
 }
 
 export default function SearchSelect(
-  { value, options, placeholder, onSelect, onClear, onChange }: SearchSelectProps,
+  { value, options, placeholder, onSelect, onClear, onChange }:
+    SearchSelectProps,
 ) {
   const query = useSignal(value.name);
   const open = useSignal(false);
@@ -27,9 +28,7 @@ export default function SearchSelect(
   function getFiltered(): SearchSelectOption[] {
     const q = query.value.toLowerCase().trim();
     if (!q) return options.slice(0, 20);
-    return options.filter((o) =>
-      o.name.toLowerCase().includes(q)
-    ).slice(0, 20);
+    return options.filter((o) => o.name.toLowerCase().includes(q)).slice(0, 20);
   }
 
   function select(o: SearchSelectOption) {
@@ -78,7 +77,9 @@ export default function SearchSelect(
           type="text"
           placeholder={placeholder ?? "Search..."}
           value={query}
-          class={`flex-1 text-sm ${linked.value ? "border-green-500 dark:border-green-600" : ""}`}
+          class={`flex-1 text-sm ${
+            linked.value ? "border-green-500 dark:border-green-600" : ""
+          }`}
           onInput={(e) => {
             const text = (e.target as HTMLInputElement).value;
             query.value = text;
@@ -90,9 +91,13 @@ export default function SearchSelect(
             }
             onChange?.(text);
           }}
-          onFocus={() => { open.value = true; }}
+          onFocus={() => {
+            open.value = true;
+          }}
           onBlur={() => {
-            setTimeout(() => { open.value = false; }, 150);
+            setTimeout(() => {
+              open.value = false;
+            }, 150);
           }}
           onKeyDown={handleKeyDown}
         />
@@ -122,7 +127,9 @@ export default function SearchSelect(
                 e.preventDefault();
                 select(o);
               }}
-              onMouseEnter={() => { highlightIndex.value = idx; }}
+              onMouseEnter={() => {
+                highlightIndex.value = idx;
+              }}
             >
               <span class="font-medium">{o.name}</span>
               {o.detail && (

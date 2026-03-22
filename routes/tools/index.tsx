@@ -2,7 +2,11 @@ import { page } from "fresh";
 import { define, escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
-import { getPage, Pagination, paginationParams } from "../../components/Pagination.tsx";
+import {
+  getPage,
+  Pagination,
+  paginationParams,
+} from "../../components/Pagination.tsx";
 import type { Tool } from "../../db/types.ts";
 
 export const handler = define.handlers({
@@ -29,8 +33,13 @@ export const handler = define.handlers({
       ]);
     } else {
       [result, countRes] = await Promise.all([
-        ctx.state.db.query<Tool>("SELECT * FROM tools ORDER BY name LIMIT $1 OFFSET $2", [limit, offset]),
-        ctx.state.db.query<{ cnt: number }>("SELECT COUNT(*) as cnt FROM tools"),
+        ctx.state.db.query<Tool>(
+          "SELECT * FROM tools ORDER BY name LIMIT $1 OFFSET $2",
+          [limit, offset],
+        ),
+        ctx.state.db.query<{ cnt: number }>(
+          "SELECT COUNT(*) as cnt FROM tools",
+        ),
       ]);
     }
     const totalCount = Number(countRes.rows[0].cnt);
@@ -48,7 +57,14 @@ export const handler = define.handlers({
 
     const error = ctx.url.searchParams.get("error") || undefined;
     ctx.state.pageTitle = "Tools";
-    return page({ tools: result.rows, q, ownedToolIds: [...ownedToolIds], currentPage, totalCount, error });
+    return page({
+      tools: result.rows,
+      q,
+      ownedToolIds: [...ownedToolIds],
+      currentPage,
+      totalCount,
+      error,
+    });
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -87,91 +103,91 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function ToolsPage({ data, url }) {
-  const { tools, error, q, ownedToolIds, currentPage, totalCount } = data as {
-    tools: Tool[];
-    error?: string;
-    q: string;
-    ownedToolIds?: number[];
-    currentPage: number;
-    totalCount: number;
-  };
-  const ownedSet = new Set(ownedToolIds ?? []);
-  return (
-    <div>
-      <PageHeader title="Tools" query={q} />
+export default define.page<typeof handler>(
+  function ToolsPage(
+    { data: { tools, error, q, ownedToolIds, currentPage, totalCount }, url },
+  ) {
+    const ownedSet = new Set(ownedToolIds ?? []);
+    return (
+      <div>
+        <PageHeader title="Tools" query={q} />
 
-      {error && (
-        <div class="alert-error mb-4">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div class="alert-error mb-4">
+            {error}
+          </div>
+        )}
 
-      <div class="grid gap-6 md:grid-cols-2">
-        <div>
-          <h2 class="text-lg font-semibold mb-3">Add Tool</h2>
-          <form
-            method="POST"
-            class="card space-y-3"
-          >
-            <FormField label="Name">
-              <input
-                type="text"
-                name="name"
-                required
-                class="w-full"
-              />
-            </FormField>
-            <FormField label="Description">
-              <textarea
-                name="description"
-                rows={3}
-                class="w-full"
-              />
-            </FormField>
-            <button
-              type="submit"
-              class="btn btn-primary"
+        <div class="grid gap-6 md:grid-cols-2">
+          <div>
+            <h2 class="text-lg font-semibold mb-3">Add Tool</h2>
+            <form
+              method="POST"
+              class="card space-y-3"
             >
-              Add Tool
-            </button>
-          </form>
-        </div>
+              <FormField label="Name">
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  class="w-full"
+                />
+              </FormField>
+              <FormField label="Description">
+                <textarea
+                  name="description"
+                  rows={3}
+                  class="w-full"
+                />
+              </FormField>
+              <button
+                type="submit"
+                class="btn btn-primary"
+              >
+                Add Tool
+              </button>
+            </form>
+          </div>
 
-        <div>
-          <h2 class="text-lg font-semibold mb-3">
-            All Tools ({totalCount})
-          </h2>
-          {tools.length === 0
-            ? <p class="text-stone-500">No tools yet.</p>
-            : (
-              <div class="space-y-2">
-                {tools.map((m) => (
-                  <a
-                    key={m.id}
-                    href={`/tools/${m.id}`}
-                    class="block card card-hover"
-                  >
-                    <div class="flex items-center gap-2">
-                      <div class="font-medium flex-1">{m.name}</div>
-                      {ownedSet.has(m.id) && (
-                        <span class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
-                          owned
-                        </span>
-                      )}
-                    </div>
-                    {m.description && (
-                      <div class="text-sm text-stone-500 truncate">
-                        {m.description}
+          <div>
+            <h2 class="text-lg font-semibold mb-3">
+              All Tools ({totalCount})
+            </h2>
+            {tools.length === 0
+              ? <p class="text-stone-500">No tools yet.</p>
+              : (
+                <div class="space-y-2">
+                  {tools.map((m) => (
+                    <a
+                      key={m.id}
+                      href={`/tools/${m.id}`}
+                      class="block card card-hover"
+                    >
+                      <div class="flex items-center gap-2">
+                        <div class="font-medium flex-1">{m.name}</div>
+                        {ownedSet.has(m.id) && (
+                          <span class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
+                            owned
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </a>
-                ))}
-              </div>
-            )}
-          <Pagination currentPage={currentPage} totalCount={totalCount} url={url} />
+                      {m.description && (
+                        <div class="text-sm text-stone-500 truncate">
+                          {m.description}
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+            <Pagination
+              currentPage={currentPage}
+              totalCount={totalCount}
+              url={url}
+            />
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);

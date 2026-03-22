@@ -13,7 +13,7 @@ export function bulkInsert(
   rows: unknown[][],
   options?: { returning?: string; suffix?: string },
 ): Promise<{ rows: Record<string, unknown>[] }> {
-  if (rows.length === 0) return { rows: [] };
+  if (rows.length === 0) return Promise.resolve({ rows: [] });
 
   const colCount = columns.length;
   const valueClauses: string[] = [];
@@ -28,7 +28,9 @@ export function bulkInsert(
     valueClauses.push(`(${placeholders.join(", ")})`);
   }
 
-  let sql = `INSERT INTO ${table} (${columns.join(", ")}) VALUES ${valueClauses.join(", ")}`;
+  let sql = `INSERT INTO ${table} (${columns.join(", ")}) VALUES ${
+    valueClauses.join(", ")
+  }`;
   if (options?.suffix) sql += ` ${options.suffix}`;
   if (options?.returning) sql += ` RETURNING ${options.returning}`;
 

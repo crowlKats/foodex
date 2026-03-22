@@ -94,104 +94,102 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function ToolDetail({ data }) {
-  const { tool, usage, householdHasTool, loggedIn } = data as {
-    tool: Tool;
-    usage: ToolUsage[];
-    householdHasTool: boolean;
-    loggedIn: boolean;
-  };
-  return (
-    <div>
-      <BackLink href="/tools" label="Back to Tools" />
+export default define.page<typeof handler>(
+  function ToolDetail({ data: { tool, usage, householdHasTool, loggedIn } }) {
+    return (
+      <div>
+        <BackLink href="/tools" label="Back to Tools" />
 
-      <div class="mt-4 grid gap-6 md:grid-cols-2">
-        <div>
-          <h1 class="text-2xl font-bold mb-4">Edit Tool</h1>
-          <form
-            method="POST"
-            class="card space-y-3"
-          >
-            <FormField label="Name">
-              <input
-                type="text"
-                name="name"
-                value={tool.name}
-                required
-                class="w-full"
-              />
-            </FormField>
-            <FormField label="Description">
-              <textarea
-                name="description"
-                rows={4}
-                class="w-full"
-              >
-                {tool.description ?? ""}
-              </textarea>
-            </FormField>
-            <button
-              type="submit"
-              class="btn btn-primary"
+        <div class="mt-4 grid gap-6 md:grid-cols-2">
+          <div>
+            <h1 class="text-2xl font-bold mb-4">Edit Tool</h1>
+            <form
+              method="POST"
+              class="card space-y-3"
             >
-              Save
-            </button>
-          </form>
-
-          {loggedIn && (
-            <form method="POST" class="mt-4">
-              <input type="hidden" name="_method" value="TOGGLE_OWNED" />
+              <FormField label="Name">
+                <input
+                  type="text"
+                  name="name"
+                  value={tool.name}
+                  required
+                  class="w-full"
+                />
+              </FormField>
+              <FormField label="Description">
+                <textarea
+                  name="description"
+                  rows={4}
+                  class="w-full"
+                >
+                  {tool.description ?? ""}
+                </textarea>
+              </FormField>
               <button
                 type="submit"
-                class={`btn w-full ${
-                  householdHasTool ? "btn-outline" : "btn-primary"
-                }`}
+                class="btn btn-primary"
               >
-                {householdHasTool ? "Remove from household" : "We have this tool"}
+                Save
               </button>
             </form>
-          )}
 
-          <form method="POST" class="mt-4">
-            <input type="hidden" name="_method" value="DELETE" />
-            <ConfirmButton
-              message="Delete this tool?"
-              class="btn btn-danger"
-            >
-              Delete Tool
-            </ConfirmButton>
-          </form>
-        </div>
-
-        <div>
-          <h2 class="text-lg font-semibold mb-3">Used in Recipes</h2>
-          {usage.length === 0
-            ? <p class="text-stone-500">Not used in any recipes yet.</p>
-            : (
-              <div class="space-y-2">
-                {usage.map((u) => (
-                  <a
-                    key={u.id}
-                    href={`/recipes/${u.recipe_slug}`}
-                    class="block card card-hover p-3"
-                  >
-                    <div class="font-medium">{u.recipe_title}</div>
-                    {u.usage_description && (
-                      <div class="text-sm text-stone-500">
-                        {u.usage_description}
-                      </div>
-                    )}
-                    {u.settings && (
-                      <div class="text-sm text-stone-400">
-                        Settings: {u.settings}
-                      </div>
-                    )}
-                  </a>
-                ))}
-              </div>
+            {loggedIn && (
+              <form method="POST" class="mt-4">
+                <input type="hidden" name="_method" value="TOGGLE_OWNED" />
+                <button
+                  type="submit"
+                  class={`btn w-full ${
+                    householdHasTool ? "btn-outline" : "btn-primary"
+                  }`}
+                >
+                  {householdHasTool
+                    ? "Remove from household"
+                    : "We have this tool"}
+                </button>
+              </form>
             )}
+
+            <form method="POST" class="mt-4">
+              <input type="hidden" name="_method" value="DELETE" />
+              <ConfirmButton
+                message="Delete this tool?"
+                class="btn btn-danger"
+              >
+                Delete Tool
+              </ConfirmButton>
+            </form>
+          </div>
+
+          <div>
+            <h2 class="text-lg font-semibold mb-3">Used in Recipes</h2>
+            {usage.length === 0
+              ? <p class="text-stone-500">Not used in any recipes yet.</p>
+              : (
+                <div class="space-y-2">
+                  {usage.map((u) => (
+                    <a
+                      key={u.id}
+                      href={`/recipes/${u.recipe_slug}`}
+                      class="block card card-hover p-3"
+                    >
+                      <div class="font-medium">{u.recipe_title}</div>
+                      {u.usage_description && (
+                        <div class="text-sm text-stone-500">
+                          {u.usage_description}
+                        </div>
+                      )}
+                      {u.settings && (
+                        <div class="text-sm text-stone-400">
+                          Settings: {u.settings}
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);

@@ -1,6 +1,13 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
-import type { RecipeIngredient, RecipeReference, RecipeStep, RecipeTag, RecipeTool, RecipeWithCover } from "../../../db/types.ts";
+import type {
+  RecipeIngredient,
+  RecipeReference,
+  RecipeStep,
+  RecipeTag,
+  RecipeTool,
+  RecipeWithCover,
+} from "../../../db/types.ts";
 import { renderRecipeSteps } from "../../../lib/markdown.ts";
 import { formatDuration } from "../../../lib/duration.ts";
 import { scaleIngredients } from "../../../lib/template.ts";
@@ -32,8 +39,10 @@ export const handler = define.handlers({
       throw new HttpError(404);
     }
 
-    const ingredientsRes = await ctx.state.db.query<RecipeIngredient>(
-      `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit
+    const ingredientsRes = await ctx.state.db.query<
+      RecipeIngredient & { density: number | null }
+    >(
+      `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit, g.density
        FROM recipe_ingredients ri
        LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE ri.recipe_id = $1
@@ -55,7 +64,9 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const stepMediaRes = await ctx.state.db.query<{ step_id: number; media_id: number; url: string }>(
+    const stepMediaRes = await ctx.state.db.query<
+      { step_id: number; media_id: number; url: string }
+    >(
       `SELECT rsm.step_id, m.id as media_id, m.url
        FROM recipe_step_media rsm
        JOIN media m ON m.id = rsm.media_id
@@ -109,7 +120,13 @@ export const handler = define.handlers({
 
     const priceMap = new Map<
       number,
-      { price: number; amount: number; priceUnit: string; currency: string }
+      {
+        price: number;
+        amount: number;
+        priceUnit: string;
+        currency: string;
+        density: number | null;
+      }
     >();
     if (ingredientIds.length > 0) {
       const pricesRes = await ctx.state.db.query<{
@@ -118,9 +135,10 @@ export const handler = define.handlers({
         amount: number;
         price_unit: string | null;
         currency: string;
+        density: number | null;
       }>(
         `SELECT DISTINCT ON (gp.ingredient_id)
-           gp.ingredient_id, gp.price, gp.amount, coalesce(gp.unit, g.unit) as price_unit, s.currency
+           gp.ingredient_id, gp.price, gp.amount, coalesce(gp.unit, g.unit) as price_unit, s.currency, g.density
          FROM ingredient_prices gp
          JOIN stores s ON s.id = gp.store_id
          JOIN ingredients g ON g.id = gp.ingredient_id
@@ -134,6 +152,7 @@ export const handler = define.handlers({
           amount: row.amount || 1,
           priceUnit: row.price_unit ?? "",
           currency: row.currency ?? "EUR",
+          density: row.density,
         });
       }
     }
@@ -152,6 +171,7 @@ export const handler = define.handlers({
             priceInfo.price,
             priceInfo.amount,
             priceInfo.priceUnit,
+            priceInfo.density,
           )
           : undefined;
         return {
@@ -162,6 +182,7 @@ export const handler = define.handlers({
           ingredient_id: ingredientId,
           base_cost: baseCost ?? undefined,
           currency: priceInfo?.currency,
+          density: i.density,
         };
       });
 
@@ -201,7 +222,12 @@ export const handler = define.handlers({
       recipe.household_id === ctx.state.householdId;
 
     // Load pantry items from user's household
-    let pantryItems: { ingredient_id?: number; name: string; amount?: number; unit?: string }[] = [];
+    let pantryItems: {
+      ingredient_id?: number;
+      name: string;
+      amount?: number;
+      unit?: string;
+    }[] = [];
     if (ctx.state.householdId) {
       const pantryRes = await ctx.state.db.query<{
         ingredient_id: number | null;
@@ -289,8 +315,8 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function RecipeViewPage({ data }) {
-  const {
+export default define.page<typeof handler>(function RecipeViewPage({
+  data: {
     recipe,
     ingredientsForTemplate,
     tools,
@@ -302,30 +328,14 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
     hasSubRecipes,
     isOwner,
     isFavorited,
-  } = data as {
-    recipe: RecipeWithCover;
-    ingredientsForTemplate: {
-      key: string;
-      amount: number;
-      unit: string;
-      name: string;
-      ingredient_id?: number;
-    }[];
-    tools: RecipeTool[];
-    steps: { title: string; body: string }[];
-    refs: RecipeReference[];
-    mealTypes: string[];
-    dietaryTags: string[];
-    renderedHtml: string;
-    hasSubRecipes: boolean;
-    baseQuantity: RecipeQuantity;
-    isOwner: boolean;
-    isFavorited: boolean;
-    loggedIn: boolean;
-    pantryIngredientIds: number[];
-    pantryIngredientNames: string[];
-  };
-
+    loggedIn,
+    baseQuantity,
+    pantryIngredientIds,
+    pantryIngredientNames,
+    pantryItems,
+    householdId,
+  },
+}) {
   return (
     <div>
       <BackLink href="/recipes" label="Back to Recipes" />
@@ -347,7 +357,7 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
             private
           </span>
         )}
-        {data.loggedIn && (
+        {loggedIn && (
           <FavoriteButton
             recipeId={recipe.id}
             initialFavorited={isFavorited}
@@ -380,12 +390,18 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
       {(mealTypes.length > 0 || dietaryTags.length > 0) && (
         <div class="flex flex-wrap gap-1.5 mt-2">
           {mealTypes.map((mt) => (
-            <span key={mt} class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded capitalize">
+            <span
+              key={mt}
+              class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded capitalize"
+            >
               {mt}
             </span>
           ))}
           {dietaryTags.map((dt) => (
-            <span key={dt} class="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded capitalize">
+            <span
+              key={dt}
+              class="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded capitalize"
+            >
               {dt}
             </span>
           ))}
@@ -393,7 +409,7 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
       )}
 
       <div class="flex gap-2 sm:gap-4 text-sm text-stone-500 mt-2 flex-wrap">
-        <span>{formatQuantity(data.baseQuantity)}</span>
+        <span>{formatQuantity(baseQuantity)}</span>
         {recipe.prep_time != null && (
           <span>Prep: {formatDuration(recipe.prep_time)}</span>
         )}
@@ -419,16 +435,16 @@ export default define.page<typeof handler>(function RecipeViewPage({ data }) {
             slug: r.ref_slug,
             title: r.ref_title,
           }))}
-          baseQuantity={data.baseQuantity}
+          baseQuantity={baseQuantity}
           slug={recipe.slug}
           hasSubRecipes={hasSubRecipes}
           initialHtml={renderedHtml}
           recipeId={recipe.id}
-          loggedIn={data.loggedIn}
-          pantryIngredientIds={data.pantryIngredientIds}
-          pantryIngredientNames={data.pantryIngredientNames}
-          pantryItems={data.pantryItems}
-          householdId={data.householdId}
+          loggedIn={loggedIn}
+          pantryIngredientIds={pantryIngredientIds}
+          pantryIngredientNames={pantryIngredientNames}
+          pantryItems={pantryItems}
+          householdId={householdId}
         />
       </div>
     </div>

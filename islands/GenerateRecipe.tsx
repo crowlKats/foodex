@@ -33,17 +33,23 @@ export default function GenerateRecipe() {
         throw new Error(data.error || "Generation failed");
       }
 
-      // Submit to import page as pre-filled form
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = "/recipes/import";
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = "ocr_result";
-      input.value = JSON.stringify(data);
-      form.appendChild(input);
-      document.body.appendChild(form);
-      form.submit();
+      // Create draft and redirect to editor
+      const draftRes = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipe_data: data.recipe,
+          ai_messages: [{
+            role: "assistant",
+            content: JSON.stringify(data.recipe),
+            thinking: data.thinking ?? undefined,
+          }],
+          ai_thinking: data.thinking ?? null,
+          source: "generate",
+        }),
+      });
+      const draft = await draftRes.json();
+      globalThis.location.href = `/recipes/drafts/${draft.id}`;
     } catch (err) {
       error.value = (err as Error).message;
       generating.value = false;
@@ -55,7 +61,9 @@ export default function GenerateRecipe() {
       <div class="card">
         <div class="flex flex-col items-center justify-center py-8 gap-3">
           <TbLoader2 class="size-10 text-orange-600 animate-spin" />
-          <p class="text-sm font-medium">Generating recipe from your pantry...</p>
+          <p class="text-sm font-medium">
+            Generating recipe from your pantry...
+          </p>
           <p class="text-xs text-stone-500">This may take a few seconds.</p>
         </div>
       </div>

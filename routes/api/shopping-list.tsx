@@ -1,6 +1,11 @@
 import { define } from "../../utils.ts";
 import type { QueryFn } from "../../db/mod.ts";
-import type { ShoppingList, ShoppingListItem, PantryItem } from "../../db/types.ts";
+import type {
+  PantryItem,
+  ShoppingList,
+  ShoppingListItem,
+} from "../../db/types.ts";
+import { convertAmount } from "../../lib/unit-convert.ts";
 
 async function getOrCreateList(
   db: { query: QueryFn },
@@ -30,7 +35,12 @@ export const handler = define.handlers({
     if (body.action === "add_recipe") {
       const { recipe_id, items } = body as {
         recipe_id: number;
-        items: { ingredient_id: number | null; name: string; amount: number | null; unit: string | null }[];
+        items: {
+          ingredient_id: number | null;
+          name: string;
+          amount: number | null;
+          unit: string | null;
+        }[];
         action: string;
       };
 
@@ -85,9 +95,16 @@ export const handler = define.handlers({
         ],
       );
 
-      return new Response(JSON.stringify({ ok: true, list_id: listId, item_id: insertRes.rows[0].id }), {
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          list_id: listId,
+          item_id: insertRes.rows[0].id,
+        }),
+        {
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
 
     if (body.action === "update_item") {
@@ -106,56 +123,71 @@ export const handler = define.handlers({
 
         // When checking off (buying), add to pantry
         if (checked && ctx.state.householdId) {
-          const itemRes = await ctx.state.db.query<Pick<ShoppingListItem, "ingredient_id" | "name" | "amount" | "unit">>(
+          const itemRes = await ctx.state.db.query<
+            Pick<ShoppingListItem, "ingredient_id" | "name" | "amount" | "unit">
+          >(
             "SELECT ingredient_id, name, amount, unit FROM shopping_list_items WHERE id = $1",
             [item_id],
           );
           if (itemRes.rows.length > 0) {
             const item = itemRes.rows[0];
-            // If ingredient already in pantry with same unit, add amount
+            // Find existing pantry entry and add amount (converting units if needed)
+            let existing;
             if (item.ingredient_id) {
-              const existing = await ctx.state.db.query<Pick<PantryItem, "id" | "amount">>(
-                `SELECT id, amount FROM pantry_items
-                 WHERE household_id = $1 AND ingredient_id = $2 AND COALESCE(unit, '') = COALESCE($3, '')`,
-                [ctx.state.householdId, item.ingredient_id, item.unit],
+              existing = await ctx.state.db.query<
+                Pick<PantryItem, "id" | "amount" | "unit"> & {
+                  density: number | null;
+                }
+              >(
+                `SELECT pi.id, pi.amount, pi.unit, g.density
+                 FROM pantry_items pi
+                 LEFT JOIN ingredients g ON g.id = pi.ingredient_id
+                 WHERE pi.household_id = $1 AND pi.ingredient_id = $2`,
+                [ctx.state.householdId, item.ingredient_id],
               );
-              if (existing.rows.length > 0) {
-                const newAmount = item.amount != null
-                  ? (existing.rows[0].amount || 0) + item.amount
-                  : existing.rows[0].amount;
-                await ctx.state.db.query(
-                  "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
-                  [newAmount, existing.rows[0].id],
-                );
-              } else {
-                await ctx.state.db.query(
-                  `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit)
-                   VALUES ($1, $2, $3, $4, $5)`,
-                  [ctx.state.householdId, item.ingredient_id, item.name, item.amount, item.unit],
-                );
-              }
             } else {
-              // No ingredient_id, match by name
-              const existing = await ctx.state.db.query<Pick<PantryItem, "id" | "amount">>(
-                `SELECT id, amount FROM pantry_items
-                 WHERE household_id = $1 AND lower(name) = lower($2) AND COALESCE(unit, '') = COALESCE($3, '')`,
-                [ctx.state.householdId, item.name, item.unit],
+              existing = await ctx.state.db.query<
+                Pick<PantryItem, "id" | "amount" | "unit"> & {
+                  density: number | null;
+                }
+              >(
+                `SELECT pi.id, pi.amount, pi.unit, null as density
+                 FROM pantry_items pi
+                 WHERE pi.household_id = $1 AND lower(pi.name) = lower($2)`,
+                [ctx.state.householdId, item.name],
               );
-              if (existing.rows.length > 0) {
-                const newAmount = item.amount != null
-                  ? (existing.rows[0].amount || 0) + item.amount
-                  : existing.rows[0].amount;
-                await ctx.state.db.query(
-                  "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
-                  [newAmount, existing.rows[0].id],
+            }
+            if (existing.rows.length > 0) {
+              const row = existing.rows[0];
+              let addAmount = item.amount;
+              if (addAmount != null && (item.unit || "") !== (row.unit || "")) {
+                const converted = convertAmount(
+                  addAmount,
+                  item.unit || "",
+                  row.unit || "",
+                  row.density,
                 );
-              } else {
-                await ctx.state.db.query(
-                  `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit)
-                   VALUES ($1, $2, $3, $4, $5)`,
-                  [ctx.state.householdId, null, item.name, item.amount, item.unit],
-                );
+                addAmount = converted;
               }
+              const newAmount = addAmount != null
+                ? (row.amount || 0) + addAmount
+                : row.amount;
+              await ctx.state.db.query(
+                "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
+                [newAmount, row.id],
+              );
+            } else {
+              await ctx.state.db.query(
+                `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [
+                  ctx.state.householdId,
+                  item.ingredient_id ?? null,
+                  item.name,
+                  item.amount,
+                  item.unit,
+                ],
+              );
             }
           }
         }

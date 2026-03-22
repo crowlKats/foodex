@@ -3,7 +3,11 @@ import { define, escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { CURRENCIES } from "../../lib/currencies.ts";
-import { getPage, Pagination, paginationParams } from "../../components/Pagination.tsx";
+import {
+  getPage,
+  Pagination,
+  paginationParams,
+} from "../../components/Pagination.tsx";
 import type { StoreWithLocationCount } from "../../db/types.ts";
 
 export const handler = define.handlers({
@@ -45,7 +49,9 @@ export const handler = define.handlers({
            LIMIT $1 OFFSET $2`,
           [limit, offset],
         ),
-        ctx.state.db.query<{ cnt: number }>("SELECT COUNT(*) as cnt FROM stores"),
+        ctx.state.db.query<{ cnt: number }>(
+          "SELECT COUNT(*) as cnt FROM stores",
+        ),
       ]);
     }
     const totalCount = Number(countRes.rows[0].cnt);
@@ -63,7 +69,14 @@ export const handler = define.handlers({
 
     const error = ctx.url.searchParams.get("error") || undefined;
     ctx.state.pageTitle = "Stores";
-    return page({ stores: result.rows, q, ownedStoreIds: [...ownedStoreIds], currentPage, totalCount, error });
+    return page({
+      stores: result.rows,
+      q,
+      ownedStoreIds: [...ownedStoreIds],
+      currentPage,
+      totalCount,
+      error,
+    });
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -93,7 +106,11 @@ export const handler = define.handlers({
       if (String(err).includes("unique")) {
         return new Response(null, {
           status: 303,
-          headers: { Location: `/stores?error=${encodeURIComponent(`Store "${name.trim()}" already exists`)}` },
+          headers: {
+            Location: `/stores?error=${
+              encodeURIComponent(`Store "${name.trim()}" already exists`)
+            }`,
+          },
         });
       }
       throw err;
@@ -114,98 +131,98 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function StoresPage({ data, url }) {
-  const { stores, error, q, ownedStoreIds, currentPage, totalCount } = data as {
-    stores: StoreWithLocationCount[];
-    error?: string;
-    q: string;
-    ownedStoreIds?: number[];
-    currentPage: number;
-    totalCount: number;
-  };
-  const ownedSet = new Set(ownedStoreIds ?? []);
-  return (
-    <div>
-      <PageHeader title="Stores" query={q} />
+export default define.page<typeof handler>(
+  function StoresPage(
+    { data: { stores, error, q, ownedStoreIds, currentPage, totalCount }, url },
+  ) {
+    const ownedSet = new Set(ownedStoreIds ?? []);
+    return (
+      <div>
+        <PageHeader title="Stores" query={q} />
 
-      {error && (
-        <div class="alert-error mb-4">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div class="alert-error mb-4">
+            {error}
+          </div>
+        )}
 
-      <div class="grid gap-6 md:grid-cols-2">
-        <div>
-          <h2 class="text-lg font-semibold mb-3">Add Store</h2>
-          <form
-            method="POST"
-            class="card space-y-3"
-          >
-            <FormField label="Name">
-              <input
-                type="text"
-                name="name"
-                required
-                class="w-full"
-              />
-            </FormField>
-            <FormField label="Currency">
-              <select name="currency" class="w-full">
-                {CURRENCIES.map((c) => (
-                  <option
-                    key={c.code}
-                    value={c.code}
-                    selected={c.code === "EUR"}
-                  >
-                    {c.symbol} {c.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <button
-              type="submit"
-              class="btn btn-primary"
+        <div class="grid gap-6 md:grid-cols-2">
+          <div>
+            <h2 class="text-lg font-semibold mb-3">Add Store</h2>
+            <form
+              method="POST"
+              class="card space-y-3"
             >
-              Add Store
-            </button>
-          </form>
-        </div>
+              <FormField label="Name">
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  class="w-full"
+                />
+              </FormField>
+              <FormField label="Currency">
+                <select name="currency" class="w-full">
+                  {CURRENCIES.map((c) => (
+                    <option
+                      key={c.code}
+                      value={c.code}
+                      selected={c.code === "EUR"}
+                    >
+                      {c.symbol} {c.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <button
+                type="submit"
+                class="btn btn-primary"
+              >
+                Add Store
+              </button>
+            </form>
+          </div>
 
-        <div>
-          <h2 class="text-lg font-semibold mb-3">
-            All Stores ({totalCount})
-          </h2>
-          {stores.length === 0
-            ? <p class="text-stone-500">No stores yet.</p>
-            : (
-              <div class="space-y-2">
-                {stores.map((s) => (
-                  <a
-                    key={s.id}
-                    href={`/stores/${s.id}`}
-                    class="block card card-hover"
-                  >
-                    <div class="flex items-center gap-2">
-                      <div class="font-medium flex-1">{s.name}</div>
-                      {ownedSet.has(s.id) && (
-                        <span class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
-                          ours
-                        </span>
-                      )}
-                    </div>
-                    {s.location_count > 0 && (
-                      <div class="text-sm text-stone-500">
-                        {s.location_count}{" "}
-                        location{s.location_count !== 1 ? "s" : ""}
+          <div>
+            <h2 class="text-lg font-semibold mb-3">
+              All Stores ({totalCount})
+            </h2>
+            {stores.length === 0
+              ? <p class="text-stone-500">No stores yet.</p>
+              : (
+                <div class="space-y-2">
+                  {stores.map((s) => (
+                    <a
+                      key={s.id}
+                      href={`/stores/${s.id}`}
+                      class="block card card-hover"
+                    >
+                      <div class="flex items-center gap-2">
+                        <div class="font-medium flex-1">{s.name}</div>
+                        {ownedSet.has(s.id) && (
+                          <span class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
+                            ours
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </a>
-                ))}
-              </div>
-            )}
-          <Pagination currentPage={currentPage} totalCount={totalCount} url={url} />
+                      {s.location_count > 0 && (
+                        <div class="text-sm text-stone-500">
+                          {s.location_count}{" "}
+                          location{s.location_count !== 1 ? "s" : ""}
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+            <Pagination
+              currentPage={currentPage}
+              totalCount={totalCount}
+              url={url}
+            />
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);

@@ -29,18 +29,66 @@ export function toBaseUnit(
   return { amount: amount * conv.factor, unit: conv.base };
 }
 
+/**
+ * Convert both values to matching base units, using density (g/ml) to bridge
+ * mass↔volume when the base units differ.
+ */
+function toComparableUnits(
+  a: { amount: number; unit: string },
+  b: { amount: number; unit: string },
+  density?: number | null,
+): { a: number; b: number } | null {
+  if (a.unit === b.unit) return { a: a.amount, b: b.amount };
+
+  if (!density || density <= 0) return null;
+
+  // Convert both to grams for comparison
+  if (a.unit === "g" && b.unit === "ml") {
+    return { a: a.amount, b: b.amount * density };
+  }
+  if (a.unit === "ml" && b.unit === "g") {
+    return { a: a.amount * density, b: b.amount };
+  }
+
+  return null;
+}
+
+/**
+ * Convert an amount from one unit to another, using density (g/ml) to bridge
+ * mass↔volume when needed. Returns null if conversion is not possible.
+ */
+export function convertAmount(
+  amount: number,
+  fromUnit: string,
+  toUnit: string,
+  density?: number | null,
+): number | null {
+  if (fromUnit === toUnit) return amount;
+  const from = toBaseUnit(amount, fromUnit);
+  const to = toBaseUnit(1, toUnit);
+  const comparable = toComparableUnits(from, {
+    amount: to.amount,
+    unit: to.unit,
+  }, density);
+  if (!comparable) return null;
+  if (comparable.b === 0) return null;
+  return comparable.a / comparable.b;
+}
+
 export function computeIngredientCost(
   ingredientAmount: number,
   ingredientUnit: string,
   price: number,
   priceAmount: number,
   priceUnit: string,
+  density?: number | null,
 ): number | null {
   const ing = toBaseUnit(ingredientAmount, ingredientUnit);
   const pr = toBaseUnit(priceAmount, priceUnit);
 
-  if (ing.unit !== pr.unit) return null;
-  if (pr.amount === 0) return null;
+  const comparable = toComparableUnits(ing, pr, density);
+  if (!comparable) return null;
+  if (comparable.b === 0) return null;
 
-  return (ing.amount / pr.amount) * price;
+  return (comparable.a / comparable.b) * price;
 }

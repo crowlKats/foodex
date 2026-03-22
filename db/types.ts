@@ -85,6 +85,7 @@ export interface Ingredient {
   id: number;
   name: string;
   unit: string | null;
+  density: number | null;
   created_at: string;
 }
 
@@ -247,4 +248,16 @@ export interface ToolUsage {
   settings: string | null;
   recipe_title: string;
   recipe_slug: string;
+}
+
+export interface RecipeDraft {
+  id: string;
+  household_id: number;
+  recipe_data: Record<string, unknown>;
+  ai_messages: { role: "user" | "assistant"; content: string }[];
+  ai_thinking: string | null;
+  cover_image_id: number | null;
+  source: "manual" | "ocr" | "generate";
+  created_at: string;
+  updated_at: string;
 }

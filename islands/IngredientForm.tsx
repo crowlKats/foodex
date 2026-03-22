@@ -163,11 +163,31 @@ export default function IngredientForm(
               )
               : "Enter a name to auto-generate the template key"}
           </p>
-          <input type="hidden" name={`ingredients[${i}][key]`} value={item.key} />
-          <input type="hidden" name={`ingredients[${i}][name]`} value={item.name} />
-          <input type="hidden" name={`ingredients[${i}][amount]`} value={item.amount} />
-          <input type="hidden" name={`ingredients[${i}][unit]`} value={item.unit} />
-          <input type="hidden" name={`ingredients[${i}][ingredient_id]`} value={item.ingredient_id} />
+          <input
+            type="hidden"
+            name={`ingredients[${i}][key]`}
+            value={item.key}
+          />
+          <input
+            type="hidden"
+            name={`ingredients[${i}][name]`}
+            value={item.name}
+          />
+          <input
+            type="hidden"
+            name={`ingredients[${i}][amount]`}
+            value={item.amount}
+          />
+          <input
+            type="hidden"
+            name={`ingredients[${i}][unit]`}
+            value={item.unit}
+          />
+          <input
+            type="hidden"
+            name={`ingredients[${i}][ingredient_id]`}
+            value={item.ingredient_id}
+          />
         </div>
       ))}
       <button

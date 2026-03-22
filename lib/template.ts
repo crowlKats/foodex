@@ -265,8 +265,10 @@ export function formatAmount(n: number, unit?: string): string {
     return Math.round(n).toString();
   }
   if (Number.isInteger(n)) return n.toString();
-  const fixed = n.toFixed(2);
-  return fixed.replace(/\.?0+$/, "");
+  // Round to at most 1 decimal place — more precision is rarely useful in cooking
+  const rounded = Math.round(n * 10) / 10;
+  if (Number.isInteger(rounded)) return rounded.toString();
+  return rounded.toFixed(1);
 }
 
 export function evaluateExpression(

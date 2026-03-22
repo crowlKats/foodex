@@ -1,8 +1,5 @@
 import { define } from "../../utils.ts";
-import {
-  clearSessionCookie,
-  getSessionIdFromRequest,
-} from "../../lib/auth.ts";
+import { clearSessionCookie, getSessionIdFromRequest } from "../../lib/auth.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {

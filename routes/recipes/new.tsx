@@ -42,11 +42,13 @@ export const handler = define.handlers({
     );
 
     ctx.state.pageTitle = "New Recipe";
-    return page({
-      ingredients: ingredientsRes.rows,
-      allTools: allToolsRes.rows,
-      allRecipes: allRecipesRes.rows,
-    });
+    return {
+      data: {
+        ingredients: ingredientsRes.rows,
+        allTools: allToolsRes.rows,
+        allRecipes: allRecipesRes.rows,
+      },
+    };
   },
   async POST(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
@@ -133,13 +135,26 @@ export const handler = define.handlers({
           ],
         );
         await saveRecipeChildren(q, res.rows[0].id, form);
+
+        // Delete draft if this was created from one
+        const draftId = form.get("draft_id") as string;
+        if (draftId) {
+          await q(
+            "DELETE FROM recipe_drafts WHERE id = $1 AND household_id = $2",
+            [draftId, ctx.state.householdId],
+          );
+        }
       });
     } catch (err) {
       if (String(err).includes("unique")) {
         const [ingredientsRes, allToolsRes, allRecipesRes] = await Promise.all([
-          ctx.state.db.query<Ingredient>("SELECT id, name, unit FROM ingredients ORDER BY name"),
+          ctx.state.db.query<Ingredient>(
+            "SELECT id, name, unit FROM ingredients ORDER BY name",
+          ),
           ctx.state.db.query<Tool>("SELECT id, name FROM tools ORDER BY name"),
-          ctx.state.db.query<Recipe>("SELECT id, title, slug FROM recipes ORDER BY title"),
+          ctx.state.db.query<Recipe>(
+            "SELECT id, title, slug FROM recipes ORDER BY title",
+          ),
         ]);
         return page({
           ingredients: ingredientsRes.rows,
@@ -158,158 +173,174 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function NewRecipePage({ data }) {
-  const { ingredients, allTools, allRecipes, error } = data as {
-    ingredients: Ingredient[];
-    allTools: Tool[];
-    allRecipes: Recipe[];
-    error?: string;
-  };
-
-  return (
-    <div>
-      <div class="flex items-center gap-4 mb-4">
-        <BackLink href="/recipes" label="Back to Recipes" />
-      </div>
-
-      <div class="flex items-center gap-4 mb-4">
-        <h1 class="text-2xl font-bold">New Recipe</h1>
-        <a href="/recipes/import" class="link text-sm">
-          or import from image
-        </a>
-      </div>
-
-      {error && (
-        <div class="alert-error mb-4">
-          {error}
-        </div>
-      )}
-
-      <form method="POST" class="space-y-6">
-        <div class="card">
-          <h2 class="section-title">Cover Image</h2>
-          <MediaUpload name="cover_image_id" accept="image/*" />
+export default define.page<typeof handler>(
+  function NewRecipePage(
+    { data: { ingredients, allTools, allRecipes } },
+  ) {
+    return (
+      <div>
+        <div class="flex items-center gap-4 mb-4">
+          <BackLink href="/recipes" label="Back to Recipes" />
         </div>
 
-        <div class="card space-y-3">
-          <h2 class="font-semibold">Details</h2>
-          <FormField label="Title">
-            <input
-              type="text"
-              name="title"
-              required
-              class="w-full"
-            />
-          </FormField>
-          <FormField label="Description">
-            <textarea
-              name="description"
-              rows={2}
-              class="w-full"
-            />
-          </FormField>
-          <QuantityInput />
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            <DurationInput name="prep_time" label="Prep time" />
-            <DurationInput name="cook_time" label="Cook time" />
+        <div class="flex items-center gap-4 mb-4">
+          <h1 class="text-2xl font-bold">New Recipe</h1>
+          <a href="/recipes/import" class="link text-sm">
+            or import from image
+          </a>
+        </div>
+
+        <form method="POST" class="space-y-6">
+          <div class="card">
+            <h2 class="section-title">Cover Image</h2>
+            <MediaUpload name="cover_image_id" accept="image/*" />
           </div>
-          <label class="flex items-center gap-2 mt-3 cursor-pointer">
-            <input
-              type="checkbox"
-              name="private"
-              class="size-4 accent-orange-600"
+
+          <div class="card space-y-3">
+            <h2 class="font-semibold">Details</h2>
+            <FormField label="Title">
+              <input
+                type="text"
+                name="title"
+                required
+                class="w-full"
+              />
+            </FormField>
+            <FormField label="Description">
+              <textarea
+                name="description"
+                rows={2}
+                class="w-full"
+              />
+            </FormField>
+            <QuantityInput />
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <DurationInput name="prep_time" label="Prep time" />
+              <DurationInput name="cook_time" label="Cook time" />
+            </div>
+            <label class="flex items-center gap-2 mt-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="private"
+                class="size-4 accent-orange-600"
+              />
+              <span class="text-sm">
+                Private (only visible to household members)
+              </span>
+            </label>
+            <FormField label="Meal Type">
+              <div class="flex flex-wrap gap-2">
+                {[
+                  "breakfast",
+                  "lunch",
+                  "dinner",
+                  "snack",
+                  "dessert",
+                  "appetizer",
+                  "side",
+                  "drink",
+                ].map((mt) => (
+                  <label
+                    key={mt}
+                    class="flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      name="meal_type"
+                      value={mt}
+                      class="size-4 accent-orange-600"
+                    />
+                    <span class="text-sm capitalize">{mt}</span>
+                  </label>
+                ))}
+              </div>
+            </FormField>
+            <FormField label="Dietary">
+              <div class="flex flex-wrap gap-2">
+                {[
+                  "vegetarian",
+                  "vegan",
+                  "gluten-free",
+                  "dairy-free",
+                  "nut-free",
+                  "low-carb",
+                  "keto",
+                  "paleo",
+                ].map((dt) => (
+                  <label
+                    key={dt}
+                    class="flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      name="dietary"
+                      value={dt}
+                      class="size-4 accent-orange-600"
+                    />
+                    <span class="text-sm capitalize">{dt}</span>
+                  </label>
+                ))}
+              </div>
+            </FormField>
+          </div>
+
+          <div class="card">
+            <h2 class="font-semibold mb-2">Ingredients</h2>
+            <IngredientForm
+              initialIngredients={[]}
+              ingredients={ingredients.map((g) => ({
+                id: String(g.id),
+                name: g.name,
+                unit: g.unit ?? "",
+              }))}
             />
-            <span class="text-sm">Private (only visible to household members)</span>
-          </label>
-          <FormField label="Meal Type">
-            <div class="flex flex-wrap gap-2">
-              {["breakfast", "lunch", "dinner", "snack", "dessert", "appetizer", "side", "drink"].map((mt) => (
-                <label key={mt} class="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="meal_type"
-                    value={mt}
-                    class="size-4 accent-orange-600"
-                  />
-                  <span class="text-sm capitalize">{mt}</span>
-                </label>
-              ))}
-            </div>
-          </FormField>
-          <FormField label="Dietary">
-            <div class="flex flex-wrap gap-2">
-              {["vegetarian", "vegan", "gluten-free", "dairy-free", "nut-free", "low-carb", "keto", "paleo"].map((dt) => (
-                <label key={dt} class="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="dietary"
-                    value={dt}
-                    class="size-4 accent-orange-600"
-                  />
-                  <span class="text-sm capitalize">{dt}</span>
-                </label>
-              ))}
-            </div>
-          </FormField>
-        </div>
+          </div>
 
-        <div class="card">
-          <h2 class="font-semibold mb-2">Ingredients</h2>
-          <IngredientForm
-            initialIngredients={[]}
-            ingredients={ingredients.map((g) => ({
-              id: String(g.id),
-              name: g.name,
-              unit: g.unit ?? "",
-            }))}
-          />
-        </div>
+          <div class="card">
+            <h2 class="font-semibold mb-2">Tools</h2>
+            <ToolForm
+              initialTools={[]}
+              tools={allTools.map((m) => ({
+                id: String(m.id),
+                name: m.name,
+              }))}
+            />
+          </div>
 
-        <div class="card">
-          <h2 class="font-semibold mb-2">Tools</h2>
-          <ToolForm
-            initialTools={[]}
-            tools={allTools.map((m) => ({
-              id: String(m.id),
-              name: m.name,
-            }))}
-          />
-        </div>
+          <div class="card">
+            <h2 class="font-semibold mb-2">Steps</h2>
+            <p class="text-xs text-stone-500 mb-2">
+              Use <code class="code-hint">{"{{ key }}"}</code>{" "}
+              for scaled ingredients,{" "}
+              <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
+              for just the number. Supports math and functions.{" "}
+              <a href="/docs/templates" class="link text-xs">Full reference</a>
+            </p>
+            <StepForm initialSteps={[]} />
+          </div>
 
-        <div class="card">
-          <h2 class="font-semibold mb-2">Steps</h2>
-          <p class="text-xs text-stone-500 mb-2">
-            Use <code class="code-hint">{"{{ key }}"}</code>{" "}
-            for scaled ingredients,{" "}
-            <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
-            for just the number. Supports math and functions.{" "}
-            <a href="/docs/templates" class="link text-xs">Full reference</a>
-          </p>
-          <StepForm initialSteps={[]} />
-        </div>
+          <div class="card">
+            <h2 class="font-semibold mb-2">Sub-recipe References</h2>
+            <RefForm
+              initialRefs={[]}
+              recipes={allRecipes.map((r) => ({
+                id: String(r.id),
+                title: r.title,
+              }))}
+            />
+          </div>
 
-        <div class="card">
-          <h2 class="font-semibold mb-2">Sub-recipe References</h2>
-          <RefForm
-            initialRefs={[]}
-            recipes={allRecipes.map((r) => ({
-              id: String(r.id),
-              title: r.title,
-            }))}
-          />
-        </div>
-
-        <div class="flex gap-3">
-          <button
-            type="submit"
-            class="btn btn-primary"
-          >
-            Create Recipe
-          </button>
-          <RecipePreview />
-        </div>
-      </form>
-    </div>
-  );
-});
-
+          <div class="flex gap-3">
+            <button
+              type="submit"
+              class="btn btn-primary"
+            >
+              Create Recipe
+            </button>
+            <RecipePreview />
+          </div>
+        </form>
+      </div>
+    );
+  },
+);

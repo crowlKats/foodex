@@ -58,6 +58,16 @@ export const ALL_UNITS: string[] = UNIT_GROUPS.flatMap((g) =>
   g.units.map((u) => u.name)
 );
 
+export const WEIGHT_UNITS: string[] = UNIT_GROUPS.find((g) =>
+  g.label === "Weight"
+)!
+  .units.map((u) => u.name);
+
+export const VOLUME_UNITS: string[] = UNIT_GROUPS.find((g) =>
+  g.label === "Volume"
+)!
+  .units.map((u) => u.name);
+
 export function getUnitStep(unitName: string): string {
   for (const group of UNIT_GROUPS) {
     const unit = group.units.find((u) => u.name === unitName);
