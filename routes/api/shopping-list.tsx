@@ -227,6 +227,28 @@ export const handler = define.handlers({
       });
     }
 
+    if (body.action === "generate_share_link") {
+      const token = crypto.randomUUID();
+      await ctx.state.db.query(
+        "UPDATE shopping_lists SET share_token = $1 WHERE id = $2",
+        [token, listId],
+      );
+      return new Response(
+        JSON.stringify({ ok: true, share_token: token }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (body.action === "revoke_share_link") {
+      await ctx.state.db.query(
+        "UPDATE shopping_lists SET share_token = NULL WHERE id = $1",
+        [listId],
+      );
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },

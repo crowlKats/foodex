@@ -17,17 +17,22 @@ export const handler = define.handlers({
       });
     }
 
-    let listRes = await ctx.state.db.query<Pick<ShoppingList, "id">>(
-      "SELECT id FROM shopping_lists WHERE household_id = $1 ORDER BY created_at DESC LIMIT 1",
+    let listRes = await ctx.state.db.query<
+      Pick<ShoppingList, "id"> & { share_token: string | null }
+    >(
+      "SELECT id, share_token FROM shopping_lists WHERE household_id = $1 ORDER BY created_at DESC LIMIT 1",
       [ctx.state.householdId],
     );
     if (listRes.rows.length === 0) {
-      listRes = await ctx.state.db.query<Pick<ShoppingList, "id">>(
-        "INSERT INTO shopping_lists (household_id) VALUES ($1) RETURNING id",
+      listRes = await ctx.state.db.query<
+        Pick<ShoppingList, "id"> & { share_token: string | null }
+      >(
+        "INSERT INTO shopping_lists (household_id) VALUES ($1) RETURNING id, share_token",
         [ctx.state.householdId],
       );
     }
     const listId = listRes.rows[0].id;
+    const shareToken = listRes.rows[0].share_token;
 
     const itemsRes = await ctx.state.db.query<ShoppingListItem>(
       `SELECT sli.*,
@@ -143,6 +148,7 @@ export const handler = define.handlers({
       stores,
       pricesMap,
       viewMode,
+      shareToken,
       ingredients: ingredientsRes.rows.map((i) => ({
         id: String(i.id),
         name: i.name,
@@ -162,6 +168,7 @@ export default define.page<typeof handler>(function ShoppingListPage({ data }) {
         pricesMap={data.pricesMap}
         initialViewMode={data.viewMode}
         ingredients={data.ingredients}
+        initialShareToken={data.shareToken}
       />
     </div>
   );

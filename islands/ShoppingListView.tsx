@@ -45,6 +45,7 @@ interface Props {
   pricesMap: Record<string, PriceInfo[]>;
   initialViewMode: ViewMode;
   ingredients: IngredientOption[];
+  initialShareToken?: string | null;
 }
 
 type ViewMode = "recipe" | "store";
@@ -64,10 +65,19 @@ const REMOVE_COL = "w-5 shrink-0 text-center";
 const CHECK_COL = "w-5 shrink-0";
 
 export default function ShoppingListView(
-  { initialItems, stores, pricesMap, initialViewMode, ingredients }: Props,
+  {
+    initialItems,
+    stores,
+    pricesMap,
+    initialViewMode,
+    ingredients,
+    initialShareToken,
+  }: Props,
 ) {
   const items = useSignal<ShoppingItem[]>(initialItems);
   const viewMode = useSignal<ViewMode>(initialViewMode);
+  const shareToken = useSignal<string | null>(initialShareToken ?? null);
+  const shareCopied = useSignal(false);
   const addSelected = useSignal<{ id: string; name: string }>({
     id: "",
     name: "",
@@ -153,6 +163,29 @@ export default function ShoppingListView(
   async function clearAll() {
     items.value = [];
     await apiCall({ action: "clear_all" });
+  }
+
+  async function generateShareLink() {
+    const res = await apiCall({ action: "generate_share_link" });
+    if (res.share_token) {
+      shareToken.value = res.share_token;
+    }
+  }
+
+  async function revokeShareLink() {
+    await apiCall({ action: "revoke_share_link" });
+    shareToken.value = null;
+  }
+
+  function copyShareLink() {
+    if (!shareToken.value) return;
+    const url = `${globalThis.location.origin}/shopping-list/shared/${shareToken.value}`;
+    navigator.clipboard.writeText(url).then(() => {
+      shareCopied.value = true;
+      setTimeout(() => {
+        shareCopied.value = false;
+      }, 2000);
+    });
   }
 
   const addOptions: SearchSelectOption[] = ingredients.map((i) => ({
@@ -670,15 +703,46 @@ export default function ShoppingListView(
                   By store
                 </button>
               </div>
-              {hasAnyPrice && (
-                <div class="text-right">
-                  <span class="text-sm text-stone-500 mr-1">Total:</span>
-                  <span class="font-bold text-orange-600">
-                    {getCurrencySymbol(totalCurrency)}
-                    {formatCurrency(totalCost)}
-                  </span>
-                </div>
-              )}
+              <div class="flex items-center gap-2">
+                {hasAnyPrice && (
+                  <div class="text-right mr-2">
+                    <span class="text-sm text-stone-500 mr-1">Total:</span>
+                    <span class="font-bold text-orange-600">
+                      {getCurrencySymbol(totalCurrency)}
+                      {formatCurrency(totalCost)}
+                    </span>
+                  </div>
+                )}
+                {shareToken.value
+                  ? (
+                    <div class="flex gap-1">
+                      <button
+                        type="button"
+                        class="text-xs px-2 py-1 border-2 border-stone-300 dark:border-stone-700 text-stone-500 cursor-pointer hover:border-orange-600"
+                        onClick={copyShareLink}
+                      >
+                        {shareCopied.value ? "Copied!" : "Copy link"}
+                      </button>
+                      <button
+                        type="button"
+                        class="text-xs px-2 py-1 border-2 border-stone-300 dark:border-stone-700 text-red-500 cursor-pointer hover:border-red-500"
+                        onClick={revokeShareLink}
+                        title="Revoke shared link"
+                      >
+                        Unshare
+                      </button>
+                    </div>
+                  )
+                  : (
+                    <button
+                      type="button"
+                      class="text-xs px-2 py-1 border-2 border-stone-300 dark:border-stone-700 text-stone-500 cursor-pointer hover:border-orange-600"
+                      onClick={generateShareLink}
+                    >
+                      Share
+                    </button>
+                  )}
+              </div>
             </div>
 
             {viewMode.value === "recipe"

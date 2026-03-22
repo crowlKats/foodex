@@ -1,11 +1,13 @@
 import { createDefine } from "fresh";
 import type { QueryFn } from "./db/mod.ts";
+import type { UnitSystem } from "./lib/unit-display.ts";
 
 export interface User {
   id: number;
   name: string;
   email: string | null;
   avatar_url: string | null;
+  unit_system: UnitSystem;
 }
 
 export interface State {
@@ -14,6 +16,7 @@ export interface State {
     transaction: <T>(fn: (query: QueryFn) => Promise<T>) => Promise<T>;
   };
   user: User | null;
+  unitSystem: UnitSystem;
   shoppingListCount: number;
   householdId: number | null;
   pageTitle: string;

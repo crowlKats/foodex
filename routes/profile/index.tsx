@@ -25,6 +25,29 @@ export const handler = define.handlers({
     ctx.state.pageTitle = "Profile";
     return page({ householdName });
   },
+  async POST(ctx) {
+    if (!ctx.state.user) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login" },
+      });
+    }
+
+    const form = await ctx.req.formData();
+    const unitSystem = form.get("unit_system");
+
+    if (unitSystem === "metric" || unitSystem === "imperial") {
+      await ctx.state.db.query(
+        "UPDATE users SET unit_system = $1 WHERE id = $2",
+        [unitSystem, ctx.state.user.id],
+      );
+    }
+
+    return new Response(null, {
+      status: 303,
+      headers: { Location: "/profile" },
+    });
+  },
 });
 
 export default define.page<typeof handler>(
@@ -45,6 +68,27 @@ export default define.page<typeof handler>(
             <h1 class="text-2xl font-bold">{user.name}</h1>
             {user.email && <p class="text-sm text-stone-500">{user.email}</p>}
           </div>
+        </div>
+
+        <div class="card mb-4">
+          <h2 class="text-lg font-semibold mb-3">Preferences</h2>
+          <form method="POST">
+            <label class="text-sm font-medium block mb-1">Unit system</label>
+            <div class="flex gap-2">
+              <select name="unit_system" class="flex-1">
+                <option value="metric" selected={state.unitSystem === "metric"}>
+                  Metric (g, ml, cm)
+                </option>
+                <option
+                  value="imperial"
+                  selected={state.unitSystem === "imperial"}
+                >
+                  Imperial (oz, fl oz, inch)
+                </option>
+              </select>
+              <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+          </form>
         </div>
 
         {data.householdName && (

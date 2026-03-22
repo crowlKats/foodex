@@ -280,6 +280,7 @@ export const handler = define.handlers({
       pantryIngredientNames,
       pantryItems,
       householdId: ctx.state.householdId,
+      unitSystem: ctx.state.unitSystem,
     });
   },
   async POST(ctx) {
@@ -334,6 +335,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
     pantryIngredientNames,
     pantryItems,
     householdId,
+    unitSystem,
   },
 }) {
   return (
@@ -449,6 +451,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
           pantryIngredientNames={pantryIngredientNames}
           pantryItems={pantryItems}
           householdId={householdId}
+          unitSystem={unitSystem}
         />
       </div>
     </div>

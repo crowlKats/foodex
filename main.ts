@@ -12,6 +12,7 @@ app.use(staticFiles());
 app.use(define.middleware(async (ctx) => {
   ctx.state.db = { query, transaction };
   ctx.state.user = null;
+  ctx.state.unitSystem = "metric";
   ctx.state.shoppingListCount = 0;
   ctx.state.householdId = null;
   ctx.state.pageTitle = "Foodex";
@@ -25,7 +26,7 @@ app.use(define.middleware(async (ctx) => {
     }
 
     const result = await query<User>(
-      `SELECT u.id, u.name, u.email, u.avatar_url
+      `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.id = $1 AND s.expires_at > now()`,
@@ -38,7 +39,9 @@ app.use(define.middleware(async (ctx) => {
         name: row.name,
         email: row.email,
         avatar_url: row.avatar_url,
+        unit_system: row.unit_system ?? "metric",
       };
+      ctx.state.unitSystem = ctx.state.user.unit_system;
 
       const householdRes = await query<Pick<Household, "id">>(
         `SELECT h.id FROM households h

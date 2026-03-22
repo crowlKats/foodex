@@ -15,6 +15,8 @@ import { getCurrencySymbol } from "../lib/currencies.ts";
 import { convertAmount } from "../lib/unit-convert.ts";
 import { replaceTimers } from "../lib/timer.ts";
 import { formatTimer } from "../lib/timer.ts";
+import { toDisplayUnit } from "../lib/unit-display.ts";
+import type { UnitSystem } from "../lib/unit-display.ts";
 import { marked } from "marked";
 
 marked.use({ renderer: { html: () => "" } });
@@ -88,6 +90,7 @@ interface RecipeViewProps {
   pantryIngredientNames?: string[];
   pantryItems?: PantryItem[];
   householdId?: number | null;
+  unitSystem?: UnitSystem;
 }
 
 function renderStepsClient(
@@ -191,13 +194,21 @@ export default function RecipeView(
     pantryIngredientNames,
     pantryItems: pantryItemsProp,
     householdId,
+    unitSystem: unitSystemProp,
   }: RecipeViewProps,
 ) {
+  const unitSystem = unitSystemProp ?? "metric";
   const pantryIdSet = new Set(pantryIngredientIds ?? []);
   const pantryNameSet = new Set(
     (pantryIngredientNames ?? []).map((n) => n.toLowerCase()),
   );
   const pantryItems = pantryItemsProp ?? [];
+
+  /** Format a scaled ingredient amount + unit for the user's preferred unit system. */
+  function displayUnit(amount: number, unit: string, density?: number | null): { text: string; unit: string } {
+    const d = toDisplayUnit(amount, unit, unitSystem, density);
+    return { text: formatAmount(d.amount, d.unit), unit: d.unit };
+  }
 
   function isInPantry(ing: RecipeIngredient): boolean {
     if (ing.ingredient_id && pantryIdSet.has(ing.ingredient_id)) return true;
@@ -883,9 +894,14 @@ export default function RecipeView(
                         </span>
                       )}
                       <span>
-                        <span class="font-medium">
-                          {formatAmount(scaled, ing.unit)} {ing.unit}
-                        </span>{" "}
+                        {(() => {
+                          const d = displayUnit(scaled, ing.unit, ing.density);
+                          return (
+                            <span class="font-medium">
+                              {d.text} {d.unit}
+                            </span>
+                          );
+                        })()}{" "}
                         {ing.ingredient_id
                           ? (
                             <a
@@ -1047,9 +1063,14 @@ export default function RecipeView(
                     const scaled = ing.amount * ratio;
                     return (
                       <li key={ing.key || ing.name}>
-                        <span class="font-semibold">
-                          {formatAmount(scaled, ing.unit)} {ing.unit}
-                        </span>{" "}
+                        {(() => {
+                          const d = displayUnit(scaled, ing.unit, ing.density);
+                          return (
+                            <span class="font-semibold">
+                              {d.text} {d.unit}
+                            </span>
+                          );
+                        })()}{" "}
                         {ing.name}
                       </li>
                     );
