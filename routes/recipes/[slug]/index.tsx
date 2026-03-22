@@ -338,7 +338,9 @@ export default define.page<typeof handler>(function RecipeViewPage({
 }) {
   return (
     <div>
-      <BackLink href="/recipes" label="Back to Recipes" />
+      <div class="print-hidden">
+        <BackLink href="/recipes" label="Back to Recipes" />
+      </div>
 
       {recipe.cover_image_url && (
         <div class="mt-4">
@@ -353,35 +355,37 @@ export default define.page<typeof handler>(function RecipeViewPage({
       <div class="flex items-center gap-3 mt-4 mb-2 flex-wrap">
         <h1 class="text-3xl font-bold flex-1">{recipe.title}</h1>
         {recipe.private && (
-          <span class="text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-2 py-1 rounded">
+          <span class="print-hidden text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-2 py-1 rounded">
             private
           </span>
         )}
-        {loggedIn && (
-          <FavoriteButton
-            recipeId={recipe.id}
-            initialFavorited={isFavorited}
-          />
-        )}
-        {isOwner && (
-          <>
-            <a
-              href={`/recipes/${recipe.slug}/edit`}
-              class="btn btn-outline"
-            >
-              <TbEdit class="size-3.5" />Edit
-            </a>
-            <form method="POST" class="inline">
-              <input type="hidden" name="_method" value="DELETE" />
-              <ConfirmButton
-                message="Delete this recipe?"
-                class="btn btn-danger"
+        <span class="print-hidden flex items-center gap-3">
+          {loggedIn && (
+            <FavoriteButton
+              recipeId={recipe.id}
+              initialFavorited={isFavorited}
+            />
+          )}
+          {isOwner && (
+            <>
+              <a
+                href={`/recipes/${recipe.slug}/edit`}
+                class="btn btn-outline"
               >
-                Delete
-              </ConfirmButton>
-            </form>
-          </>
-        )}
+                <TbEdit class="size-3.5" />Edit
+              </a>
+              <form method="POST" class="inline">
+                <input type="hidden" name="_method" value="DELETE" />
+                <ConfirmButton
+                  message="Delete this recipe?"
+                  class="btn btn-danger"
+                >
+                  Delete
+                </ConfirmButton>
+              </form>
+            </>
+          )}
+        </span>
       </div>
       {recipe.description && (
         <p class="text-stone-600 mt-1">{recipe.description}</p>

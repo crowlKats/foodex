@@ -152,9 +152,183 @@ select {
     dark:text-stone-400 my-3;
 }
 
+/* ── Cooking Mode ── */
+.cooking-mode {
+  @apply fixed inset-0 z-[100] bg-white dark:bg-stone-950 flex flex-col overflow-hidden;
+}
+
+.cooking-mode-header {
+  @apply flex items-center gap-4 px-4 py-3 border-b-2 border-stone-200 dark:border-stone-700 shrink-0;
+}
+
+.cooking-mode-close {
+  @apply text-2xl leading-none text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer w-10 h-10 flex items-center justify-center;
+}
+
+.cooking-mode-progress {
+  @apply flex-1 flex items-center justify-center gap-1.5 flex-wrap;
+}
+
+.cooking-mode-dot {
+  @apply w-3 h-3 rounded-full bg-stone-300 dark:bg-stone-600 cursor-pointer transition-colors duration-75;
+}
+
+.cooking-mode-dot.active {
+  @apply bg-orange-600 dark:bg-orange-500 scale-125;
+}
+
+.cooking-mode-dot.done {
+  @apply bg-orange-300 dark:bg-orange-800;
+}
+
+.cooking-mode-counter {
+  @apply text-sm text-stone-500 dark:text-stone-400 font-mono whitespace-nowrap;
+}
+
+.cooking-mode-body {
+  @apply flex-1 overflow-y-auto px-6 py-6 sm:px-12 sm:py-8 max-w-3xl mx-auto w-full;
+}
+
+.cooking-mode-step-title {
+  @apply text-2xl sm:text-3xl font-bold mb-4 pb-2 border-b-2 border-stone-200 dark:border-stone-700;
+}
+
+.cooking-mode-step-content {
+  @apply text-lg sm:text-xl leading-relaxed;
+}
+
+.cooking-mode-step-content p {
+  @apply my-3 leading-relaxed;
+}
+
+.cooking-mode-step-content ul {
+  @apply list-disc ml-6 my-2;
+}
+
+.cooking-mode-step-content ol {
+  @apply list-decimal ml-6 my-2;
+}
+
+.cooking-mode-step-content li {
+  @apply my-2 leading-relaxed;
+}
+
+.cooking-mode-ingredients {
+  @apply mt-6 pt-4 border-t-2 border-stone-200 dark:border-stone-700 text-base;
+}
+
+.cooking-mode-ingredients summary {
+  @apply cursor-pointer font-semibold text-stone-600 dark:text-stone-400 select-none;
+}
+
+.cooking-mode-ingredients ul {
+  @apply mt-2 space-y-1 list-none ml-0;
+}
+
+.cooking-mode-ingredients li {
+  @apply text-base;
+}
+
+.cooking-mode-nav {
+  @apply flex gap-3 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 shrink-0;
+}
+
+.cooking-mode-nav-btn {
+  @apply flex-1 py-4 text-lg font-semibold bg-stone-100 dark:bg-stone-800
+    border-2 border-stone-300 dark:border-stone-700 cursor-pointer
+    hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors duration-75
+    disabled:opacity-30 disabled:cursor-default select-none;
+}
+
 .recipe-timer-btn {
   @apply inline-flex items-center gap-1 px-2 py-0.5 text-sm font-medium
     bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300
     border-2 border-orange-300 dark:border-orange-700
     hover:bg-orange-200 dark:hover:bg-orange-800 cursor-pointer;
+}
+
+/* ── Print ── */
+@media print {
+  /* Force light colors */
+  * {
+    color: black !important;
+    background: white !important;
+    border-color: #d4d4d4 !important;
+  }
+
+  /* Hide chrome */
+  nav,
+  .print-hidden,
+  .cooking-mode,
+  .recipe-timer-btn,
+  button,
+  input,
+  select {
+    display: none !important;
+  }
+
+  /* Reset layout */
+  body {
+    min-height: auto !important;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Flatten recipe grid into single column */
+  .recipe-print-grid {
+    display: block !important;
+  }
+
+  /* Card styling for print */
+  .card {
+    border: 1pt solid #d4d4d4 !important;
+    padding: 8pt !important;
+    margin-bottom: 8pt;
+    page-break-inside: avoid;
+  }
+
+  /* Ingredients sidebar: full width in print */
+  .recipe-print-sidebar {
+    margin-bottom: 12pt;
+  }
+
+  /* Steps: avoid breaking mid-step */
+  .recipe-body h2 {
+    page-break-after: avoid;
+    margin-top: 12pt !important;
+  }
+
+  .recipe-body p,
+  .recipe-body li {
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* Images */
+  img {
+    max-width: 100% !important;
+    max-height: 3in !important;
+    page-break-inside: avoid;
+  }
+
+  /* Links: show URL */
+  .recipe-body a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #666 !important;
+  }
+
+  /* Timer buttons: show as plain text */
+  .recipe-timer-btn {
+    display: inline !important;
+    border: none !important;
+    padding: 0 !important;
+    font-weight: normal !important;
+  }
 }

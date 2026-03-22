@@ -131,6 +131,39 @@ function renderStepsClient(
   return parts.join("\n");
 }
 
+function renderSingleStepHtml(
+  steps: RecipeStep[],
+  index: number,
+  ratio: number,
+  ingredients: RecipeIngredient[],
+): string {
+  const scaled = scaleIngredients(ingredients, ratio);
+  const vars: Record<string, number> = { ratio };
+  const step = steps[index];
+  let evaluated = evaluateTemplate(step.body, vars, scaled);
+  evaluated = evaluated.replace(/@step\((\d+)\)/g, (_m, num: string) => {
+    const n = parseInt(num);
+    if (n < 1 || n > steps.length) return `*unknown step: ${num}*`;
+    const title = steps[n - 1].title;
+    const label = title ? `step ${n} (${title})` : `step ${n}`;
+    return `**${label}**`;
+  });
+  const parsed = marked.parse(evaluated);
+  const html = typeof parsed === "string" ? replaceTimers(parsed) : parsed;
+  if (typeof html === "string") {
+    let stepHtml = html;
+    if (step.media && step.media.length > 0) {
+      stepHtml += `<div class="flex flex-wrap gap-3 mt-4 justify-center">${
+        step.media.map((m) =>
+          `<img src="${m.url}" alt="" class="max-h-48 border-2 border-stone-300 dark:border-stone-700" />`
+        ).join("")
+      }</div>`;
+    }
+    return stepHtml;
+  }
+  return "";
+}
+
 function buildQueryParams(target: RecipeQuantity): string {
   const params = new URLSearchParams();
   params.set("type", target.type);
@@ -567,10 +600,10 @@ export default function RecipeView(
     timers.value = timers.value.filter((t) => t.id !== id);
   }
 
-  // Tick active timers every second
+  // Tick active timers every second — stable interval that survives re-renders
   useEffect(() => {
-    if (timers.value.length === 0) return;
     const interval = setInterval(() => {
+      if (timers.value.length === 0) return;
       let changed = false;
       const next = timers.value.map((t) => {
         if (t.done || t.remaining <= 0) return t;
@@ -591,12 +624,117 @@ export default function RecipeView(
       if (changed) timers.value = next;
     }, 1000);
     return () => clearInterval(interval);
-  });
+  }, []);
 
   // Event delegation for timer buttons in rendered HTML
   useEffect(() => {
     const el = stepsRef.current;
     if (!el) return;
+    function handleClick(e: Event) {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
+        ".recipe-timer-btn",
+      );
+      if (!btn) return;
+      const seconds = parseInt(btn.dataset.seconds || "0");
+      const label = btn.dataset.label || "Timer";
+      if (seconds > 0) startTimer(seconds, label);
+    }
+    el.addEventListener("click", handleClick);
+    return () => el.removeEventListener("click", handleClick);
+  });
+
+  // ── Cooking Mode ──
+  const cookingMode = useSignal(false);
+  const cookingStep = useSignal(0);
+  const cookingRef = useRef<HTMLDivElement>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  function getCookingStepHtml(): string {
+    const ratio = getCurrentRatio();
+    return renderSingleStepHtml(steps, cookingStep.value, ratio, ingredients);
+  }
+
+  function enterCookingMode() {
+    cookingMode.value = true;
+    cookingStep.value = 0;
+    // Request wake lock
+    if ("wakeLock" in navigator) {
+      (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } })
+        .wakeLock.request("screen")
+        .then((lock: WakeLockSentinel) => {
+          wakeLockRef.current = lock;
+        })
+        .catch(() => {});
+    }
+  }
+
+  function exitCookingMode() {
+    cookingMode.value = false;
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
+    }
+  }
+
+  function cookingNext() {
+    if (cookingStep.value < steps.length - 1) {
+      cookingStep.value = cookingStep.value + 1;
+    }
+  }
+
+  function cookingPrev() {
+    if (cookingStep.value > 0) {
+      cookingStep.value = cookingStep.value - 1;
+    }
+  }
+
+  // Keyboard navigation for cooking mode
+  useEffect(() => {
+    if (!cookingMode.value) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "ArrowRight" || e.key === " ") {
+        e.preventDefault();
+        cookingNext();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        cookingPrev();
+      } else if (e.key === "Escape") {
+        exitCookingMode();
+      }
+    }
+    globalThis.addEventListener("keydown", handleKey);
+    return () => globalThis.removeEventListener("keydown", handleKey);
+  });
+
+  // Touch/swipe navigation for cooking mode
+  useEffect(() => {
+    const el = cookingRef.current;
+    if (!el || !cookingMode.value) return;
+    function onTouchStart(e: TouchEvent) {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    }
+    function onTouchEnd(e: TouchEvent) {
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = e.changedTouches[0].clientY - touchStartY.current;
+      if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+      if (dx < 0) cookingNext();
+      else cookingPrev();
+    }
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  });
+
+  // Event delegation for timer buttons inside cooking mode
+  useEffect(() => {
+    const el = cookingRef.current;
+    if (!el || !cookingMode.value) return;
     function handleClick(e: Event) {
       const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
         ".recipe-timer-btn",
@@ -641,10 +779,29 @@ export default function RecipeView(
   }
 
   return (
-    <div class="grid gap-6 lg:grid-cols-4">
-      <div class="lg:col-span-1 space-y-4">
-        <div class="card">
+    <div class="recipe-print-grid grid gap-6 lg:grid-cols-4">
+      <div class="recipe-print-sidebar lg:col-span-1 space-y-4">
+        <div class="card print-hidden">
           {renderScalingUI()}
+          {steps.length > 0 && (
+            <div class="flex gap-2 mt-3">
+              <button
+                type="button"
+                class="btn btn-primary flex-1"
+                onClick={enterCookingMode}
+              >
+                Start Cooking
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline"
+                onClick={() => globalThis.print()}
+                title="Print recipe"
+              >
+                Print
+              </button>
+            </div>
+          )}
         </div>
         {ingredients.length > 0 && (
           <div class="card">
@@ -812,7 +969,7 @@ export default function RecipeView(
         <RecipeHtml html={html.value} />
       </div>
       {timers.value.length > 0 && (
-        <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs">
+        <div class={`fixed bottom-4 right-4 flex flex-col gap-2 max-w-xs ${cookingMode.value ? "z-[110]" : "z-50"}`}>
           {timers.value.map((t) => (
             <div
               key={t.id}
@@ -844,6 +1001,81 @@ export default function RecipeView(
               </button>
             </div>
           ))}
+        </div>
+      )}
+      {cookingMode.value && (
+        <div class="cooking-mode" ref={cookingRef}>
+          <div class="cooking-mode-header">
+            <button
+              type="button"
+              class="cooking-mode-close"
+              onClick={exitCookingMode}
+              title="Exit cooking mode (Esc)"
+            >
+              &times;
+            </button>
+            <div class="cooking-mode-progress">
+              {steps.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  class={`cooking-mode-dot ${i === cookingStep.value ? "active" : ""} ${i < cookingStep.value ? "done" : ""}`}
+                  onClick={() => { cookingStep.value = i; }}
+                />
+              ))}
+            </div>
+            <div class="cooking-mode-counter">
+              {cookingStep.value + 1} / {steps.length}
+            </div>
+          </div>
+          <div class="cooking-mode-body recipe-body">
+            <div class="cooking-mode-step-title">
+              <span class="text-stone-400 mr-2">{cookingStep.value + 1}.</span>
+              {steps[cookingStep.value].title}
+            </div>
+            <div
+              class="cooking-mode-step-content"
+              // deno-lint-ignore react-no-danger
+              dangerouslySetInnerHTML={{ __html: getCookingStepHtml() }}
+            />
+            {ingredients.length > 0 && (
+              <details class="cooking-mode-ingredients">
+                <summary>Ingredients</summary>
+                <ul>
+                  {ingredients.map((ing) => {
+                    const ratio = getCurrentRatio();
+                    const scaled = ing.amount * ratio;
+                    return (
+                      <li key={ing.key || ing.name}>
+                        <span class="font-semibold">
+                          {formatAmount(scaled, ing.unit)} {ing.unit}
+                        </span>{" "}
+                        {ing.name}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </details>
+            )}
+          </div>
+          <div class="cooking-mode-nav">
+            <button
+              type="button"
+              class="cooking-mode-nav-btn"
+              disabled={cookingStep.value === 0}
+              onClick={cookingPrev}
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              class="cooking-mode-nav-btn"
+              disabled={cookingStep.value === steps.length - 1}
+              onClick={cookingNext}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

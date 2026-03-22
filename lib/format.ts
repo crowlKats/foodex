@@ -38,6 +38,7 @@ export function formatCurrency(n: number): string {
  */
 export function formatInputValue(n: number | null | undefined): string {
   if (n == null) return "";
-  if (n % 1 === 0) return n.toFixed(0);
-  return String(n);
+  const v = Number(n);
+  if (v % 1 === 0) return v.toFixed(0);
+  return String(v);
 }
