@@ -20,6 +20,7 @@ import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import FavoriteButton from "../../../islands/FavoriteButton.tsx";
 import TbEdit from "tb-icons/TbEdit";
+import CopyButton from "../../../islands/CopyButton.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -261,9 +262,12 @@ export const handler = define.handlers({
       isFavorited = favRes.rows.length > 0;
     }
 
+    const origin = new URL(ctx.req.url).origin;
+
     ctx.state.pageTitle = recipe.title;
     return page({
       recipe,
+      exportUrl: `${origin}/api/recipes/${recipe.slug}/export`,
       ingredientsForTemplate,
       tools: toolsRes.rows,
       steps: stepsData,
@@ -319,6 +323,7 @@ export const handler = define.handlers({
 export default define.page<typeof handler>(function RecipeViewPage({
   data: {
     recipe,
+    exportUrl,
     ingredientsForTemplate,
     tools,
     steps,
@@ -367,6 +372,9 @@ export default define.page<typeof handler>(function RecipeViewPage({
               recipeId={recipe.id}
               initialFavorited={isFavorited}
             />
+          )}
+          {!recipe.private && (
+            <CopyButton text={exportUrl} />
           )}
           {isOwner && (
             <>

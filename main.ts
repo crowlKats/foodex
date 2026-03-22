@@ -89,10 +89,12 @@ app.use(define.middleware((ctx) => {
   return ctx.next();
 }));
 
-Deno.cron("pantry-expiry-notifications", "0 * * * *", () => {
-  sendExpiryNotifications(query).catch((err) =>
-    console.error("Expiry notification cron failed:", err)
-  );
-});
+if (typeof Deno.cron === "function") {
+  Deno.cron("pantry-expiry-notifications", "0 * * * *", () => {
+    sendExpiryNotifications(query).catch((err) =>
+      console.error("Expiry notification cron failed:", err)
+    );
+  });
+}
 
 app.fsRoutes();

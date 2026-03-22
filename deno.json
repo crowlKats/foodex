@@ -35,8 +35,7 @@
     "@aws-sdk/s3-request-presigner": "npm:@aws-sdk/s3-request-presigner@^3.1014.0",
     "tb-icons": "jsr:@preact-icons/tb@^1.0.14",
     "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk@^0.52.0",
-    "barcode-detector": "npm:barcode-detector@^3.0.3",
-    "web-push": "npm:web-push@^3.6.7"
+    "barcode-detector": "npm:barcode-detector@^3.0.3"
   },
   "compilerOptions": {
     "lib": [
@@ -67,6 +66,9 @@
       "vite/client"
     ]
   },
+  "unstable": [
+    "cron"
+  ],
   "deploy": {
     "org": "crowlkats",
     "app": "foodex"

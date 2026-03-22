@@ -3,6 +3,7 @@ import { define } from "../../../utils.ts";
 import type { RecipeDraft } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import OcrUpload from "../../../islands/OcrUpload.tsx";
+import UrlImport from "../../../islands/UrlImport.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -16,7 +17,7 @@ export const handler = define.handlers({
     const draftsRes = await ctx.state.db.query<RecipeDraft>(
       `SELECT id, recipe_data, source, updated_at
        FROM recipe_drafts
-       WHERE household_id = $1 AND source IN ('ocr', 'generate')
+       WHERE household_id = $1 AND source IN ('ocr', 'generate', 'url')
        ORDER BY updated_at DESC`,
       [ctx.state.householdId],
     );
@@ -27,13 +28,34 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function ImportIndexPage({ data }) {
+  const sourceLabel = (source: string) => {
+    switch (source) {
+      case "ocr":
+        return "Imported from image";
+      case "url":
+        return "Imported from URL";
+      default:
+        return "Generated from pantry";
+    }
+  };
+
   return (
     <div>
       <BackLink href="/recipes" label="Back to Recipes" />
 
-      <h1 class="text-2xl font-bold mt-4 mb-6">Import Recipe from Image</h1>
+      <h1 class="text-2xl font-bold mt-4 mb-6">Import Recipe</h1>
 
-      <OcrUpload />
+      <div class="space-y-8">
+        <section>
+          <h2 class="text-lg font-semibold mb-3">From URL</h2>
+          <UrlImport />
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold mb-3">From Image</h2>
+          <OcrUpload />
+        </section>
+      </div>
 
       {data.drafts.length > 0 && (
         <div class="mt-8">
@@ -55,9 +77,7 @@ export default define.page<typeof handler>(function ImportIndexPage({ data }) {
                         {title ? String(title) : "Untitled draft"}
                       </div>
                       <div class="text-xs text-stone-400">
-                        {d.source === "ocr"
-                          ? "Imported from image"
-                          : "Generated from pantry"}
+                        {sourceLabel(d.source)}
                         {" \u00b7 "}
                         {new Date(d.updated_at).toLocaleDateString()}
                       </div>
