@@ -3,7 +3,7 @@ import { useEffect } from "preact/hooks";
 import { IS_BROWSER } from "fresh/runtime";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
-import BarcodeScanner from "./BarcodeScanner.tsx";
+import ScanView from "./ScanView.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import { formatInputValue } from "../lib/format.ts";
 import TbTrash from "tb-icons/TbTrash";
@@ -242,7 +242,8 @@ export default function PantryManager(
   return (
     <div class="grid gap-6 lg:grid-cols-3">
       {scanning.value && (
-        <BarcodeScanner
+        <ScanView
+          mode="modal"
           householdId={householdId}
           ingredients={ingredients}
           stores={stores}

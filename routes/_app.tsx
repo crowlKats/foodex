@@ -47,10 +47,14 @@ export default define.page(function App({ Component, state, url }) {
           hasHousehold={state.householdId != null}
           currentPath={url.pathname}
         />
-        <main class="flex-1 overflow-y-auto overscroll-none pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
-          <div class="max-w-6xl mx-auto px-4 py-6">
-            <Component />
-          </div>
+        <main class={`flex-1 overscroll-none ${url.pathname === "/scan" ? "overflow-hidden" : "overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0"}`}>
+          {url.pathname === "/scan"
+            ? <Component />
+            : (
+              <div class="max-w-6xl mx-auto px-4 py-6">
+                <Component />
+              </div>
+            )}
         </main>
         <PwaInstallPrompt />
       </body>

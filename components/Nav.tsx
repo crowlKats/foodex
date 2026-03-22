@@ -107,13 +107,6 @@ export function Nav(
                     >
                       Pantry
                     </a>
-                    <a
-                      href="/household/pantry?scan=1"
-                      class="nav-link text-stone-400 hover:text-orange-400"
-                      title="Scan item into pantry"
-                    >
-                      <TbScan class="size-5" />
-                    </a>
                   </>
                 )}
                 {user && (
@@ -254,7 +247,7 @@ export function Nav(
       </nav>
 
       {/* ── Mobile bottom tabs ── */}
-      <div class="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-900 border-t-2 border-orange-600 dark:border-orange-500 px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+      <div data-mobile-nav class="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-900 border-t-2 border-orange-600 dark:border-orange-500 px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
         <div class="flex items-center justify-around">
           <MobileTab
             href="/recipes"
@@ -272,7 +265,7 @@ export function Nav(
           )}
           {hasHousehold && (
             <MobileTab
-              href="/household/pantry?scan=1"
+              href="/scan"
               label="Scan"
               icon={TbScan}
               currentPath={currentPath}
