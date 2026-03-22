@@ -22,8 +22,6 @@ import {
 } from "../../lib/recipe-tags.ts";
 import TbClock from "tb-icons/TbClock";
 import TbFlame from "tb-icons/TbFlame";
-import TbHeart from "tb-icons/TbHeart";
-import TbHeartFilled from "tb-icons/TbHeartFilled";
 import TbUsers from "tb-icons/TbUsers";
 import TbFilter from "tb-icons/TbFilter";
 import TbX from "tb-icons/TbX";
@@ -320,7 +318,7 @@ export default define.page<typeof handler>(function RecipesPage({
   };
 
   const hasFilters = difficulty.length > 0 || mealTypes.length > 0 ||
-    dietary.length > 0;
+    dietary.length > 0 || favoritesOnly || cookableOnly;
 
   function toggleArrayFilter(
     key: string,
@@ -338,28 +336,6 @@ export default define.page<typeof handler>(function RecipesPage({
       <PageHeader title="Recipes" query={q}>
         {loggedIn && (
           <>
-            {hasHousehold && (
-              <a
-                href={filterUrl(current, {
-                  cookable: cookableOnly ? undefined : "1",
-                })}
-                class={`btn ${cookableOnly ? "btn-primary" : "btn-outline"}`}
-                title={cookableOnly ? "Show all recipes" : "Show cookable now"}
-              >
-                Cookable
-              </a>
-            )}
-            <a
-              href={filterUrl(current, {
-                favorites: favoritesOnly ? undefined : "1",
-              })}
-              class={`btn ${favoritesOnly ? "btn-primary" : "btn-outline"}`}
-              title={favoritesOnly ? "Show all recipes" : "Show favorites"}
-            >
-              {favoritesOnly
-                ? <TbHeartFilled class="size-4" />
-                : <TbHeart class="size-4" />}
-            </a>
             <a
               href="/recipes/import"
               class="btn btn-outline"
@@ -385,11 +361,32 @@ export default define.page<typeof handler>(function RecipesPage({
           <span>Filters</span>
           {hasFilters && (
             <span class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-full">
-              {difficulty.length + mealTypes.length + dietary.length}
+              {difficulty.length + mealTypes.length + dietary.length +
+                (favoritesOnly ? 1 : 0) + (cookableOnly ? 1 : 0)}
             </span>
           )}
         </summary>
         <div class="mt-3 card space-y-3">
+          {loggedIn && (
+            <div class="flex flex-wrap gap-1.5">
+              {hasHousehold && (
+                <FilterChip
+                  label="Cookable"
+                  active={cookableOnly}
+                  href={filterUrl(current, {
+                    cookable: cookableOnly ? undefined : "1",
+                  })}
+                />
+              )}
+              <FilterChip
+                label="Favourites"
+                active={favoritesOnly}
+                href={filterUrl(current, {
+                  favorites: favoritesOnly ? undefined : "1",
+                })}
+              />
+            </div>
+          )}
           <div>
             <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
               Difficulty
@@ -441,6 +438,8 @@ export default define.page<typeof handler>(function RecipesPage({
                 difficulty: undefined,
                 meal_type: undefined,
                 dietary: undefined,
+                favorites: undefined,
+                cookable: undefined,
               })}
               class="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
             >

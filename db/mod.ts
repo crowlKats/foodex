@@ -1,5 +1,8 @@
 import pg from "pg";
 
+// Parse NUMERIC/DECIMAL columns as JS numbers instead of strings
+pg.types.setTypeParser(1700, (val: string) => parseFloat(val));
+
 const pool = new pg.Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
   max: 10,

@@ -18,17 +18,15 @@ export const handler = define.handlers({
       });
     }
 
-    const id = ctx.state.householdId;
-
     const [householdRes, pantryRes, ingredientsRes, storesRes] = await Promise
       .all([
         ctx.state.db.query<Household>(
           "SELECT * FROM households WHERE id = $1",
-          [id],
+          [ctx.state.householdId],
         ),
         ctx.state.db.query<PantryItem>(
           "SELECT * FROM pantry_items WHERE household_id = $1 ORDER BY name",
-          [id],
+          [ctx.state.householdId],
         ),
         ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
           "SELECT id, name, unit FROM ingredients ORDER BY name",
@@ -52,12 +50,6 @@ export default define.page<typeof handler>(function PantryPage({ data }) {
   return (
     <div>
       <div class="mb-6">
-        <a
-          href="/household"
-          class="text-sm text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
-        >
-          &larr; {data.household.name}
-        </a>
         <h1 class="text-2xl font-bold">Pantry</h1>
         <p class="text-sm text-stone-500 mt-1">
           Track what ingredients your household already has on hand.

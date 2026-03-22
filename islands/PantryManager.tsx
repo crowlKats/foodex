@@ -221,7 +221,7 @@ export default function PantryManager(
   }
 
   return (
-    <div class="grid gap-6 md:grid-cols-2">
+    <div class="space-y-6">
       {scanning.value && (
         <BarcodeScanner
           householdId={householdId}
@@ -283,28 +283,25 @@ export default function PantryManager(
               }}
             />
           </div>
-          <div class="flex gap-3">
-            <div class="flex-1">
-              <label class="block text-sm font-medium mb-1">
-                Amount <span class="text-stone-400">(optional)</span>
-              </label>
+          <div>
+            <label class="block text-sm font-medium mb-1">
+              Amount <span class="text-stone-400">(optional)</span>
+            </label>
+            <div class="flex">
               <input
                 type="number"
                 min="0"
                 step="any"
                 value={newAmount}
-                class="w-full"
+                class="flex-1"
                 placeholder="e.g. 500"
                 onInput={(e) => {
                   newAmount.value = (e.target as HTMLInputElement).value;
                 }}
               />
-            </div>
-            <div class="flex-1">
-              <label class="block text-sm font-medium mb-1">Unit</label>
               <select
                 value={newUnit}
-                class="w-full"
+                class="w-24 -ml-0.5"
                 onChange={(e) => {
                   newUnit.value = (e.target as HTMLSelectElement).value;
                 }}
@@ -404,7 +401,18 @@ export default function PantryManager(
                       }`}
                     >
                       <div class="flex-1 min-w-0">
-                        <span class="font-medium text-sm">{item.name}</span>
+                        {item.ingredient_id
+                          ? (
+                            <a
+                              href={`/ingredients/${item.ingredient_id}`}
+                              class="link font-medium text-sm"
+                            >
+                              {item.name}
+                            </a>
+                          )
+                          : (
+                            <span class="font-medium text-sm">{item.name}</span>
+                          )}
                         {status === "expired" && (
                           <span class="ml-2 text-xs text-red-600 dark:text-red-400">
                             Expired
@@ -416,41 +424,43 @@ export default function PantryManager(
                           </span>
                         )}
                       </div>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={formatInputValue(item.amount)}
-                        placeholder="Qty"
-                        class="w-20"
-                        onBlur={(e) => {
-                          const val = (e.target as HTMLInputElement).value;
-                          const amount = val ? parseFloat(val) : null;
-                          if (amount !== (item.amount ?? null)) {
-                            updateItem(item, amount, item.unit ?? null);
-                          }
-                        }}
-                      />
-                      <select
-                        value={item.unit ?? ""}
-                        class="w-24"
-                        onChange={(e) => {
-                          const unit = (e.target as HTMLSelectElement).value ||
-                            null;
-                          updateItem(item, item.amount ?? null, unit);
-                        }}
-                      >
-                        <option value="">—</option>
-                        {UNIT_GROUPS.map((g) => (
-                          <optgroup key={g.label} label={g.label}>
-                            {g.units.map((u) => (
-                              <option key={u.name} value={u.name}>
-                                {u.name}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
+                      <div class="flex">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={formatInputValue(item.amount)}
+                          placeholder="Qty"
+                          class="flex-1 w-20"
+                          onBlur={(e) => {
+                            const val = (e.target as HTMLInputElement).value;
+                            const amount = val ? parseFloat(val) : null;
+                            if (amount !== (item.amount ?? null)) {
+                              updateItem(item, amount, item.unit ?? null);
+                            }
+                          }}
+                        />
+                        <select
+                          value={item.unit ?? ""}
+                          class="w-24 -ml-0.5"
+                          onChange={(e) => {
+                            const unit =
+                              (e.target as HTMLSelectElement).value || null;
+                            updateItem(item, item.amount ?? null, unit);
+                          }}
+                        >
+                          <option value="">—</option>
+                          {UNIT_GROUPS.map((g) => (
+                            <optgroup key={g.label} label={g.label}>
+                              {g.units.map((u) => (
+                                <option key={u.name} value={u.name}>
+                                  {u.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
                       <input
                         type="date"
                         value={item.expires_at ?? ""}

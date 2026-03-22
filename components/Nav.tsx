@@ -1,6 +1,7 @@
 import DarkModeToggle from "../islands/DarkModeToggle.tsx";
 import TbChefHat from "tb-icons/TbChefHat";
 import TbShoppingCart from "tb-icons/TbShoppingCart";
+import TbBook from "tb-icons/TbBook";
 import type { User } from "../utils.ts";
 
 export function Nav(
@@ -33,6 +34,13 @@ export function Nav(
             </a>
           </div>
           <div class="ml-auto flex items-center gap-3">
+            <a
+              href="/docs/guide"
+              class="nav-link"
+              title="User Guide"
+            >
+              <TbBook class="size-5" />
+            </a>
             {user && (
               <a
                 href="/shopping-list"

@@ -5,6 +5,7 @@ import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { toBaseUnit } from "../../lib/unit-convert.ts";
+import { formatAmount, formatCurrency } from "../../lib/format.ts";
 import IngredientUnitFields from "../../islands/IngredientUnitFields.tsx";
 import type {
   Ingredient,
@@ -351,7 +352,7 @@ export default define.page<typeof handler>(
                     <div class="flex items-center gap-4">
                       <div class="text-xl font-bold text-orange-600">
                         {getCurrencySymbol(p.store_currency ?? "EUR")}
-                        {p.price}
+                        {formatCurrency(p.price)}
                       </div>
                       <div>
                         <a
@@ -367,7 +368,8 @@ export default define.page<typeof handler>(
                         )}
                         {p.amount && (
                           <div class="text-sm text-stone-500">
-                            per {p.amount} {ingredient.unit ?? ""}
+                            per {formatAmount(p.amount, ingredient.unit ?? undefined)}{" "}
+                            {ingredient.unit ?? ""}
                           </div>
                         )}
                         {i === 0 && prices.length > 1 && (
