@@ -13,7 +13,7 @@ function DarkModeScript() {
   );
 }
 
-export default define.page(function App({ Component, state }) {
+export default define.page(function App({ Component, state, url }) {
   return (
     <html>
       <head>
@@ -26,11 +26,12 @@ export default define.page(function App({ Component, state }) {
         </title>
         <DarkModeScript />
       </head>
-      <body class="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+      <body class="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-14 sm:pb-0">
         <Nav
           user={state.user}
           shoppingListCount={state.shoppingListCount}
           hasHousehold={state.householdId != null}
+          currentPath={url.pathname}
         />
         <main class="max-w-6xl mx-auto px-4 py-6">
           <Component />

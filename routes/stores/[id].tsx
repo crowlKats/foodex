@@ -135,10 +135,12 @@ export default define.page<typeof handler>(
       <div>
         <BackLink href="/stores" label="Back to Stores" />
 
-        <div class="mt-4 grid gap-6 lg:grid-cols-3">
+        <h1 class="text-2xl font-bold mt-4 mb-6">{store.name}</h1>
+
+        <div class="grid gap-6 lg:grid-cols-3">
           <div class="space-y-4">
             <div>
-              <h1 class="text-2xl font-bold mb-4">Edit Store</h1>
+              <h2 class="text-lg font-semibold mb-3">Details</h2>
               <form
                 method="POST"
                 class="card space-y-3"

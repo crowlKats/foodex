@@ -285,7 +285,7 @@ export default define.page<typeof handler>(function RecipeEdit({
 
   return (
     <div>
-      <div class="flex items-center gap-4 mb-4">
+      <div class="flex items-center gap-4">
         <BackLink href="/recipes" label="Back to Recipes" />
         <a
           href={`/recipes/${recipe.slug}`}
@@ -295,11 +295,11 @@ export default define.page<typeof handler>(function RecipeEdit({
         </a>
       </div>
 
-      <h1 class="text-2xl font-bold mb-4">Edit: {recipe.title}</h1>
+      <h1 class="text-2xl font-bold mt-4 mb-6">Edit: {recipe.title}</h1>
 
       <form method="POST" class="space-y-6">
         <div class="card">
-          <h2 class="section-title">Cover Image</h2>
+          <h2 class="font-semibold mb-2">Cover Image</h2>
           <MediaUpload
             name="cover_image_id"
             accept="image/*"

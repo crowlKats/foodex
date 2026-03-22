@@ -100,9 +100,11 @@ export default define.page<typeof handler>(
       <div>
         <BackLink href="/tools" label="Back to Tools" />
 
-        <div class="mt-4 grid gap-6 md:grid-cols-2">
+        <h1 class="text-2xl font-bold mt-4 mb-6">{tool.name}</h1>
+
+        <div class="grid gap-6 lg:grid-cols-3">
           <div>
-            <h1 class="text-2xl font-bold mb-4">Edit Tool</h1>
+            <h2 class="text-lg font-semibold mb-3">Details</h2>
             <form
               method="POST"
               class="card space-y-3"
@@ -160,7 +162,7 @@ export default define.page<typeof handler>(
             </form>
           </div>
 
-          <div>
+          <div class="lg:col-span-2">
             <h2 class="text-lg font-semibold mb-3">Used in Recipes</h2>
             {usage.length === 0
               ? <p class="text-stone-500">Not used in any recipes yet.</p>

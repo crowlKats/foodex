@@ -206,11 +206,9 @@ export default define.page<typeof handler>(
 
     return (
       <div>
-        <div class="flex items-center gap-4 mb-4">
-          <BackLink href="/recipes" label="Back to Recipes" />
-        </div>
+        <BackLink href="/recipes" label="Back to Recipes" />
 
-        <h1 class="text-2xl font-bold mb-4">
+        <h1 class="text-2xl font-bold mt-4 mb-6">
           {recipeData.title ? `Draft: ${recipeData.title}` : "New Draft"}
         </h1>
 

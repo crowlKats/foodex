@@ -161,7 +161,7 @@ export const handler = define.handlers({
 export default define.page<typeof handler>(function ShoppingListPage({ data }) {
   return (
     <div>
-      <h1 class="text-2xl font-bold mb-4">Shopping List</h1>
+      <h1 class="text-2xl font-bold mb-6">Shopping List</h1>
       <ShoppingListView
         initialItems={data.items}
         stores={data.stores}

@@ -187,11 +187,9 @@ export default define.page<typeof handler>(
   ) {
     return (
       <div>
-        <div class="flex items-center gap-4 mb-4">
-          <BackLink href="/recipes" label="Back to Recipes" />
-        </div>
+        <BackLink href="/recipes" label="Back to Recipes" />
 
-        <div class="flex items-center gap-4 mb-4">
+        <div class="flex items-center gap-4 mt-4 mb-6">
           <h1 class="text-2xl font-bold">New Recipe</h1>
           <a href="/recipes/import" class="link text-sm">
             or import from image
@@ -200,7 +198,7 @@ export default define.page<typeof handler>(
 
         <form method="POST" class="space-y-6">
           <div class="card">
-            <h2 class="section-title">Cover Image</h2>
+            <h2 class="font-semibold mb-2">Cover Image</h2>
             <MediaUpload name="cover_image_id" accept="image/*" />
           </div>
 

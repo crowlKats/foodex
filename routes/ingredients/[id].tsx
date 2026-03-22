@@ -221,7 +221,7 @@ export default define.page<typeof handler>(
       <div>
         <BackLink href="/ingredients" label="Back to Ingredients" />
 
-        <h1 class="text-2xl font-bold mt-4">
+        <h1 class="text-2xl font-bold mt-4 mb-6">
           {ingredient.name}
           {ingredient.unit && (
             <span class="text-stone-400 text-lg font-normal ml-2">
@@ -230,7 +230,7 @@ export default define.page<typeof handler>(
           )}
         </h1>
 
-        <div class="grid gap-6 lg:grid-cols-3 mt-6">
+        <div class="grid gap-6 lg:grid-cols-3">
           <div class="space-y-6">
             <div>
               <h2 class="text-lg font-semibold mb-3">Details</h2>

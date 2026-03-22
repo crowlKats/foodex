@@ -29,11 +29,9 @@ export const handler = define.handlers({
 export default define.page<typeof handler>(function ImportIndexPage({ data }) {
   return (
     <div>
-      <div class="flex items-center gap-4 mb-4">
-        <BackLink href="/recipes" label="Back to Recipes" />
-      </div>
+      <BackLink href="/recipes" label="Back to Recipes" />
 
-      <h1 class="text-2xl font-bold mb-4">Import Recipe from Image</h1>
+      <h1 class="text-2xl font-bold mt-4 mb-6">Import Recipe from Image</h1>
 
       <OcrUpload />
 

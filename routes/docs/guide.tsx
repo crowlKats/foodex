@@ -12,7 +12,7 @@ export default define.page(function GuideDocs() {
     <div class="max-w-3xl">
       <BackLink href="/recipes" label="Back to Recipes" />
 
-      <h1 class="text-3xl font-bold mt-4 mb-2">User Guide</h1>
+      <h1 class="text-2xl font-bold mt-4 mb-2">User Guide</h1>
       <p class="text-stone-500 dark:text-stone-400 mb-8">
         Everything you need to know about using Foodex, explained in plain
         language.

@@ -6,7 +6,7 @@ export default define.page(function TemplateDocs() {
     <div class="max-w-3xl">
       <BackLink href="/recipes" label="Back to Recipes" />
 
-      <h1 class="text-3xl font-bold mt-4 mb-6">Template Syntax</h1>
+      <h1 class="text-2xl font-bold mt-4 mb-6">Template Syntax</h1>
 
       <p class="text-stone-600 dark:text-stone-400 mb-6">
         Recipe steps support a template syntax for dynamic ingredient amounts

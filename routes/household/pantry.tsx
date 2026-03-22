@@ -49,11 +49,13 @@ export const handler = define.handlers({
 export default define.page<typeof handler>(function PantryPage({ data }) {
   return (
     <div>
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold">Pantry</h1>
-        <p class="text-sm text-stone-500 mt-1">
-          Track what ingredients your household already has on hand.
-        </p>
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-bold">Pantry</h1>
+          <p class="text-sm text-stone-500 mt-1">
+            Track what ingredients your household already has on hand.
+          </p>
+        </div>
       </div>
 
       <PantryManager
@@ -76,12 +78,6 @@ export default define.page<typeof handler>(function PantryPage({ data }) {
           name: s.name,
         }))}
       />
-
-      {data.pantryItems.length > 0 && (
-        <div class="mt-8">
-          <GenerateRecipe />
-        </div>
-      )}
     </div>
   );
 });

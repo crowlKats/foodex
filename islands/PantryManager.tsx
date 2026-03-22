@@ -1,4 +1,6 @@
 import { useComputed, useSignal } from "@preact/signals";
+import { useEffect } from "preact/hooks";
+import { IS_BROWSER } from "fresh/runtime";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import BarcodeScanner from "./BarcodeScanner.tsx";
@@ -8,6 +10,7 @@ import TbTrash from "tb-icons/TbTrash";
 import TbAlertTriangle from "tb-icons/TbAlertTriangle";
 import TbScan from "tb-icons/TbScan";
 import TbArrowMerge from "tb-icons/TbArrowMerge";
+import GenerateRecipe from "./GenerateRecipe.tsx";
 
 interface PantryItem {
   id: number;
@@ -64,6 +67,22 @@ export default function PantryManager(
   const newExpiresAt = useSignal("");
   const saving = useSignal(false);
   const scanning = useSignal(false);
+
+  // Auto-open scanner when ?scan=1 is in the URL
+  useEffect(() => {
+    if (IS_BROWSER) {
+      const params = new URLSearchParams(globalThis.location.search);
+      if (params.get("scan") === "1") {
+        scanning.value = true;
+        // Clean up the URL
+        params.delete("scan");
+        const clean = params.toString();
+        const url = globalThis.location.pathname + (clean ? `?${clean}` : "");
+        globalThis.history.replaceState(null, "", url);
+      }
+    }
+  }, []);
+
   // ID of the item currently showing its merge panel (null = none open)
   const mergingItemId = useSignal<number | null>(null);
   const search = useSignal("");
@@ -221,7 +240,7 @@ export default function PantryManager(
   }
 
   return (
-    <div class="space-y-6">
+    <div class="grid gap-6 lg:grid-cols-3">
       {scanning.value && (
         <BarcodeScanner
           householdId={householdId}
@@ -247,104 +266,112 @@ export default function PantryManager(
         />
       )}
 
-      <div>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold">Add Item</h2>
-          <button
-            type="button"
-            class="btn btn-primary flex items-center gap-1.5 text-sm py-1 px-2"
-            onClick={() => {
-              scanning.value = true;
-            }}
-          >
-            <TbScan class="size-4" />
-            Scan
-          </button>
-        </div>
-        <div class="card space-y-3">
-          <div>
-            <label class="block text-sm font-medium mb-1">Ingredient</label>
-            <SearchSelect
-              value={selectedIngredient.value}
-              options={options}
-              placeholder="Search ingredients..."
-              onSelect={(o) => {
-                selectedIngredient.value = { id: o.id, name: o.name };
-                newName.value = o.name;
-                const ing = ingredients.find((i) => i.id === o.id);
-                if (ing?.unit) newUnit.value = ing.unit;
+      <div class="lg:col-span-1 space-y-4">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">Add Item</h2>
+            <button
+              type="button"
+              class="btn btn-primary flex items-center gap-1.5 text-sm py-1 px-2"
+              onClick={() => {
+                scanning.value = true;
               }}
-              onClear={() => {
-                selectedIngredient.value = { id: "", name: "" };
-                newName.value = "";
-              }}
-              onChange={(text) => {
-                newName.value = text;
-              }}
-            />
+            >
+              <TbScan class="size-4" />
+              Scan
+            </button>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              Amount <span class="text-stone-400">(optional)</span>
-            </label>
-            <div class="flex">
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={newAmount}
-                class="flex-1"
-                placeholder="e.g. 500"
-                onInput={(e) => {
-                  newAmount.value = (e.target as HTMLInputElement).value;
+          <div class="card space-y-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Ingredient</label>
+              <SearchSelect
+                value={selectedIngredient.value}
+                options={options}
+                placeholder="Search ingredients..."
+                onSelect={(o) => {
+                  selectedIngredient.value = { id: o.id, name: o.name };
+                  newName.value = o.name;
+                  const ing = ingredients.find((i) => i.id === o.id);
+                  if (ing?.unit) newUnit.value = ing.unit;
+                }}
+                onClear={() => {
+                  selectedIngredient.value = { id: "", name: "" };
+                  newName.value = "";
+                }}
+                onChange={(text) => {
+                  newName.value = text;
                 }}
               />
-              <select
-                value={newUnit}
-                class="w-24 -ml-0.5"
-                onChange={(e) => {
-                  newUnit.value = (e.target as HTMLSelectElement).value;
-                }}
-              >
-                <option value="">—</option>
-                {UNIT_GROUPS.map((g) => (
-                  <optgroup key={g.label} label={g.label}>
-                    {g.units.map((u) => (
-                      <option key={u.name} value={u.name}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
             </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">
+                Amount <span class="text-stone-400">(optional)</span>
+              </label>
+              <div class="flex">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={newAmount}
+                  class="flex-1"
+                  placeholder="e.g. 500"
+                  onInput={(e) => {
+                    newAmount.value = (e.target as HTMLInputElement).value;
+                  }}
+                />
+                <select
+                  value={newUnit}
+                  class="w-24 -ml-0.5"
+                  onChange={(e) => {
+                    newUnit.value = (e.target as HTMLSelectElement).value;
+                  }}
+                >
+                  <option value="">—</option>
+                  {UNIT_GROUPS.map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.units.map((u) => (
+                        <option key={u.name} value={u.name}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">
+                Best before <span class="text-stone-400">(optional)</span>
+              </label>
+              <input
+                type="date"
+                value={newExpiresAt}
+                class="w-full"
+                onInput={(e) => {
+                  newExpiresAt.value = (e.target as HTMLInputElement).value;
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              class="btn btn-primary"
+              disabled={saving.value ||
+                (!selectedIngredient.value.id && !newName.value.trim())}
+              onClick={addItem}
+            >
+              {saving.value ? "Adding..." : "Add to Pantry"}
+            </button>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">
-              Best before <span class="text-stone-400">(optional)</span>
-            </label>
-            <input
-              type="date"
-              value={newExpiresAt}
-              class="w-full"
-              onInput={(e) => {
-                newExpiresAt.value = (e.target as HTMLInputElement).value;
-              }}
-            />
-          </div>
-          <button
-            type="button"
-            class="btn btn-primary"
-            disabled={saving.value ||
-              (!selectedIngredient.value.id && !newName.value.trim())}
-            onClick={addItem}
-          >
-            {saving.value ? "Adding..." : "Add to Pantry"}
-          </button>
         </div>
+
+        {items.value.length > 0 && (
+          <div class="mt-8">
+            <GenerateRecipe />
+          </div>
+        )}
       </div>
 
-      <div>
+      <div class="lg:col-span-2">
         <div class="flex items-center gap-3 mb-3">
           <h2 class="text-lg font-semibold shrink-0">
             In Stock ({items.value.length})

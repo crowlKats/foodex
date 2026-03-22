@@ -345,7 +345,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
       </div>
 
       {recipe.cover_image_url && (
-        <div class="mt-4">
+        <div class="mt-4 mb-4">
           <ImageLightbox
             src={recipe.cover_image_url}
             alt={recipe.title}
@@ -355,7 +355,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
       )}
 
       <div class="flex items-center gap-3 mt-4 mb-2 flex-wrap">
-        <h1 class="text-3xl font-bold flex-1">{recipe.title}</h1>
+        <h1 class="text-2xl font-bold flex-1">{recipe.title}</h1>
         {recipe.private && (
           <span class="print-hidden text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-2 py-1 rounded">
             private
