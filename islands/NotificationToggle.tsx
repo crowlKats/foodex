@@ -54,7 +54,9 @@ export default function NotificationToggle(
 
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          applicationServerKey: urlBase64ToUint8Array(
+            vapidPublicKey,
+          ) as Uint8Array<ArrayBuffer>,
         });
 
         await fetch("/api/push-subscription", {

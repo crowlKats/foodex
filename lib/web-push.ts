@@ -1,3 +1,8 @@
+// Workaround: Deno's TS lib types Uint8Array as Uint8Array<ArrayBufferLike>
+// but WebCrypto APIs expect Uint8Array<ArrayBuffer>. This helper casts safely.
+const buf = (u: Uint8Array): Uint8Array<ArrayBuffer> =>
+  u as Uint8Array<ArrayBuffer>;
+
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ??
@@ -44,7 +49,7 @@ export async function sendPushNotification(
         Authorization: vapidHeaders.authorization,
         ...vapidHeaders.crypto,
       },
-      body: encrypted,
+      body: buf(encrypted),
     });
 
     if (res.status === 201 || res.status === 200) return true;
@@ -137,7 +142,7 @@ async function encryptPayload(
   // Import client public key
   const clientKey = await crypto.subtle.importKey(
     "raw",
-    clientPublicKey,
+    buf(clientPublicKey),
     { name: "ECDH", namedCurve: "P-256" },
     false,
     [],
@@ -182,14 +187,14 @@ async function encryptPayload(
   // AES-128-GCM encrypt
   const aesKey = await crypto.subtle.importKey(
     "raw",
-    contentKey,
+    buf(contentKey),
     "AES-GCM",
     false,
     ["encrypt"],
   );
   const ciphertext = new Uint8Array(
     await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: nonce },
+      { name: "AES-GCM", iv: buf(nonce) },
       aesKey,
       padded,
     ),
@@ -246,31 +251,15 @@ async function hkdf(
   info: Uint8Array,
   length: number,
 ): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    salt.length ? salt : new Uint8Array(32),
-    "HKDF",
-    false,
-    ["deriveBits"],
-  );
-  // HKDF expects the IKM as the base key — re-derive via extract step
-  const prkKey = await crypto.subtle.importKey(
-    "raw",
-    ikm,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  // Actually use the proper HKDF primitive
   const extractKey = await crypto.subtle.importKey(
     "raw",
-    salt.length ? salt : new Uint8Array(32),
+    buf(salt.length ? salt : new Uint8Array(32)),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
   const prk = new Uint8Array(
-    await crypto.subtle.sign("HMAC", extractKey, ikm),
+    await crypto.subtle.sign("HMAC", extractKey, buf(ikm)),
   );
 
   const hkdfKey = await crypto.subtle.importKey(
@@ -282,7 +271,12 @@ async function hkdf(
   );
   return new Uint8Array(
     await crypto.subtle.deriveBits(
-      { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info },
+      {
+        name: "HKDF",
+        hash: "SHA-256",
+        salt: buf(new Uint8Array(0)),
+        info: buf(info),
+      },
       hkdfKey,
       length * 8,
     ),

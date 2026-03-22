@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import { readBarcodes } from "zxing-wasm/reader";
+import { readBarcodes, type ReadInputBarcodeFormat } from "zxing-wasm/reader";
 import TbX from "tb-icons/TbX";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
@@ -132,15 +132,16 @@ export default function ScanView(props: Props) {
         await videoRef.current.play();
         status.value = "Initializing barcode detector...";
 
+        const formats: ReadInputBarcodeFormat[] = [
+          "EAN-13",
+          "EAN-8",
+          "UPC-A",
+          "UPC-E",
+          "Code 128",
+          "Code 39",
+        ];
         const readerOptions = {
-          formats: [
-            "EAN-13",
-            "EAN-8",
-            "UPC-A",
-            "UPC-E",
-            "Code 128",
-            "Code 39",
-          ] as const,
+          formats,
           tryHarder: true,
           tryRotate: true,
           tryInvert: true,
@@ -211,13 +212,13 @@ export default function ScanView(props: Props) {
 
   useEffect(() => {
     if (mode === "page") {
-      function measure() {
+      const measure = () => {
         const topNav = document.querySelector("nav");
         const bottomNav = document.querySelector("[data-mobile-nav]");
         const topH = topNav?.getBoundingClientRect().height ?? 0;
         const bottomH = bottomNav?.getBoundingClientRect().height ?? 0;
         cameraHeight.value = `${globalThis.innerHeight - topH - bottomH}px`;
-      }
+      };
       measure();
       globalThis.addEventListener("resize", measure);
       const cleanup = startCamera();

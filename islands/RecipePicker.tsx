@@ -89,7 +89,7 @@ export default function RecipePicker({ options, initialSelected }: Props) {
 
   return (
     <div class="space-y-2">
-      {selected.value.map((r, idx) => (
+      {selected.value.map((r) => (
         <input key={r.id} type="hidden" name="recipe_id" value={r.id} />
       ))}
       {selected.value.length > 0 && (

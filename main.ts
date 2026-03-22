@@ -89,8 +89,10 @@ app.use(define.middleware((ctx) => {
   return ctx.next();
 }));
 
-if (typeof Deno.cron === "function") {
-  Deno.cron("pantry-expiry-notifications", "0 * * * *", () => {
+// deno-lint-ignore no-explicit-any
+if (typeof (Deno as any).cron === "function") {
+  // deno-lint-ignore no-explicit-any
+  (Deno as any).cron("pantry-expiry-notifications", "0 * * * *", () => {
     sendExpiryNotifications(query).catch((err) =>
       console.error("Expiry notification cron failed:", err)
     );

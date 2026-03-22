@@ -214,8 +214,7 @@ export default define.page<typeof handler>(
                     type="text"
                     value={shareUrl}
                     readOnly
-                    class="text-sm w-48 sm:w-64"
-                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    class="text-sm w-48 sm:w-64 select-all"
                   />
                   <form method="POST" class="inline">
                     <input

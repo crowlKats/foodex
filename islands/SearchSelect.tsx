@@ -38,13 +38,6 @@ export default function SearchSelect(
     onSelect(o);
   }
 
-  function clear() {
-    query.value = "";
-    linked.value = false;
-    highlightIndex.value = -1;
-    onClear();
-  }
-
   function handleKeyDown(e: KeyboardEvent) {
     const filtered = getFiltered();
     if (e.key === "ArrowDown") {
