@@ -223,7 +223,10 @@ export default define.page<typeof handler>(
                       name="_method"
                       value="REVOKE_SHARE_TOKEN"
                     />
-                    <button type="submit" class="btn btn-outline text-sm inline-flex items-center gap-1.5">
+                    <button
+                      type="submit"
+                      class="btn btn-outline text-sm inline-flex items-center gap-1.5"
+                    >
                       <TbShare class="size-4" />
                       Unshare
                     </button>
@@ -237,7 +240,10 @@ export default define.page<typeof handler>(
                     name="_method"
                     value="GENERATE_SHARE_TOKEN"
                   />
-                  <button type="submit" class="btn btn-outline text-sm inline-flex items-center gap-1.5">
+                  <button
+                    type="submit"
+                    class="btn btn-outline text-sm inline-flex items-center gap-1.5"
+                  >
                     <TbShare class="size-4" />
                     Share
                   </button>
@@ -370,9 +376,10 @@ export default define.page<typeof handler>(
                       <span>
                         <TbUsers class="size-3.5 inline mr-0.5" />
                         {formatQuantity({
-                          type: (r.quantity_type || "servings") as RecipeQuantity[
-                            "type"
-                          ],
+                          type:
+                            (r.quantity_type || "servings") as RecipeQuantity[
+                              "type"
+                            ],
                           value: r.quantity_value ?? 4,
                           unit: r.quantity_unit || "servings",
                           value2: r.quantity_value2 != null

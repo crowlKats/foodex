@@ -491,7 +491,11 @@ export default define.page<typeof handler>(function RecipeEdit({
         </div>
       </form>
 
-      <form action={`/recipes/${recipe.slug}`} method="POST" class="mt-6 pt-6 border-t-2 border-stone-200 dark:border-stone-700">
+      <form
+        action={`/recipes/${recipe.slug}`}
+        method="POST"
+        class="mt-6 pt-6 border-t-2 border-stone-200 dark:border-stone-700"
+      >
         <input type="hidden" name="_method" value="DELETE" />
         <ConfirmButton
           message="Delete this recipe? This cannot be undone."

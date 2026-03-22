@@ -52,12 +52,16 @@ export async function sendExpiryNotifications(queryFn: QueryFn) {
     const parts: string[] = [];
     if (household.expired_count > 0) {
       parts.push(
-        `${household.expired_count} expired item${household.expired_count === 1 ? "" : "s"}`,
+        `${household.expired_count} expired item${
+          household.expired_count === 1 ? "" : "s"
+        }`,
       );
     }
     if (household.expiring_count > 0) {
       parts.push(
-        `${household.expiring_count} item${household.expiring_count === 1 ? "" : "s"} expiring soon`,
+        `${household.expiring_count} item${
+          household.expiring_count === 1 ? "" : "s"
+        } expiring soon`,
       );
     }
     if (parts.length === 0) continue;

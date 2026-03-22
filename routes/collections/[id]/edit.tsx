@@ -189,7 +189,8 @@ export default define.page<typeof handler>(
                 class="size-4 accent-orange-600"
               />
               <span class="text-sm">
-                Private (only visible to household members and shared households)
+                Private (only visible to household members and shared
+                households)
               </span>
             </label>
           </div>
@@ -207,7 +208,6 @@ export default define.page<typeof handler>(
               }))}
             />
           </div>
-
         </form>
 
         <div class="flex items-center justify-between">

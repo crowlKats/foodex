@@ -12,7 +12,12 @@ interface SchemaRecipe {
   recipeInstructions?:
     | string
     | string[]
-    | { "@type": string; text?: string; name?: string; itemListElement?: { "@type": string; text?: string }[] }[];
+    | {
+      "@type": string;
+      text?: string;
+      name?: string;
+      itemListElement?: { "@type": string; text?: string }[];
+    }[];
   image?: string | string[] | { url?: string };
 }
 
@@ -167,11 +172,14 @@ function normalizeFractions(s: string): string {
     .replace("⅓", "0.333")
     .replace("⅔", "0.667")
     .replace("⅛", "0.125")
-    .replace(/(\d+)\s+(\d+)\/(\d+)/g, (_m, whole, num, den) =>
-      String(parseInt(whole) + parseInt(num) / parseInt(den))
+    .replace(
+      /(\d+)\s+(\d+)\/(\d+)/g,
+      (_m, whole, num, den) =>
+        String(parseInt(whole) + parseInt(num) / parseInt(den)),
     )
-    .replace(/(\d+)\/(\d+)/g, (_m, num, den) =>
-      String(parseInt(num) / parseInt(den))
+    .replace(
+      /(\d+)\/(\d+)/g,
+      (_m, num, den) => String(parseInt(num) / parseInt(den)),
     );
 }
 
@@ -254,12 +262,14 @@ function parseInstructions(
   if (Array.isArray(instructions)) {
     const steps: { title: string; body: string }[] = [];
     let stepNum = 1;
-    for (const item of instructions as {
-      "@type": string;
-      text?: string;
-      name?: string;
-      itemListElement?: { "@type": string; text?: string; name?: string }[];
-    }[]) {
+    for (
+      const item of instructions as {
+        "@type": string;
+        text?: string;
+        name?: string;
+        itemListElement?: { "@type": string; text?: string; name?: string }[];
+      }[]
+    ) {
       if (item["@type"] === "HowToSection" && item.itemListElement) {
         for (const sub of item.itemListElement) {
           steps.push({

@@ -84,9 +84,7 @@ export default function NotificationToggle(
         ? "Disable expiry notifications"
         : "Enable expiry notifications"}
     >
-      {enabled.value
-        ? <TbBell class="size-5" />
-        : <TbBellOff class="size-5" />}
+      {enabled.value ? <TbBell class="size-5" /> : <TbBellOff class="size-5" />}
       <span class="hidden sm:inline">
         {enabled.value ? "Notifications on" : "Notify me"}
       </span>

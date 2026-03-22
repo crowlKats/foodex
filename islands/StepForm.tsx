@@ -93,7 +93,9 @@ export default function StepForm({ initialSteps }: StepFormProps) {
       {items.value.map((item, i) => (
         <div key={i} class="card p-3 space-y-2">
           <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center min-w-0">
-            <span class="text-xs text-stone-400 font-mono shrink-0 max-sm:order-1">#{i + 1}</span>
+            <span class="text-xs text-stone-400 font-mono shrink-0 max-sm:order-1">
+              #{i + 1}
+            </span>
             <input
               type="text"
               placeholder="Step title"

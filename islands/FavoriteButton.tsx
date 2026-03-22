@@ -37,8 +37,16 @@ export default function FavoriteButton({ recipeId, initialFavorited }: Props) {
       title={favorited.value ? "Remove from favorites" : "Add to favorites"}
     >
       {favorited.value
-        ? <><TbHeartFilled class="size-3.5 text-red-500" />Favorited</>
-        : <><TbHeart class="size-3.5" />Favorite</>}
+        ? (
+          <>
+            <TbHeartFilled class="size-3.5 text-red-500" />Favorited
+          </>
+        )
+        : (
+          <>
+            <TbHeart class="size-3.5" />Favorite
+          </>
+        )}
     </button>
   );
 }

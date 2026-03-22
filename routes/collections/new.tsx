@@ -23,7 +23,10 @@ export const handler = define.handlers({
     );
 
     ctx.state.pageTitle = "New Collection";
-    return page({ allRecipes: recipesRes.rows, error: undefined as string | undefined });
+    return page({
+      allRecipes: recipesRes.rows,
+      error: undefined as string | undefined,
+    });
   },
   async POST(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
@@ -113,7 +116,8 @@ export default define.page<typeof handler>(
                 class="size-4 accent-orange-600"
               />
               <span class="text-sm">
-                Private (only visible to household members and shared households)
+                Private (only visible to household members and shared
+                households)
               </span>
             </label>
           </div>

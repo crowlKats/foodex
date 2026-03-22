@@ -47,7 +47,13 @@ export default define.page(function App({ Component, state, url }) {
           hasHousehold={state.householdId != null}
           currentPath={url.pathname}
         />
-        <main class={`flex-1 overscroll-none ${url.pathname === "/scan" ? "overflow-hidden" : "overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0"}`}>
+        <main
+          class={`flex-1 overscroll-none ${
+            url.pathname === "/scan"
+              ? "overflow-hidden"
+              : "overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0"
+          }`}
+        >
           {url.pathname === "/scan"
             ? <Component />
             : (

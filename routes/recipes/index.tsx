@@ -200,14 +200,15 @@ export const handler = define.handlers({
     const mealTypes = parseMultiParam(ctx.url, "meal_type", MEAL_TYPES);
     const dietary = parseMultiParam(ctx.url, "dietary", DIETARY_TAGS);
     const sortParam = ctx.url.searchParams.get("sort") ?? "newest";
-    const sort: SortValue =
-      SORT_OPTIONS.some((o) => o.value === sortParam)
-        ? (sortParam as SortValue)
-        : "newest";
+    const sort: SortValue = SORT_OPTIONS.some((o) => o.value === sortParam)
+      ? (sortParam as SortValue)
+      : "newest";
     const sortOption = SORT_OPTIONS.find((o) => o.value === sort) ??
       SORT_OPTIONS[0];
     const descParam = ctx.url.searchParams.get("desc");
-    const desc = descParam !== null ? descParam === "1" : sortOption.defaultDesc;
+    const desc = descParam !== null
+      ? descParam === "1"
+      : sortOption.defaultDesc;
 
     const built = buildRecipeQuery({
       householdId,

@@ -34,7 +34,9 @@ export const handler = define.handlers({
       const client = new Anthropic({ apiKey });
 
       const ingredientContext = allIngredients?.length
-        ? `\nThe full ingredient list for the recipe is: ${allIngredients.join(", ")}.`
+        ? `\nThe full ingredient list for the recipe is: ${
+          allIngredients.join(", ")
+        }.`
         : "";
 
       const response = await client.messages.create({

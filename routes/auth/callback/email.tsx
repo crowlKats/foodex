@@ -1,9 +1,6 @@
 import { page } from "fresh";
 import { define } from "../../../utils.ts";
-import {
-  createSessionCookie,
-  generateSessionId,
-} from "../../../lib/auth.ts";
+import { createSessionCookie, generateSessionId } from "../../../lib/auth.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -62,7 +59,9 @@ export const handler = define.handlers({
 export default define.page(function InvalidTokenPage() {
   return (
     <div class="max-w-sm mx-auto mt-16">
-      <h1 class="text-2xl font-bold text-center mb-4">Invalid or expired link</h1>
+      <h1 class="text-2xl font-bold text-center mb-4">
+        Invalid or expired link
+      </h1>
       <div class="card">
         <p class="text-stone-600 dark:text-stone-400 mb-4">
           This sign-in link has expired or has already been used. Please request

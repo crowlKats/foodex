@@ -427,11 +427,13 @@ export default define.page<typeof handler>(function RecipeViewPage({
               collections={collections}
             />
           )}
-          {!recipe.private && (
-            <CopyButton text={exportUrl} />
-          )}
+          {!recipe.private && <CopyButton text={exportUrl} />}
           {loggedIn && (
-            <form action={`/recipes/${recipe.slug}/clone`} method="POST" class="inline">
+            <form
+              action={`/recipes/${recipe.slug}/clone`}
+              method="POST"
+              class="inline"
+            >
               <button type="submit" class="btn btn-outline">Fork</button>
             </form>
           )}

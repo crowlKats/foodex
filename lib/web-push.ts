@@ -1,6 +1,7 @@
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:foodex@kettmeir.dev";
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ??
+  "mailto:foodex@kettmeir.dev";
 
 export function getVapidPublicKey(): string {
   return VAPID_PUBLIC_KEY;
@@ -69,8 +70,12 @@ async function createVapidHeaders(
   const header = { typ: "JWT", alg: "ES256" };
   const claims = { aud: audience, exp: now + 86400, sub: subject };
 
-  const headerB64 = b64urlEncode(new TextEncoder().encode(JSON.stringify(header)));
-  const claimsB64 = b64urlEncode(new TextEncoder().encode(JSON.stringify(claims)));
+  const headerB64 = b64urlEncode(
+    new TextEncoder().encode(JSON.stringify(header)),
+  );
+  const claimsB64 = b64urlEncode(
+    new TextEncoder().encode(JSON.stringify(claims)),
+  );
   const unsigned = `${headerB64}.${claimsB64}`;
 
   const privKeyBytes = b64urlDecode(privateKey);
@@ -156,8 +161,18 @@ async function encryptPayload(
   );
   const salt = crypto.getRandomValues(new Uint8Array(16));
 
-  const contentKey = await hkdf(salt, ikm, buildCEKInfo("Content-Encoding: aes128gcm\0"), 16);
-  const nonce = await hkdf(salt, ikm, buildCEKInfo("Content-Encoding: nonce\0"), 12);
+  const contentKey = await hkdf(
+    salt,
+    ikm,
+    buildCEKInfo("Content-Encoding: aes128gcm\0"),
+    16,
+  );
+  const nonce = await hkdf(
+    salt,
+    ikm,
+    buildCEKInfo("Content-Encoding: nonce\0"),
+    12,
+  );
 
   // Pad plaintext (add delimiter byte 0x02 + zero padding)
   const padded = new Uint8Array(plaintext.length + 1);

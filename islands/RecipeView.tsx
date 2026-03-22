@@ -1011,13 +1011,17 @@ export default function RecipeView(
                         {subsError.value && !subs && (
                           <div class="text-red-600">{subsError.value}</div>
                         )}
-                        {subs && subs.map((sub, i) => (
-                          <div key={i} class="border-t border-stone-200 dark:border-stone-700 pt-1.5">
-                            <div class="font-medium">{sub.name}</div>
-                            <div class="text-stone-500">{sub.ratio}</div>
-                            <div class="text-stone-400">{sub.note}</div>
-                          </div>
-                        ))}
+                        {subs &&
+                          subs.map((sub, i) => (
+                            <div
+                              key={i}
+                              class="border-t border-stone-200 dark:border-stone-700 pt-1.5"
+                            >
+                              <div class="font-medium">{sub.name}</div>
+                              <div class="text-stone-500">{sub.ratio}</div>
+                              <div class="text-stone-400">{sub.note}</div>
+                            </div>
+                          ))}
                       </div>
                     )}
                   </li>

@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import { BarcodeDetector } from "barcode-detector";
+import { readBarcodes } from "zxing-wasm/reader";
 import TbX from "tb-icons/TbX";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
@@ -65,6 +65,8 @@ export default function ScanView(props: Props) {
   const itemPrice = useSignal("");
   const saving = useSignal(false);
 
+  const manualCode = useSignal("");
+  const manualLoading = useSignal(false);
   const streamRef = useRef<MediaStream | null>(null);
   const stoppedRef = useRef(false);
   const cameraHeight = useSignal<string>("");
@@ -84,6 +86,19 @@ export default function ScanView(props: Props) {
     itemExpiresAt.value = "";
     itemStoreId.value = "";
     itemPrice.value = "";
+  }
+
+  async function handleManualSubmit() {
+    const code = manualCode.value.trim();
+    if (!code) return;
+    manualLoading.value = true;
+    // Stop camera while looking up
+    stoppedRef.current = true;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    status.value = `Looking up ${code}...`;
+    await lookupBarcode(code);
+    manualLoading.value = false;
+    manualCode.value = "";
   }
 
   function startScanning() {
@@ -117,59 +132,63 @@ export default function ScanView(props: Props) {
         await videoRef.current.play();
         status.value = "Initializing barcode detector...";
 
-        const detector = new BarcodeDetector({
+        const readerOptions = {
           formats: [
-            "ean_13",
-            "ean_8",
-            "upc_a",
-            "upc_e",
-            "code_128",
-            "code_39",
-          ],
-        });
+            "EAN-13",
+            "EAN-8",
+            "UPC-A",
+            "UPC-E",
+            "Code 128",
+            "Code 39",
+          ] as const,
+          tryHarder: true,
+          tryRotate: true,
+          tryInvert: true,
+          tryDownscale: true,
+        };
 
-        const canvas = document.createElement("canvas");
-        const ctx2d = canvas.getContext("2d")!;
-        canvas.width = 1;
-        canvas.height = 1;
-        await detector.detect(canvas);
+        // Warmup: loads the WASM module
+        await readBarcodes(new ImageData(1, 1), readerOptions);
 
         status.value = "Point your camera at a barcode";
 
+        const scanWidth = 960;
+        const canvas = document.createElement("canvas");
+        const ctx2d = canvas.getContext("2d")!;
+
+        // deno-lint-ignore no-inner-declarations
         async function scan() {
           if (stopped || !videoRef.current) return;
           const video = videoRef.current;
           if (video.readyState >= video.HAVE_CURRENT_DATA) {
-            const vw = video.videoWidth;
-            const vh = video.videoHeight;
-            const cropW = Math.round(vw * 0.75);
-            const cropH = Math.round(vh / 3);
-            const cropX = Math.round((vw - cropW) / 2);
-            const cropY = Math.round((vh - cropH) / 2);
-            canvas.width = cropW;
-            canvas.height = cropH;
-            ctx2d.drawImage(
-              video,
-              cropX,
-              cropY,
-              cropW,
-              cropH,
-              0,
-              0,
-              cropW,
-              cropH,
-            );
+            const scale = scanWidth / video.videoWidth;
+            const scanHeight = Math.round(video.videoHeight * scale);
+            canvas.width = scanWidth;
+            canvas.height = scanHeight;
+            ctx2d.drawImage(video, 0, 0, scanWidth, scanHeight);
+            const imageData = ctx2d.getImageData(0, 0, scanWidth, scanHeight);
+            // Maximize contrast for colored backgrounds (e.g. black on red):
+            // replace each pixel with max(R,G,B) so colored backgrounds become white
+            const d = imageData.data;
+            for (let i = 0; i < d.length; i += 4) {
+              let max = d[i];
+              if (d[i + 1] > max) max = d[i + 1];
+              if (d[i + 2] > max) max = d[i + 2];
+              d[i] = max;
+              d[i + 1] = max;
+              d[i + 2] = max;
+            }
             try {
-              const barcodes = await detector.detect(canvas);
-              if (barcodes.length > 0 && !stopped) {
-                const code = barcodes[0].rawValue;
+              const results = await readBarcodes(imageData, readerOptions);
+              const valid = results.find((r) => r.isValid);
+              if (valid && !stopped) {
                 stream.getTracks().forEach((t) => t.stop());
-                status.value = `Looking up ${code}...`;
-                await lookupBarcode(code);
+                status.value = `Looking up ${valid.text}...`;
+                await lookupBarcode(valid.text);
                 return;
               }
             } catch (err) {
-              console.warn("Barcode detect error:", err);
+              console.error("Barcode detect error:", err);
             }
           }
           if (!stopped) requestAnimationFrame(scan);
@@ -242,9 +261,7 @@ export default function ScanView(props: Props) {
             const ingWords = i.name.toLowerCase().split(/\s+/);
             return ingWords.some((w) =>
               w.length > 2 &&
-              productWords.some((pw: string) =>
-                pw.length > 2 && pw.includes(w)
-              )
+              productWords.some((pw: string) => pw.length > 2 && pw.includes(w))
             );
           });
           if (match) {
@@ -340,9 +357,37 @@ export default function ScanView(props: Props) {
       <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div class="w-3/4 h-1/3 border-2 border-orange-400 opacity-70" />
       </div>
-      <p class="absolute bottom-4 left-4 right-4 text-sm text-white text-center bg-stone-900/80 px-3 py-2">
-        {status.value}
-      </p>
+      <div class="absolute bottom-4 left-4 right-4 space-y-2">
+        <p class="text-sm text-white text-center bg-stone-900/80 px-3 py-2">
+          {status.value}
+        </p>
+        <form
+          class="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleManualSubmit();
+          }}
+        >
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="Enter barcode number..."
+            value={manualCode.value}
+            class="flex-1 text-sm px-3 py-2 bg-stone-900/80 text-white placeholder:text-stone-400 border border-stone-600"
+            onInput={(e) => {
+              manualCode.value = (e.target as HTMLInputElement).value;
+            }}
+          />
+          <button
+            type="submit"
+            disabled={manualLoading.value || !manualCode.value.trim()}
+            class="btn btn-primary text-sm !py-2"
+          >
+            {manualLoading.value ? "..." : "Go"}
+          </button>
+        </form>
+      </div>
       {added.value.length > 0 && (
         <div class="absolute top-4 left-4 right-4 bg-green-600/90 text-white text-sm px-3 py-2">
           Added: {added.value[added.value.length - 1]}
@@ -575,6 +620,32 @@ export default function ScanView(props: Props) {
                 <p class="text-sm text-stone-500 text-center">
                   {status.value}
                 </p>
+                <form
+                  class="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleManualSubmit();
+                  }}
+                >
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Enter barcode number..."
+                    value={manualCode.value}
+                    class="flex-1 text-sm"
+                    onInput={(e) => {
+                      manualCode.value = (e.target as HTMLInputElement).value;
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={manualLoading.value || !manualCode.value.trim()}
+                    class="btn btn-primary text-sm"
+                  >
+                    {manualLoading.value ? "..." : "Go"}
+                  </button>
+                </form>
               </div>
             )
             : formView}
