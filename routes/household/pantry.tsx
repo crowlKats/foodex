@@ -1,7 +1,6 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
 import PantryManager from "../../islands/PantryManager.tsx";
-import GenerateRecipe from "../../islands/GenerateRecipe.tsx";
 import type {
   Household,
   Ingredient,
