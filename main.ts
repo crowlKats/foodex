@@ -4,6 +4,7 @@ import { cleanupOrphanedMedia, query, transaction } from "./db/mod.ts";
 import { getSessionIdFromRequest } from "./lib/auth.ts";
 import { deleteFile } from "./lib/s3.ts";
 import type { Household } from "./db/types.ts";
+import { sendExpiryNotifications } from "./lib/expiry-notifications.ts";
 
 export const app = new App<State>();
 
@@ -87,5 +88,11 @@ app.use(define.middleware((ctx) => {
 
   return ctx.next();
 }));
+
+Deno.cron("pantry-expiry-notifications", "0 * * * *", () => {
+  sendExpiryNotifications(query).catch((err) =>
+    console.error("Expiry notification cron failed:", err)
+  );
+});
 
 app.fsRoutes();

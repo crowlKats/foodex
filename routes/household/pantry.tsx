@@ -1,6 +1,8 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
 import PantryManager from "../../islands/PantryManager.tsx";
+import NotificationToggle from "../../islands/NotificationToggle.tsx";
+import { getVapidPublicKey } from "../../lib/web-push.ts";
 import type {
   Household,
   Ingredient,
@@ -41,6 +43,7 @@ export const handler = define.handlers({
       pantryItems: pantryRes.rows,
       ingredients: ingredientsRes.rows,
       stores: storesRes.rows,
+      vapidPublicKey: getVapidPublicKey(),
     });
   },
 });
@@ -55,6 +58,9 @@ export default define.page<typeof handler>(function PantryPage({ data }) {
             Track what ingredients your household already has on hand.
           </p>
         </div>
+        {data.vapidPublicKey && (
+          <NotificationToggle vapidPublicKey={data.vapidPublicKey} />
+        )}
       </div>
 
       <PantryManager
