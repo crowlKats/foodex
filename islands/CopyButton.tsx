@@ -1,4 +1,4 @@
-import TbCopy from "tb-icons/TbCopy";
+import TbShare from "tb-icons/TbShare";
 import TbCheck from "tb-icons/TbCheck";
 import { signal } from "@preact/signals";
 
@@ -12,15 +12,24 @@ export default function CopyButton({ text }: CopyButtonProps) {
   return (
     <button
       type="button"
-      class="text-stone-500 hover:text-stone-700 p-1"
-      title="Copy"
+      class="btn btn-outline"
       onClick={() => {
         navigator.clipboard.writeText(text);
         copied.value = true;
         setTimeout(() => (copied.value = false), 2000);
       }}
     >
-      {copied.value ? <TbCheck class="size-4" /> : <TbCopy class="size-4" />}
+      {copied.value
+        ? (
+          <>
+            <TbCheck class="size-3.5" />Copied!
+          </>
+        )
+        : (
+          <>
+            <TbShare class="size-3.5" />Share
+          </>
+        )}
     </button>
   );
 }

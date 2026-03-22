@@ -16,7 +16,6 @@ import { formatQuantity } from "../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../lib/quantity.ts";
 import RecipeView from "../../../islands/RecipeView.tsx";
 import ImageLightbox from "../../../islands/ImageLightbox.tsx";
-import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import FavoriteButton from "../../../islands/FavoriteButton.tsx";
 import TbEdit from "tb-icons/TbEdit";
@@ -262,6 +261,27 @@ export const handler = define.handlers({
       isFavorited = favRes.rows.length > 0;
     }
 
+    // Load fork origin
+    let forkedFrom: { title: string; slug: string } | null = null;
+    if (recipe.forked_from_id) {
+      const forkRes = await ctx.state.db.query<
+        { title: string; slug: string }
+      >(
+        "SELECT title, slug FROM recipes WHERE id = $1",
+        [recipe.forked_from_id],
+      );
+      if (forkRes.rows.length > 0) {
+        forkedFrom = forkRes.rows[0];
+      }
+    }
+
+    // Count forks of this recipe
+    const forkCountRes = await ctx.state.db.query<{ count: number }>(
+      "SELECT count(*)::int as count FROM recipes WHERE forked_from_id = $1",
+      [recipe.id],
+    );
+    const forkCount = forkCountRes.rows[0]?.count ?? 0;
+
     const origin = new URL(ctx.req.url).origin;
 
     ctx.state.pageTitle = recipe.title;
@@ -285,6 +305,8 @@ export const handler = define.handlers({
       pantryItems,
       householdId: ctx.state.householdId,
       unitSystem: ctx.state.unitSystem,
+      forkedFrom,
+      forkCount,
     });
   },
   async POST(ctx) {
@@ -341,6 +363,8 @@ export default define.page<typeof handler>(function RecipeViewPage({
     pantryItems,
     householdId,
     unitSystem,
+    forkedFrom,
+    forkCount,
   },
 }) {
   return (
@@ -376,27 +400,34 @@ export default define.page<typeof handler>(function RecipeViewPage({
           {!recipe.private && (
             <CopyButton text={exportUrl} />
           )}
+          {loggedIn && (
+            <form action={`/recipes/${recipe.slug}/clone`} method="POST" class="inline">
+              <button type="submit" class="btn btn-outline">Fork</button>
+            </form>
+          )}
           {isOwner && (
-            <>
-              <a
-                href={`/recipes/${recipe.slug}/edit`}
-                class="btn btn-outline"
-              >
-                <TbEdit class="size-3.5" />Edit
-              </a>
-              <form method="POST" class="inline">
-                <input type="hidden" name="_method" value="DELETE" />
-                <ConfirmButton
-                  message="Delete this recipe?"
-                  class="btn btn-danger"
-                >
-                  Delete
-                </ConfirmButton>
-              </form>
-            </>
+            <a
+              href={`/recipes/${recipe.slug}/edit`}
+              class="btn btn-outline"
+            >
+              <TbEdit class="size-3.5" />Edit
+            </a>
           )}
         </span>
       </div>
+      {forkedFrom && (
+        <p class="text-sm text-stone-500 mt-1">
+          Forked from{" "}
+          <a href={`/recipes/${forkedFrom.slug}`} class="link">
+            {forkedFrom.title}
+          </a>
+        </p>
+      )}
+      {forkCount > 0 && (
+        <p class="text-xs text-stone-400 mt-1">
+          {forkCount} {forkCount === 1 ? "fork" : "forks"}
+        </p>
+      )}
       {recipe.description && (
         <p class="text-stone-600 mt-1">{recipe.description}</p>
       )}
@@ -457,6 +488,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
           hasSubRecipes={hasSubRecipes}
           initialHtml={renderedHtml}
           recipeId={recipe.id}
+          recipeTitle={recipe.title}
           loggedIn={loggedIn}
           pantryIngredientIds={pantryIngredientIds}
           pantryIngredientNames={pantryIngredientNames}

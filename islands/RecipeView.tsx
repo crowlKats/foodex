@@ -72,6 +72,12 @@ interface PantryItem {
   unit?: string;
 }
 
+interface Substitution {
+  name: string;
+  ratio: string;
+  note: string;
+}
+
 interface RecipeViewProps {
   steps: RecipeStep[];
   ingredients: RecipeIngredient[];
@@ -82,6 +88,7 @@ interface RecipeViewProps {
   hasSubRecipes: boolean;
   initialHtml: string;
   recipeId: number;
+  recipeTitle: string;
   loggedIn: boolean;
   pantryIngredientIds?: number[];
   pantryIngredientNames?: string[];
@@ -186,6 +193,7 @@ export default function RecipeView(
     hasSubRecipes,
     initialHtml,
     recipeId,
+    recipeTitle,
     loggedIn,
     pantryIngredientIds,
     pantryIngredientNames,
@@ -257,6 +265,10 @@ export default function RecipeView(
     return needed > 0 ? needed : 0;
   }
   const addedToList = useSignal<string | null>(null);
+  const subsOpen = useSignal<string | null>(null);
+  const subsLoading = useSignal(false);
+  const subsCache = useSignal<Record<string, Substitution[]>>({});
+  const subsError = useSignal<string | null>(null);
   const targetValue = useSignal(baseQuantity.value);
   const targetUnit = useSignal(baseQuantity.unit);
   const targetValue2 = useSignal(baseQuantity.value2 ?? baseQuantity.value);
@@ -557,6 +569,40 @@ export default function RecipeView(
     setTimeout(() => {
       addedToList.value = null;
     }, 1500);
+  }
+
+  async function fetchSubstitutions(ing: RecipeIngredient) {
+    const key = ing.key || ing.name;
+    if (subsOpen.value === key) {
+      subsOpen.value = null;
+      return;
+    }
+    subsOpen.value = key;
+    if (subsCache.value[key]) return;
+
+    subsLoading.value = true;
+    subsError.value = null;
+    try {
+      const res = await fetch("/api/substitutions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ingredient: ing.name,
+          recipe_title: recipeTitle,
+          all_ingredients: ingredients.map((i) => i.name),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to fetch substitutions");
+      }
+      const data = await res.json();
+      subsCache.value = { ...subsCache.value, [key]: data.substitutions };
+    } catch (err) {
+      subsError.value = (err as Error).message;
+    } finally {
+      subsLoading.value = false;
+    }
   }
 
   // ── Timers ──
@@ -879,55 +925,100 @@ export default function RecipeView(
                 const cost = ing.base_cost != null
                   ? ing.base_cost * ratio
                   : undefined;
+                const ingKey = ing.key || ing.name;
+                const isSubsOpen = subsOpen.value === ingKey;
+                const subs = subsCache.value[ingKey];
                 return (
                   <li
-                    key={ing.key || ing.name}
-                    class="text-sm flex justify-between items-baseline gap-2"
+                    key={ingKey}
+                    class="text-sm"
                   >
-                    <span class="flex items-baseline gap-1">
-                      {loggedIn && (
-                        <button
-                          type="button"
-                          class="text-stone-400 hover:text-orange-600 cursor-pointer text-xs leading-none"
-                          title="Add to shopping list"
-                          onClick={() => addOneToShoppingList(ing)}
-                        >
-                          {addedToList.value === ing.key ? "\u2713" : "+"}
-                        </button>
-                      )}
-                      {isInPantry(ing) && (
-                        <span
-                          class="text-green-600 dark:text-green-400 text-xs leading-none"
-                          title="In pantry"
-                        >
-                          &#x25cf;
+                    <div class="flex justify-between items-baseline gap-2">
+                      <span class="flex items-baseline gap-1">
+                        {loggedIn && (
+                          <button
+                            type="button"
+                            class="text-stone-400 hover:text-orange-600 cursor-pointer text-xs leading-none"
+                            title="Add to shopping list"
+                            onClick={() => addOneToShoppingList(ing)}
+                          >
+                            {addedToList.value === ing.key ? "\u2713" : "+"}
+                          </button>
+                        )}
+                        {isInPantry(ing) && (
+                          <span
+                            class="text-green-600 dark:text-green-400 text-xs leading-none"
+                            title="In pantry"
+                          >
+                            &#x25cf;
+                          </span>
+                        )}
+                        <span>
+                          {(() => {
+                            const d = displayUnit(
+                              scaled,
+                              ing.unit,
+                              ing.density,
+                            );
+                            return (
+                              <span class="font-medium">
+                                {d.text} {d.unit}
+                              </span>
+                            );
+                          })()} {ing.ingredient_id
+                            ? (
+                              <a
+                                href={`/ingredients/${ing.ingredient_id}`}
+                                class="link"
+                              >
+                                {ing.name}
+                              </a>
+                            )
+                            : <span>{ing.name}</span>}
                         </span>
-                      )}
-                      <span>
-                        {(() => {
-                          const d = displayUnit(scaled, ing.unit, ing.density);
-                          return (
-                            <span class="font-medium">
-                              {d.text} {d.unit}
-                            </span>
-                          );
-                        })()} {ing.ingredient_id
-                          ? (
-                            <a
-                              href={`/ingredients/${ing.ingredient_id}`}
-                              class="link"
-                            >
-                              {ing.name}
-                            </a>
-                          )
-                          : <span>{ing.name}</span>}
                       </span>
-                    </span>
-                    {cost != null && (
-                      <span class="text-stone-400 text-xs whitespace-nowrap">
-                        {getCurrencySymbol(ing.currency ?? "EUR")}
-                        {formatCurrency(cost)}
+                      <span class="flex items-baseline gap-2">
+                        {cost != null && (
+                          <span class="text-stone-400 text-xs whitespace-nowrap">
+                            {getCurrencySymbol(ing.currency ?? "EUR")}
+                            {formatCurrency(cost)}
+                          </span>
+                        )}
+                        {loggedIn && (
+                          <button
+                            type="button"
+                            class={`text-xs cursor-pointer leading-none ${
+                              isSubsOpen
+                                ? "text-orange-600"
+                                : "text-stone-400 hover:text-orange-600"
+                            }`}
+                            title="Substitution suggestions"
+                            onClick={() => fetchSubstitutions(ing)}
+                          >
+                            &#x21c4;
+                          </button>
+                        )}
                       </span>
+                    </div>
+                    {isSubsOpen && (
+                      <div class="mt-1.5 ml-4 p-2 bg-stone-50 dark:bg-stone-800 border-2 border-stone-200 dark:border-stone-700 text-xs space-y-1.5">
+                        <div class="font-medium text-stone-500">
+                          Substitutions for {ing.name}
+                        </div>
+                        {subsLoading.value && !subs && (
+                          <div class="text-stone-400">Loading...</div>
+                        )}
+                        {subsError.value && !subs && (
+                          <div class="text-red-600">{subsError.value}</div>
+                        )}
+                        {subs && subs.map((sub, i) => (
+                          <div key={i} class="border-t border-stone-200 dark:border-stone-700 pt-1.5">
+                            <div class="font-medium">{sub.name}</div>
+                            <div class="text-stone-500">{sub.ratio}</div>
+                            <div class="text-stone-400">{sub.note}</div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </li>
                 );

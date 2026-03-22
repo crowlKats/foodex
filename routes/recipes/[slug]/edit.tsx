@@ -19,6 +19,7 @@ import StepForm from "../../../islands/StepForm.tsx";
 import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePreview from "../../../islands/RecipePreview.tsx";
 import MultiSearchSelect from "../../../islands/MultiSearchSelect.tsx";
+import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
 import { DurationInput } from "../../../components/DurationInput.tsx";
@@ -447,6 +448,16 @@ export default define.page<typeof handler>(function RecipeEdit({
           </button>
           <RecipePreview />
         </div>
+      </form>
+
+      <form action={`/recipes/${recipe.slug}`} method="POST" class="mt-6 pt-6 border-t-2 border-stone-200 dark:border-stone-700">
+        <input type="hidden" name="_method" value="DELETE" />
+        <ConfirmButton
+          message="Delete this recipe? This cannot be undone."
+          class="btn btn-danger"
+        >
+          Delete Recipe
+        </ConfirmButton>
       </form>
     </div>
   );

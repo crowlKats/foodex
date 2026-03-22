@@ -301,16 +301,17 @@ export default define.page(function GuideDocs() {
             </p>
           </div>
 
-          <h3 class={subSectionClass}>Editing and Cloning Recipes</h3>
+          <h3 class={subSectionClass}>Editing and Forking Recipes</h3>
           <ul class="list-disc pl-6 space-y-1 mb-4">
             <li class={listItem}>
               <strong>Edit</strong>{" "}
               — Open a recipe and click Edit to change anything about it.
             </li>
             <li class={listItem}>
-              <strong>Clone</strong>{" "}
-              — Create a copy you can modify without changing the original.
-              Great for variations like "Mom's pasta sauce — spicy version".
+              <strong>Fork</strong>{" "}
+              — Create your own variation of any recipe. The fork links back to
+              the original so you can always compare. Great for personalizing
+              shared recipes like "Mom's pasta sauce — spicy version".
             </li>
           </ul>
 
@@ -701,10 +702,10 @@ export default define.page(function GuideDocs() {
               </p>
             </div>
             <div class="card">
-              <h4 class="font-bold mb-1">Clone before modifying</h4>
+              <h4 class="font-bold mb-1">Fork before modifying</h4>
               <p class="text-sm text-stone-600 dark:text-stone-400">
-                Want to tweak a recipe? Clone it first. That way you keep the
-                original and can compare.
+                Want to tweak a recipe? Fork it first. Your fork links back to
+                the original so you can always compare.
               </p>
             </div>
             <div class="card">

@@ -25,6 +25,37 @@ import TbFlame from "tb-icons/TbFlame";
 import TbUsers from "tb-icons/TbUsers";
 import TbFilter from "tb-icons/TbFilter";
 import TbX from "tb-icons/TbX";
+import SortSelect from "../../islands/SortSelect.tsx";
+
+const SORT_OPTIONS = [
+  {
+    value: "newest",
+    label: "Newest",
+    column: "r.updated_at",
+    defaultDesc: true,
+  },
+  {
+    value: "alphabetical",
+    label: "A\u2013Z",
+    column: "r.title",
+    defaultDesc: false,
+  },
+  {
+    value: "quickest",
+    label: "Total Time",
+    column: "COALESCE(r.prep_time, 0) + COALESCE(r.cook_time, 0)",
+    defaultDesc: false,
+  },
+  {
+    value: "fewest-ingredients",
+    label: "Ingredients",
+    column:
+      "(SELECT COUNT(*) FROM recipe_ingredients ri_s WHERE ri_s.recipe_id = r.id)",
+    defaultDesc: false,
+  },
+] as const;
+
+type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
 function buildRecipeQuery(opts: {
   householdId: number | null;
@@ -35,6 +66,8 @@ function buildRecipeQuery(opts: {
   difficulty: string[];
   mealTypes: string[];
   dietary: string[];
+  sort: SortValue;
+  desc: boolean;
 }) {
   const joins: string[] = ["LEFT JOIN media m ON m.id = r.cover_image_id"];
   const wheres: string[] = [];
@@ -119,9 +152,14 @@ function buildRecipeQuery(opts: {
   const whereSql = wheres.join(" AND ");
   const distinct = needsDistinct ? "DISTINCT " : "";
 
+  const sortOpt = SORT_OPTIONS.find((o) => o.value === opts.sort) ??
+    SORT_OPTIONS[0];
+  const dir = opts.desc ? "DESC" : "ASC";
+  const orderSql = `${sortOpt.column} ${dir}, r.title ${dir}`;
+
   return {
     select:
-      `SELECT ${distinct}r.*, m.url as cover_image_url FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}\n             ORDER BY r.updated_at DESC\n             LIMIT $${p} OFFSET $${
+      `SELECT ${distinct}r.*, m.url as cover_image_url FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}\n             ORDER BY ${orderSql}\n             LIMIT $${p} OFFSET $${
         p + 1
       }`,
     count: `SELECT COUNT(${
@@ -161,6 +199,15 @@ export const handler = define.handlers({
     );
     const mealTypes = parseMultiParam(ctx.url, "meal_type", MEAL_TYPES);
     const dietary = parseMultiParam(ctx.url, "dietary", DIETARY_TAGS);
+    const sortParam = ctx.url.searchParams.get("sort") ?? "newest";
+    const sort: SortValue =
+      SORT_OPTIONS.some((o) => o.value === sortParam)
+        ? (sortParam as SortValue)
+        : "newest";
+    const sortOption = SORT_OPTIONS.find((o) => o.value === sort) ??
+      SORT_OPTIONS[0];
+    const descParam = ctx.url.searchParams.get("desc");
+    const desc = descParam !== null ? descParam === "1" : sortOption.defaultDesc;
 
     const built = buildRecipeQuery({
       householdId,
@@ -171,6 +218,8 @@ export const handler = define.handlers({
       difficulty,
       mealTypes,
       dietary,
+      sort,
+      desc,
     });
 
     const [result, countRes] = await Promise.all([
@@ -234,6 +283,8 @@ export const handler = define.handlers({
       difficulty,
       mealTypes,
       dietary,
+      sort,
+      desc,
     });
   },
 });
@@ -247,6 +298,8 @@ function filterUrl(
     difficulty?: string[];
     mealTypes?: string[];
     dietary?: string[];
+    sort?: SortValue;
+    desc?: boolean;
   },
   overrides: Record<string, string | string[] | undefined>,
 ): string {
@@ -255,6 +308,12 @@ function filterUrl(
   if (current.q) p.set("q", current.q);
   if (current.favorites) p.set("favorites", "1");
   if (current.cookable) p.set("cookable", "1");
+  if (current.sort && current.sort !== "newest") p.set("sort", current.sort);
+  if (current.desc !== undefined) {
+    const defaultDesc = SORT_OPTIONS.find((o) => o.value === current.sort)
+      ?.defaultDesc ?? true;
+    if (current.desc !== defaultDesc) p.set("desc", current.desc ? "1" : "0");
+  }
   for (const v of current.difficulty ?? []) p.append("difficulty", v);
   for (const v of current.mealTypes ?? []) p.append("meal_type", v);
   for (const v of current.dietary ?? []) p.append("dietary", v);
@@ -305,6 +364,8 @@ export default define.page<typeof handler>(function RecipesPage({
     difficulty,
     mealTypes,
     dietary,
+    sort,
+    desc,
   },
   url,
 }) {
@@ -315,6 +376,8 @@ export default define.page<typeof handler>(function RecipesPage({
     difficulty,
     mealTypes,
     dietary,
+    sort,
+    desc,
   };
 
   const hasFilters = difficulty.length > 0 || mealTypes.length > 0 ||
@@ -365,8 +428,25 @@ export default define.page<typeof handler>(function RecipesPage({
                 (favoritesOnly ? 1 : 0) + (cookableOnly ? 1 : 0)}
             </span>
           )}
+          <div class="ml-auto">
+            <SortSelect
+              current={sort}
+              desc={desc}
+              toggleHref={filterUrl(current, {
+                desc: desc ? "0" : "1",
+              })}
+              options={SORT_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+                href: filterUrl(current, {
+                  sort: o.value === "newest" ? undefined : o.value,
+                  desc: undefined,
+                }),
+              }))}
+            />
+          </div>
         </summary>
-        <div class="mt-3 card space-y-3">
+        <div class="mt-4 card space-y-3">
           {loggedIn && (
             <div class="flex flex-wrap gap-1.5">
               {hasHousehold && (

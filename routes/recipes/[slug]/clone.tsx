@@ -28,7 +28,10 @@ export const handler = define.handlers({
     const recipe = recipeRes.rows[0];
 
     // Generate a unique slug
-    const baseTitle = String(recipe.title) + " (Copy)";
+    const originalTitle = String(recipe.title);
+    const baseTitle = originalTitle.startsWith("Fork of ")
+      ? originalTitle
+      : `Fork of ${originalTitle}`;
     let newSlug = slugify(baseTitle);
     let suffix = 1;
     while (true) {
@@ -41,10 +44,13 @@ export const handler = define.handlers({
       newSlug = slugify(baseTitle) + `-${suffix}`;
     }
 
-    // Clone recipe
+    // Track the original recipe: if the source is itself a fork, link to the root
+    const forkedFromId = recipe.forked_from_id ?? recipe.id;
+
+    // Clone recipe with fork attribution
     const newRecipeRes = await ctx.state.db.query(
-      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, forked_from_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING id`,
       [
         baseTitle,
@@ -61,6 +67,7 @@ export const handler = define.handlers({
         recipe.cover_image_id,
         recipe.difficulty,
         ctx.state.householdId,
+        forkedFromId,
       ],
     );
     const newRecipeId = newRecipeRes.rows[0].id;

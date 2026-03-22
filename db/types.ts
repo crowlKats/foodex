@@ -19,6 +19,7 @@ export interface Recipe {
   difficulty: string | null;
   household_id: number;
   private: boolean;
+  forked_from_id: number | null;
   created_at: string;
   updated_at: string;
 }
