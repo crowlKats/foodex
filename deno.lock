@@ -9,6 +9,7 @@
     "jsr:@fresh/core@^2.2.0": "2.2.0",
     "jsr:@fresh/plugin-vite@^1.0.8": "1.0.8",
     "jsr:@preact-icons/common@^1.1.0": "1.1.0",
+    "jsr:@preact-icons/tb@*": "1.0.14",
     "jsr:@preact-icons/tb@^1.0.14": "1.0.14",
     "jsr:@std/bytes@^1.0.6": "1.0.6",
     "jsr:@std/dotenv@~0.225.5": "0.225.6",

@@ -1,0 +1,16 @@
+{
+  "name": "Foodex",
+  "short_name": "Foodex",
+  "start_url": "/recipes",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1c1917",
+  "theme_color": "#1c1917",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

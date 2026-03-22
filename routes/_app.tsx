@@ -1,5 +1,6 @@
 import { define } from "../utils.ts";
 import { Nav } from "../components/Nav.tsx";
+import PwaInstallPrompt from "../islands/PwaInstallPrompt.tsx";
 
 function DarkModeScript() {
   return (
@@ -15,10 +16,20 @@ function DarkModeScript() {
 
 export default define.page(function App({ Component, state, url }) {
   return (
-    <html>
+    <html class="overscroll-none">
       <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+        <meta name="theme-color" content="#1c1917" />
+        <link rel="manifest" href="/manifest.json" />
         <title>
           {state.pageTitle === "Foodex"
             ? "Foodex"
@@ -26,16 +37,19 @@ export default define.page(function App({ Component, state, url }) {
         </title>
         <DarkModeScript />
       </head>
-      <body class="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-14 sm:pb-0">
+      <body class="h-screen flex flex-col overflow-hidden bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
         <Nav
           user={state.user}
           shoppingListCount={state.shoppingListCount}
           hasHousehold={state.householdId != null}
           currentPath={url.pathname}
         />
-        <main class="max-w-6xl mx-auto px-4 py-6">
-          <Component />
+        <main class="flex-1 overflow-y-auto overscroll-none pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
+          <div class="max-w-6xl mx-auto px-4 py-6">
+            <Component />
+          </div>
         </main>
+        <PwaInstallPrompt />
       </body>
     </html>
   );

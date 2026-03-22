@@ -58,7 +58,7 @@ export function Nav(
   return (
     <>
       {/* ── Top bar ── */}
-      <nav class="bg-stone-900 text-stone-200 border-b-2 border-orange-600 dark:border-orange-500">
+      <nav class="bg-stone-900 text-stone-200 border-b-2 border-orange-600 dark:border-orange-500 pt-[env(safe-area-inset-top)]">
         <div class="max-w-6xl mx-auto px-4 py-3">
           <div class="flex items-center gap-6">
             {/* Brand */}
@@ -224,7 +224,7 @@ export function Nav(
       </nav>
 
       {/* ── Mobile bottom tabs ── */}
-      <div class="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-900 border-t-2 border-orange-600 dark:border-orange-500 px-2 py-1.5">
+      <div class="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-900 border-t-2 border-orange-600 dark:border-orange-500 px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
         <div class="flex items-center justify-around">
           <MobileTab
             href="/recipes"
