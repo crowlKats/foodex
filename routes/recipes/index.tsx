@@ -236,39 +236,40 @@ export const handler = define.handlers({
     const totalCount = countRes.rows[0].cnt;
 
     const recipeIds = result.rows.map((r) => r.id);
+
+    const [tagsRows, drafts] = await Promise.all([
+      recipeIds.length > 0
+        ? ctx.state.db.query<RecipeTag>(
+          "SELECT recipe_id, tag_type, tag_value FROM recipe_tags WHERE recipe_id = ANY($1)",
+          [recipeIds],
+        ).then((r) => r.rows)
+        : Promise.resolve([] as RecipeTag[]),
+      householdId
+        ? ctx.state.db.query<RecipeDraft>(
+          `SELECT id, recipe_data, source, updated_at
+           FROM recipe_drafts WHERE household_id = $1
+           ORDER BY updated_at DESC`,
+          [householdId],
+        ).then((r) => r.rows)
+        : Promise.resolve([] as RecipeDraft[]),
+    ]);
+
     const tagsMap: Record<number, { meal_types: string[]; dietary: string[] }> =
       {};
-    if (recipeIds.length > 0) {
-      const tagsRes = await ctx.state.db.query<RecipeTag>(
-        "SELECT recipe_id, tag_type, tag_value FROM recipe_tags WHERE recipe_id = ANY($1)",
-        [recipeIds],
-      );
-      for (const t of tagsRes.rows) {
-        if (!tagsMap[t.recipe_id]) {
-          tagsMap[t.recipe_id] = { meal_types: [], dietary: [] };
-        }
-        if (t.tag_type === "meal_type") {
-          tagsMap[t.recipe_id].meal_types.push(t.tag_value);
-        } else if (t.tag_type === "dietary") {
-          tagsMap[t.recipe_id].dietary.push(t.tag_value);
-        }
+    for (const t of tagsRows) {
+      if (!tagsMap[t.recipe_id]) {
+        tagsMap[t.recipe_id] = { meal_types: [], dietary: [] };
+      }
+      if (t.tag_type === "meal_type") {
+        tagsMap[t.recipe_id].meal_types.push(t.tag_value);
+      } else if (t.tag_type === "dietary") {
+        tagsMap[t.recipe_id].dietary.push(t.tag_value);
       }
     }
     const recipes: RecipeListItem[] = result.rows.map((r) => ({
       ...r,
       tags: tagsMap[r.id] ?? { meal_types: [], dietary: [] },
     }));
-
-    let drafts: RecipeDraft[] = [];
-    if (householdId) {
-      const draftsRes = await ctx.state.db.query<RecipeDraft>(
-        `SELECT id, recipe_data, source, updated_at
-         FROM recipe_drafts WHERE household_id = $1
-         ORDER BY updated_at DESC`,
-        [householdId],
-      );
-      drafts = draftsRes.rows;
-    }
 
     ctx.state.pageTitle = "Recipes";
     return page({

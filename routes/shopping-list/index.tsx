@@ -34,27 +34,31 @@ export const handler = define.handlers({
     const listId = listRes.rows[0].id;
     const shareToken = listRes.rows[0].share_token;
 
-    const itemsRes = await ctx.state.db.query<ShoppingListItem>(
-      `SELECT sli.*,
-              r.title as recipe_title, r.slug as recipe_slug
-       FROM shopping_list_items sli
-       LEFT JOIN recipes r ON r.id = sli.recipe_id
-       WHERE sli.shopping_list_id = $1
-       ORDER BY sli.checked ASC, sli.sort_order ASC, sli.id ASC`,
-      [listId],
-    );
-
-    const storesRes = ctx.state.householdId
-      ? await ctx.state.db.query<Pick<Store, "id" | "name" | "currency">>(
-        `SELECT s.id, s.name, s.currency FROM stores s
-         JOIN household_stores hs ON hs.store_id = s.id
-         WHERE hs.household_id = $1
-         ORDER BY s.name`,
-        [ctx.state.householdId],
-      )
-      : await ctx.state.db.query<Pick<Store, "id" | "name" | "currency">>(
-        "SELECT id, name, currency FROM stores ORDER BY name",
-      );
+    const [itemsRes, storesRes, ingredientsRes] = await Promise.all([
+      ctx.state.db.query<ShoppingListItem>(
+        `SELECT sli.*,
+                r.title as recipe_title, r.slug as recipe_slug
+         FROM shopping_list_items sli
+         LEFT JOIN recipes r ON r.id = sli.recipe_id
+         WHERE sli.shopping_list_id = $1
+         ORDER BY sli.checked ASC, sli.sort_order ASC, sli.id ASC`,
+        [listId],
+      ),
+      ctx.state.householdId
+        ? ctx.state.db.query<Pick<Store, "id" | "name" | "currency">>(
+          `SELECT s.id, s.name, s.currency FROM stores s
+           JOIN household_stores hs ON hs.store_id = s.id
+           WHERE hs.household_id = $1
+           ORDER BY s.name`,
+          [ctx.state.householdId],
+        )
+        : ctx.state.db.query<Pick<Store, "id" | "name" | "currency">>(
+          "SELECT id, name, currency FROM stores ORDER BY name",
+        ),
+      ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
+        "SELECT id, name, unit FROM ingredients ORDER BY name",
+      ),
+    ]);
 
     const storeIds = storesRes.rows.map((r) => r.id);
     const ingredientIds = itemsRes.rows
@@ -131,12 +135,6 @@ export const handler = define.handlers({
       name: s.name,
       currency: s.currency ?? "EUR",
     }));
-
-    const ingredientsRes = await ctx.state.db.query<
-      Pick<Ingredient, "id" | "name" | "unit">
-    >(
-      "SELECT id, name, unit FROM ingredients ORDER BY name",
-    );
 
     const cookie = ctx.req.headers.get("cookie") ?? "";
     const vmMatch = cookie.match(/(?:^|;\s*)sl_view=(recipe|store)/);

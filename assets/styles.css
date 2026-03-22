@@ -17,6 +17,19 @@
   animation: slide-up 0.3s ease-out;
 }
 
+/* ── View Transitions ── */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation-duration: 90ms;
+}
+
+::view-transition-new(root) {
+  animation-duration: 90ms;
+}
+
 /* ── Cards ── */
 .card {
   @apply bg-white dark:bg-stone-900 border-2 border-stone-300
