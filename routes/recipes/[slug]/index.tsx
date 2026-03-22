@@ -416,6 +416,9 @@ export default define.page<typeof handler>(function RecipeViewPage({
 
       <div class="flex gap-2 sm:gap-4 text-sm text-stone-500 mt-2 flex-wrap">
         <span>{formatQuantity(baseQuantity)}</span>
+        {recipe.difficulty && (
+          <span class="capitalize">{recipe.difficulty}</span>
+        )}
         {recipe.prep_time != null && (
           <span>Prep: {formatDuration(recipe.prep_time)}</span>
         )}

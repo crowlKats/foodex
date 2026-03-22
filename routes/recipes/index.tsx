@@ -364,6 +364,9 @@ export default define.page<typeof handler>(function RecipesPage({
                     </div>
                   </div>
                   <div class="text-xs text-stone-400 mt-2 flex gap-4">
+                    {r.difficulty && (
+                      <span class="capitalize">{r.difficulty}</span>
+                    )}
                     <span>
                       <TbUsers class="size-3.5 inline mr-0.5" />
                       {formatQuantity({

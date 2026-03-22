@@ -14,6 +14,7 @@ export interface OcrRecipeData {
   description: string;
   prep_time: number | null;
   cook_time: number | null;
+  difficulty: string | null;
   quantity_type: string;
   quantity_value: number;
   quantity_unit: string;

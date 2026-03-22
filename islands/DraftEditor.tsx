@@ -192,6 +192,25 @@ export default function DraftEditor({
               </div>
             </div>
           </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Difficulty</label>
+            <select
+              key={`diff-${v}`}
+              name="difficulty"
+              class="w-full"
+            >
+              <option value="">—</option>
+              <option value="easy" selected={r.difficulty === "easy"}>
+                Easy
+              </option>
+              <option value="medium" selected={r.difficulty === "medium"}>
+                Medium
+              </option>
+              <option value="hard" selected={r.difficulty === "hard"}>
+                Hard
+              </option>
+            </select>
+          </div>
           <label class="flex items-center gap-2 mt-3 cursor-pointer">
             <input
               key={`private-${v}`}
@@ -325,6 +344,7 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     cook_time: cookRaw
       ? Math.round(parseFloat(cookRaw) * (cookUnit === "hr" ? 60 : 1))
       : null,
+    difficulty: (fd.get("difficulty") as string) || null,
     ingredients,
     steps,
     cover_image: null,

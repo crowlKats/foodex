@@ -348,6 +348,20 @@ export default define.page<typeof handler>(function RecipeEdit({
               value={recipe.cook_time != null ? String(recipe.cook_time) : ""}
             />
           </div>
+          <FormField label="Difficulty">
+            <select name="difficulty" class="w-full">
+              <option value="">—</option>
+              <option value="easy" selected={recipe.difficulty === "easy"}>
+                Easy
+              </option>
+              <option value="medium" selected={recipe.difficulty === "medium"}>
+                Medium
+              </option>
+              <option value="hard" selected={recipe.difficulty === "hard"}>
+                Hard
+              </option>
+            </select>
+          </FormField>
           <label class="flex items-center gap-2 mt-3 cursor-pointer">
             <input
               type="checkbox"

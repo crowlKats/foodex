@@ -121,6 +121,7 @@ export const handler = define.handlers({
       ? Math.round(parseFloat(cookTimeRaw) * (cookTimeUnit === "hr" ? 60 : 1))
       : null;
     const coverImageId = form.get("cover_image_id") as string;
+    const difficulty = (form.get("difficulty") as string) || null;
     const isPrivate = form.get("private") === "on";
 
     if (!title?.trim()) {
@@ -137,8 +138,8 @@ export const handler = define.handlers({
     try {
       await ctx.state.db.transaction(async (q) => {
         const res = await q<{ id: number }>(
-          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, household_id, private)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, private)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
            RETURNING id`,
           [
             title.trim(),
@@ -153,6 +154,7 @@ export const handler = define.handlers({
             prepTime,
             cookTime,
             coverImageId ? parseInt(coverImageId) : null,
+            difficulty,
             ctx.state.householdId,
             isPrivate,
           ],
