@@ -451,7 +451,7 @@ export default define.page<typeof handler>(function RecipesPage({
             <div class="flex flex-wrap gap-1.5">
               {hasHousehold && (
                 <FilterChip
-                  label="Cookable"
+                  label="Ready to make"
                   active={cookableOnly}
                   href={filterUrl(current, {
                     cookable: cookableOnly ? undefined : "1",

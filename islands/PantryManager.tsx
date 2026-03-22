@@ -451,6 +451,22 @@ export default function PantryManager(
                           </span>
                         )}
                       </div>
+                      {siblings.length > 0 && (
+                        <button
+                          type="button"
+                          class={`p-1 cursor-pointer ${
+                            isMerging
+                              ? "text-orange-600 dark:text-orange-400"
+                              : "text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
+                          }`}
+                          title="Merge duplicates into this item"
+                          onClick={() => {
+                            mergingItemId.value = isMerging ? null : item.id;
+                          }}
+                        >
+                          <TbArrowMerge class="size-4" />
+                        </button>
+                      )}
                       <div class="flex">
                         <input
                           type="number"
@@ -504,22 +520,6 @@ export default function PantryManager(
                           );
                         }}
                       />
-                      {siblings.length > 0 && (
-                        <button
-                          type="button"
-                          class={`p-1 cursor-pointer ${
-                            isMerging
-                              ? "text-orange-600 dark:text-orange-400"
-                              : "text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
-                          }`}
-                          title="Merge duplicates into this item"
-                          onClick={() => {
-                            mergingItemId.value = isMerging ? null : item.id;
-                          }}
-                        >
-                          <TbArrowMerge class="size-4" />
-                        </button>
-                      )}
                       <button
                         type="button"
                         class="text-red-500 hover:text-red-700 p-1 cursor-pointer"

@@ -159,7 +159,7 @@ export default define.page(function GuideDocs() {
               — Show only the recipes you've marked as favorites.
             </li>
             <li class={listItem}>
-              <strong>Cookable</strong>{" "}
+              <strong>Ready to make</strong>{" "}
               — Shows only recipes where you already have <strong>all</strong>
               {" "}
               the required ingredients in your pantry. Perfect for answering
@@ -681,7 +681,7 @@ export default define.page(function GuideDocs() {
             <div class="card">
               <h4 class="font-bold mb-1">"What can I make?"</h4>
               <p class="text-sm text-stone-600 dark:text-stone-400">
-                Use the <strong>Cookable</strong>{" "}
+                Use the <strong>Ready to make</strong>{" "}
                 filter on the recipe page to see only recipes where you have all
                 the ingredients. The fastest way to decide what to cook.
               </p>

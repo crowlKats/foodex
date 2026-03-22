@@ -253,6 +253,42 @@ export interface ToolUsage {
   recipe_slug: string;
 }
 
+export interface Collection {
+  id: number;
+  household_id: number;
+  name: string;
+  description: string | null;
+  cover_image_id: number | null;
+  private: boolean;
+  share_token: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionWithCover extends Collection {
+  cover_image_url: string | null;
+  recipe_count: number;
+}
+
+export interface CollectionRecipe {
+  id: number;
+  collection_id: number;
+  recipe_id: number;
+  sort_order: number;
+  added_at: string;
+}
+
+export interface CollectionShare {
+  id: number;
+  collection_id: number;
+  household_id: number;
+  shared_by: number;
+  shared_at: string;
+  // JOIN fields
+  household_name?: string;
+  sharer_name?: string;
+}
+
 export interface RecipeDraft {
   id: string;
   household_id: number;

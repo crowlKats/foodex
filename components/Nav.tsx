@@ -5,12 +5,17 @@ import TbBook from "tb-icons/TbBook";
 import TbToolsKitchen2 from "tb-icons/TbToolsKitchen2";
 import TbFridge from "tb-icons/TbFridge";
 import TbHome from "tb-icons/TbHome";
+import TbBooks from "tb-icons/TbBooks";
 import TbScan from "tb-icons/TbScan";
 import type { User } from "../utils.ts";
 
 function isActive(currentPath: string, href: string): boolean {
   if (href === "/recipes") {
     return currentPath === "/recipes" || currentPath.startsWith("/recipes/");
+  }
+  if (href === "/collections") {
+    return currentPath === "/collections" ||
+      currentPath.startsWith("/collections/");
   }
   if (href === "/household") {
     return currentPath === "/household";
@@ -78,6 +83,18 @@ export function Nav(
                 >
                   Recipes
                 </a>
+                {hasHousehold && (
+                  <a
+                    href="/collections"
+                    class={`nav-link font-medium ${
+                      isActive(currentPath, "/collections")
+                        ? "text-orange-400"
+                        : ""
+                    }`}
+                  >
+                    Collections
+                  </a>
+                )}
                 {hasHousehold && (
                   <>
                     <a
@@ -232,6 +249,14 @@ export function Nav(
             icon={TbToolsKitchen2}
             currentPath={currentPath}
           />
+          {hasHousehold && (
+            <MobileTab
+              href="/collections"
+              label="Collections"
+              icon={TbBooks}
+              currentPath={currentPath}
+            />
+          )}
           {hasHousehold && (
             <>
               <MobileTab

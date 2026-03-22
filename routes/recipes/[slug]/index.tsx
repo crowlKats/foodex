@@ -18,6 +18,7 @@ import RecipeView from "../../../islands/RecipeView.tsx";
 import ImageLightbox from "../../../islands/ImageLightbox.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import FavoriteButton from "../../../islands/FavoriteButton.tsx";
+import AddToCollectionButton from "../../../islands/AddToCollectionButton.tsx";
 import TbEdit from "tb-icons/TbEdit";
 import CopyButton from "../../../islands/CopyButton.tsx";
 
@@ -282,6 +283,26 @@ export const handler = define.handlers({
     );
     const forkCount = forkCountRes.rows[0]?.count ?? 0;
 
+    // Load user's collections for "add to collection" button
+    let collections: { id: number; name: string; hasRecipe: boolean }[] = [];
+    if (ctx.state.householdId) {
+      const collRes = await ctx.state.db.query<
+        { id: number; name: string; has_recipe: boolean }
+      >(
+        `SELECT c.id, c.name,
+                EXISTS (SELECT 1 FROM collection_recipes cr WHERE cr.collection_id = c.id AND cr.recipe_id = $2) as has_recipe
+         FROM collections c
+         WHERE c.household_id = $1
+         ORDER BY c.name`,
+        [ctx.state.householdId, recipe.id],
+      );
+      collections = collRes.rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        hasRecipe: r.has_recipe,
+      }));
+    }
+
     const origin = new URL(ctx.req.url).origin;
 
     ctx.state.pageTitle = recipe.title;
@@ -307,6 +328,7 @@ export const handler = define.handlers({
       unitSystem: ctx.state.unitSystem,
       forkedFrom,
       forkCount,
+      collections,
     });
   },
   async POST(ctx) {
@@ -365,6 +387,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
     unitSystem,
     forkedFrom,
     forkCount,
+    collections,
   },
 }) {
   return (
@@ -395,6 +418,12 @@ export default define.page<typeof handler>(function RecipeViewPage({
             <FavoriteButton
               recipeId={recipe.id}
               initialFavorited={isFavorited}
+            />
+          )}
+          {loggedIn && (
+            <AddToCollectionButton
+              recipeId={recipe.id}
+              collections={collections}
             />
           )}
           {!recipe.private && (
