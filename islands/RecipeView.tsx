@@ -1,4 +1,5 @@
 import { useSignal } from "@preact/signals";
+import { useEffect, useRef } from "preact/hooks";
 import {
   evaluateTemplate,
   formatAmount,
@@ -8,6 +9,8 @@ import { computeScaleRatio } from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
 import { convertAmount } from "../lib/unit-convert.ts";
+import { replaceTimers } from "../lib/timer.ts";
+import { formatTimer } from "../lib/timer.ts";
 import { marked } from "marked";
 
 marked.use({ renderer: { html: () => "" } });
@@ -20,6 +23,14 @@ function RecipeHtml({ html }: { html: string }) {
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
+}
+
+interface ActiveTimer {
+  id: number;
+  label: string;
+  totalSeconds: number;
+  remaining: number;
+  done: boolean;
 }
 
 interface RecipeStep {
@@ -95,7 +106,8 @@ function renderStepsClient(
       const label = title ? `step ${n} (${title})` : `step ${n}`;
       return `[${label}](#step-${n})`;
     });
-    const html = marked.parse(evaluated);
+    const parsed = marked.parse(evaluated);
+    const html = typeof parsed === "string" ? replaceTimers(parsed) : parsed;
     if (typeof html === "string") {
       let stepHtml = `<h2 id="step-${
         si + 1
@@ -358,6 +370,10 @@ export default function RecipeView(
     }
 
     if (baseQuantity.type === "dimensions") {
+      const fmtDim = (n: number) => {
+        const v = Number(n);
+        return v % 1 === 0 ? v.toFixed(0) : String(v);
+      };
       return (
         <div>
           <label class="text-sm font-medium mr-3">Tray (W x L x D):</label>
@@ -366,7 +382,7 @@ export default function RecipeView(
               type="number"
               min="1"
               step="0.5"
-              value={targetValue}
+              value={fmtDim(targetValue.value)}
               class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
@@ -381,7 +397,7 @@ export default function RecipeView(
               type="number"
               min="1"
               step="0.5"
-              value={targetValue2}
+              value={fmtDim(targetValue2.value)}
               class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
@@ -396,7 +412,7 @@ export default function RecipeView(
               type="number"
               min="1"
               step="0.5"
-              value={targetValue3}
+              value={fmtDim(targetValue3.value)}
               class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
@@ -490,6 +506,109 @@ export default function RecipeView(
       addedToList.value = null;
     }, 1500);
   }
+
+  // ── Timers ──
+  const timers = useSignal<ActiveTimer[]>([]);
+  const timerIdCounter = useRef(0);
+  const alarmIntervals = useRef<Map<number, number>>(new Map());
+  const stepsRef = useRef<HTMLDivElement>(null);
+
+  function playAlarmBeep() {
+    try {
+      const ctx = new AudioContext();
+      const t = ctx.currentTime;
+      const beep = (freq: number, start: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.4, t + start);
+        gain.gain.linearRampToValueAtTime(0, t + start + 0.1);
+        osc.start(t + start);
+        osc.stop(t + start + 0.1);
+      };
+      // Three rapid beeps at ascending pitch
+      beep(880, 0);
+      beep(1100, 0.13);
+      beep(1320, 0.26);
+    } catch {
+      // AudioContext not available
+    }
+  }
+
+  function startAlarm(id: number) {
+    playAlarmBeep();
+    const intervalId = setInterval(playAlarmBeep, 800) as unknown as number;
+    alarmIntervals.current.set(id, intervalId);
+  }
+
+  function stopAlarm(id: number) {
+    const intervalId = alarmIntervals.current.get(id);
+    if (intervalId != null) {
+      clearInterval(intervalId);
+      alarmIntervals.current.delete(id);
+    }
+  }
+
+  function startTimer(seconds: number, label: string) {
+    const id = ++timerIdCounter.current;
+    timers.value = [
+      ...timers.value,
+      { id, label, totalSeconds: seconds, remaining: seconds, done: false },
+    ];
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+
+  function dismissTimer(id: number) {
+    stopAlarm(id);
+    timers.value = timers.value.filter((t) => t.id !== id);
+  }
+
+  // Tick active timers every second
+  useEffect(() => {
+    if (timers.value.length === 0) return;
+    const interval = setInterval(() => {
+      let changed = false;
+      const next = timers.value.map((t) => {
+        if (t.done || t.remaining <= 0) return t;
+        changed = true;
+        const remaining = t.remaining - 1;
+        if (remaining <= 0) {
+          startAlarm(t.id);
+          if (Notification.permission === "granted") {
+            new Notification("Timer done!", {
+              body: `${t.label} timer is up`,
+              tag: `timer-${t.id}`,
+            });
+          }
+          return { ...t, remaining: 0, done: true };
+        }
+        return { ...t, remaining };
+      });
+      if (changed) timers.value = next;
+    }, 1000);
+    return () => clearInterval(interval);
+  });
+
+  // Event delegation for timer buttons in rendered HTML
+  useEffect(() => {
+    const el = stepsRef.current;
+    if (!el) return;
+    function handleClick(e: Event) {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
+        ".recipe-timer-btn",
+      );
+      if (!btn) return;
+      const seconds = parseInt(btn.dataset.seconds || "0");
+      const label = btn.dataset.label || "Timer";
+      if (seconds > 0) startTimer(seconds, label);
+    }
+    el.addEventListener("click", handleClick);
+    return () => el.removeEventListener("click", handleClick);
+  });
 
   const cookedStatus = useSignal<"idle" | "loading" | "done">("idle");
 
@@ -689,9 +808,44 @@ export default function RecipeView(
           </div>
         )}
       </div>
-      <div class="lg:col-span-3">
+      <div class="lg:col-span-3" ref={stepsRef}>
         <RecipeHtml html={html.value} />
       </div>
+      {timers.value.length > 0 && (
+        <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs">
+          {timers.value.map((t) => (
+            <div
+              key={t.id}
+              class={`card flex items-center gap-3 text-sm ${
+                t.done
+                  ? "border-orange-600 dark:border-orange-500 animate-pulse"
+                  : ""
+              }`}
+            >
+              <div class="flex-1 min-w-0">
+                <div class="font-medium truncate">{t.label}</div>
+                <div
+                  class={`text-lg font-mono ${
+                    t.done
+                      ? "text-orange-600 dark:text-orange-400"
+                      : "text-stone-900 dark:text-stone-100"
+                  }`}
+                >
+                  {t.done ? "Done!" : formatTimer(t.remaining)}
+                </div>
+              </div>
+              <button
+                type="button"
+                class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer text-lg leading-none"
+                title="Dismiss"
+                onClick={() => dismissTimer(t.id)}
+              >
+                &times;
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

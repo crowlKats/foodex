@@ -151,3 +151,10 @@ select {
   @apply border-l-4 border-orange-600 dark:border-orange-500 pl-4 text-stone-500
     dark:text-stone-400 my-3;
 }
+
+.recipe-timer-btn {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 text-sm font-medium
+    bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300
+    border-2 border-orange-300 dark:border-orange-700
+    hover:bg-orange-200 dark:hover:bg-orange-800 cursor-pointer;
+}

@@ -61,6 +61,7 @@ export default define.page<typeof handler>(function PantryPage({ data }) {
           name: p.name,
           amount: p.amount ?? undefined,
           unit: p.unit ?? undefined,
+          expires_at: p.expires_at ?? undefined,
         }))}
         ingredients={data.ingredients.map((i) => ({
           id: String(i.id),

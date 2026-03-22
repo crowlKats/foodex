@@ -1,12 +1,11 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../utils.ts";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
-import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { toBaseUnit } from "../../lib/unit-convert.ts";
-import { VOLUME_UNITS, WEIGHT_UNITS } from "../../lib/units.ts";
+import IngredientUnitFields from "../../islands/IngredientUnitFields.tsx";
 import type {
   Ingredient,
   IngredientBrand,
@@ -244,64 +243,10 @@ export default define.page<typeof handler>(
                     class="w-full"
                   />
                 </FormField>
-                <FormField label="Unit">
-                  <UnitSelect
-                    name="unit"
-                    value={ingredient.unit ?? ""}
-                    class="w-full"
-                    required
-                  />
-                </FormField>
-                <fieldset class="space-y-1">
-                  <legend class="text-sm font-medium">
-                    Mass/volume conversion
-                  </legend>
-                  <div class="flex items-center gap-1.5 justify-between">
-                    <div class="flex">
-                      <input
-                        type="number"
-                        name="conv_amount1"
-                        step="any"
-                        min="0"
-                        value={ingredient.density != null
-                          ? +(ingredient.density * 100).toFixed(2)
-                          : ""}
-                        placeholder="Amt"
-                        class="flex-1 w-20"
-                      />
-                      <select name="conv_unit1" class="w-16 text-sm -ml-0.5">
-                        {WEIGHT_UNITS.map((u) => (
-                          <option key={u} value={u} selected={u === "g"}>
-                            {u}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <span class="text-sm text-stone-500 select-none">=</span>
-                    <div class="flex">
-                      <input
-                        type="number"
-                        name="conv_amount2"
-                        step="any"
-                        min="0"
-                        value={ingredient.density != null ? "100" : ""}
-                        placeholder="Amt"
-                        class="flex-1 w-20"
-                      />
-                      <select name="conv_unit2" class="w-16 text-sm -ml-0.5">
-                        {VOLUME_UNITS.map((u) => (
-                          <option key={u} value={u} selected={u === "ml"}>
-                            {u}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <p class="text-xs text-stone-500">
-                    Enables cost calculation when recipe and price use different
-                    unit types.
-                  </p>
-                </fieldset>
+                <IngredientUnitFields
+                  unit={ingredient.unit ?? ""}
+                  density={ingredient.density}
+                />
                 <button type="submit" class="btn btn-primary">Save</button>
               </form>
               <form method="POST" class="mt-3">

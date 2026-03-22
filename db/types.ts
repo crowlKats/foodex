@@ -184,6 +184,7 @@ export interface PantryItem {
   name: string;
   amount: number | null;
   unit: string | null;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
 }

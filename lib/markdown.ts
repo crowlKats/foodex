@@ -2,6 +2,7 @@ import { marked } from "marked";
 
 marked.use({ renderer: { html: () => "" } });
 import { evaluateTemplate, type IngredientVar } from "./template.ts";
+import { replaceTimers } from "./timer.ts";
 
 export interface RecipeRef {
   title: string;
@@ -57,7 +58,7 @@ export async function renderRecipeSteps(
       }
     }
 
-    const html = await marked.parse(result);
+    const html = replaceTimers(await marked.parse(result));
     let stepHtml = `<h2 id="step-${
       si + 1
     }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${

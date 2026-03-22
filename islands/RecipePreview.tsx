@@ -1,5 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { evaluateTemplate, scaleIngredients } from "../lib/template.ts";
+import { replaceTimers } from "../lib/timer.ts";
 import { marked } from "marked";
 
 marked.use({ renderer: { html: () => "" } });
@@ -68,7 +69,10 @@ export default function RecipePreview() {
     for (let si = 0; si < steps.length; si++) {
       const step = steps[si];
       const evaluated = evaluateTemplate(step.body, vars, scaled);
-      const rendered = marked.parse(evaluated);
+      const parsed = marked.parse(evaluated);
+      const rendered = typeof parsed === "string"
+        ? replaceTimers(parsed)
+        : parsed;
       if (typeof rendered === "string") {
         const escapedTitle = step.title
           .replace(/&/g, "&amp;")
