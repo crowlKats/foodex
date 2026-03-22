@@ -1,9 +1,6 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
-import type {
-  ShoppingList,
-  ShoppingListItem,
-} from "../../../db/types.ts";
+import type { ShoppingList, ShoppingListItem } from "../../../db/types.ts";
 import SharedShoppingList from "../../../islands/SharedShoppingList.tsx";
 
 export const handler = define.handlers({

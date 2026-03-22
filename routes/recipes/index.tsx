@@ -303,9 +303,11 @@ export default define.page<typeof handler>(function RecipesPage({
       )}
 
       <div>
-        <h2 class="text-lg font-semibold mb-3">
-          Recipes ({totalCount})
-        </h2>
+        {drafts.length > 0 && (
+          <h2 class="text-lg font-semibold mb-3">
+            Recipes
+          </h2>
+        )}
         {recipes.length === 0
           ? <p class="text-stone-500">No recipes yet.</p>
           : (

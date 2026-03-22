@@ -8,6 +8,7 @@ import ToolForm from "../../islands/ToolForm.tsx";
 import StepForm from "../../islands/StepForm.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import RecipePreview from "../../islands/RecipePreview.tsx";
+import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { DurationInput } from "../../components/DurationInput.tsx";
@@ -229,8 +230,9 @@ export default define.page<typeof handler>(
               </span>
             </label>
             <FormField label="Meal Type">
-              <div class="flex flex-wrap gap-2">
-                {[
+              <MultiSearchSelect
+                name="meal_type"
+                options={[
                   "breakfast",
                   "lunch",
                   "dinner",
@@ -239,25 +241,14 @@ export default define.page<typeof handler>(
                   "appetizer",
                   "side",
                   "drink",
-                ].map((mt) => (
-                  <label
-                    key={mt}
-                    class="flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      name="meal_type"
-                      value={mt}
-                      class="size-4 accent-orange-600"
-                    />
-                    <span class="text-sm capitalize">{mt}</span>
-                  </label>
-                ))}
-              </div>
+                ]}
+                placeholder="Search meal types..."
+              />
             </FormField>
             <FormField label="Dietary">
-              <div class="flex flex-wrap gap-2">
-                {[
+              <MultiSearchSelect
+                name="dietary"
+                options={[
                   "vegetarian",
                   "vegan",
                   "gluten-free",
@@ -266,21 +257,9 @@ export default define.page<typeof handler>(
                   "low-carb",
                   "keto",
                   "paleo",
-                ].map((dt) => (
-                  <label
-                    key={dt}
-                    class="flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      name="dietary"
-                      value={dt}
-                      class="size-4 accent-orange-600"
-                    />
-                    <span class="text-sm capitalize">{dt}</span>
-                  </label>
-                ))}
-              </div>
+                ]}
+                placeholder="Search dietary tags..."
+              />
             </FormField>
           </div>
 

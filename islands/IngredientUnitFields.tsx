@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { UNIT_GROUPS, WEIGHT_UNITS, VOLUME_UNITS } from "../lib/units.ts";
+import { UNIT_GROUPS, VOLUME_UNITS, WEIGHT_UNITS } from "../lib/units.ts";
 
 interface Props {
   unit: string;

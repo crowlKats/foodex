@@ -5,6 +5,7 @@ import {
   QUANTITY_UNITS,
   type QuantityType,
 } from "../lib/quantity.ts";
+import { formatInputValue } from "../lib/format.ts";
 
 interface QuantityInputProps {
   initialType?: string;
@@ -41,8 +42,8 @@ export default function QuantityInput(
   const units = QUANTITY_UNITS[qType.value] ?? [];
 
   return (
-    <div class="space-y-2">
-      <div>
+    <div class="flex gap-2 max-sm:flex-col">
+      <div class="flex-1">
         <label class="block text-sm font-medium mb-1">Quantity type</label>
         <select
           class="w-full"
@@ -60,7 +61,7 @@ export default function QuantityInput(
 
       {qType.value === "dimensions"
         ? (
-          <div>
+          <div class="flex-1 min-w-0">
             <label class="block text-sm font-medium mb-1">
               Tray size (W x L x D)
             </label>
@@ -69,7 +70,7 @@ export default function QuantityInput(
                 type="number"
                 min="1"
                 step="0.5"
-                value={qValue}
+                value={formatInputValue(qValue.value)}
                 placeholder="W"
                 class="flex-1 min-w-0 text-center"
                 onInput={(e) => {
@@ -82,7 +83,7 @@ export default function QuantityInput(
                 type="number"
                 min="1"
                 step="0.5"
-                value={qValue2}
+                value={formatInputValue(qValue2.value)}
                 placeholder="L"
                 class="flex-1 min-w-0 text-center"
                 onInput={(e) => {
@@ -95,7 +96,7 @@ export default function QuantityInput(
                 type="number"
                 min="1"
                 step="0.5"
-                value={qValue3}
+                value={formatInputValue(qValue3.value)}
                 placeholder="D"
                 class="flex-1 min-w-0 text-center"
                 onInput={(e) => {
@@ -108,14 +109,14 @@ export default function QuantityInput(
           </div>
         )
         : (
-          <div>
+          <div class="flex-1 min-w-0">
             <label class="block text-sm font-medium mb-1">Amount</label>
             <div class="flex">
               <input
                 type="number"
                 min="1"
                 step={qType.value === "servings" ? "1" : "any"}
-                value={qValue}
+                value={formatInputValue(qValue.value)}
                 class={units.length > 1 ? "flex-1" : "w-full"}
                 onInput={(e) => {
                   qValue.value =

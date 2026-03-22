@@ -1,9 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import {
-  evaluateTemplate,
-  scaleIngredients,
-} from "../lib/template.ts";
+import { evaluateTemplate, scaleIngredients } from "../lib/template.ts";
 import {
   formatAmount,
   formatCurrency,
@@ -205,7 +202,11 @@ export default function RecipeView(
   const pantryItems = pantryItemsProp ?? [];
 
   /** Format a scaled ingredient amount + unit for the user's preferred unit system. */
-  function displayUnit(amount: number, unit: string, density?: number | null): { text: string; unit: string } {
+  function displayUnit(
+    amount: number,
+    unit: string,
+    density?: number | null,
+  ): { text: string; unit: string } {
     const d = toDisplayUnit(amount, unit, unitSystem, density);
     return { text: formatAmount(d.amount, d.unit), unit: d.unit };
   }
@@ -313,7 +314,7 @@ export default function RecipeView(
             <input
               type="number"
               min="1"
-              value={targetValue}
+              value={formatInputValue(targetValue.value)}
               class="w-16 text-center"
               onInput={(e) => {
                 const v = parseInt((e.target as HTMLInputElement).value);
@@ -350,7 +351,7 @@ export default function RecipeView(
               type="number"
               min="0"
               step="any"
-              value={targetValue}
+              value={formatInputValue(targetValue.value)}
               class="w-24 text-center"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
@@ -388,7 +389,7 @@ export default function RecipeView(
               type="number"
               min="0"
               step="any"
-              value={targetValue}
+              value={formatInputValue(targetValue.value)}
               class="w-24 text-center"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
@@ -672,7 +673,9 @@ export default function RecipeView(
     cookingStep.value = 0;
     // Request wake lock
     if ("wakeLock" in navigator) {
-      (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } })
+      (navigator as Navigator & {
+        wakeLock: { request: (type: string) => Promise<WakeLockSentinel> };
+      })
         .wakeLock.request("screen")
         .then((lock: WakeLockSentinel) => {
           wakeLockRef.current = lock;
@@ -901,8 +904,7 @@ export default function RecipeView(
                               {d.text} {d.unit}
                             </span>
                           );
-                        })()}{" "}
-                        {ing.ingredient_id
+                        })()} {ing.ingredient_id
                           ? (
                             <a
                               href={`/ingredients/${ing.ingredient_id}`}
@@ -985,7 +987,11 @@ export default function RecipeView(
         <RecipeHtml html={html.value} />
       </div>
       {timers.value.length > 0 && (
-        <div class={`fixed bottom-4 right-4 flex flex-col gap-2 max-w-xs ${cookingMode.value ? "z-[110]" : "z-50"}`}>
+        <div
+          class={`fixed bottom-4 right-4 flex flex-col gap-2 max-w-xs ${
+            cookingMode.value ? "z-[110]" : "z-50"
+          }`}
+        >
           {timers.value.map((t) => (
             <div
               key={t.id}
@@ -1035,8 +1041,12 @@ export default function RecipeView(
                 <button
                   key={i}
                   type="button"
-                  class={`cooking-mode-dot ${i === cookingStep.value ? "active" : ""} ${i < cookingStep.value ? "done" : ""}`}
-                  onClick={() => { cookingStep.value = i; }}
+                  class={`cooking-mode-dot ${
+                    i === cookingStep.value ? "active" : ""
+                  } ${i < cookingStep.value ? "done" : ""}`}
+                  onClick={() => {
+                    cookingStep.value = i;
+                  }}
                 />
               ))}
             </div>
@@ -1070,8 +1080,7 @@ export default function RecipeView(
                               {d.text} {d.unit}
                             </span>
                           );
-                        })()}{" "}
-                        {ing.name}
+                        })()} {ing.name}
                       </li>
                     );
                   })}

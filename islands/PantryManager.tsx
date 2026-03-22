@@ -261,8 +261,8 @@ export default function PantryManager(
             <TbAlertTriangle class="size-4 shrink-0" />
             <span>
               {expiringSoonCount.value}{" "}
-              {expiringSoonCount.value === 1 ? "item needs" : "items need"} to
-              be used soon
+              {expiringSoonCount.value === 1 ? "item needs" : "items need"}{" "}
+              to be used soon
             </span>
           </div>
         )}

@@ -179,7 +179,8 @@ export default function ShoppingListView(
 
   function copyShareLink() {
     if (!shareToken.value) return;
-    const url = `${globalThis.location.origin}/shopping-list/shared/${shareToken.value}`;
+    const url =
+      `${globalThis.location.origin}/shopping-list/shared/${shareToken.value}`;
     navigator.clipboard.writeText(url).then(() => {
       shareCopied.value = true;
       setTimeout(() => {
@@ -238,8 +239,6 @@ export default function ShoppingListView(
     }
     adding.value = false;
   }
-
-
 
   function renderItemRow(item: ShoppingItem, showRecipe: boolean) {
     const costInfo = getCost(
