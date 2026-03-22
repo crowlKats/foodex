@@ -64,6 +64,19 @@ Use when a later step refers back to something produced earlier: "Take the mixtu
 Link to other recipes using \`@recipe(slug)\` where slug is the URL-friendly recipe name.
 Example: \`@recipe(pizza-dough)\` renders as a clickable link to that recipe.
 
+## Timers
+Embed interactive countdown timers using \`@timer(duration)\`. Duration supports hours (\`h\`), minutes (\`m\`), and seconds (\`s\`), which can be combined.
+
+Examples:
+- \`@timer(15m)\` — 15 minute timer
+- \`@timer(1h30m)\` — 1 hour 30 minutes
+- \`@timer(30s)\` — 30 seconds
+- \`@timer(2h)\` — 2 hours
+
+Timers render as inline buttons in the step text. Clicking a timer starts a live countdown in a floating panel. Multiple timers can run concurrently. When a timer finishes, an audio alarm repeats until dismissed, and a browser notification is shown (if permitted).
+
+Use in step bodies: "Bake at 180°C for @timer(25m) until golden brown." or "Let the dough rest for @timer(1h)."
+
 ## Markdown
 Step bodies support standard Markdown:
 - \`**bold**\` for bold text

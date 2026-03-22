@@ -214,6 +214,61 @@ export default define.page(function TemplateDocs() {
 
         <section>
           <h2 class="text-xl font-bold mb-3 pb-1 border-b-2 border-stone-300 dark:border-stone-700">
+            Timers
+          </h2>
+          <p class="mb-3">
+            Embed interactive countdown timers using{" "}
+            <code class="code-hint">@timer(duration)</code>. Duration supports
+            hours (<code class="code-hint">h</code>), minutes (
+            <code class="code-hint">m</code>), and seconds (
+            <code class="code-hint">s</code>), which can be combined.
+          </p>
+          <div class="card space-y-3">
+            <div>
+              <div class="text-xs font-bold uppercase text-stone-500 mb-1">
+                Examples
+              </div>
+              <div class="space-y-1 font-mono text-sm">
+                <div>
+                  <code class="code-hint">@timer(15m)</code>
+                  <span class="text-stone-500 mx-2">&rarr;</span>
+                  <span class="font-sans">15 minute timer</span>
+                </div>
+                <div>
+                  <code class="code-hint">@timer(1h30m)</code>
+                  <span class="text-stone-500 mx-2">&rarr;</span>
+                  <span class="font-sans">1 hour 30 minutes</span>
+                </div>
+                <div>
+                  <code class="code-hint">@timer(30s)</code>
+                  <span class="text-stone-500 mx-2">&rarr;</span>
+                  <span class="font-sans">30 seconds</span>
+                </div>
+                <div>
+                  <code class="code-hint">@timer(2h)</code>
+                  <span class="text-stone-500 mx-2">&rarr;</span>
+                  <span class="font-sans">2 hours</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase text-stone-500 mb-1">
+                Usage in a step
+              </div>
+              <code class="code-hint text-sm">
+                Bake at 180°C for @timer(25m) until golden brown.
+              </code>
+            </div>
+          </div>
+          <p class="text-sm text-stone-500 mt-2">
+            Timers render as inline buttons. Clicking starts a live countdown in
+            a floating panel. Multiple timers can run at the same time. An alarm
+            repeats until dismissed when a timer finishes.
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-bold mb-3 pb-1 border-b-2 border-stone-300 dark:border-stone-700">
             Markdown
           </h2>
           <p class="mb-3">

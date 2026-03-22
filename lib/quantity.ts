@@ -62,10 +62,14 @@ function normalizeValue(value: number, unit: string): number {
 }
 
 export function formatQuantity(q: RecipeQuantity): string {
+  const fmt = (n: number) => {
+    const v = Number(n);
+    return v % 1 === 0 ? v.toFixed(0) : String(v);
+  };
   if (q.type === "dimensions") {
     const parts = [q.value, q.value2 ?? q.value];
     if (q.value3) parts.push(q.value3);
-    return parts.join(" x ") + " cm";
+    return parts.map(fmt).join(" x ") + " cm";
   }
-  return `${q.value} ${q.unit}`;
+  return `${fmt(q.value)} ${q.unit}`;
 }

@@ -92,6 +92,7 @@ export const handler = define.handlers({
       )
       : null;
     const coverImageId = form.get("cover_image_id") as string;
+    const difficulty = (form.get("difficulty") as string) || null;
     const isPrivate = form.get("private") === "on";
 
     if (!title?.trim()) {

@@ -16,6 +16,7 @@ export interface Recipe {
   prep_time: number | null;
   cook_time: number | null;
   cover_image_id: number | null;
+  difficulty: string | null;
   household_id: number;
   private: boolean;
   created_at: string;

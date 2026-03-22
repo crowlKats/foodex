@@ -21,8 +21,8 @@ export default function RecipePreview() {
   const open = useSignal(false);
   const html = useSignal("");
 
-  function collectFromForm(): string {
-    const form = document.querySelector("form") as HTMLFormElement | null;
+  function collectFromForm(button: HTMLElement): string {
+    const form = button.closest("form") as HTMLFormElement | null;
     if (!form) return "<p>No form found.</p>";
 
     const data = new FormData(form);
@@ -88,8 +88,8 @@ export default function RecipePreview() {
     return parts.join("\n");
   }
 
-  function show() {
-    html.value = collectFromForm();
+  function show(e: Event) {
+    html.value = collectFromForm(e.currentTarget as HTMLElement);
     open.value = true;
   }
 
@@ -104,8 +104,17 @@ export default function RecipePreview() {
         Preview
       </button>
       {open.value && (
-        <div class="fixed inset-0 z-50 flex items-start justify-center pt-4 sm:pt-12 bg-black/50">
-          <div class="bg-white dark:bg-stone-900 border-2 border-stone-300 dark:border-stone-700 w-full max-w-3xl max-h-[80vh] overflow-y-auto p-3 sm:p-6 relative">
+        <div
+          class="fixed inset-0 z-50 flex items-start justify-center pt-4 sm:pt-12 bg-black/50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) open.value = false;
+            e.stopPropagation();
+          }}
+        >
+          <div
+            class="bg-white dark:bg-stone-900 border-2 border-stone-300 dark:border-stone-700 w-full max-w-3xl max-h-[80vh] overflow-y-auto p-3 sm:p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-xl font-bold">Recipe Preview</h2>
               <button
