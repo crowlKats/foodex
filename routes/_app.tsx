@@ -29,6 +29,8 @@ export default define.page(function App({ Component, state, url }) {
           content="black-translucent"
         />
         <meta name="theme-color" content="#1c1917" />
+        <link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <title>
