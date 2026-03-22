@@ -93,6 +93,7 @@ export default function BarcodeScanner(
 
         status.value = "Point your camera at a barcode";
 
+        // deno-lint-ignore no-inner-declarations
         async function scan() {
           if (stopped || !videoRef.current) return;
 

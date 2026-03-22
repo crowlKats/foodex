@@ -505,8 +505,9 @@ export default function PantryManager(
                     {isMerging && (
                       <div class="ml-4 mt-1 mb-2 p-2 rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 space-y-1.5">
                         <div class="text-xs font-medium text-stone-600 dark:text-stone-400">
-                          Merge into "{item.name}" ({formatInputValue(item.amount)}{" "}
-                          {item.unit ?? ""}):
+                          Merge into "{item.name}" ({formatInputValue(
+                            item.amount,
+                          )} {item.unit ?? ""}):
                         </div>
                         {siblings.map((sib) => (
                           <div
@@ -514,11 +515,9 @@ export default function PantryManager(
                             class="flex items-center gap-2 text-sm"
                           >
                             <span class="flex-1 min-w-0 truncate">
-                              {formatInputValue(sib.amount)}{" "}
-                              {sib.unit ?? ""}{" "}
-                              {sib.expires_at
-                                ? `(exp. ${sib.expires_at})`
-                                : ""}
+                              {formatInputValue(sib.amount)} {sib.unit ?? ""}
+                              {" "}
+                              {sib.expires_at ? `(exp. ${sib.expires_at})` : ""}
                             </span>
                             <button
                               type="button"

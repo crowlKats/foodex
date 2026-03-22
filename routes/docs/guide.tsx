@@ -47,7 +47,9 @@ export default define.page(function GuideDocs() {
             <a href="#shopping-lists" class="link">
               Shopping Lists
             </a>
-            <span class="text-stone-400"> — building, sharing, checking off</span>
+            <span class="text-stone-400">
+              — building, sharing, checking off
+            </span>
           </li>
           <li>
             <a href="#household" class="link">
@@ -82,31 +84,33 @@ export default define.page(function GuideDocs() {
 
           <h3 class={subSectionClass}>Signing In</h3>
           <p class={`${prose} mb-4`}>
-            To use Foodex, you sign in with either your{" "}
-            <strong>GitHub</strong> or <strong>Google</strong> account. You don't
-            need to create a separate username and password — just click the
-            sign-in button and choose which account to use.
+            To use Foodex, you sign in with either your <strong>GitHub</strong>
+            {" "}
+            or <strong>Google</strong>{" "}
+            account. You don't need to create a separate username and password —
+            just click the sign-in button and choose which account to use.
           </p>
 
           <h3 class={subSectionClass}>Creating or Joining a Household</h3>
           <p class={`${prose} mb-3`}>
-            A <strong>household</strong> is your shared space in Foodex. It's
-            where your recipes, pantry, and shopping lists live. Think of it as
-            your kitchen — everyone in the household can see and contribute to
-            it.
+            A <strong>household</strong>{" "}
+            is your shared space in Foodex. It's where your recipes, pantry, and
+            shopping lists live. Think of it as your kitchen — everyone in the
+            household can see and contribute to it.
           </p>
           <p class={`${prose} mb-3`}>
             When you first sign in, you'll need to either:
           </p>
           <ul class="list-disc pl-6 space-y-1 mb-3">
             <li class={listItem}>
-              <strong>Create a household</strong> — Give it a name (like "The
-              Smiths" or "Apartment 4B") and you'll become the owner.
+              <strong>Create a household</strong>{" "}
+              — Give it a name (like "The Smiths" or "Apartment 4B") and you'll
+              become the owner.
             </li>
             <li class={listItem}>
-              <strong>Join an existing household</strong> — If someone you live
-              with already has a household, they can give you an invite code.
-              Enter it on the join page, and you're in.
+              <strong>Join an existing household</strong>{" "}
+              — If someone you live with already has a household, they can give
+              you an invite code. Enter it on the join page, and you're in.
             </li>
           </ul>
           <p class={`${prose} text-sm text-stone-500`}>
@@ -133,28 +137,33 @@ export default define.page(function GuideDocs() {
           </p>
           <ul class="list-disc pl-6 space-y-1 mb-4">
             <li class={listItem}>
-              <strong>Search</strong> — Type a word or phrase to search across
-              recipe titles, ingredients, and steps.
+              <strong>Search</strong>{" "}
+              — Type a word or phrase to search across recipe titles,
+              ingredients, and steps.
             </li>
             <li class={listItem}>
               <strong>Difficulty</strong> — Filter by Easy, Medium, or Hard.
             </li>
             <li class={listItem}>
-              <strong>Meal type</strong> — Show only Breakfast, Lunch, Dinner,
-              Snacks, or Dessert recipes (you can select more than one).
+              <strong>Meal type</strong>{" "}
+              — Show only Breakfast, Lunch, Dinner, Snacks, or Dessert recipes
+              (you can select more than one).
             </li>
             <li class={listItem}>
-              <strong>Dietary needs</strong> — Filter by Vegetarian, Vegan,
-              Gluten-Free, Dairy-Free, Nut-Free, and more.
+              <strong>Dietary needs</strong>{" "}
+              — Filter by Vegetarian, Vegan, Gluten-Free, Dairy-Free, Nut-Free,
+              and more.
             </li>
             <li class={listItem}>
-              <strong>Favorites only</strong> — Show only the recipes you've
-              marked as favorites.
+              <strong>Favorites only</strong>{" "}
+              — Show only the recipes you've marked as favorites.
             </li>
             <li class={listItem}>
-              <strong>Cookable</strong> — Shows only recipes where you already
-              have <strong>all</strong> the required ingredients in your pantry.
-              Perfect for answering "what can I make right now?"
+              <strong>Cookable</strong>{" "}
+              — Shows only recipes where you already have <strong>all</strong>
+              {" "}
+              the required ingredients in your pantry. Perfect for answering
+              "what can I make right now?"
             </li>
           </ul>
 
@@ -168,25 +177,26 @@ export default define.page(function GuideDocs() {
               <strong>Description</strong> — A brief summary of the dish.
             </li>
             <li class={listItem}>
-              <strong>Details</strong> — Prep time, cook time, difficulty, and
-              tags.
+              <strong>Details</strong>{" "}
+              — Prep time, cook time, difficulty, and tags.
             </li>
             <li class={listItem}>
-              <strong>Ingredients</strong> — Everything you need, with exact
-              amounts. Ingredients already in your pantry are marked with a green
-              checkmark.
+              <strong>Ingredients</strong>{" "}
+              — Everything you need, with exact amounts. Ingredients already in
+              your pantry are marked with a green checkmark.
             </li>
             <li class={listItem}>
-              <strong>Steps</strong> — Numbered instructions. Some steps include
-              photos.
+              <strong>Steps</strong>{" "}
+              — Numbered instructions. Some steps include photos.
             </li>
             <li class={listItem}>
-              <strong>Tools</strong> — Any kitchen tools needed (like a whisk or
-              baking tray).
+              <strong>Tools</strong>{" "}
+              — Any kitchen tools needed (like a whisk or baking tray).
             </li>
             <li class={listItem}>
-              <strong>Cost estimate</strong> — If ingredient prices have been
-              entered, you'll see an estimated total cost.
+              <strong>Cost estimate</strong>{" "}
+              — If ingredient prices have been entered, you'll see an estimated
+              total cost.
             </li>
           </ul>
 
@@ -197,11 +207,11 @@ export default define.page(function GuideDocs() {
             All ingredient amounts will automatically adjust.
           </p>
           <p class={`${prose} mb-4`}>
-            Some recipes use different quantity types:{" "}
-            <strong>servings</strong> (the most common),{" "}
-            <strong>weight</strong> (for things like bread dough),{" "}
-            <strong>volume</strong> (for liquids like soup), or{" "}
-            <strong>custom dimensions</strong>.
+            Some recipes use different quantity types: <strong>servings</strong>
+            {" "}
+            (the most common), <strong>weight</strong>{" "}
+            (for things like bread dough), <strong>volume</strong>{" "}
+            (for liquids like soup), or <strong>custom dimensions</strong>.
           </p>
 
           <h3 class={subSectionClass}>Timers</h3>
@@ -215,52 +225,54 @@ export default define.page(function GuideDocs() {
 
           <h3 class={subSectionClass}>Creating a Recipe</h3>
           <p class={`${prose} mb-3`}>
-            Click <strong>New Recipe</strong> to create one from scratch. You'll
-            fill in:
+            Click <strong>New Recipe</strong>{" "}
+            to create one from scratch. You'll fill in:
           </p>
           <ol class="list-decimal pl-6 space-y-1 mb-3">
             <li class={listItem}>
               <strong>Title</strong> — The name of your dish.
             </li>
             <li class={listItem}>
-              <strong>Description</strong> — A short summary (optional but
-              helpful).
+              <strong>Description</strong>{" "}
+              — A short summary (optional but helpful).
             </li>
             <li class={listItem}>
-              <strong>Cover image</strong> — Upload a photo of the finished
-              dish. You can crop it before saving.
+              <strong>Cover image</strong>{" "}
+              — Upload a photo of the finished dish. You can crop it before
+              saving.
             </li>
             <li class={listItem}>
               <strong>Difficulty</strong> — Easy, Medium, or Hard.
             </li>
             <li class={listItem}>
-              <strong>Prep time and Cook time</strong> — How long each phase
-              takes, in minutes.
+              <strong>Prep time and Cook time</strong>{" "}
+              — How long each phase takes, in minutes.
             </li>
             <li class={listItem}>
-              <strong>Meal type</strong> — Breakfast, Lunch, Dinner, etc. You
-              can select multiple.
+              <strong>Meal type</strong>{" "}
+              — Breakfast, Lunch, Dinner, etc. You can select multiple.
             </li>
             <li class={listItem}>
-              <strong>Dietary tags</strong> — Mark if it's Vegetarian,
-              Gluten-Free, etc.
+              <strong>Dietary tags</strong>{" "}
+              — Mark if it's Vegetarian, Gluten-Free, etc.
             </li>
             <li class={listItem}>
-              <strong>Quantity type</strong> — Usually "servings" with a number
-              (like 4).
+              <strong>Quantity type</strong>{" "}
+              — Usually "servings" with a number (like 4).
             </li>
             <li class={listItem}>
-              <strong>Ingredients</strong> — Add each ingredient one by one. For
-              each, pick from the database (or add a new one), set the amount,
-              and choose a unit.
+              <strong>Ingredients</strong>{" "}
+              — Add each ingredient one by one. For each, pick from the database
+              (or add a new one), set the amount, and choose a unit.
             </li>
             <li class={listItem}>
-              <strong>Steps</strong> — Write each step. You can add a photo and
-              specify tools for any step.
+              <strong>Steps</strong>{" "}
+              — Write each step. You can add a photo and specify tools for any
+              step.
             </li>
             <li class={listItem}>
-              <strong>Private</strong> — Toggle on if you want it visible only
-              to your household.
+              <strong>Private</strong>{" "}
+              — Toggle on if you want it visible only to your household.
             </li>
           </ol>
           <p class={`${prose} mb-4`}>
@@ -279,8 +291,9 @@ export default define.page(function GuideDocs() {
             </p>
             <p class="text-sm text-stone-600 dark:text-stone-400">
               For example, instead of writing "Add 200g of flour", you could
-              write "Add {"{{ flour }}"} of flour" — and if someone doubles the
-              recipe, it'll automatically show "Add 400g of flour". See the{" "}
+              write "Add {"{{ flour }}"}{" "}
+              of flour" — and if someone doubles the recipe, it'll automatically
+              show "Add 400g of flour". See the{" "}
               <a href="/docs/templates" class="link">
                 Template Syntax reference
               </a>{" "}
@@ -291,13 +304,13 @@ export default define.page(function GuideDocs() {
           <h3 class={subSectionClass}>Editing and Cloning Recipes</h3>
           <ul class="list-disc pl-6 space-y-1 mb-4">
             <li class={listItem}>
-              <strong>Edit</strong> — Open a recipe and click Edit to change
-              anything about it.
+              <strong>Edit</strong>{" "}
+              — Open a recipe and click Edit to change anything about it.
             </li>
             <li class={listItem}>
-              <strong>Clone</strong> — Create a copy you can modify without
-              changing the original. Great for variations like "Mom's pasta sauce
-              — spicy version".
+              <strong>Clone</strong>{" "}
+              — Create a copy you can modify without changing the original.
+              Great for variations like "Mom's pasta sauce — spicy version".
             </li>
           </ul>
 
@@ -319,8 +332,8 @@ export default define.page(function GuideDocs() {
               ingredients, steps, and other details.
             </li>
             <li class={listItem}>
-              The result appears as a <strong>draft</strong> that you can review
-              and edit before publishing.
+              The result appears as a <strong>draft</strong>{" "}
+              that you can review and edit before publishing.
             </li>
           </ol>
           <p class={`${prose} text-sm text-stone-500 mb-4`}>
@@ -338,8 +351,8 @@ export default define.page(function GuideDocs() {
               Go to your <strong>Pantry</strong> page.
             </li>
             <li class={listItem}>
-              Click <strong>Generate Recipe</strong> (only appears if your
-              pantry has items).
+              Click <strong>Generate Recipe</strong>{" "}
+              (only appears if your pantry has items).
             </li>
             <li class={listItem}>
               Optionally set a maximum cooking time or special instructions
@@ -390,8 +403,8 @@ export default define.page(function GuideDocs() {
           <p class={`${prose} mb-3`}>To add something to your pantry:</p>
           <ol class="list-decimal pl-6 space-y-1 mb-3">
             <li class={listItem}>
-              Go to the <strong>Pantry</strong> page (found under your
-              household).
+              Go to the <strong>Pantry</strong>{" "}
+              page (found under your household).
             </li>
             <li class={listItem}>
               Search for the ingredient you want to add.
@@ -463,14 +476,15 @@ export default define.page(function GuideDocs() {
           </p>
           <ol class="list-decimal pl-6 space-y-1 mb-4">
             <li class={listItem}>
-              <strong>From a recipe</strong> — When you view a recipe and see
-              that you're missing some ingredients, add the missing ones to your
-              shopping list with one click. The list remembers which recipe they're
-              for.
+              <strong>From a recipe</strong>{" "}
+              — When you view a recipe and see that you're missing some
+              ingredients, add the missing ones to your shopping list with one
+              click. The list remembers which recipe they're for.
             </li>
             <li class={listItem}>
-              <strong>Manually</strong> — Add items directly for things that
-              aren't tied to a specific recipe.
+              <strong>Manually</strong>{" "}
+              — Add items directly for things that aren't tied to a specific
+              recipe.
             </li>
           </ol>
 
@@ -480,12 +494,14 @@ export default define.page(function GuideDocs() {
           </p>
           <ul class="list-disc pl-6 space-y-1 mb-3">
             <li class={listItem}>
-              <strong>Grouped by store</strong> — Items organized by which store
-              has the best price. Helpful if you shop at multiple stores.
+              <strong>Grouped by store</strong>{" "}
+              — Items organized by which store has the best price. Helpful if
+              you shop at multiple stores.
             </li>
             <li class={listItem}>
-              <strong>Grouped by recipe</strong> — Items organized by which
-              recipe needs them. Helpful for planning.
+              <strong>Grouped by recipe</strong>{" "}
+              — Items organized by which recipe needs them. Helpful for
+              planning.
             </li>
           </ul>
           <p class={`${prose} mb-4`}>
@@ -535,12 +551,14 @@ export default define.page(function GuideDocs() {
             <h4 class="font-bold mb-2">Roles</h4>
             <ul class="list-disc pl-6 space-y-1">
               <li class={listItem}>
-                <strong>Owner</strong> — Full control. Can manage members,
-                tools, stores, and all settings.
+                <strong>Owner</strong>{" "}
+                — Full control. Can manage members, tools, stores, and all
+                settings.
               </li>
               <li class={listItem}>
-                <strong>Member</strong> — Can do everything else: add recipes,
-                manage the pantry, use shopping lists.
+                <strong>Member</strong>{" "}
+                — Can do everything else: add recipes, manage the pantry, use
+                shopping lists.
               </li>
             </ul>
           </div>
@@ -583,8 +601,9 @@ export default define.page(function GuideDocs() {
 
           <h3 class={subSectionClass}>Browsing Ingredients</h3>
           <p class={`${prose} mb-4`}>
-            Go to the <strong>Ingredients</strong> page to see all available
-            ingredients. You can search by name and page through the full list.
+            Go to the <strong>Ingredients</strong>{" "}
+            page to see all available ingredients. You can search by name and
+            page through the full list.
           </p>
 
           <h3 class={subSectionClass}>Adding New Ingredients</h3>
@@ -593,16 +612,18 @@ export default define.page(function GuideDocs() {
           </p>
           <ul class="list-disc pl-6 space-y-1 mb-4">
             <li class={listItem}>
-              <strong>Name</strong> — What it's called (e.g., "All-purpose
-              flour").
+              <strong>Name</strong>{" "}
+              — What it's called (e.g., "All-purpose flour").
             </li>
             <li class={listItem}>
-              <strong>Unit</strong> — The standard unit it's measured in (grams,
-              milliliters, pieces, etc.).
+              <strong>Unit</strong>{" "}
+              — The standard unit it's measured in (grams, milliliters, pieces,
+              etc.).
             </li>
             <li class={listItem}>
-              <strong>Density</strong> — Optional. Lets Foodex convert between
-              weight and volume (e.g., how many cups equal 200g of flour).
+              <strong>Density</strong>{" "}
+              — Optional. Lets Foodex convert between weight and volume (e.g.,
+              how many cups equal 200g of flour).
             </li>
           </ul>
 
@@ -615,12 +636,13 @@ export default define.page(function GuideDocs() {
               Pick a <strong>store</strong> from your household's store list.
             </li>
             <li class={listItem}>
-              Enter the <strong>brand</strong> (optional — e.g., "King Arthur"
-              vs. store brand).
+              Enter the <strong>brand</strong>{" "}
+              (optional — e.g., "King Arthur" vs. store brand).
             </li>
             <li class={listItem}>
-              Enter the <strong>price</strong> and the{" "}
-              <strong>amount</strong> you get for that price.
+              Enter the <strong>price</strong> and the <strong>amount</strong>
+              {" "}
+              you get for that price.
             </li>
           </ul>
           <p class={`${prose} text-sm text-stone-500 mt-2`}>
@@ -635,11 +657,12 @@ export default define.page(function GuideDocs() {
 
           <h3 class={subSectionClass}>Unit System</h3>
           <p class={`${prose} mb-4`}>
-            Foodex supports both <strong>metric</strong> (grams, milliliters,
-            centimeters) and <strong>imperial</strong> (ounces, fluid ounces,
-            inches) units. Go to your <strong>Profile</strong> page to choose
-            your preference. All recipes and ingredient amounts will display in
-            your chosen system.
+            Foodex supports both <strong>metric</strong>{" "}
+            (grams, milliliters, centimeters) and <strong>imperial</strong>{" "}
+            (ounces, fluid ounces, inches) units. Go to your{" "}
+            <strong>Profile</strong>{" "}
+            page to choose your preference. All recipes and ingredient amounts
+            will display in your chosen system.
           </p>
 
           <h3 class={subSectionClass}>Dark Mode</h3>
@@ -657,17 +680,17 @@ export default define.page(function GuideDocs() {
             <div class="card">
               <h4 class="font-bold mb-1">"What can I make?"</h4>
               <p class="text-sm text-stone-600 dark:text-stone-400">
-                Use the <strong>Cookable</strong> filter on the recipe page to
-                see only recipes where you have all the ingredients. The fastest
-                way to decide what to cook.
+                Use the <strong>Cookable</strong>{" "}
+                filter on the recipe page to see only recipes where you have all
+                the ingredients. The fastest way to decide what to cook.
               </p>
             </div>
             <div class="card">
               <h4 class="font-bold mb-1">Scan as you unpack</h4>
               <p class="text-sm text-stone-600 dark:text-stone-400">
                 When you get home from the store, open the barcode scanner and
-                scan items as you put them away. Takes seconds per item and keeps
-                your pantry up to date.
+                scan items as you put them away. Takes seconds per item and
+                keeps your pantry up to date.
               </p>
             </div>
             <div class="card">
@@ -695,7 +718,8 @@ export default define.page(function GuideDocs() {
               <h4 class="font-bold mb-1">Check the green checkmarks</h4>
               <p class="text-sm text-stone-600 dark:text-stone-400">
                 When viewing a recipe, green checkmarks next to ingredients mean
-                you already have them. Only the unchecked ones need to be bought.
+                you already have them. Only the unchecked ones need to be
+                bought.
               </p>
             </div>
             <div class="card">
@@ -708,8 +732,9 @@ export default define.page(function GuideDocs() {
             <div class="card">
               <h4 class="font-bold mb-1">Add prices gradually</h4>
               <p class="text-sm text-stone-600 dark:text-stone-400">
-                You don't have to enter all prices at once. Add them as you shop,
-                and over time Foodex will give you accurate cost estimates.
+                You don't have to enter all prices at once. Add them as you
+                shop, and over time Foodex will give you accurate cost
+                estimates.
               </p>
             </div>
           </div>

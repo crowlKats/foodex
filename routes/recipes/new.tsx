@@ -230,7 +230,9 @@ export default define.page<typeof handler>(
               <select name="difficulty" class="w-full">
                 <option value="">—</option>
                 {DIFFICULTY_LEVELS.map((d) => (
-                  <option key={d} value={d} class="capitalize">{d[0].toUpperCase() + d.slice(1)}</option>
+                  <option key={d} value={d} class="capitalize">
+                    {d[0].toUpperCase() + d.slice(1)}
+                  </option>
                 ))}
               </select>
             </FormField>

@@ -368,8 +368,10 @@ export default define.page<typeof handler>(
                         )}
                         {p.amount && (
                           <div class="text-sm text-stone-500">
-                            per {formatAmount(p.amount, ingredient.unit ?? undefined)}{" "}
-                            {ingredient.unit ?? ""}
+                            per {formatAmount(
+                              p.amount,
+                              ingredient.unit ?? undefined,
+                            )} {ingredient.unit ?? ""}
                           </div>
                         )}
                         {i === 0 && prices.length > 1 && (
