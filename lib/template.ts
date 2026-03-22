@@ -1,3 +1,5 @@
+import { formatAmount } from "./format.ts";
+
 export interface IngredientVar {
   amount: number;
   unit: string;
@@ -244,31 +246,7 @@ function evaluate(expr: Expr, vars: Record<string, number>): number {
   }
 }
 
-const WHOLE_UNITS = new Set([
-  "g",
-  "mg",
-  "ml",
-  "cl",
-  "dl",
-  "mm",
-  "pcs",
-  "slice",
-  "clove",
-  "bunch",
-  "sprig",
-  "pinch",
-  "dash",
-]);
-
-export function formatAmount(n: number, unit?: string): string {
-  if (unit && WHOLE_UNITS.has(unit)) {
-    return Math.round(n).toString();
-  }
-  // Round to at most 1 decimal place — more precision is rarely useful in cooking
-  const rounded = Math.round(n * 10) / 10;
-  if (rounded % 1 === 0) return rounded.toFixed(0);
-  return rounded.toFixed(1);
-}
+export { formatAmount } from "./format.ts";
 
 export function evaluateExpression(
   expression: string,

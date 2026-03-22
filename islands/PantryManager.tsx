@@ -2,6 +2,7 @@ import { useComputed, useSignal } from "@preact/signals";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
+import { formatInputValue } from "../lib/format.ts";
 import TbTrash from "tb-icons/TbTrash";
 import TbAlertTriangle from "tb-icons/TbAlertTriangle";
 
@@ -303,7 +304,7 @@ export default function PantryManager(
                       type="number"
                       min="0"
                       step="any"
-                      value={item.amount ?? ""}
+                      value={formatInputValue(item.amount)}
                       placeholder="Qty"
                       class="w-20"
                       onBlur={(e) => {

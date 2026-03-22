@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { computeIngredientCost } from "../lib/unit-convert.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
+import { formatAmount, formatCurrency } from "../lib/format.ts";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
@@ -205,9 +206,7 @@ export default function ShoppingListView(
     adding.value = false;
   }
 
-  function formatAmount(amount: number): string {
-    return amount % 1 === 0 ? String(amount) : amount.toFixed(1);
-  }
+
 
   function renderItemRow(item: ShoppingItem, showRecipe: boolean) {
     const costInfo = getCost(
@@ -273,7 +272,7 @@ export default function ShoppingListView(
           {costInfo && (
             <span class="text-xs text-stone-500 whitespace-nowrap">
               {getCurrencySymbol(costInfo.currency)}
-              {costInfo.cost.toFixed(2)}
+              {formatCurrency(costInfo.cost)}
             </span>
           )}
         </div>
@@ -424,7 +423,7 @@ export default function ShoppingListView(
           {costInfo && (
             <span class="text-xs text-stone-500 whitespace-nowrap">
               {getCurrencySymbol(costInfo.currency)}
-              {costInfo.cost.toFixed(2)}
+              {formatCurrency(costInfo.cost)}
             </span>
           )}
         </div>
@@ -533,7 +532,7 @@ export default function ShoppingListView(
               {hasGroupPrice && (
                 <span class="text-xs font-semibold text-orange-600 whitespace-nowrap">
                   {getCurrencySymbol(groupCurrency)}
-                  {groupCost.toFixed(2)}
+                  {formatCurrency(groupCost)}
                 </span>
               )}
             </div>
@@ -676,7 +675,7 @@ export default function ShoppingListView(
                   <span class="text-sm text-stone-500 mr-1">Total:</span>
                   <span class="font-bold text-orange-600">
                     {getCurrencySymbol(totalCurrency)}
-                    {totalCost.toFixed(2)}
+                    {formatCurrency(totalCost)}
                   </span>
                 </div>
               )}

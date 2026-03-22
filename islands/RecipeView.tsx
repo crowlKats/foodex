@@ -2,9 +2,13 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import {
   evaluateTemplate,
-  formatAmount,
   scaleIngredients,
 } from "../lib/template.ts";
+import {
+  formatAmount,
+  formatCurrency,
+  formatInputValue,
+} from "../lib/format.ts";
 import { computeScaleRatio } from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
@@ -370,10 +374,6 @@ export default function RecipeView(
     }
 
     if (baseQuantity.type === "dimensions") {
-      const fmtDim = (n: number) => {
-        const v = Number(n);
-        return v % 1 === 0 ? v.toFixed(0) : String(v);
-      };
       return (
         <div>
           <label class="text-sm font-medium mr-3">Tray (W x L x D):</label>
@@ -382,7 +382,7 @@ export default function RecipeView(
               type="number"
               min="1"
               step="0.5"
-              value={fmtDim(targetValue.value)}
+              value={formatInputValue(targetValue.value)}
               class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
@@ -397,7 +397,7 @@ export default function RecipeView(
               type="number"
               min="1"
               step="0.5"
-              value={fmtDim(targetValue2.value)}
+              value={formatInputValue(targetValue2.value)}
               class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
@@ -412,7 +412,7 @@ export default function RecipeView(
               type="number"
               min="1"
               step="0.5"
-              value={fmtDim(targetValue3.value)}
+              value={formatInputValue(targetValue3.value)}
               class="w-12 text-center text-xs"
               onInput={(e) => {
                 const v = parseFloat((e.target as HTMLInputElement).value);
@@ -744,7 +744,7 @@ export default function RecipeView(
                     {cost != null && (
                       <span class="text-stone-400 text-xs whitespace-nowrap">
                         {getCurrencySymbol(ing.currency ?? "EUR")}
-                        {cost.toFixed(2)}
+                        {formatCurrency(cost)}
                       </span>
                     )}
                   </li>
@@ -766,7 +766,7 @@ export default function RecipeView(
                   <span>Estimated cost</span>
                   <span class="text-orange-600">
                     {getCurrencySymbol(currency)}
-                    {total.toFixed(2)}
+                    {formatCurrency(total)}
                   </span>
                 </div>
               );
