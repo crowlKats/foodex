@@ -30,6 +30,7 @@ export default define.page(function App({ Component, state, url }) {
         />
         <meta name="theme-color" content="#1c1917" />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <title>
           {state.pageTitle === "Foodex"
             ? "Foodex"
