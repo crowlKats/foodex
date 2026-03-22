@@ -101,19 +101,6 @@ household.
 - **Template docs** page (`/docs/templates`) with full syntax reference for
   recipe authors.
 
-## Tech Stack
-
-- **Runtime**: [Deno](https://deno.com/)
-- **Framework**: [Fresh 2](https://fresh.deno.dev/) with
-  [Preact](https://preactjs.com/) and
-  [@preact/signals](https://preactjs.com/guide/v10/signals/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **Database**: PostgreSQL via [node-postgres](https://node-postgres.com/)
-- **AI**: [Anthropic Claude API](https://docs.anthropic.com/) for OCR and recipe
-  generation
-- **Storage**: AWS S3 for media uploads
-- **Build**: Vite
-
 ## Getting Started
 
 ### Prerequisites
@@ -150,13 +137,3 @@ deno task migrate
 # Start dev server
 deno task dev
 ```
-
-### Available Tasks
-
-| Task      | Command             | Description                  |
-| --------- | ------------------- | ---------------------------- |
-| `dev`     | `deno task dev`     | Start Vite dev server        |
-| `build`   | `deno task build`   | Production build             |
-| `start`   | `deno task start`   | Serve production build       |
-| `migrate` | `deno task migrate` | Run database migrations      |
-| `check`   | `deno task check`   | Format, lint, and type-check |
