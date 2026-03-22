@@ -27,6 +27,9 @@ export const handler = define.handlers({
       private: boolean;
       household_id: number;
       cover_image_url: string | null;
+      source_type: string | null;
+      source_name: string | null;
+      source_url: string | null;
     }>(
       `SELECT r.*, m.url as cover_image_url
        FROM recipes r
@@ -94,6 +97,9 @@ export const handler = define.handlers({
         dietary: dietaryTags,
       },
       cover_image: null,
+      source_type: recipe.source_type,
+      source_name: recipe.source_name,
+      source_url: recipe.source_url,
     };
 
     return new Response(JSON.stringify(exportData), {

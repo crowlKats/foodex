@@ -2,7 +2,7 @@ import { useSignal } from "@preact/signals";
 import { ALL_UNITS, UNIT_GROUPS } from "../lib/units.ts";
 import SearchSelect from "./SearchSelect.tsx";
 import TbPlus from "tb-icons/TbPlus";
-import TbX from "tb-icons/TbX";
+import TbTrash from "tb-icons/TbTrash";
 
 interface Ingredient {
   key: string;
@@ -93,7 +93,7 @@ export default function IngredientForm(
     <div class="space-y-3">
       {items.value.map((item, i) => (
         <div key={i} class="card p-3 space-y-2">
-          <div class="flex gap-2 items-center">
+          <div class="flex gap-2 items-center min-w-0">
             <SearchSelect
               value={{ id: item.ingredient_id, name: item.name }}
               options={options}
@@ -105,13 +105,13 @@ export default function IngredientForm(
             <button
               type="button"
               onClick={() => remove(i)}
-              class="text-red-600 hover:text-red-700 px-1 cursor-pointer"
+              class="shrink-0 text-red-600 hover:text-red-700 p-1 cursor-pointer"
             >
-              <TbX class="size-4" />
+              <TbTrash class="size-4" />
             </button>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
-            <div class="flex">
+            <div class="flex min-w-0">
               <input
                 type="number"
                 placeholder="Amount"
@@ -119,13 +119,13 @@ export default function IngredientForm(
                 value={item.amount}
                 onInput={(e) =>
                   update(i, "amount", (e.target as HTMLInputElement).value)}
-                class="flex-1 text-sm"
+                class="flex-1 min-w-0 text-sm"
               />
               <select
                 value={item.unit}
                 onInput={(e) =>
                   update(i, "unit", (e.target as HTMLSelectElement).value)}
-                class="text-sm -ml-0.5"
+                class="shrink-0 text-sm -ml-0.5"
               >
                 <option value="">-- Unit --</option>
                 {UNIT_GROUPS.map((group) => (

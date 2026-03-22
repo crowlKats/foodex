@@ -20,6 +20,9 @@ export interface Recipe {
   household_id: number;
   private: boolean;
   forked_from_id: number | null;
+  source_type: string | null;
+  source_name: string | null;
+  source_url: string | null;
   created_at: string;
   updated_at: string;
 }

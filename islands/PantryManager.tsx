@@ -307,13 +307,13 @@ export default function PantryManager(
               <label class="block text-sm font-medium mb-1">
                 Amount <span class="text-stone-400">(optional)</span>
               </label>
-              <div class="flex">
+              <div class="flex min-w-0">
                 <input
                   type="number"
                   min="0"
                   step="any"
                   value={newAmount}
-                  class="flex-1"
+                  class="flex-1 min-w-0"
                   placeholder="e.g. 500"
                   onInput={(e) => {
                     newAmount.value = (e.target as HTMLInputElement).value;
@@ -321,7 +321,7 @@ export default function PantryManager(
                 />
                 <select
                   value={newUnit}
-                  class="w-24 -ml-0.5"
+                  class="w-24 shrink-0 -ml-0.5"
                   onChange={(e) => {
                     newUnit.value = (e.target as HTMLSelectElement).value;
                   }}
@@ -467,14 +467,14 @@ export default function PantryManager(
                           <TbArrowMerge class="size-4" />
                         </button>
                       )}
-                      <div class="flex">
+                      <div class="flex min-w-0">
                         <input
                           type="number"
                           min="0"
                           step="any"
                           value={formatInputValue(item.amount)}
                           placeholder="Qty"
-                          class="flex-1 w-20"
+                          class="flex-1 min-w-0 w-20"
                           onBlur={(e) => {
                             const val = (e.target as HTMLInputElement).value;
                             const amount = val ? parseFloat(val) : null;
@@ -485,7 +485,7 @@ export default function PantryManager(
                         />
                         <select
                           value={item.unit ?? ""}
-                          class="w-24 -ml-0.5"
+                          class="w-24 shrink-0 -ml-0.5"
                           onChange={(e) => {
                             const unit =
                               (e.target as HTMLSelectElement).value || null;

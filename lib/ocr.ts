@@ -21,6 +21,9 @@ export interface OcrRecipeData {
   ingredients: { key: string; name: string; amount: string; unit: string }[];
   steps: { title: string; body: string }[];
   cover_image: CoverImageBounds | null;
+  source_type?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
 }
 
 const SYSTEM_PROMPT =
@@ -32,7 +35,8 @@ Rules:
 ${RECIPE_FIELD_RULES}
 - "cover_image": If the image(s) contain a photograph of food, return its bounding box as { "image_index": <0-based index of which image>, "x": <left edge 0-1>, "y": <top edge 0-1>, "width": <0-1>, "height": <0-1> } where all values are fractions of the image dimensions. Crop closely to the food photo, minimizing surrounding text or whitespace, but it's OK to include a small margin. Photos embedded in recipe pages, cookbook scans, or screenshots all count. If there is no food photo at all, return null.
 - If the image contains multiple recipes, extract only the most prominent one
-- The recipe may be in ANY language — ALWAYS translate all text (title, description, ingredient names, step instructions) to English`;
+- The recipe may be in ANY language — ALWAYS translate all text (title, description, ingredient names, step instructions) to English
+- Try hard to identify the source of the recipe from visual clues. Look for book titles, author names, website headers/URLs, watermarks, logos, or any attribution visible in the image. Set "source_type" to "book" for cookbook pages, "website" for screenshots of websites/blogs, "family" for handwritten notes, etc. Set "source_name" to the book title + author, website name, or other identifying info. Set "source_url" if a URL is visible in the image.`;
 
 interface ImageInput {
   bytes: Uint8Array;

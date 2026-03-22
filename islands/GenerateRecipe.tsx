@@ -86,20 +86,20 @@ export default function GenerateRecipe() {
         <label class="block text-sm font-medium mb-1">
           Max total time <span class="text-stone-400">(optional)</span>
         </label>
-        <div class="flex">
+        <div class="flex min-w-0">
           <input
             type="number"
             min="0"
             value={maxTime.value}
             placeholder="Any"
-            class="flex-1"
+            class="flex-1 min-w-0"
             onInput={(e) => {
               maxTime.value = (e.target as HTMLInputElement).value;
             }}
           />
           <select
             value={maxTimeUnit.value}
-            class="w-20 text-xs -ml-0.5"
+            class="w-20 shrink-0 text-xs -ml-0.5"
             onChange={(e) => {
               maxTimeUnit.value = (e.target as HTMLSelectElement).value;
             }}

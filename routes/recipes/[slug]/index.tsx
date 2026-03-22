@@ -21,6 +21,7 @@ import FavoriteButton from "../../../islands/FavoriteButton.tsx";
 import AddToCollectionButton from "../../../islands/AddToCollectionButton.tsx";
 import TbEdit from "tb-icons/TbEdit";
 import CopyButton from "../../../islands/CopyButton.tsx";
+import { SOURCE_TYPE_LABELS } from "../../../lib/recipe-tags.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -459,6 +460,42 @@ export default define.page<typeof handler>(function RecipeViewPage({
       )}
       {recipe.description && (
         <p class="text-stone-600 mt-1">{recipe.description}</p>
+      )}
+
+      {recipe.source_type && (
+        <p class="text-sm text-stone-500 mt-1">
+          Source: {SOURCE_TYPE_LABELS[recipe.source_type] ?? recipe.source_type}
+          {recipe.source_name && (
+            <span>
+              {" — "}
+              {recipe.source_url
+                ? (
+                  <a
+                    href={recipe.source_url}
+                    class="link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {recipe.source_name}
+                  </a>
+                )
+                : recipe.source_name}
+            </span>
+          )}
+          {!recipe.source_name && recipe.source_url && (
+            <span>
+              {" — "}
+              <a
+                href={recipe.source_url}
+                class="link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {recipe.source_url}
+              </a>
+            </span>
+          )}
+        </p>
       )}
 
       {(mealTypes.length > 0 || dietaryTags.length > 0) && (

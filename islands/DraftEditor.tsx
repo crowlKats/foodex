@@ -9,6 +9,7 @@ import StepForm from "./StepForm.tsx";
 import MediaUpload from "./MediaUpload.tsx";
 import RecipePreview from "./RecipePreview.tsx";
 import ConfirmButton from "./ConfirmButton.tsx";
+import { SOURCE_TYPE_LABELS, SOURCE_TYPES } from "../lib/recipe-tags.ts";
 
 interface CoverMedia {
   id: string;
@@ -147,19 +148,19 @@ export default function DraftEditor({
           <div class="grid grid-cols-2 gap-3 mt-3">
             <div>
               <label class="block text-sm font-medium mb-1">Prep time</label>
-              <div class="flex">
+              <div class="flex min-w-0">
                 <input
                   key={`prep-${v}`}
                   type="number"
                   name="prep_time"
                   min="0"
                   value={prep.value}
-                  class="flex-1"
+                  class="flex-1 min-w-0"
                 />
                 <select
                   key={`prepu-${v}`}
                   name="prep_time_unit"
-                  class="w-20 text-xs -ml-0.5"
+                  class="w-20 shrink-0 text-xs -ml-0.5"
                 >
                   <option value="min" selected={prep.unit === "min"}>
                     min
@@ -170,19 +171,19 @@ export default function DraftEditor({
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Cook time</label>
-              <div class="flex">
+              <div class="flex min-w-0">
                 <input
                   key={`cook-${v}`}
                   type="number"
                   name="cook_time"
                   min="0"
                   value={cook.value}
-                  class="flex-1"
+                  class="flex-1 min-w-0"
                 />
                 <select
                   key={`cooku-${v}`}
                   name="cook_time_unit"
-                  class="w-20 text-xs -ml-0.5"
+                  class="w-20 shrink-0 text-xs -ml-0.5"
                 >
                   <option value="min" selected={cook.unit === "min"}>
                     min
@@ -222,6 +223,49 @@ export default function DraftEditor({
               Private (only visible to household members)
             </span>
           </label>
+          <div>
+            <label class="block text-sm font-medium mb-1">Source</label>
+            <select
+              key={`source-type-${v}`}
+              name="source_type"
+              class="w-full"
+            >
+              <option value="">—</option>
+              {SOURCE_TYPES.map((s) => (
+                <option
+                  key={s}
+                  value={s}
+                  selected={r.source_type === s}
+                >
+                  {SOURCE_TYPE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Source Name</label>
+              <input
+                key={`source-name-${v}`}
+                type="text"
+                name="source_name"
+                value={r.source_name ?? ""}
+                placeholder="e.g. Book title, website name, person's name"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Source URL</label>
+              <input
+                key={`source-url-${v}`}
+                type="url"
+                name="source_url"
+                value={r.source_url ?? ""}
+                placeholder="https://..."
+                class="w-full"
+              />
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -345,6 +389,9 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
       ? Math.round(parseFloat(cookRaw) * (cookUnit === "hr" ? 60 : 1))
       : null,
     difficulty: (fd.get("difficulty") as string) || null,
+    source_type: (fd.get("source_type") as string) || null,
+    source_name: (fd.get("source_name") as string)?.trim() || null,
+    source_url: (fd.get("source_url") as string)?.trim() || null,
     ingredients,
     steps,
     cover_image: null,

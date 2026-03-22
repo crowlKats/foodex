@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import SearchSelect from "./SearchSelect.tsx";
 import TbPlus from "tb-icons/TbPlus";
-import TbX from "tb-icons/TbX";
+import TbTrash from "tb-icons/TbTrash";
 
 interface ToolEntry {
   tool_id: string;
@@ -48,8 +48,8 @@ export default function ToolForm(
   return (
     <div class="space-y-2">
       {items.value.map((item, i) => (
-        <div key={i} class="flex gap-2 items-start">
-          <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div key={i} class="space-y-2">
+          <div class="flex gap-2 items-center min-w-0">
             <SearchSelect
               value={{ id: item.tool_id, name: item.tool_name }}
               options={options}
@@ -65,6 +65,15 @@ export default function ToolForm(
                 items.value = next;
               }}
             />
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              class="shrink-0 text-red-600 hover:text-red-700 p-1 cursor-pointer"
+            >
+              <TbTrash class="size-4" />
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input
               type="text"
               placeholder="Settings (e.g. 180C)"
@@ -86,13 +95,6 @@ export default function ToolForm(
               class="text-sm"
             />
           </div>
-          <button
-            type="button"
-            onClick={() => remove(i)}
-            class="text-red-600 hover:text-red-700 px-2 py-1 cursor-pointer"
-          >
-            <TbX class="size-4" />
-          </button>
           <input
             type="hidden"
             name={`tools[${i}][tool_id]`}

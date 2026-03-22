@@ -28,6 +28,8 @@ import {
   DIETARY_TAGS,
   DIFFICULTY_LEVELS,
   MEAL_TYPES,
+  SOURCE_TYPE_LABELS,
+  SOURCE_TYPES,
 } from "../../../lib/recipe-tags.ts";
 
 export const handler = define.handlers({
@@ -202,12 +204,16 @@ export const handler = define.handlers({
     const coverImageId = form.get("cover_image_id") as string;
     const difficulty = (form.get("difficulty") as string) || null;
     const isPrivate = form.get("private") === "on";
+    const sourceType = (form.get("source_type") as string) || null;
+    const sourceName = (form.get("source_name") as string)?.trim() || null;
+    const sourceUrl = (form.get("source_url") as string)?.trim() || null;
 
     await ctx.state.db.transaction(async (q) => {
       await q(
         `UPDATE recipes SET title=$1, description=$2,
          quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
-         prep_time=$9, cook_time=$10, cover_image_id=$11, difficulty=$13, private=$14, updated_at=now()
+         prep_time=$9, cook_time=$10, cover_image_id=$11, difficulty=$13, private=$14,
+         source_type=$15, source_name=$16, source_url=$17, updated_at=now()
          WHERE id=$12`,
         [
           title?.trim(),
@@ -224,6 +230,9 @@ export const handler = define.handlers({
           recipeId,
           difficulty,
           isPrivate,
+          sourceType,
+          sourceName,
+          sourceUrl,
         ],
       );
 
@@ -354,16 +363,34 @@ export default define.page<typeof handler>(function RecipeEdit({
               value={recipe.cook_time != null ? String(recipe.cook_time) : ""}
             />
           </div>
-          <FormField label="Difficulty">
-            <select name="difficulty" class="w-full">
-              <option value="">—</option>
-              {DIFFICULTY_LEVELS.map((d) => (
-                <option key={d} value={d} selected={recipe.difficulty === d}>
-                  {d[0].toUpperCase() + d.slice(1)}
-                </option>
-              ))}
-            </select>
-          </FormField>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <FormField label="Difficulty">
+              <select name="difficulty" class="w-full">
+                <option value="">—</option>
+                {DIFFICULTY_LEVELS.map((d) => (
+                  <option key={d} value={d} selected={recipe.difficulty === d}>
+                    {d[0].toUpperCase() + d.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="Meal Type">
+              <MultiSearchSelect
+                name="meal_type"
+                options={[...MEAL_TYPES]}
+                initialSelected={mealTypes}
+                placeholder="Search meal types..."
+              />
+            </FormField>
+            <FormField label="Dietary">
+              <MultiSearchSelect
+                name="dietary"
+                options={[...DIETARY_TAGS]}
+                initialSelected={dietaryTags}
+                placeholder="Search dietary tags..."
+              />
+            </FormField>
+          </div>
           <label class="flex items-center gap-2 mt-3 cursor-pointer">
             <input
               type="checkbox"
@@ -375,22 +402,36 @@ export default define.page<typeof handler>(function RecipeEdit({
               Private (only visible to household members)
             </span>
           </label>
-          <FormField label="Meal Type">
-            <MultiSearchSelect
-              name="meal_type"
-              options={[...MEAL_TYPES]}
-              initialSelected={mealTypes}
-              placeholder="Search meal types..."
-            />
+          <FormField label="Source">
+            <select name="source_type" class="w-full">
+              <option value="">—</option>
+              {SOURCE_TYPES.map((s) => (
+                <option key={s} value={s} selected={recipe.source_type === s}>
+                  {SOURCE_TYPE_LABELS[s]}
+                </option>
+              ))}
+            </select>
           </FormField>
-          <FormField label="Dietary">
-            <MultiSearchSelect
-              name="dietary"
-              options={[...DIETARY_TAGS]}
-              initialSelected={dietaryTags}
-              placeholder="Search dietary tags..."
-            />
-          </FormField>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField label="Source Name">
+              <input
+                type="text"
+                name="source_name"
+                value={recipe.source_name ?? ""}
+                placeholder="e.g. Book title, website name, person's name"
+                class="w-full"
+              />
+            </FormField>
+            <FormField label="Source URL">
+              <input
+                type="url"
+                name="source_url"
+                value={recipe.source_url ?? ""}
+                placeholder="https://..."
+                class="w-full"
+              />
+            </FormField>
+          </div>
         </div>
 
         <div class="card">

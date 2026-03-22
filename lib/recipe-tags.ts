@@ -25,3 +25,21 @@ export const DIFFICULTY_LEVELS = [
   "medium",
   "hard",
 ] as const;
+
+export const SOURCE_TYPES = [
+  "book",
+  "website",
+  "family",
+  "ai_generated",
+  "personal",
+  "other",
+] as const;
+
+export const SOURCE_TYPE_LABELS: Record<string, string> = {
+  book: "Book",
+  website: "Website",
+  family: "Family / Friend",
+  ai_generated: "AI Generated",
+  personal: "Personal",
+  other: "Other",
+};

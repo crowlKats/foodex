@@ -123,6 +123,9 @@ export const handler = define.handlers({
     const coverImageId = form.get("cover_image_id") as string;
     const difficulty = (form.get("difficulty") as string) || null;
     const isPrivate = form.get("private") === "on";
+    const sourceType = (form.get("source_type") as string) || null;
+    const sourceName = (form.get("source_name") as string)?.trim() || null;
+    const sourceUrl = (form.get("source_url") as string)?.trim() || null;
 
     if (!title?.trim()) {
       return new Response(null, {
@@ -138,8 +141,8 @@ export const handler = define.handlers({
     try {
       await ctx.state.db.transaction(async (q) => {
         const res = await q<{ id: number }>(
-          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, private)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
            RETURNING id`,
           [
             title.trim(),
@@ -157,6 +160,9 @@ export const handler = define.handlers({
             difficulty,
             ctx.state.householdId,
             isPrivate,
+            sourceType,
+            sourceName,
+            sourceUrl,
           ],
         );
         await saveRecipeChildren(q, res.rows[0].id, form);

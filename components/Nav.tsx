@@ -175,6 +175,19 @@ export function Nav(
 
             {/* Right side */}
             <div class="ml-auto flex items-center gap-3">
+              {hasHousehold && (
+                <a
+                  href="/collections"
+                  class={`nav-link sm:hidden ${
+                    isActive(currentPath, "/collections")
+                      ? "text-orange-400"
+                      : ""
+                  }`}
+                  title="Collections"
+                >
+                  <TbBooks class="size-5" />
+                </a>
+              )}
               <a
                 href="/docs/guide"
                 class={`nav-link hidden sm:block ${
@@ -251,27 +264,19 @@ export function Nav(
           />
           {hasHousehold && (
             <MobileTab
-              href="/collections"
-              label="Collections"
-              icon={TbBooks}
+              href="/household/pantry"
+              label="Pantry"
+              icon={TbFridge}
               currentPath={currentPath}
             />
           )}
           {hasHousehold && (
-            <>
-              <MobileTab
-                href="/household/pantry"
-                label="Pantry"
-                icon={TbFridge}
-                currentPath={currentPath}
-              />
-              <MobileTab
-                href="/household/pantry?scan=1"
-                label="Scan"
-                icon={TbScan}
-                currentPath={currentPath}
-              />
-            </>
+            <MobileTab
+              href="/household/pantry?scan=1"
+              label="Scan"
+              icon={TbScan}
+              currentPath={currentPath}
+            />
           )}
           {user && (
             <MobileTab

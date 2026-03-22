@@ -1,5 +1,4 @@
 import { useSignal } from "@preact/signals";
-import TbX from "tb-icons/TbX";
 
 export interface SearchSelectOption {
   id: string;
@@ -71,47 +70,35 @@ export default function SearchSelect(
   const filtered = getFiltered();
 
   return (
-    <div class="relative flex-1">
-      <div class="flex items-center">
-        <input
-          type="text"
-          placeholder={placeholder ?? "Search..."}
-          value={query}
-          class={`flex-1 text-sm ${
-            linked.value ? "border-green-500 dark:border-green-600" : ""
-          }`}
-          onInput={(e) => {
-            const text = (e.target as HTMLInputElement).value;
-            query.value = text;
-            open.value = true;
-            highlightIndex.value = -1;
-            if (linked.value) {
-              linked.value = false;
-              onClear();
-            }
-            onChange?.(text);
-          }}
-          onFocus={() => {
-            open.value = true;
-          }}
-          onBlur={() => {
-            setTimeout(() => {
-              open.value = false;
-            }, 150);
-          }}
-          onKeyDown={handleKeyDown}
-        />
-        {linked.value && (
-          <button
-            type="button"
-            class="text-stone-400 hover:text-red-500 px-1.5 cursor-pointer"
-            onClick={clear}
-            title="Clear selection"
-          >
-            <TbX class="size-3.5" />
-          </button>
-        )}
-      </div>
+    <div class="relative flex-1 min-w-0">
+      <input
+        type="text"
+        placeholder={placeholder ?? "Search..."}
+        value={query}
+        class={`w-full text-sm ${
+          linked.value ? "border-green-500 dark:border-green-600" : ""
+        }`}
+        onInput={(e) => {
+          const text = (e.target as HTMLInputElement).value;
+          query.value = text;
+          open.value = true;
+          highlightIndex.value = -1;
+          if (linked.value) {
+            linked.value = false;
+            onClear();
+          }
+          onChange?.(text);
+        }}
+        onFocus={() => {
+          open.value = true;
+        }}
+        onBlur={() => {
+          setTimeout(() => {
+            open.value = false;
+          }, 150);
+        }}
+        onKeyDown={handleKeyDown}
+      />
       {open.value && filtered.length > 0 && (
         <div class="absolute z-10 left-0 right-0 mt-0.5 bg-white dark:bg-stone-800 border-2 border-stone-300 dark:border-stone-600 max-h-48 overflow-y-auto shadow-lg">
           {filtered.map((o, idx) => (

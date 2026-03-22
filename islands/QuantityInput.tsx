@@ -117,7 +117,7 @@ export default function QuantityInput(
                 min="1"
                 step={qType.value === "servings" ? "1" : "any"}
                 value={formatInputValue(qValue.value)}
-                class={units.length > 1 ? "flex-1" : "w-full"}
+                class={units.length > 1 ? "flex-1 min-w-0" : "w-full"}
                 onInput={(e) => {
                   qValue.value =
                     parseFloat((e.target as HTMLInputElement).value) || 0;
@@ -126,7 +126,7 @@ export default function QuantityInput(
               {units.length > 1
                 ? (
                   <select
-                    class="w-28 -ml-0.5"
+                    class="w-28 shrink-0 -ml-0.5"
                     value={qUnit}
                     onChange={(e) => {
                       qUnit.value = (e.target as HTMLSelectElement).value;

@@ -2,8 +2,9 @@ import { useSignal } from "@preact/signals";
 import TbArrowUp from "tb-icons/TbArrowUp";
 import TbArrowDown from "tb-icons/TbArrowDown";
 import TbPlus from "tb-icons/TbPlus";
-import TbX from "tb-icons/TbX";
+import TbTrash from "tb-icons/TbTrash";
 import TbUpload from "tb-icons/TbUpload";
+import TbX from "tb-icons/TbX";
 
 interface MediaItem {
   id: string;
@@ -91,39 +92,41 @@ export default function StepForm({ initialSteps }: StepFormProps) {
     <div class="space-y-4">
       {items.value.map((item, i) => (
         <div key={i} class="card p-3 space-y-2">
-          <div class="flex gap-2 items-center">
-            <span class="text-xs text-stone-400 font-mono">#{i + 1}</span>
+          <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center min-w-0">
+            <span class="text-xs text-stone-400 font-mono shrink-0 max-sm:order-1">#{i + 1}</span>
             <input
               type="text"
               placeholder="Step title"
               value={item.title}
               onInput={(e) =>
                 update(i, "title", (e.target as HTMLInputElement).value)}
-              class="flex-1 text-sm font-medium"
+              class="flex-1 min-w-0 text-sm font-medium max-sm:order-3 max-sm:basis-full"
             />
-            <button
-              type="button"
-              onClick={() => move(i, -1)}
-              disabled={i === 0}
-              class="text-stone-400 hover:text-stone-600 disabled:opacity-30 px-1 cursor-pointer disabled:cursor-default"
-            >
-              <TbArrowUp class="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => move(i, 1)}
-              disabled={i === items.value.length - 1}
-              class="text-stone-400 hover:text-stone-600 disabled:opacity-30 px-1 cursor-pointer disabled:cursor-default"
-            >
-              <TbArrowDown class="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => remove(i)}
-              class="text-red-600 hover:text-red-700 px-1 cursor-pointer"
-            >
-              <TbX class="size-4" />
-            </button>
+            <div class="flex items-center gap-1 shrink-0 max-sm:order-2 max-sm:ml-auto">
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"
+              >
+                <TbArrowUp class="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === items.value.length - 1}
+                class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"
+              >
+                <TbArrowDown class="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                class="text-red-600 hover:text-red-700 p-1 cursor-pointer"
+              >
+                <TbTrash class="size-4" />
+              </button>
+            </div>
           </div>
           <textarea
             placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"

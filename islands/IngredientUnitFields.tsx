@@ -42,7 +42,7 @@ export default function IngredientUnitFields({ unit, density }: Props) {
         <fieldset class="space-y-1">
           <legend class="text-sm font-medium">Mass/volume conversion</legend>
           <div class="flex items-center gap-1.5 justify-between">
-            <div class="flex">
+            <div class="flex min-w-0">
               <input
                 type="number"
                 name="conv_amount1"
@@ -50,9 +50,9 @@ export default function IngredientUnitFields({ unit, density }: Props) {
                 min="0"
                 value={density != null ? +(density * 100).toFixed(2) : ""}
                 placeholder="Amt"
-                class="flex-1 w-20"
+                class="flex-1 min-w-0 w-20"
               />
-              <select name="conv_unit1" class="w-16 text-sm -ml-0.5">
+              <select name="conv_unit1" class="w-16 shrink-0 text-sm -ml-0.5">
                 {WEIGHT_UNITS.map((u) => (
                   <option key={u} value={u} selected={u === "g"}>
                     {u}
@@ -61,7 +61,7 @@ export default function IngredientUnitFields({ unit, density }: Props) {
               </select>
             </div>
             <span class="text-sm text-stone-500 select-none">=</span>
-            <div class="flex">
+            <div class="flex min-w-0">
               <input
                 type="number"
                 name="conv_amount2"
@@ -69,9 +69,9 @@ export default function IngredientUnitFields({ unit, density }: Props) {
                 min="0"
                 value={density != null ? "100" : ""}
                 placeholder="Amt"
-                class="flex-1 w-20"
+                class="flex-1 min-w-0 w-20"
               />
-              <select name="conv_unit2" class="w-16 text-sm -ml-0.5">
+              <select name="conv_unit2" class="w-16 shrink-0 text-sm -ml-0.5">
                 {VOLUME_UNITS.map((u) => (
                   <option key={u} value={u} selected={u === "ml"}>
                     {u}

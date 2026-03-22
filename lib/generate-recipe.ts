@@ -11,7 +11,9 @@ Rules:
 - You do NOT need to use every ingredient — pick a coherent subset that makes a good dish
 - You MUST only use ingredients from the provided list. The ONLY exceptions are: salt, pepper, oil, water, and basic spices. Do NOT add other ingredients like pasta, rice, flour, bread, etc. unless they are explicitly listed.
 ${RECIPE_FIELD_RULES}
-- "cover_image" should always be null for generated recipes`;
+- "cover_image" should always be null for generated recipes
+- "source_type" MUST be "ai_generated" for generated recipes
+- "source_name" should be "Claude" for generated recipes`;
 
 interface PantryIngredient {
   name: string;
@@ -92,8 +94,13 @@ export async function generateRecipeFromPantry(
     jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   }
 
+  const recipe = JSON.parse(jsonText) as OcrRecipeData;
+  // Ensure AI-generated recipes always have source attribution
+  recipe.source_type = "ai_generated";
+  recipe.source_name = recipe.source_name || "Claude";
+
   return {
-    recipe: JSON.parse(jsonText) as OcrRecipeData,
+    recipe,
     thinking,
     usage: {
       input_tokens: response.usage.input_tokens,

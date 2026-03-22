@@ -23,7 +23,10 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
   "steps": [
     { "title": "Step title (short)", "body": "Detailed step instructions" }
   ],
-${coverLine}
+${coverLine},
+  "source_type": "book" | "website" | "family" | "ai_generated" | "personal" | "other" | null,
+  "source_name": "Source name (book title, website name, person's name, etc.)" or null,
+  "source_url": "https://..." or null
 }`;
 }
 
@@ -39,4 +42,7 @@ export const RECIPE_FIELD_RULES = `\
 - Step titles should be short (2-4 words). Step bodies support Markdown and a template syntax for dynamic ingredient scaling. Only use template refs when an ingredient amount is explicitly mentioned in a step — if a step just names an ingredient without a specific quantity, use plain text.
 - Template syntax reference:
 ${TEMPLATE_DOCS}
+- "source_type": Identify the origin of the recipe when possible. Use "book" for cookbook/printed sources, "website" for online sources, "family" for family/friend recipes, "ai_generated" for AI-created recipes, "personal" for original creations, "other" for anything else. Use null only if truly unknown.
+- "source_name": The name of the source — book title, website/blog name, person's name, etc. Include as much detail as possible. Use null only if completely unknown.
+- "source_url": The URL if the recipe came from a website. Use null otherwise.
 - Return ONLY the JSON object, no markdown fences or extra text`;

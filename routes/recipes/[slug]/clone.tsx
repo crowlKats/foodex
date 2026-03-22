@@ -49,8 +49,8 @@ export const handler = define.handlers({
 
     // Clone recipe with fork attribution
     const newRecipeRes = await ctx.state.db.query(
-      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, forked_from_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, forked_from_id, source_type, source_name, source_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        RETURNING id`,
       [
         baseTitle,
@@ -68,6 +68,9 @@ export const handler = define.handlers({
         recipe.difficulty,
         ctx.state.householdId,
         forkedFromId,
+        recipe.source_type,
+        recipe.source_name,
+        recipe.source_url,
       ],
     );
     const newRecipeId = newRecipeRes.rows[0].id;
