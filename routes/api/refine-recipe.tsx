@@ -6,6 +6,7 @@ import {
   recipeJsonSchema,
 } from "../../lib/recipe-prompt.ts";
 import type { OcrRecipeData } from "../../lib/ocr.ts";
+import { parseJsonBody, RefineRecipeBody } from "../../lib/validation.ts";
 
 const SYSTEM_PROMPT =
   `You are a recipe editing assistant. The user will give you an existing recipe as JSON and ask you to modify it.
@@ -34,23 +35,9 @@ export const handler = define.handlers({
       });
     }
 
-    const body = await ctx.req.json();
-    const messages = body.messages as {
-      role: "user" | "assistant";
-      content: string;
-    }[];
-
-    if (
-      !messages || messages.length === 0 ||
-      messages[messages.length - 1].role !== "user"
-    ) {
-      return new Response(
-        JSON.stringify({
-          error: "Messages are required, ending with a user message",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
+    const result = await parseJsonBody(ctx.req, RefineRecipeBody);
+    if (!result.success) return result.response;
+    const { messages } = result.data;
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {

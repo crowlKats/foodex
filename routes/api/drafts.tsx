@@ -1,5 +1,6 @@
 import { define } from "../../utils.ts";
 import type { RecipeDraft } from "../../db/types.ts";
+import { DraftCreateBody, parseJsonBody } from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -30,7 +31,9 @@ export const handler = define.handlers({
       });
     }
 
-    const body = await ctx.req.json();
+    const result = await parseJsonBody(ctx.req, DraftCreateBody);
+    if (!result.success) return result.response;
+    const body = result.data;
 
     const res = await ctx.state.db.query<{ id: string }>(
       `INSERT INTO recipe_drafts (household_id, recipe_data, ai_messages, ai_thinking, cover_image_id, source)

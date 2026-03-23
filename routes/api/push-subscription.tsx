@@ -1,4 +1,9 @@
 import { define } from "../../utils.ts";
+import {
+  parseJsonBody,
+  PushSubscriptionBody,
+  PushSubscriptionDeleteBody,
+} from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -8,14 +13,13 @@ export const handler = define.handlers({
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const body = await ctx.req.json();
+    const result = await parseJsonBody(ctx.req, PushSubscriptionBody);
+    if (!result.success) return result.response;
+    const body = result.data;
     const { endpoint, keys, timezone } = body;
-    if (!endpoint || !keys?.p256dh || !keys?.auth) {
-      return new Response("Bad request", { status: 400 });
-    }
 
     // Update user timezone if provided
-    if (timezone && typeof timezone === "string") {
+    if (timezone) {
       await ctx.state.db.query(
         "UPDATE users SET timezone = $1 WHERE id = $2",
         [timezone, user.id],
@@ -44,11 +48,9 @@ export const handler = define.handlers({
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const body = await ctx.req.json();
-    const { endpoint } = body;
-    if (!endpoint) {
-      return new Response("Bad request", { status: 400 });
-    }
+    const result = await parseJsonBody(ctx.req, PushSubscriptionDeleteBody);
+    if (!result.success) return result.response;
+    const { endpoint } = result.data;
 
     await ctx.state.db.query(
       "DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2",

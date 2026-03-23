@@ -1,5 +1,6 @@
 import { define } from "../../utils.ts";
 import { convertAmount } from "../../lib/unit-convert.ts";
+import { parseJsonBody, PantryAction } from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -7,7 +8,9 @@ export const handler = define.handlers({
       return new Response(null, { status: 401 });
     }
 
-    const body = await ctx.req.json();
+    const result = await parseJsonBody(ctx.req, PantryAction);
+    if (!result.success) return result.response;
+    const body = result.data;
     const householdId = ctx.state.householdId;
 
     if (body.action === "add") {
@@ -135,12 +138,7 @@ export const handler = define.handlers({
     }
 
     if (body.action === "deduct_recipe") {
-      const items = body.items as {
-        ingredient_id: string | null;
-        name: string;
-        amount: number | null;
-        unit: string | null;
-      }[];
+      const items = body.items;
 
       for (const item of items) {
         if (item.amount == null || item.amount <= 0) continue;
@@ -232,15 +230,8 @@ export const handler = define.handlers({
     }
 
     if (body.action === "merge") {
-      const targetId = body.target_id as string;
-      const sourceIds = body.source_ids as string[];
-
-      if (!targetId || !sourceIds?.length) {
-        return new Response(
-          JSON.stringify({ error: "target_id and source_ids required" }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
-        );
-      }
+      const targetId = body.target_id;
+      const sourceIds = body.source_ids;
 
       // Fetch all involved items (target + sources) in one query
       const allIds = [targetId, ...sourceIds];

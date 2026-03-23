@@ -1,5 +1,6 @@
 import { define } from "../../utils.ts";
 import { importRecipeFromUrl } from "../../lib/url-import.ts";
+import { ImportUrlBody, parseJsonBody } from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -10,25 +11,11 @@ export const handler = define.handlers({
       });
     }
 
-    const body = await ctx.req.json();
-    const url = body.url;
+    const result = await parseJsonBody(ctx.req, ImportUrlBody);
+    if (!result.success) return result.response;
+    const body = result.data;
 
-    if (!url || typeof url !== "string") {
-      return new Response(JSON.stringify({ error: "URL is required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      return new Response(JSON.stringify({ error: "Invalid URL" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const parsed = new URL(body.url);
 
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
       return new Response(
@@ -64,7 +51,7 @@ export const handler = define.handlers({
     }
 
     try {
-      const recipe = await importRecipeFromUrl(url);
+      const recipe = await importRecipeFromUrl(body.url);
       return new Response(JSON.stringify(recipe), {
         headers: { "Content-Type": "application/json" },
       });

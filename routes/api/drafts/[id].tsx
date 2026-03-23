@@ -1,5 +1,6 @@
 import { define } from "../../../utils.ts";
 import type { RecipeDraft } from "../../../db/types.ts";
+import { DraftUpdateBody, parseJsonBody } from "../../../lib/validation.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -35,7 +36,9 @@ export const handler = define.handlers({
       });
     }
 
-    const body = await ctx.req.json();
+    const result = await parseJsonBody(ctx.req, DraftUpdateBody);
+    if (!result.success) return result.response;
+    const body = result.data;
     const sets: string[] = ["updated_at = now()"];
     const params: unknown[] = [];
     let p = 1;

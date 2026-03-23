@@ -1,4 +1,8 @@
 import { define } from "../../../utils.ts";
+import {
+  CollectionRecipesBody,
+  parseJsonBody,
+} from "../../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -6,8 +10,9 @@ export const handler = define.handlers({
       return new Response(null, { status: 401 });
     }
 
-    const body = await ctx.req.json();
-    const { action, collection_id, recipe_id } = body;
+    const result = await parseJsonBody(ctx.req, CollectionRecipesBody);
+    if (!result.success) return result.response;
+    const { action, collection_id, recipe_id } = result.data;
 
     // Verify the user's household owns this collection
     const collRes = await ctx.state.db.query(
@@ -33,7 +38,7 @@ export const handler = define.handlers({
         "UPDATE collections SET updated_at = now() WHERE id = $1",
         [collection_id],
       );
-    } else if (action === "remove") {
+    } else {
       await ctx.state.db.query(
         "DELETE FROM collection_recipes WHERE collection_id = $1 AND recipe_id = $2",
         [collection_id, recipe_id],
@@ -42,8 +47,6 @@ export const handler = define.handlers({
         "UPDATE collections SET updated_at = now() WHERE id = $1",
         [collection_id],
       );
-    } else {
-      return new Response(null, { status: 400 });
     }
 
     return Response.json({ ok: true });

@@ -2,6 +2,7 @@ import { define } from "../../utils.ts";
 import { generateRecipeFromPantry } from "../../lib/generate-recipe.ts";
 import { rateLimit } from "../../lib/rate-limit.ts";
 import type { PantryItem } from "../../db/types.ts";
+import { GenerateRecipeBody, parseJsonBody } from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -19,9 +20,11 @@ export const handler = define.handlers({
       });
     }
 
-    const body = await ctx.req.json();
-    const maxMinutes = body.max_minutes ? Number(body.max_minutes) : undefined;
-    const instructions = body.instructions as string | undefined;
+    const result = await parseJsonBody(ctx.req, GenerateRecipeBody);
+    if (!result.success) return result.response;
+    const body = result.data;
+    const maxMinutes = body.max_minutes;
+    const instructions = body.instructions;
 
     const pantryRes = await ctx.state.db.query<PantryItem>(
       "SELECT name, amount, unit FROM pantry_items WHERE household_id = $1",

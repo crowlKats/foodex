@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { define } from "../../utils.ts";
 import { rateLimit } from "../../lib/rate-limit.ts";
+import { parseJsonBody, SubstitutionsBody } from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -18,17 +19,12 @@ export const handler = define.handlers({
       });
     }
 
-    const body = await ctx.req.json();
-    const ingredientName = body.ingredient as string;
-    const recipeTitle = body.recipe_title as string;
-    const allIngredients = body.all_ingredients as string[];
-
-    if (!ingredientName || !recipeTitle) {
-      return new Response(
-        JSON.stringify({ error: "ingredient and recipe_title are required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
+    const result = await parseJsonBody(ctx.req, SubstitutionsBody);
+    if (!result.success) return result.response;
+    const body = result.data;
+    const ingredientName = body.ingredient;
+    const recipeTitle = body.recipe_title;
+    const allIngredients = body.all_ingredients;
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {

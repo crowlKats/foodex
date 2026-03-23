@@ -1,4 +1,5 @@
 import { define } from "../../utils.ts";
+import { BarcodeQuery } from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -6,13 +7,13 @@ export const handler = define.handlers({
       return new Response(null, { status: 401 });
     }
 
-    const code = ctx.url.searchParams.get("code");
-    if (!code) {
-      return new Response(JSON.stringify({ error: "Missing code" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+    const params = BarcodeQuery.safeParse({
+      code: ctx.url.searchParams.get("code") ?? "",
+    });
+    if (!params.success) {
+      return Response.json({ error: "Invalid barcode" }, { status: 400 });
     }
+    const code = params.data.code;
 
     try {
       const res = await fetch(

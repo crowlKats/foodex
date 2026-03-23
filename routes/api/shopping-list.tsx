@@ -6,6 +6,7 @@ import type {
   ShoppingListItem,
 } from "../../db/types.ts";
 import { convertAmount } from "../../lib/unit-convert.ts";
+import { parseJsonBody, ShoppingListAction } from "../../lib/validation.ts";
 
 async function getOrCreateList(
   db: { query: QueryFn },
@@ -29,20 +30,13 @@ export const handler = define.handlers({
       return new Response(null, { status: 401 });
     }
 
-    const body = await ctx.req.json();
+    const result = await parseJsonBody(ctx.req, ShoppingListAction);
+    if (!result.success) return result.response;
+    const body = result.data;
     const listId = await getOrCreateList(ctx.state.db, ctx.state.householdId);
 
     if (body.action === "add_recipe") {
-      const { recipe_id, items } = body as {
-        recipe_id: string;
-        items: {
-          ingredient_id: string | null;
-          name: string;
-          amount: number | null;
-          unit: string | null;
-        }[];
-        action: string;
-      };
+      const { recipe_id, items } = body;
 
       const maxRes = await ctx.state.db.query<{ max_order: number }>(
         "SELECT COALESCE(MAX(sort_order), -1) as max_order FROM shopping_list_items WHERE shopping_list_id = $1",

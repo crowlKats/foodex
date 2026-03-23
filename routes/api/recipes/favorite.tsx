@@ -1,4 +1,5 @@
 import { define } from "../../../utils.ts";
+import { FavoriteBody, parseJsonBody } from "../../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -6,13 +7,9 @@ export const handler = define.handlers({
       return new Response(null, { status: 401 });
     }
 
-    const { recipe_id } = await ctx.req.json();
-    if (!recipe_id) {
-      return new Response(JSON.stringify({ error: "recipe_id required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const result = await parseJsonBody(ctx.req, FavoriteBody);
+    if (!result.success) return result.response;
+    const { recipe_id } = result.data;
 
     const existing = await ctx.state.db.query<{ "?column?": number }>(
       "SELECT 1 FROM recipe_favorites WHERE user_id = $1 AND recipe_id = $2",
