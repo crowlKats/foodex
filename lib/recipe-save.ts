@@ -8,7 +8,7 @@ import type { QueryFn } from "../db/mod.ts";
  */
 export async function saveRecipeChildren(
   q: QueryFn,
-  recipeId: number,
+  recipeId: string,
   form: FormData,
 ): Promise<void> {
   // Ingredients
@@ -18,7 +18,7 @@ export async function saveRecipeChildren(
       if (!ing.name?.trim()) return null;
       return [
         recipeId,
-        ing.ingredient_id ? parseInt(ing.ingredient_id) : null,
+        ing.ingredient_id?.trim() || null,
         ing.key?.trim() || null,
         ing.name.trim(),
         ing.amount ? parseFloat(ing.amount) : null,
@@ -47,7 +47,7 @@ export async function saveRecipeChildren(
       if (!t.tool_id) return null;
       return [
         recipeId,
-        parseInt(t.tool_id),
+        t.tool_id,
         t.usage_description?.trim() || null,
         t.settings?.trim() || null,
         i,
@@ -99,7 +99,7 @@ export async function saveRecipeChildren(
       while (form.has(`steps[${formIdx}][media][${mi}]`)) {
         const mediaId = form.get(`steps[${formIdx}][media][${mi}]`) as string;
         if (mediaId) {
-          mediaRows.push([stepId, parseInt(mediaId), mi]);
+          mediaRows.push([stepId, mediaId, mi]);
         }
         mi++;
       }
@@ -118,7 +118,7 @@ export async function saveRecipeChildren(
   const refRows = refEntries
     .map((ref, i) => {
       if (!ref.referenced_recipe_id) return null;
-      return [recipeId, parseInt(ref.referenced_recipe_id), i];
+      return [recipeId, ref.referenced_recipe_id, i];
     })
     .filter((r) => r != null);
 

@@ -3,7 +3,7 @@ import TbHeart from "tb-icons/TbHeart";
 import TbHeartFilled from "tb-icons/TbHeartFilled";
 
 interface Props {
-  recipeId: number;
+  recipeId: string;
   initialFavorited: boolean;
 }
 

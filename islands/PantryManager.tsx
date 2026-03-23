@@ -13,8 +13,8 @@ import TbArrowMerge from "tb-icons/TbArrowMerge";
 import GenerateRecipe from "./GenerateRecipe.tsx";
 
 interface PantryItem {
-  id: number;
-  ingredient_id?: number;
+  id: string;
+  ingredient_id?: string;
   name: string;
   amount?: number;
   unit?: string;
@@ -47,7 +47,7 @@ interface PantryStore {
 }
 
 interface PantryManagerProps {
-  householdId: number;
+  householdId: string;
   initialItems: PantryItem[];
   ingredients: PantryIngredient[];
   stores: PantryStore[];
@@ -84,7 +84,7 @@ export default function PantryManager(
   }, []);
 
   // ID of the item currently showing its merge panel (null = none open)
-  const mergingItemId = useSignal<number | null>(null);
+  const mergingItemId = useSignal<string | null>(null);
   const search = useSignal("");
 
   const expiringSoonCount = useComputed(() =>
@@ -119,9 +119,7 @@ export default function PantryManager(
       body: JSON.stringify({
         action: "add",
         household_id: householdId,
-        ingredient_id: selectedIngredient.value.id
-          ? parseInt(selectedIngredient.value.id)
-          : null,
+        ingredient_id: selectedIngredient.value.id || null,
         name,
         amount: newAmount.value ? parseFloat(newAmount.value) : null,
         unit: newUnit.value || null,
@@ -135,9 +133,7 @@ export default function PantryManager(
         ...items.value,
         {
           id: data.id,
-          ingredient_id: selectedIngredient.value.id
-            ? parseInt(selectedIngredient.value.id)
-            : undefined,
+          ingredient_id: selectedIngredient.value.id || undefined,
           name,
           amount: newAmount.value ? parseFloat(newAmount.value) : undefined,
           unit: newUnit.value || undefined,
@@ -198,7 +194,7 @@ export default function PantryManager(
     });
   }
 
-  async function mergeItems(targetId: number, sourceIds: number[]) {
+  async function mergeItems(targetId: string, sourceIds: string[]) {
     const res = await fetch(`/api/pantry`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -226,7 +222,7 @@ export default function PantryManager(
     }
   }
 
-  async function removeItem(itemId: number) {
+  async function removeItem(itemId: string) {
     await fetch(`/api/pantry`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

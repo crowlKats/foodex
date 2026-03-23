@@ -95,7 +95,7 @@ export const handler = define.handlers({
          VALUES ($1, $2, $3, $4)`,
         [
           ingredientId,
-          parseInt(storeId),
+          storeId,
           parseFloat(price),
           amount ? parseFloat(amount) : null,
         ],

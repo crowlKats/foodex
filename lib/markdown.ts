@@ -48,12 +48,15 @@ export async function renderRecipeSteps(
         const slug = match[1];
         const ref = await resolveRecipe(slug);
         if (ref) {
+          const safeTitle = ref.title.replace(/[\[\]\\]/g, (c) => `\\${c}`);
+          const safeSlug = encodeURIComponent(ref.slug);
           result = result.replace(
             match[0],
-            `[${ref.title}](/recipes/${ref.slug})`,
+            `[${safeTitle}](/recipes/${safeSlug})`,
           );
         } else {
-          result = result.replace(match[0], `*unknown recipe: ${slug}*`);
+          const safeSlug = slug.replace(/[\[\]\\*_]/g, (c) => `\\${c}`);
+          result = result.replace(match[0], `*unknown recipe: ${safeSlug}*`);
         }
       }
     }

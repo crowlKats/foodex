@@ -19,6 +19,7 @@ export const handler = define.handlers({
         `https://world.openfoodfacts.org/api/v2/product/${
           encodeURIComponent(code)
         }.json?fields=product_name,brands,quantity`,
+        { signal: AbortSignal.timeout(10_000) },
       );
 
       if (!res.ok) {

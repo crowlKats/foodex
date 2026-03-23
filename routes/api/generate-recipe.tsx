@@ -1,5 +1,6 @@
 import { define } from "../../utils.ts";
 import { generateRecipeFromPantry } from "../../lib/generate-recipe.ts";
+import { rateLimit } from "../../lib/rate-limit.ts";
 import type { PantryItem } from "../../db/types.ts";
 
 export const handler = define.handlers({
@@ -7,6 +8,13 @@ export const handler = define.handlers({
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
         status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (!rateLimit(`ai:${ctx.state.user.id}`, 10, 60_000)) {
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -57,8 +65,9 @@ export const handler = define.handlers({
         headers: { "Content-Type": "application/json" },
       });
     } catch (err) {
+      console.error("Recipe generation error:", err);
       return new Response(
-        JSON.stringify({ error: (err as Error).message }),
+        JSON.stringify({ error: "Failed to generate recipe" }),
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
     }

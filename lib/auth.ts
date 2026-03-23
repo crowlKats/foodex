@@ -2,6 +2,16 @@ const GITHUB_CLIENT_ID = Deno.env.get("GITHUB_CLIENT_ID") ?? "";
 const GITHUB_CLIENT_SECRET = Deno.env.get("GITHUB_CLIENT_SECRET") ?? "";
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") ?? "";
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET") ?? "";
+const AUTHENTIK_CLIENT_ID = Deno.env.get("AUTHENTIK_CLIENT_ID") ?? "";
+const AUTHENTIK_CLIENT_SECRET = Deno.env.get("AUTHENTIK_CLIENT_SECRET") ?? "";
+const AUTHENTIK_ISSUER = Deno.env.get("AUTHENTIK_ISSUER") ?? "";
+
+export const providers = {
+  github: !!(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET),
+  google: !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
+  authentik: !!(AUTHENTIK_CLIENT_ID && AUTHENTIK_CLIENT_SECRET &&
+    AUTHENTIK_ISSUER),
+};
 
 function getBaseUrl(req: Request): string {
   const url = new URL(req.url);
@@ -57,6 +67,7 @@ export async function exchangeGitHubCode(
       code,
       redirect_uri: `${getBaseUrl(req)}/auth/callback/github`,
     }),
+    signal: AbortSignal.timeout(10_000),
   });
   const tokenData = await tokenRes.json();
   const accessToken = tokenData.access_token;
@@ -64,6 +75,7 @@ export async function exchangeGitHubCode(
 
   const userRes = await fetch("https://api.github.com/user", {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10_000),
   });
   const user = await userRes.json();
 
@@ -71,6 +83,7 @@ export async function exchangeGitHubCode(
   if (!email) {
     const emailsRes = await fetch("https://api.github.com/user/emails", {
       headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(10_000),
     });
     const emails = await emailsRes.json();
     const primary = emails.find(
@@ -115,6 +128,7 @@ export async function exchangeGoogleCode(
       redirect_uri: `${getBaseUrl(req)}/auth/callback/google`,
       grant_type: "authorization_code",
     }),
+    signal: AbortSignal.timeout(10_000),
   });
   const tokenData = await tokenRes.json();
   const accessToken = tokenData.access_token;
@@ -122,7 +136,10 @@ export async function exchangeGoogleCode(
 
   const userRes = await fetch(
     "https://www.googleapis.com/oauth2/v2/userinfo",
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(10_000),
+    },
   );
   const user = await userRes.json();
 
@@ -131,6 +148,58 @@ export async function exchangeGoogleCode(
     email: user.email ?? null,
     name: user.name ?? user.email ?? "User",
     avatarUrl: user.picture ?? "",
+  };
+}
+
+export function getAuthentikAuthUrl(req: Request, state: string): string {
+  const params = new URLSearchParams({
+    client_id: AUTHENTIK_CLIENT_ID,
+    redirect_uri: `${getBaseUrl(req)}/auth/callback/authentik`,
+    response_type: "code",
+    scope: "openid email profile",
+    state,
+  });
+  return `${AUTHENTIK_ISSUER}/authorize/?${params}`;
+}
+
+export async function exchangeAuthentikCode(
+  req: Request,
+  code: string,
+): Promise<
+  {
+    authentikId: string;
+    email: string | null;
+    name: string;
+    avatarUrl: string;
+  }
+> {
+  const tokenRes = await fetch(`${AUTHENTIK_ISSUER}/token/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: AUTHENTIK_CLIENT_ID,
+      client_secret: AUTHENTIK_CLIENT_SECRET,
+      redirect_uri: `${getBaseUrl(req)}/auth/callback/authentik`,
+      grant_type: "authorization_code",
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  const tokenData = await tokenRes.json();
+  const accessToken = tokenData.access_token;
+  if (!accessToken) throw new Error("Failed to get Authentik access token");
+
+  const userRes = await fetch(`${AUTHENTIK_ISSUER}/userinfo/`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10_000),
+  });
+  const user = await userRes.json();
+
+  return {
+    authentikId: String(user.sub),
+    email: user.email ?? null,
+    name: user.name ?? user.preferred_username ?? user.email ?? "User",
+    avatarUrl: "",
   };
 }
 

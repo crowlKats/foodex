@@ -9,7 +9,7 @@ export const handler = define.handlers({
     const slug = ctx.params.slug;
 
     const recipeRes = await ctx.state.db.query(
-      "SELECT id, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2 FROM recipes WHERE slug = $1",
+      "SELECT id, private, household_id, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2 FROM recipes WHERE slug = $1",
       [slug],
     );
     if (recipeRes.rows.length === 0) {
@@ -20,6 +20,14 @@ export const handler = define.handlers({
     }
 
     const recipe = recipeRes.rows[0];
+
+    // Block access to private recipes from non-members
+    if (recipe.private && recipe.household_id !== ctx.state.householdId) {
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const baseQuantity: RecipeQuantity = {
       type: String(

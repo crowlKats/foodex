@@ -3,7 +3,7 @@
 // full table schemas — JOIN queries produce composite types.
 
 export interface Recipe {
-  id: number;
+  id: string;
   title: string;
   slug: string;
   description: string | null;
@@ -15,11 +15,11 @@ export interface Recipe {
   quantity_unit2: string | null;
   prep_time: number | null;
   cook_time: number | null;
-  cover_image_id: number | null;
+  cover_image_id: string | null;
   difficulty: string | null;
-  household_id: number;
+  household_id: string;
   private: boolean;
-  forked_from_id: number | null;
+  forked_from_id: string | null;
   source_type: string | null;
   source_name: string | null;
   source_url: string | null;
@@ -32,16 +32,16 @@ export interface RecipeWithCover extends Recipe {
 }
 
 export interface RecipeWithCoverMedia extends Recipe {
-  cover_media_id: number | null;
+  cover_media_id: string | null;
   cover_media_url: string | null;
   cover_media_filename: string | null;
   cover_media_content_type: string | null;
 }
 
 export interface RecipeIngredient {
-  id: number;
-  recipe_id: number;
-  ingredient_id: number | null;
+  id: string;
+  recipe_id: string;
+  ingredient_id: string | null;
   name: string;
   amount: number | null;
   unit: string | null;
@@ -52,9 +52,9 @@ export interface RecipeIngredient {
 }
 
 export interface RecipeTool {
-  id: number;
-  recipe_id: number;
-  tool_id: number;
+  id: string;
+  recipe_id: string;
+  tool_id: string;
   usage_description: string | null;
   settings: string | null;
   sort_order: number;
@@ -63,31 +63,31 @@ export interface RecipeTool {
 }
 
 export interface RecipeStep {
-  id: number;
-  recipe_id: number;
+  id: string;
+  recipe_id: string;
   title: string;
   body: string;
   sort_order: number;
 }
 
 export interface RecipeReference {
-  id: number;
-  recipe_id: number;
-  referenced_recipe_id: number;
+  id: string;
+  recipe_id: string;
+  referenced_recipe_id: string;
   sort_order: number;
   ref_title: string;
   ref_slug: string;
 }
 
 export interface RecipeTag {
-  id: number;
-  recipe_id: number;
+  id: string;
+  recipe_id: string;
   tag_type: "meal_type" | "dietary";
   tag_value: string;
 }
 
 export interface Ingredient {
-  id: number;
+  id: string;
   name: string;
   unit: string | null;
   density: number | null;
@@ -95,17 +95,17 @@ export interface Ingredient {
 }
 
 export interface IngredientBrand {
-  id: number;
-  ingredient_id: number;
+  id: string;
+  ingredient_id: string;
   brand: string;
   created_at: string;
 }
 
 export interface IngredientPrice {
-  id: number;
-  ingredient_id: number;
-  brand_id: number | null;
-  store_id: number;
+  id: string;
+  ingredient_id: string;
+  brand_id: string | null;
+  store_id: string;
   price: number;
   amount: number | null;
   unit: string | null;
@@ -119,7 +119,7 @@ export interface IngredientPrice {
 }
 
 export interface Store {
-  id: number;
+  id: string;
   name: string;
   currency: string;
   created_at: string;
@@ -130,14 +130,14 @@ export interface StoreWithLocationCount extends Store {
 }
 
 export interface StoreLocation {
-  id: number;
-  store_id: number;
+  id: string;
+  store_id: string;
   address: string;
   created_at: string;
 }
 
 export interface Tool {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   created_at: string;
@@ -152,17 +152,17 @@ export interface StoreWithOwned extends Store {
 }
 
 export interface Household {
-  id: number;
+  id: string;
   name: string;
-  created_by: number;
+  created_by: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface HouseholdMember {
-  id: number;
-  household_id: number;
-  user_id: number;
+  id: string;
+  household_id: string;
+  user_id: string;
   role: "owner" | "member";
   joined_at: string;
   // JOIN fields
@@ -172,10 +172,10 @@ export interface HouseholdMember {
 }
 
 export interface HouseholdInvite {
-  id: number;
-  household_id: number;
+  id: string;
+  household_id: string;
   code: string;
-  created_by: number;
+  created_by: string;
   created_at: string;
   expires_at: string;
   // JOIN field
@@ -183,9 +183,9 @@ export interface HouseholdInvite {
 }
 
 export interface PantryItem {
-  id: number;
-  household_id: number;
-  ingredient_id: number | null;
+  id: string;
+  household_id: string;
+  ingredient_id: string | null;
   name: string;
   amount: number | null;
   unit: string | null;
@@ -195,22 +195,22 @@ export interface PantryItem {
 }
 
 export interface ShoppingList {
-  id: number;
-  household_id: number;
+  id: string;
+  household_id: string;
   name: string;
   created_at: string;
 }
 
 export interface ShoppingListItem {
-  id: number;
-  shopping_list_id: number;
-  ingredient_id: number | null;
+  id: string;
+  shopping_list_id: string;
+  ingredient_id: string | null;
   name: string;
   amount: number | null;
   unit: string | null;
-  store_id: number | null;
+  store_id: string | null;
   checked: boolean;
-  recipe_id: number | null;
+  recipe_id: string | null;
   sort_order: number;
   created_at: string;
   // JOIN fields
@@ -219,7 +219,7 @@ export interface ShoppingListItem {
 }
 
 export interface Media {
-  id: number;
+  id: string;
   key: string;
   url: string;
   content_type: string;
@@ -229,9 +229,9 @@ export interface Media {
 }
 
 export interface StepMedia {
-  step_id: number;
+  step_id: string;
   sort_order: number;
-  media_id: number;
+  media_id: string;
   url: string;
 }
 
@@ -240,16 +240,16 @@ export interface RecipeListItem extends RecipeWithCover {
 }
 
 export interface HouseholdRecipe {
-  id: number;
+  id: string;
   title: string;
   slug: string;
   private: boolean;
 }
 
 export interface ToolUsage {
-  id: number;
-  recipe_id: number;
-  tool_id: number;
+  id: string;
+  recipe_id: string;
+  tool_id: string;
   usage_description: string | null;
   settings: string | null;
   recipe_title: string;
@@ -257,11 +257,11 @@ export interface ToolUsage {
 }
 
 export interface Collection {
-  id: number;
-  household_id: number;
+  id: string;
+  household_id: string;
   name: string;
   description: string | null;
-  cover_image_id: number | null;
+  cover_image_id: string | null;
   private: boolean;
   share_token: string | null;
   created_at: string;
@@ -274,18 +274,18 @@ export interface CollectionWithCover extends Collection {
 }
 
 export interface CollectionRecipe {
-  id: number;
-  collection_id: number;
-  recipe_id: number;
+  id: string;
+  collection_id: string;
+  recipe_id: string;
   sort_order: number;
   added_at: string;
 }
 
 export interface CollectionShare {
-  id: number;
-  collection_id: number;
-  household_id: number;
-  shared_by: number;
+  id: string;
+  collection_id: string;
+  household_id: string;
+  shared_by: string;
   shared_at: string;
   // JOIN fields
   household_name?: string;
@@ -294,11 +294,11 @@ export interface CollectionShare {
 
 export interface RecipeDraft {
   id: string;
-  household_id: number;
+  household_id: string;
   recipe_data: Record<string, unknown>;
   ai_messages: { role: "user" | "assistant"; content: string }[];
   ai_thinking: string | null;
-  cover_image_id: number | null;
+  cover_image_id: string | null;
   source: "manual" | "ocr" | "generate";
   created_at: string;
   updated_at: string;

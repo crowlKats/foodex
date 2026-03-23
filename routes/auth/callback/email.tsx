@@ -29,7 +29,7 @@ export const handler = define.handlers({
 
     const { email } = result.rows[0];
 
-    const userResult = await ctx.state.db.query<{ id: number }>(
+    const userResult = await ctx.state.db.query<{ id: string }>(
       `INSERT INTO users (email, name)
        VALUES ($1, $1)
        ON CONFLICT (email) WHERE email IS NOT NULL DO UPDATE SET

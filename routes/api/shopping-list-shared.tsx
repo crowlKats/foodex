@@ -13,7 +13,7 @@ export const handler = define.handlers({
     }
 
     const listRes = await ctx.state.db.query<Pick<ShoppingList, "id">>(
-      "SELECT id FROM shopping_lists WHERE share_token = $1",
+      "SELECT id FROM shopping_lists WHERE share_token = $1 AND (share_token_expires_at IS NULL OR share_token_expires_at > now())",
       [token],
     );
     if (listRes.rows.length === 0) {

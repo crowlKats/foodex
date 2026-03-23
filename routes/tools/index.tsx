@@ -44,9 +44,9 @@ export const handler = define.handlers({
     }
     const totalCount = Number(countRes.rows[0].cnt);
 
-    const ownedToolIds = new Set<number>();
+    const ownedToolIds = new Set<string>();
     if (ctx.state.householdId) {
-      const htRes = await ctx.state.db.query<{ tool_id: number }>(
+      const htRes = await ctx.state.db.query<{ tool_id: string }>(
         "SELECT tool_id FROM household_tools WHERE household_id = $1",
         [ctx.state.householdId],
       );
@@ -83,7 +83,7 @@ export const handler = define.handlers({
         headers: { Location: "/tools?error=Name+is+required" },
       });
     }
-    const toolRes = await ctx.state.db.query<{ id: number }>(
+    const toolRes = await ctx.state.db.query<{ id: string }>(
       "INSERT INTO tools (name, description) VALUES ($1, $2) RETURNING id",
       [name.trim(), description?.trim() || null],
     );

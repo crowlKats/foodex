@@ -11,7 +11,7 @@ export const handler = define.handlers({
       `SELECT c.*, h.name as household_name
        FROM collections c
        JOIN households h ON h.id = c.household_id
-       WHERE c.share_token = $1`,
+       WHERE c.share_token = $1 AND (c.share_token_expires_at IS NULL OR c.share_token_expires_at > now())`,
       [token],
     );
     if (collRes.rows.length === 0) throw new HttpError(404);
@@ -47,7 +47,7 @@ export const handler = define.handlers({
     }
 
     const collRes = await ctx.state.db.query<Collection>(
-      "SELECT * FROM collections WHERE share_token = $1",
+      "SELECT * FROM collections WHERE share_token = $1 AND (share_token_expires_at IS NULL OR share_token_expires_at > now())",
       [token],
     );
     if (collRes.rows.length === 0) throw new HttpError(404);

@@ -11,7 +11,7 @@ export const handler = define.handlers({
     const slug = ctx.params.slug;
 
     const recipeRes = await ctx.state.db.query<{
-      id: number;
+      id: string;
       title: string;
       slug: string;
       description: string;
@@ -25,7 +25,7 @@ export const handler = define.handlers({
       quantity_value3: number | null;
       quantity_unit2: string | null;
       private: boolean;
-      household_id: number;
+      household_id: string;
       cover_image_url: string | null;
       source_type: string | null;
       source_name: string | null;
@@ -105,8 +105,6 @@ export const handler = define.handlers({
     return new Response(JSON.stringify(exportData), {
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET",
       },
     });
   },

@@ -58,10 +58,10 @@ const SORT_OPTIONS = [
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
 function buildRecipeQuery(opts: {
-  householdId: number | null;
+  householdId: string | null;
   q: string;
   favoritesOnly: boolean;
-  userId?: number;
+  userId?: string;
   cookableOnly: boolean;
   difficulty: string[];
   mealTypes: string[];
@@ -254,7 +254,7 @@ export const handler = define.handlers({
         : Promise.resolve([] as RecipeDraft[]),
     ]);
 
-    const tagsMap: Record<number, { meal_types: string[]; dietary: string[] }> =
+    const tagsMap: Record<string, { meal_types: string[]; dietary: string[] }> =
       {};
     for (const t of tagsRows) {
       if (!tagsMap[t.recipe_id]) {

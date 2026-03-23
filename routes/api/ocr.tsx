@@ -1,11 +1,19 @@
 import { define } from "../../utils.ts";
 import { extractRecipeFromImages } from "../../lib/ocr.ts";
+import { rateLimit } from "../../lib/rate-limit.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
     if (!ctx.state.user) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
         status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (!rateLimit(`ai:${ctx.state.user.id}`, 10, 60_000)) {
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -46,8 +54,9 @@ export const handler = define.handlers({
         headers: { "Content-Type": "application/json" },
       });
     } catch (err) {
+      console.error("OCR error:", err);
       return new Response(
-        JSON.stringify({ error: (err as Error).message }),
+        JSON.stringify({ error: "Failed to process image" }),
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
     }

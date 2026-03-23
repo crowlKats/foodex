@@ -3,13 +3,13 @@ import TbBookmark from "tb-icons/TbBookmark";
 import TbCheck from "tb-icons/TbCheck";
 
 interface CollectionItem {
-  id: number;
+  id: string;
   name: string;
   hasRecipe: boolean;
 }
 
 interface Props {
-  recipeId: number;
+  recipeId: string;
   collections: CollectionItem[];
 }
 
@@ -20,7 +20,7 @@ export default function AddToCollectionButton(
   const items = useSignal(collections);
   const query = useSignal("");
 
-  async function toggle(collectionId: number, currentlyIn: boolean) {
+  async function toggle(collectionId: string, currentlyIn: boolean) {
     const res = await fetch("/api/collections/recipes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

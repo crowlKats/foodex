@@ -9,8 +9,8 @@ import { convertAmount } from "../../lib/unit-convert.ts";
 
 async function getOrCreateList(
   db: { query: QueryFn },
-  householdId: number,
-): Promise<number> {
+  householdId: string,
+): Promise<string> {
   const res = await db.query<Pick<ShoppingList, "id">>(
     "SELECT id FROM shopping_lists WHERE household_id = $1 ORDER BY created_at DESC LIMIT 1",
     [householdId],
@@ -34,9 +34,9 @@ export const handler = define.handlers({
 
     if (body.action === "add_recipe") {
       const { recipe_id, items } = body as {
-        recipe_id: number;
+        recipe_id: string;
         items: {
-          ingredient_id: number | null;
+          ingredient_id: string | null;
           name: string;
           amount: number | null;
           unit: string | null;
@@ -230,7 +230,7 @@ export const handler = define.handlers({
     if (body.action === "generate_share_link") {
       const token = crypto.randomUUID();
       await ctx.state.db.query(
-        "UPDATE shopping_lists SET share_token = $1 WHERE id = $2",
+        "UPDATE shopping_lists SET share_token = $1, share_token_expires_at = now() + interval '30 days' WHERE id = $2",
         [token, listId],
       );
       return new Response(
@@ -241,7 +241,7 @@ export const handler = define.handlers({
 
     if (body.action === "revoke_share_link") {
       await ctx.state.db.query(
-        "UPDATE shopping_lists SET share_token = NULL WHERE id = $1",
+        "UPDATE shopping_lists SET share_token = NULL, share_token_expires_at = NULL WHERE id = $1",
         [listId],
       );
       return new Response(JSON.stringify({ ok: true }), {

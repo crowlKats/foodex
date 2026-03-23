@@ -56,9 +56,9 @@ export const handler = define.handlers({
     }
     const totalCount = Number(countRes.rows[0].cnt);
 
-    const ownedStoreIds = new Set<number>();
+    const ownedStoreIds = new Set<string>();
     if (ctx.state.householdId) {
-      const hsRes = await ctx.state.db.query<{ store_id: number }>(
+      const hsRes = await ctx.state.db.query<{ store_id: string }>(
         "SELECT store_id FROM household_stores WHERE household_id = $1",
         [ctx.state.householdId],
       );
@@ -95,9 +95,9 @@ export const handler = define.handlers({
         headers: { Location: "/stores?error=Name+is+required" },
       });
     }
-    let storeId: number;
+    let storeId: string;
     try {
-      const storeRes = await ctx.state.db.query<{ id: number }>(
+      const storeRes = await ctx.state.db.query<{ id: string }>(
         "INSERT INTO stores (name, currency) VALUES ($1, $2) RETURNING id",
         [name.trim(), currency?.trim() || "EUR"],
       );

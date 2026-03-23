@@ -41,8 +41,8 @@ export const handler = define.handlers({
     const description = form.get("description") as string;
     const coverImageId = form.get("cover_image_id") as string;
     const isPrivate = form.get("private") === "on";
-    const recipeIds = form.getAll("recipe_id").map((v) => parseInt(v as string))
-      .filter((v) => !isNaN(v));
+    const recipeIds = form.getAll("recipe_id").map((v) => String(v))
+      .filter((v) => v !== "");
 
     if (!name?.trim()) {
       const recipesRes = await ctx.state.db.query<Recipe>(
@@ -54,16 +54,16 @@ export const handler = define.handlers({
       return page({ allRecipes: recipesRes.rows, error: "Name is required" });
     }
 
-    let collectionId: number;
+    let collectionId: string;
     await ctx.state.db.transaction(async (q) => {
-      const res = await q<{ id: number }>(
+      const res = await q<{ id: string }>(
         `INSERT INTO collections (household_id, name, description, cover_image_id, private)
          VALUES ($1, $2, $3, $4, $5) RETURNING id`,
         [
           ctx.state.householdId,
           name.trim(),
           description?.trim() || null,
-          coverImageId ? parseInt(coverImageId) : null,
+          coverImageId || null,
           isPrivate,
         ],
       );

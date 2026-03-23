@@ -2,7 +2,7 @@ import { define } from "../../../utils.ts";
 import {
   clearOAuthStateCookie,
   createSessionCookie,
-  exchangeGoogleCode,
+  exchangeAuthentikCode,
   generateSessionId,
   getOAuthStateFromRequest,
 } from "../../../lib/auth.ts";
@@ -19,20 +19,20 @@ export const handler = define.handlers({
       });
     }
 
-    const { googleId, email, name, avatarUrl } = await exchangeGoogleCode(
+    const { authentikId, email, name, avatarUrl } = await exchangeAuthentikCode(
       ctx.req,
       code,
     );
 
     const result = await ctx.state.db.query(
-      `INSERT INTO users (google_id, email, name, avatar_url)
+      `INSERT INTO users (authentik_id, email, name, avatar_url)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (google_id) DO UPDATE SET
+       ON CONFLICT (authentik_id) DO UPDATE SET
          email = COALESCE(EXCLUDED.email, users.email),
          name = COALESCE(EXCLUDED.name, users.name),
          avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url)
        RETURNING id`,
-      [googleId, email, name, avatarUrl],
+      [authentikId, email, name, avatarUrl],
     );
     const userId = result.rows[0].id as string;
 

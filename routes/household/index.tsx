@@ -112,7 +112,7 @@ export const handler = define.handlers({
     const availableStores = allStores.filter((s) => !s.owned);
 
     const recipeIds = recipesRes.rows.map((r) => r.id);
-    const tagsMap: Record<number, { meal_types: string[]; dietary: string[] }> =
+    const tagsMap: Record<string, { meal_types: string[]; dietary: string[] }> =
       {};
     if (recipeIds.length > 0) {
       const tagsRes = await ctx.state.db.query<RecipeTag>(
@@ -174,7 +174,7 @@ export const handler = define.handlers({
     const myRole = memberCheck.rows[0].role;
 
     if (method === "ADD_TOOL") {
-      const toolId = parseInt(form.get("tool_id") as string);
+      const toolId = String(form.get("tool_id"));
       if (toolId) {
         await ctx.state.db.query(
           "INSERT INTO household_tools (household_id, tool_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
@@ -182,7 +182,7 @@ export const handler = define.handlers({
         );
       }
     } else if (method === "REMOVE_TOOL") {
-      const toolId = parseInt(form.get("tool_id") as string);
+      const toolId = String(form.get("tool_id"));
       if (toolId) {
         await ctx.state.db.query(
           "DELETE FROM household_tools WHERE household_id = $1 AND tool_id = $2",
@@ -190,7 +190,7 @@ export const handler = define.handlers({
         );
       }
     } else if (method === "ADD_STORE") {
-      const storeId = parseInt(form.get("store_id") as string);
+      const storeId = String(form.get("store_id"));
       if (storeId) {
         await ctx.state.db.query(
           "INSERT INTO household_stores (household_id, store_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
@@ -198,7 +198,7 @@ export const handler = define.handlers({
         );
       }
     } else if (method === "REMOVE_STORE") {
-      const storeId = parseInt(form.get("store_id") as string);
+      const storeId = String(form.get("store_id"));
       if (storeId) {
         await ctx.state.db.query(
           "DELETE FROM household_stores WHERE household_id = $1 AND store_id = $2",
@@ -212,13 +212,13 @@ export const handler = define.handlers({
         [id, code, ctx.state.user.id],
       );
     } else if (method === "REVOKE_INVITE" && myRole === "owner") {
-      const inviteId = parseInt(form.get("invite_id") as string);
+      const inviteId = String(form.get("invite_id"));
       await ctx.state.db.query(
         "DELETE FROM household_invites WHERE id = $1 AND household_id = $2",
         [inviteId, id],
       );
     } else if (method === "REMOVE_MEMBER" && myRole === "owner") {
-      const memberId = parseInt(form.get("member_user_id") as string);
+      const memberId = String(form.get("member_user_id"));
       if (memberId !== ctx.state.user.id) {
         await ctx.state.db.query(
           "DELETE FROM household_members WHERE household_id = $1 AND user_id = $2",

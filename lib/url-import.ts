@@ -35,6 +35,7 @@ export async function importRecipeFromUrl(
         "Mozilla/5.0 (compatible; Foodex/1.0; +https://github.com/foodex)",
       Accept: "text/html, application/json",
     },
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) {
     throw new Error(`Failed to fetch URL: ${res.status} ${res.statusText}`);

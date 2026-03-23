@@ -7,25 +7,25 @@ import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 
 interface ShoppingItem {
-  id: number;
-  ingredient_id: number | null;
+  id: string;
+  ingredient_id: string | null;
   name: string;
   amount: number | null;
   unit: string | null;
-  store_id: number | null;
+  store_id: string | null;
   checked: boolean;
   recipe_title: string | null;
   recipe_slug: string | null;
 }
 
 interface Store {
-  id: number;
+  id: string;
   name: string;
   currency: string;
 }
 
 interface PriceInfo {
-  store_id: number;
+  store_id: string;
   price: number;
   amount: number;
   unit: string;
@@ -93,10 +93,10 @@ export default function ShoppingListView(
   }
 
   function getCost(
-    ingredientId: number | null,
+    ingredientId: string | null,
     amount: number | null,
     unit: string | null,
-    storeId: number | null,
+    storeId: string | null,
   ): { cost: number; currency: string } | null {
     if (ingredientId == null || amount == null) return null;
     const prices = pricesMap[String(ingredientId)];
@@ -119,7 +119,7 @@ export default function ShoppingListView(
     return { cost, currency: price.currency };
   }
 
-  function getStoresForItem(ingredientId: number | null): Store[] {
+  function getStoresForItem(ingredientId: string | null): Store[] {
     if (ingredientId == null) return [];
     const prices = pricesMap[String(ingredientId)];
     if (!prices || prices.length === 0) return [];
@@ -139,7 +139,7 @@ export default function ShoppingListView(
     });
   }
 
-  async function updateStore(item: ShoppingItem, storeId: number | null) {
+  async function updateStore(item: ShoppingItem, storeId: string | null) {
     items.value = items.value.map((i) =>
       i.id === item.id ? { ...i, store_id: storeId } : i
     );
@@ -202,9 +202,7 @@ export default function ShoppingListView(
     if (!name) return;
 
     adding.value = true;
-    const ingredientId = addSelected.value.id
-      ? parseInt(addSelected.value.id)
-      : null;
+    const ingredientId = addSelected.value.id ? addSelected.value.id : null;
     const amount = addAmount.value ? parseFloat(addAmount.value) : null;
     const unit = addUnit.value || null;
 
@@ -221,7 +219,7 @@ export default function ShoppingListView(
       items.value = [
         ...items.value,
         {
-          id: res.item_id as number,
+          id: res.item_id as string,
           ingredient_id: ingredientId,
           name,
           amount,
@@ -291,7 +289,7 @@ export default function ShoppingListView(
             value={item.store_id ?? ""}
             onChange={(e) => {
               const val = (e.target as HTMLSelectElement).value;
-              updateStore(item, val ? parseInt(val) : null);
+              updateStore(item, val || null);
             }}
           >
             <option value="">Store...</option>
@@ -323,12 +321,12 @@ export default function ShoppingListView(
   }
 
   interface MergedItem {
-    ids: number[];
-    ingredient_id: number | null;
+    ids: string[];
+    ingredient_id: string | null;
     name: string;
     amount: number | null;
     unit: string | null;
-    store_id: number | null;
+    store_id: string | null;
     recipes: { title: string; slug: string }[];
   }
 
@@ -438,7 +436,7 @@ export default function ShoppingListView(
             value={item.store_id ?? ""}
             onChange={(e) => {
               const val = (e.target as HTMLSelectElement).value;
-              const storeId = val ? parseInt(val) : null;
+              const storeId = val || null;
               for (const id of item.ids) {
                 const found = items.value.find((i) => i.id === id);
                 if (found) updateStore(found, storeId);
@@ -506,7 +504,7 @@ export default function ShoppingListView(
   }
 
   function renderGroupedByStore(unchecked: ShoppingItem[]) {
-    const storeMap = new Map<number | null, ShoppingItem[]>();
+    const storeMap = new Map<string | null, ShoppingItem[]>();
     for (const item of unchecked) {
       const key = item.store_id;
       if (!storeMap.has(key)) storeMap.set(key, []);

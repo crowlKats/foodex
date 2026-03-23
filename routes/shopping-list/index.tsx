@@ -63,12 +63,12 @@ export const handler = define.handlers({
     const storeIds = storesRes.rows.map((r) => r.id);
     const ingredientIds = itemsRes.rows
       .filter((i) => i.ingredient_id != null)
-      .map((i) => i.ingredient_id as number);
+      .map((i) => i.ingredient_id as string);
 
     const pricesMap: Record<
       string,
       {
-        store_id: number;
+        store_id: string;
         price: number;
         amount: number;
         unit: string;
@@ -78,8 +78,8 @@ export const handler = define.handlers({
     > = {};
     if (ingredientIds.length > 0 && storeIds.length > 0) {
       const pricesRes = await ctx.state.db.query<{
-        ingredient_id: number;
-        store_id: number;
+        ingredient_id: string;
+        store_id: string;
         price: number;
         amount: number | null;
         unit: string | null;

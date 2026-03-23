@@ -8,7 +8,7 @@ import type { IngredientPrice, Store, StoreLocation } from "../../db/types.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
-    const id = parseInt(ctx.params.id);
+    const id = ctx.params.id;
     const storeRes = await ctx.state.db.query<Store>(
       "SELECT * FROM stores WHERE id = $1",
       [id],
@@ -48,7 +48,7 @@ export const handler = define.handlers({
     });
   },
   async POST(ctx) {
-    const id = parseInt(ctx.params.id);
+    const id = ctx.params.id;
     const form = await ctx.req.formData();
     const method = form.get("_method");
 

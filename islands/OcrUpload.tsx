@@ -101,7 +101,7 @@ export default function OcrUpload() {
         body: JSON.stringify({
           recipe_data: data,
           ai_messages: [{ role: "assistant", content: JSON.stringify(data) }],
-          cover_image_id: coverId ? parseInt(coverId) : null,
+          cover_image_id: coverId || null,
           source: "ocr",
         }),
       });

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { define } from "../../utils.ts";
+import { rateLimit } from "../../lib/rate-limit.ts";
 import {
   RECIPE_FIELD_RULES,
   recipeJsonSchema,
@@ -22,6 +23,13 @@ export const handler = define.handlers({
     if (!ctx.state.user) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
         status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (!rateLimit(`ai:${ctx.state.user.id}`, 10, 60_000)) {
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -104,8 +112,9 @@ export const handler = define.handlers({
         headers: { "Content-Type": "application/json" },
       });
     } catch (err) {
+      console.error("Recipe refinement error:", err);
       return new Response(
-        JSON.stringify({ error: (err as Error).message }),
+        JSON.stringify({ error: "Failed to refine recipe" }),
         { status: 500, headers: { "Content-Type": "application/json" } },
       );
     }

@@ -34,7 +34,7 @@ export const handler = define.handlers({
        RETURNING id`,
       [githubId, email, name, avatarUrl],
     );
-    const userId = result.rows[0].id as number;
+    const userId = result.rows[0].id as string;
 
     const sessionId = generateSessionId();
     await ctx.state.db.query(

@@ -47,14 +47,14 @@ interface RecipeIngredient {
   amount: number;
   unit: string;
   name: string;
-  ingredient_id?: number;
+  ingredient_id?: string;
   base_cost?: number; // cost at the recipe's default quantity
   currency?: string;
   density?: number | null;
 }
 
 interface RecipeTool {
-  id: number;
+  id: string;
   name: string;
   settings?: string;
   usage?: string;
@@ -66,7 +66,7 @@ interface RecipeRef {
 }
 
 interface PantryItem {
-  ingredient_id?: number;
+  ingredient_id?: string;
   name: string;
   amount?: number;
   unit?: string;
@@ -87,14 +87,22 @@ interface RecipeViewProps {
   slug: string;
   hasSubRecipes: boolean;
   initialHtml: string;
-  recipeId: number;
+  recipeId: string;
   recipeTitle: string;
   loggedIn: boolean;
-  pantryIngredientIds?: number[];
+  pantryIngredientIds?: string[];
   pantryIngredientNames?: string[];
   pantryItems?: PantryItem[];
-  householdId?: number | null;
+  householdId?: string | null;
   unitSystem?: UnitSystem;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function renderStepsClient(
@@ -124,11 +132,13 @@ function renderStepsClient(
         si + 1
       }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
         si + 1
-      }.</span>${step.title.replace(/</g, "&lt;")}</h2>\n${html}`;
+      }.</span>${escapeHtml(step.title)}</h2>\n${html}`;
       if (step.media && step.media.length > 0) {
         stepHtml += `<div class="flex flex-wrap gap-2 mt-3">${
           step.media.map((m) =>
-            `<img src="${m.url}" alt="" class="max-w-sm border-2 border-stone-300 dark:border-stone-700" />`
+            `<img src="${
+              escapeHtml(m.url)
+            }" alt="" class="max-w-sm border-2 border-stone-300 dark:border-stone-700" />`
           ).join("")
         }</div>`;
       }
@@ -162,7 +172,9 @@ function renderSingleStepHtml(
     if (step.media && step.media.length > 0) {
       stepHtml += `<div class="flex flex-wrap gap-3 mt-4 justify-center">${
         step.media.map((m) =>
-          `<img src="${m.url}" alt="" class="max-h-48 border-2 border-stone-300 dark:border-stone-700" />`
+          `<img src="${
+            escapeHtml(m.url)
+          }" alt="" class="max-h-48 border-2 border-stone-300 dark:border-stone-700" />`
         ).join("")
       }</div>`;
     }

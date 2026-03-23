@@ -2,11 +2,14 @@ import { define } from "../../utils.ts";
 import {
   createOAuthStateCookie,
   generateOAuthState,
+  getAuthentikAuthUrl,
   getGitHubAuthUrl,
   getGoogleAuthUrl,
+  providers,
 } from "../../lib/auth.ts";
 import TbBrandGithub from "tb-icons/TbBrandGithub";
 import TbBrandGoogle from "tb-icons/TbBrandGoogle";
+import TbKey from "tb-icons/TbKey";
 import TbMail from "tb-icons/TbMail";
 
 export const handler = define.handlers({
@@ -23,8 +26,11 @@ export const handler = define.handlers({
     ctx.state.pageTitle = "Sign In";
     return {
       data: {
-        githubUrl: getGitHubAuthUrl(req, state),
-        googleUrl: getGoogleAuthUrl(req, state),
+        githubUrl: providers.github ? getGitHubAuthUrl(req, state) : null,
+        googleUrl: providers.google ? getGoogleAuthUrl(req, state) : null,
+        authentikUrl: providers.authentik
+          ? getAuthentikAuthUrl(req, state)
+          : null,
       },
       headers: {
         "Set-Cookie": createOAuthStateCookie(state),
@@ -34,29 +40,46 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function LoginPage({ data }) {
+  const hasOAuthProvider = data.githubUrl || data.googleUrl ||
+    data.authentikUrl;
   return (
     <div class="max-w-sm mx-auto mt-16">
       <h1 class="text-2xl font-bold text-center mb-8">Sign in to Foodex</h1>
       <div class="card space-y-3">
-        <a
-          href={data.githubUrl}
-          class="btn w-full flex items-center justify-center gap-2 bg-stone-800 text-white hover:bg-stone-700"
-        >
-          <TbBrandGithub class="size-5" />
-          Continue with GitHub
-        </a>
-        <a
-          href={data.googleUrl}
-          class="btn w-full flex items-center justify-center gap-2 bg-white text-stone-800 border border-stone-300 hover:bg-stone-50"
-        >
-          <TbBrandGoogle class="size-5" />
-          Continue with Google
-        </a>
-        <div class="flex items-center gap-3 my-1">
-          <div class="flex-1 border-t border-stone-300 dark:border-stone-600" />
-          <span class="text-sm text-stone-500">or</span>
-          <div class="flex-1 border-t border-stone-300 dark:border-stone-600" />
-        </div>
+        {data.githubUrl && (
+          <a
+            href={data.githubUrl}
+            class="btn w-full flex items-center justify-center gap-2 bg-stone-800 text-white hover:bg-stone-700"
+          >
+            <TbBrandGithub class="size-5" />
+            Continue with GitHub
+          </a>
+        )}
+        {data.googleUrl && (
+          <a
+            href={data.googleUrl}
+            class="btn w-full flex items-center justify-center gap-2 bg-white text-stone-800 border border-stone-300 hover:bg-stone-50"
+          >
+            <TbBrandGoogle class="size-5" />
+            Continue with Google
+          </a>
+        )}
+        {data.authentikUrl && (
+          <a
+            href={data.authentikUrl}
+            class="btn w-full flex items-center justify-center gap-2 bg-stone-800 text-white hover:bg-stone-700"
+          >
+            <TbKey class="size-5" />
+            Continue with Authentik
+          </a>
+        )}
+        {hasOAuthProvider && (
+          <div class="flex items-center gap-3 my-1">
+            <div class="flex-1 border-t border-stone-300 dark:border-stone-600" />
+            <span class="text-sm text-stone-500">or</span>
+            <div class="flex-1 border-t border-stone-300 dark:border-stone-600" />
+          </div>
+        )}
         <form method="POST" action="/auth/magic-link" class="space-y-2">
           <input
             type="email"

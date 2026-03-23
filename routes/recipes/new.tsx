@@ -125,7 +125,7 @@ export const handler = define.handlers({
 
     try {
       await ctx.state.db.transaction(async (q) => {
-        const res = await q<{ id: number }>(
+        const res = await q<{ id: string }>(
           `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
            RETURNING id`,
@@ -141,7 +141,7 @@ export const handler = define.handlers({
             quantityUnit2,
             prepTime,
             cookTime,
-            coverImageId ? parseInt(coverImageId) : null,
+            coverImageId || null,
             difficulty,
             ctx.state.householdId,
             isPrivate,

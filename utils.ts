@@ -3,7 +3,7 @@ import type { QueryFn } from "./db/mod.ts";
 import type { UnitSystem } from "./lib/unit-display.ts";
 
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string | null;
   avatar_url: string | null;
@@ -18,7 +18,7 @@ export interface State {
   user: User | null;
   unitSystem: UnitSystem;
   shoppingListCount: number;
-  householdId: number | null;
+  householdId: string | null;
   pageTitle: string;
 }
 

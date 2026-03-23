@@ -67,7 +67,7 @@ export const handler = define.handlers({
     );
 
     const stepMediaRes = await ctx.state.db.query<
-      { step_id: number; media_id: number; url: string }
+      { step_id: string; media_id: string; url: string }
     >(
       `SELECT rsm.step_id, m.id as media_id, m.url
        FROM recipe_step_media rsm
@@ -121,7 +121,7 @@ export const handler = define.handlers({
       .map((i) => i.ingredient_id!);
 
     const priceMap = new Map<
-      number,
+      string,
       {
         price: number;
         amount: number;
@@ -132,7 +132,7 @@ export const handler = define.handlers({
     >();
     if (ingredientIds.length > 0) {
       const pricesRes = await ctx.state.db.query<{
-        ingredient_id: number;
+        ingredient_id: string;
         price: number;
         amount: number;
         price_unit: string | null;
@@ -225,14 +225,14 @@ export const handler = define.handlers({
 
     // Load pantry items from user's household
     let pantryItems: {
-      ingredient_id?: number;
+      ingredient_id?: string;
       name: string;
       amount?: number;
       unit?: string;
     }[] = [];
     if (ctx.state.householdId) {
       const pantryRes = await ctx.state.db.query<{
-        ingredient_id: number | null;
+        ingredient_id: string | null;
         name: string;
         amount: number | null;
         unit: string | null;
@@ -285,10 +285,10 @@ export const handler = define.handlers({
     const forkCount = forkCountRes.rows[0]?.count ?? 0;
 
     // Load user's collections for "add to collection" button
-    let collections: { id: number; name: string; hasRecipe: boolean }[] = [];
+    let collections: { id: string; name: string; hasRecipe: boolean }[] = [];
     if (ctx.state.householdId) {
       const collRes = await ctx.state.db.query<
-        { id: number; name: string; has_recipe: boolean }
+        { id: string; name: string; has_recipe: boolean }
       >(
         `SELECT c.id, c.name,
                 EXISTS (SELECT 1 FROM collection_recipes cr WHERE cr.collection_id = c.id AND cr.recipe_id = $2) as has_recipe
@@ -338,7 +338,7 @@ export const handler = define.handlers({
     const method = form.get("_method");
 
     if (method === "DELETE") {
-      const recipeRes = await ctx.state.db.query<{ household_id: number }>(
+      const recipeRes = await ctx.state.db.query<{ household_id: string }>(
         "SELECT household_id FROM recipes WHERE slug = $1",
         [slug],
       );

@@ -20,10 +20,44 @@ export const handler = define.handlers({
       });
     }
 
+    let parsed: URL;
     try {
-      new URL(url);
+      parsed = new URL(url);
     } catch {
       return new Response(JSON.stringify({ error: "Invalid URL" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return new Response(
+        JSON.stringify({ error: "Only HTTP(S) URLs are allowed" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const hostname = parsed.hostname;
+    // Block private/internal IPs and metadata endpoints
+    if (
+      hostname === "localhost" ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal") ||
+      /^127\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      hostname === "169.254.169.254" ||
+      /^169\.254\./.test(hostname) ||
+      hostname === "[::1]" ||
+      hostname === "0.0.0.0" ||
+      /^\[?fd[0-9a-f]{2}:/.test(hostname) ||
+      /^\[?fe80:/.test(hostname)
+    ) {
+      return new Response(JSON.stringify({ error: "URL not allowed" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
@@ -35,8 +69,9 @@ export const handler = define.handlers({
         headers: { "Content-Type": "application/json" },
       });
     } catch (err) {
+      console.error("URL import error:", err);
       return new Response(
-        JSON.stringify({ error: (err as Error).message }),
+        JSON.stringify({ error: "Failed to import recipe from URL" }),
         {
           status: 422,
           headers: { "Content-Type": "application/json" },

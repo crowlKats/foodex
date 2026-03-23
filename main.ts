@@ -10,6 +10,43 @@ export const app = new App<State>();
 
 app.use(staticFiles());
 
+// Security headers
+app.use(define.middleware(async (ctx) => {
+  const resp = await ctx.next();
+  resp.headers.set("X-Content-Type-Options", "nosniff");
+  resp.headers.set("X-Frame-Options", "DENY");
+  resp.headers.set(
+    "Strict-Transport-Security",
+    "max-age=63072000; includeSubDomains",
+  );
+  resp.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  resp.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()",
+  );
+
+  const ct = resp.headers.get("Content-Type") ?? "";
+  if (ct.includes("text/html")) {
+    resp.headers.set(
+      "Content-Security-Policy",
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "connect-src 'self'",
+        "font-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+      ].join("; "),
+    );
+  }
+
+  return resp;
+}));
+
 app.use(define.middleware(async (ctx) => {
   ctx.state.db = { query, transaction };
   ctx.state.user = null;
@@ -28,12 +65,12 @@ app.use(define.middleware(async (ctx) => {
 
     // Single query: user + household + shopping list count (was 3 sequential queries)
     const result = await query<{
-      id: number;
+      id: string;
       name: string;
       email: string | null;
       avatar_url: string | null;
       unit_system: string | null;
-      household_id: number | null;
+      household_id: string | null;
       shopping_count: number;
     }>(
       `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system,

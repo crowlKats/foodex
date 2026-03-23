@@ -2,6 +2,9 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { readBarcodes, type ReadInputBarcodeFormat } from "zxing-wasm/reader";
 import TbX from "tb-icons/TbX";
+import TbBulb from "tb-icons/TbBulb";
+import TbBulbOff from "tb-icons/TbBulbOff";
+import TbCameraRotate from "tb-icons/TbCameraRotate";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
@@ -15,8 +18,8 @@ interface ProductInfo {
 }
 
 export interface ScanAddResult {
-  id: number;
-  ingredient_id: number | null;
+  id: string;
+  ingredient_id: string | null;
   name: string;
   amount: number | null;
   unit: string | null;
@@ -24,7 +27,7 @@ export interface ScanAddResult {
 }
 
 interface BaseProps {
-  householdId: number;
+  householdId: string;
   ingredients: { id: string; name: string; unit?: string }[];
   stores: { id: string; name: string }[];
 }
@@ -70,6 +73,9 @@ export default function ScanView(props: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const stoppedRef = useRef(false);
   const cameraHeight = useSignal<string>("");
+  const torchOn = useSignal(false);
+  const torchSupported = useSignal(false);
+  const facingMode = useSignal<"environment" | "user">("environment");
 
   const options: SearchSelectOption[] = ingredients.map((i) => ({
     id: i.id,
@@ -109,6 +115,32 @@ export default function ScanView(props: Props) {
     startCamera();
   }
 
+  async function toggleTorch() {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn.value;
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: next } as MediaTrackConstraintSet],
+      });
+      torchOn.value = next;
+    } catch {
+      // ignore if torch fails
+    }
+  }
+
+  function switchCamera() {
+    facingMode.value = facingMode.value === "environment"
+      ? "user"
+      : "environment";
+    // Restart scanning with new camera
+    stoppedRef.current = true;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    torchOn.value = false;
+    torchSupported.value = false;
+    startScanning();
+  }
+
   function startCamera() {
     let stopped = false;
     stoppedRef.current = false;
@@ -118,12 +150,19 @@ export default function ScanView(props: Props) {
         status.value = "Requesting camera access...";
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: "environment",
+            facingMode: facingMode.value,
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
         });
         streamRef.current = stream;
+
+        // Check torch support
+        const track = stream.getVideoTracks()[0];
+        const caps = track.getCapabilities?.() as
+          | Record<string, unknown>
+          | undefined;
+        torchSupported.value = !!(caps && "torch" in caps);
         if (stopped || !videoRef.current) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -206,6 +245,7 @@ export default function ScanView(props: Props) {
     return () => {
       stopped = true;
       stoppedRef.current = true;
+      torchOn.value = false;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }
@@ -295,9 +335,7 @@ export default function ScanView(props: Props) {
     const payload: Record<string, unknown> = {
       action: "add",
       household_id: householdId,
-      ingredient_id: selectedIngredient.value.id
-        ? parseInt(selectedIngredient.value.id)
-        : null,
+      ingredient_id: selectedIngredient.value.id || null,
       name,
       amount: itemAmount.value ? parseFloat(itemAmount.value) : null,
       unit: itemUnit.value || null,
@@ -307,7 +345,7 @@ export default function ScanView(props: Props) {
     if (isNewIngredient) payload.create_ingredient = true;
     if (product.value?.brand) payload.brand = product.value.brand;
     if (itemStoreId.value && itemPrice.value) {
-      payload.store_id = parseInt(itemStoreId.value);
+      payload.store_id = itemStoreId.value;
       payload.price = parseFloat(itemPrice.value);
     }
 
@@ -357,6 +395,28 @@ export default function ScanView(props: Props) {
       />
       <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div class="w-3/4 h-1/3 border-2 border-orange-400 opacity-70" />
+      </div>
+      <div class="absolute top-4 right-4 flex gap-2">
+        {torchSupported.value && (
+          <button
+            type="button"
+            class="p-2 bg-stone-900/80 text-white cursor-pointer"
+            onClick={toggleTorch}
+            title={torchOn.value ? "Turn off flashlight" : "Turn on flashlight"}
+          >
+            {torchOn.value
+              ? <TbBulb class="size-6" />
+              : <TbBulbOff class="size-6" />}
+          </button>
+        )}
+        <button
+          type="button"
+          class="p-2 bg-stone-900/80 text-white cursor-pointer"
+          onClick={switchCamera}
+          title="Switch camera"
+        >
+          <TbCameraRotate class="size-6" />
+        </button>
       </div>
       <div class="absolute bottom-4 left-4 right-4 space-y-2">
         <p class="text-sm text-white text-center bg-stone-900/80 px-3 py-2">
@@ -616,6 +676,30 @@ export default function ScanView(props: Props) {
                   />
                   <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div class="w-3/4 h-1/3 border-2 border-orange-400 opacity-70" />
+                  </div>
+                  <div class="absolute top-2 right-2 flex gap-2">
+                    {torchSupported.value && (
+                      <button
+                        type="button"
+                        class="p-2 bg-stone-900/80 text-white cursor-pointer"
+                        onClick={toggleTorch}
+                        title={torchOn.value
+                          ? "Turn off flashlight"
+                          : "Turn on flashlight"}
+                      >
+                        {torchOn.value
+                          ? <TbBulb class="size-5" />
+                          : <TbBulbOff class="size-5" />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      class="p-2 bg-stone-900/80 text-white cursor-pointer"
+                      onClick={switchCamera}
+                      title="Switch camera"
+                    >
+                      <TbCameraRotate class="size-5" />
+                    </button>
                   </div>
                 </div>
                 <p class="text-sm text-stone-500 text-center">

@@ -78,7 +78,7 @@ export const handler = define.handlers({
     );
 
     const stepMediaRes = await ctx.state.db.query<
-      { step_id: number; sort_order: number; media_id: number; url: string }
+      { step_id: string; sort_order: number; media_id: string; url: string }
     >(
       `SELECT rsm.step_id, rsm.sort_order, m.id as media_id, m.url
        FROM recipe_step_media rsm
@@ -151,7 +151,7 @@ export const handler = define.handlers({
   async POST(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query<
-      { id: number; household_id: number }
+      { id: string; household_id: string }
     >(
       "SELECT id, household_id FROM recipes WHERE slug = $1",
       [slug],
@@ -226,7 +226,7 @@ export const handler = define.handlers({
           quantityUnit2,
           prepTime,
           cookTime,
-          coverImageId ? parseInt(coverImageId) : null,
+          coverImageId || null,
           recipeId,
           difficulty,
           isPrivate,
@@ -244,7 +244,7 @@ export const handler = define.handlers({
         q("DELETE FROM recipe_tags WHERE recipe_id = $1", [recipeId]),
       ]);
 
-      await saveRecipeChildren(q, recipeId as number, form);
+      await saveRecipeChildren(q, recipeId as string, form);
     });
 
     return new Response(null, {

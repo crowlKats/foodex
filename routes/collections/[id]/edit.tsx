@@ -9,7 +9,7 @@ import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
-    const id = parseInt(ctx.params.id);
+    const id = ctx.params.id;
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
         status: 303,
@@ -19,7 +19,7 @@ export const handler = define.handlers({
 
     const collRes = await ctx.state.db.query<
       Collection & {
-        cover_media_id: number | null;
+        cover_media_id: string | null;
         cover_media_url: string | null;
         cover_media_filename: string | null;
         cover_media_content_type: string | null;
@@ -35,7 +35,7 @@ export const handler = define.handlers({
     if (collRes.rows.length === 0) throw new HttpError(404);
 
     const currentRecipesRes = await ctx.state.db.query<
-      { recipe_id: number; title: string }
+      { recipe_id: string; title: string }
     >(
       `SELECT cr.recipe_id, r.title
        FROM collection_recipes cr
@@ -60,7 +60,7 @@ export const handler = define.handlers({
     });
   },
   async POST(ctx) {
-    const id = parseInt(ctx.params.id);
+    const id = ctx.params.id;
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
         status: 303,
@@ -90,8 +90,8 @@ export const handler = define.handlers({
     const description = form.get("description") as string;
     const coverImageId = form.get("cover_image_id") as string;
     const isPrivate = form.get("private") === "on";
-    const recipeIds = form.getAll("recipe_id").map((v) => parseInt(v as string))
-      .filter((v) => !isNaN(v));
+    const recipeIds = form.getAll("recipe_id").map((v) => String(v))
+      .filter((v) => v !== "");
 
     if (!name?.trim()) {
       return new Response(null, {
@@ -107,7 +107,7 @@ export const handler = define.handlers({
         [
           name.trim(),
           description?.trim() || null,
-          coverImageId ? parseInt(coverImageId) : null,
+          coverImageId || null,
           isPrivate,
           id,
         ],

@@ -6,8 +6,8 @@ const WARN_DAYS = 3;
 export async function sendExpiryNotifications(queryFn: QueryFn) {
   // Find subscriptions where it's currently 9 AM in the user's timezone
   const subsRes = await queryFn<{
-    sub_id: number;
-    household_id: number;
+    sub_id: string;
+    household_id: string;
     endpoint: string;
     key_p256dh: string;
     key_auth: string;
@@ -24,7 +24,7 @@ export async function sendExpiryNotifications(queryFn: QueryFn) {
 
   // Find households with expiring items
   const expiringRes = await queryFn<{
-    household_id: number;
+    household_id: string;
     expiring_count: number;
     expired_count: number;
   }>(
@@ -41,7 +41,7 @@ export async function sendExpiryNotifications(queryFn: QueryFn) {
 
   if (expiringRes.rows.length === 0) return;
 
-  const staleEndpointIds: number[] = [];
+  const staleEndpointIds: string[] = [];
 
   for (const sub of subsRes.rows) {
     const household = expiringRes.rows.find((r) =>

@@ -3,40 +3,28 @@ import { convertAmount } from "../../lib/unit-convert.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
-    if (!ctx.state.user) {
+    if (!ctx.state.householdId) {
       return new Response(null, { status: 401 });
     }
 
     const body = await ctx.req.json();
-    const householdId = body.household_id;
-
-    // Verify membership
-    const memberCheck = await ctx.state.db.query(
-      "SELECT 1 FROM household_members WHERE household_id = $1 AND user_id = $2",
-      [householdId, ctx.state.user.id],
-    );
-    if (memberCheck.rows.length === 0) {
-      return new Response(JSON.stringify({ error: "Not a member" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const householdId = ctx.state.householdId;
 
     if (body.action === "add") {
       let ingredientId = body.ingredient_id ?? null;
 
       // Create new ingredient if name provided but no existing ingredient selected
       if (!ingredientId && body.create_ingredient && body.name?.trim()) {
-        const ingRes = await ctx.state.db.query<{ id: number }>(
+        const ingRes = await ctx.state.db.query<{ id: string }>(
           `INSERT INTO ingredients (name, unit) VALUES ($1, $2) RETURNING id`,
           [body.name.trim(), body.unit ?? null],
         );
         ingredientId = ingRes.rows[0].id;
 
         // Create brand if provided
-        let brandId: number | null = null;
+        let brandId: string | null = null;
         if (body.brand?.trim()) {
-          const brandRes = await ctx.state.db.query<{ id: number }>(
+          const brandRes = await ctx.state.db.query<{ id: string }>(
             `INSERT INTO ingredient_brands (ingredient_id, brand) VALUES ($1, $2) RETURNING id`,
             [ingredientId, body.brand.trim()],
           );
@@ -60,17 +48,17 @@ export const handler = define.handlers({
         }
       } else if (ingredientId) {
         // Existing ingredient — still add brand + price if provided
-        let brandId: number | null = null;
+        let brandId: string | null = null;
         if (body.brand?.trim()) {
           // Use existing brand or create new one
-          const existingBrand = await ctx.state.db.query<{ id: number }>(
+          const existingBrand = await ctx.state.db.query<{ id: string }>(
             `SELECT id FROM ingredient_brands WHERE ingredient_id = $1 AND lower(brand) = lower($2)`,
             [ingredientId, body.brand.trim()],
           );
           if (existingBrand.rows.length > 0) {
             brandId = existingBrand.rows[0].id;
           } else {
-            const brandRes = await ctx.state.db.query<{ id: number }>(
+            const brandRes = await ctx.state.db.query<{ id: string }>(
               `INSERT INTO ingredient_brands (ingredient_id, brand) VALUES ($1, $2) RETURNING id`,
               [ingredientId, body.brand.trim()],
             );
@@ -148,7 +136,7 @@ export const handler = define.handlers({
 
     if (body.action === "deduct_recipe") {
       const items = body.items as {
-        ingredient_id: number | null;
+        ingredient_id: string | null;
         name: string;
         amount: number | null;
         unit: string | null;
@@ -161,7 +149,7 @@ export const handler = define.handlers({
         let existing;
         if (item.ingredient_id) {
           existing = await ctx.state.db.query<{
-            id: number;
+            id: string;
             amount: number | null;
             unit: string | null;
             density: number | null;
@@ -175,7 +163,7 @@ export const handler = define.handlers({
           );
         } else {
           existing = await ctx.state.db.query<{
-            id: number;
+            id: string;
             amount: number | null;
             unit: string | null;
             density: number | null;
@@ -244,8 +232,8 @@ export const handler = define.handlers({
     }
 
     if (body.action === "merge") {
-      const targetId = body.target_id as number;
-      const sourceIds = body.source_ids as number[];
+      const targetId = body.target_id as string;
+      const sourceIds = body.source_ids as string[];
 
       if (!targetId || !sourceIds?.length) {
         return new Response(
@@ -257,7 +245,7 @@ export const handler = define.handlers({
       // Fetch all involved items (target + sources) in one query
       const allIds = [targetId, ...sourceIds];
       const rows = await ctx.state.db.query<{
-        id: number;
+        id: string;
         amount: number | null;
         unit: string | null;
         expires_at: string | null;
@@ -270,7 +258,9 @@ export const handler = define.handlers({
         [allIds, householdId],
       );
 
-      const rowMap = new Map(rows.rows.map((r) => [r.id, r]));
+      const rowMap = new Map<string, typeof rows.rows[0]>(
+        rows.rows.map((r) => [r.id, r]),
+      );
       const target = rowMap.get(targetId);
       if (!target) {
         return new Response(
@@ -285,7 +275,7 @@ export const handler = define.handlers({
         : null;
       let latestExpiry: string | null = target.expires_at;
 
-      const validSourceIds: number[] = [];
+      const validSourceIds: string[] = [];
       for (const srcId of sourceIds) {
         const src = rowMap.get(srcId);
         if (!src) continue;

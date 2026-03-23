@@ -2,7 +2,7 @@ import { useSignal } from "@preact/signals";
 import { formatAmount } from "../lib/format.ts";
 
 interface SharedItem {
-  id: number;
+  id: string;
   name: string;
   amount: number | null;
   unit: string | null;

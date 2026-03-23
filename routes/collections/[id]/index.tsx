@@ -20,7 +20,7 @@ import TbX from "tb-icons/TbX";
 
 export const handler = define.handlers({
   async GET(ctx) {
-    const id = parseInt(ctx.params.id);
+    const id = ctx.params.id;
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
         status: 303,
@@ -60,7 +60,7 @@ export const handler = define.handlers({
 
     // Load tags for recipes
     const recipeIds = recipesRes.rows.map((r) => r.id);
-    const tagsMap: Record<number, { meal_types: string[]; dietary: string[] }> =
+    const tagsMap: Record<string, { meal_types: string[]; dietary: string[] }> =
       {};
     if (recipeIds.length > 0) {
       const tagsRes = await ctx.state.db.query<RecipeTag>(
@@ -102,7 +102,7 @@ export const handler = define.handlers({
     return page({ collection, recipes, isOwner, shares });
   },
   async POST(ctx) {
-    const id = parseInt(ctx.params.id);
+    const id = ctx.params.id;
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
         status: 303,
@@ -123,7 +123,7 @@ export const handler = define.handlers({
     const isOwner = collection.household_id === ctx.state.householdId;
 
     if (method === "REMOVE_RECIPE" && isOwner) {
-      const recipeId = parseInt(form.get("recipe_id") as string);
+      const recipeId = String(form.get("recipe_id"));
       await ctx.state.db.query(
         "DELETE FROM collection_recipes WHERE collection_id = $1 AND recipe_id = $2",
         [id, recipeId],
@@ -139,9 +139,9 @@ export const handler = define.handlers({
     }
 
     if (method === "GENERATE_SHARE_TOKEN" && isOwner) {
-      const token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      const token = crypto.randomUUID();
       await ctx.state.db.query(
-        "UPDATE collections SET share_token = $1 WHERE id = $2",
+        "UPDATE collections SET share_token = $1, share_token_expires_at = now() + interval '30 days' WHERE id = $2",
         [token, id],
       );
       return new Response(null, {
@@ -152,7 +152,7 @@ export const handler = define.handlers({
 
     if (method === "REVOKE_SHARE_TOKEN" && isOwner) {
       await ctx.state.db.query(
-        "UPDATE collections SET share_token = NULL WHERE id = $1",
+        "UPDATE collections SET share_token = NULL, share_token_expires_at = NULL WHERE id = $1",
         [id],
       );
       return new Response(null, {
@@ -162,7 +162,7 @@ export const handler = define.handlers({
     }
 
     if (method === "REVOKE_SHARE" && isOwner) {
-      const shareId = parseInt(form.get("share_id") as string);
+      const shareId = String(form.get("share_id"));
       await ctx.state.db.query(
         "DELETE FROM collection_shares WHERE id = $1 AND collection_id = $2",
         [shareId, id],

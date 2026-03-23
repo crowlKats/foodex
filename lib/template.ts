@@ -288,7 +288,11 @@ export function evaluateExpression(
 
     return formatAmount(evaluate(ast, allVars));
   } catch (err) {
-    return `{{ ${expression} }} /* error: ${(err as Error).message} */`;
+    const safeExpr = expression.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const safeMsg = ((err as Error).message ?? "").replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return `{{ ${safeExpr} }} /* error: ${safeMsg} */`;
   }
 }
 

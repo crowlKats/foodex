@@ -16,7 +16,7 @@ import type {
 
 export const handler = define.handlers({
   async GET(ctx) {
-    const id = parseInt(ctx.params.id);
+    const id = ctx.params.id;
     const [
       ingredientRes,
       brandsRes,
@@ -60,7 +60,7 @@ export const handler = define.handlers({
     });
   },
   async POST(ctx) {
-    const id = parseInt(ctx.params.id);
+    const id = ctx.params.id;
     const form = await ctx.req.formData();
     const method = form.get("_method");
 
@@ -73,7 +73,7 @@ export const handler = define.handlers({
     }
 
     if (method === "MERGE") {
-      const targetId = parseInt(form.get("target_id") as string);
+      const targetId = String(form.get("target_id"));
       if (!targetId || targetId === id) {
         return new Response(null, {
           status: 303,
