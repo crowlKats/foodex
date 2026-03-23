@@ -1,6 +1,6 @@
 import { define } from "../../utils.ts";
 import { convertAmount } from "../../lib/unit-convert.ts";
-import { parseJsonBody, PantryAction } from "../../lib/validation.ts";
+import { PantryAction, parseJsonBody } from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {

@@ -1,9 +1,6 @@
 import { define } from "../../utils.ts";
 import type { ShoppingList } from "../../db/types.ts";
-import {
-  parseJsonBody,
-  ShoppingListSharedBody,
-} from "../../lib/validation.ts";
+import { parseJsonBody, ShoppingListSharedBody } from "../../lib/validation.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
