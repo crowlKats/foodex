@@ -23,6 +23,7 @@ import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
 import { DurationInput } from "../../../components/DurationInput.tsx";
+import RecipeOutputForm from "../../../islands/RecipeOutputForm.tsx";
 import { RefForm } from "../../../components/RefForm.tsx";
 import {
   DIETARY_TAGS,
@@ -134,6 +135,15 @@ export const handler = define.handlers({
       media: stepMediaMap.get(String(s.id)) ?? [],
     }));
 
+    let outputIngredientName = "";
+    if (recipe.output_ingredient_id) {
+      const oRes = await ctx.state.db.query<{ name: string }>(
+        "SELECT name FROM ingredients WHERE id = $1",
+        [recipe.output_ingredient_id],
+      );
+      if (oRes.rows.length > 0) outputIngredientName = oRes.rows[0].name;
+    }
+
     ctx.state.pageTitle = `Edit: ${recipe.title}`;
     return page({
       recipe,
@@ -146,6 +156,7 @@ export const handler = define.handlers({
       allIngredients: ingredientsListRes.rows,
       allTools: allToolsRes.rows,
       allRecipes: allRecipesRes.rows,
+      outputIngredientName,
     });
   },
   async POST(ctx) {
@@ -207,13 +218,23 @@ export const handler = define.handlers({
     const sourceType = (form.get("source_type") as string) || null;
     const sourceName = (form.get("source_name") as string)?.trim() || null;
     const sourceUrl = (form.get("source_url") as string)?.trim() || null;
+    const outputIngredientId = (form.get("output_ingredient_id") as string) ||
+      null;
+    const outputAmountRaw = form.get("output_amount") as string;
+    const outputAmount = outputAmountRaw ? parseFloat(outputAmountRaw) : null;
+    const outputUnit = (form.get("output_unit") as string) || null;
+    const outputExpiresDaysRaw = form.get("output_expires_days") as string;
+    const outputExpiresDays = outputExpiresDaysRaw
+      ? parseInt(outputExpiresDaysRaw)
+      : null;
 
     await ctx.state.db.transaction(async (q) => {
       await q(
         `UPDATE recipes SET title=$1, description=$2,
          quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
          prep_time=$9, cook_time=$10, cover_image_id=$11, difficulty=$13, private=$14,
-         source_type=$15, source_name=$16, source_url=$17, updated_at=now()
+         source_type=$15, source_name=$16, source_url=$17,
+         output_ingredient_id=$18, output_amount=$19, output_unit=$20, output_expires_days=$21, updated_at=now()
          WHERE id=$12`,
         [
           title?.trim(),
@@ -233,6 +254,10 @@ export const handler = define.handlers({
           sourceType,
           sourceName,
           sourceUrl,
+          outputIngredientId,
+          outputAmount,
+          outputUnit,
+          outputExpiresDays,
         ],
       );
 
@@ -266,6 +291,7 @@ export default define.page<typeof handler>(function RecipeEdit({
     allIngredients,
     allTools,
     allRecipes,
+    outputIngredientName,
   },
 }) {
   const ingredientData = ingredients.map((i) => ({
@@ -467,6 +493,28 @@ export default define.page<typeof handler>(function RecipeEdit({
             <a href="/docs/templates" class="link text-xs">Full reference</a>
           </p>
           <StepForm initialSteps={stepData} />
+        </div>
+
+        <div class="card">
+          <h2 class="font-semibold mb-2">Output Ingredient</h2>
+          <RecipeOutputForm
+            ingredients={allIngredients.map((g) => ({
+              id: String(g.id),
+              name: g.name,
+              unit: g.unit ?? "",
+            }))}
+            initialIngredientId={recipe.output_ingredient_id
+              ? String(recipe.output_ingredient_id)
+              : undefined}
+            initialIngredientName={outputIngredientName || undefined}
+            initialAmount={recipe.output_amount != null
+              ? String(recipe.output_amount)
+              : undefined}
+            initialUnit={recipe.output_unit ?? undefined}
+            initialExpiresDays={recipe.output_expires_days != null
+              ? String(recipe.output_expires_days)
+              : undefined}
+          />
         </div>
 
         <div class="card">

@@ -50,6 +50,13 @@ export const handler = define.handlers({
     ]);
     if (ingredientRes.rows.length === 0) throw new HttpError(404);
 
+    const sourceRecipesRes = await ctx.state.db.query<
+      { title: string; slug: string }
+    >(
+      "SELECT title, slug FROM recipes WHERE output_ingredient_id = $1",
+      [id],
+    );
+
     ctx.state.pageTitle = ingredientRes.rows[0].name;
     return page({
       ingredient: ingredientRes.rows[0],
@@ -57,6 +64,7 @@ export const handler = define.handlers({
       prices: pricesRes.rows,
       stores: storesRes.rows,
       otherIngredients: otherIngredientsRes.rows,
+      sourceRecipes: sourceRecipesRes.rows,
     });
   },
   async POST(ctx) {
@@ -215,7 +223,16 @@ export const handler = define.handlers({
 
 export default define.page<typeof handler>(
   function IngredientDetail(
-    { data: { ingredient, brands, prices, stores, otherIngredients } },
+    {
+      data: {
+        ingredient,
+        brands,
+        prices,
+        stores,
+        otherIngredients,
+        sourceRecipes,
+      },
+    },
   ) {
     return (
       <div>
@@ -229,6 +246,19 @@ export default define.page<typeof handler>(
             </span>
           )}
         </h1>
+
+        {sourceRecipes.length > 0 && (
+          <div class="mb-4">
+            <p class="text-sm text-stone-500">
+              Made by: {sourceRecipes.map((r, i) => (
+                <span key={r.slug}>
+                  {i > 0 && ", "}
+                  <a href={`/recipes/${r.slug}`} class="link">{r.title}</a>
+                </span>
+              ))}
+            </p>
+          </div>
+        )}
 
         <div class="grid gap-6 lg:grid-cols-3">
           <div class="space-y-6">

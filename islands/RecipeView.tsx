@@ -95,6 +95,14 @@ interface RecipeViewProps {
   pantryItems?: PantryItem[];
   householdId?: string | null;
   unitSystem?: UnitSystem;
+  sourceRecipes?: Record<string, { title: string; slug: string }>;
+  outputIngredient?: {
+    ingredient_id: string;
+    name: string;
+    amount: number | null;
+    unit: string | null;
+    expires_days: number | null;
+  } | null;
 }
 
 function escapeHtml(text: string): string {
@@ -212,6 +220,8 @@ export default function RecipeView(
     pantryItems: pantryItemsProp,
     householdId,
     unitSystem: unitSystemProp,
+    sourceRecipes,
+    outputIngredient,
   }: RecipeViewProps,
 ) {
   const unitSystem = unitSystemProp ?? "metric";
@@ -851,6 +861,31 @@ export default function RecipeView(
         items,
       }),
     });
+
+    // Add output ingredient to pantry if recipe produces one
+    if (outputIngredient?.ingredient_id) {
+      const outputAmount = outputIngredient.amount != null
+        ? outputIngredient.amount * ratio
+        : null;
+      const expiresAt = outputIngredient.expires_days != null
+        ? new Date(
+          Date.now() + outputIngredient.expires_days * 24 * 60 * 60 * 1000,
+        ).toISOString()
+        : null;
+      await fetch("/api/pantry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add",
+          ingredient_id: outputIngredient.ingredient_id,
+          name: outputIngredient.name,
+          amount: outputAmount,
+          unit: outputIngredient.unit,
+          expires_at: expiresAt,
+        }),
+      });
+    }
+
     cookedStatus.value = "done";
     setTimeout(() => {
       cookedStatus.value = "idle";
@@ -881,6 +916,20 @@ export default function RecipeView(
               </button>
             </div>
           )}
+          {loggedIn && householdId && (
+            <button
+              type="button"
+              class="btn btn-outline w-full mt-2"
+              disabled={cookedStatus.value === "loading"}
+              onClick={markCooked}
+            >
+              {cookedStatus.value === "done"
+                ? "Deducted from pantry!"
+                : cookedStatus.value === "loading"
+                ? "Updating..."
+                : "I cooked this"}
+            </button>
+          )}
         </div>
         {ingredients.length > 0 && (
           <div class="card">
@@ -902,34 +951,7 @@ export default function RecipeView(
                 </div>
               );
             })()}
-            <div class="flex items-center justify-between mb-2">
-              <h2 class="font-semibold">Ingredients</h2>
-              {loggedIn && (
-                <div class="flex gap-3">
-                  {householdId && (
-                    <button
-                      type="button"
-                      class="text-xs text-stone-500 hover:underline cursor-pointer"
-                      disabled={cookedStatus.value === "loading"}
-                      onClick={markCooked}
-                    >
-                      {cookedStatus.value === "done"
-                        ? "Deducted!"
-                        : "I cooked this"}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    class="text-xs text-orange-600 hover:underline cursor-pointer"
-                    onClick={addAllToShoppingList}
-                  >
-                    {addedToList.value === "all"
-                      ? "Added!"
-                      : "Add missing to list"}
-                  </button>
-                </div>
-              )}
-            </div>
+            <h2 class="font-semibold mb-2">Ingredients</h2>
             <ul class="space-y-1.5">
               {ingredients.map((ing) => {
                 const ratio = getCurrentRatio();
@@ -987,6 +1009,20 @@ export default function RecipeView(
                               </a>
                             )
                             : <span>{ing.name}</span>}
+                          {ing.ingredient_id &&
+                            sourceRecipes?.[ing.ingredient_id] && (
+                            <a
+                              href={`/recipes/${
+                                sourceRecipes[ing.ingredient_id].slug
+                              }`}
+                              class="link text-xs ml-1"
+                              title={`Recipe: ${
+                                sourceRecipes[ing.ingredient_id].title
+                              }`}
+                            >
+                              (recipe)
+                            </a>
+                          )}
                         </span>
                       </span>
                       <span class="flex items-baseline gap-2">
@@ -1060,6 +1096,17 @@ export default function RecipeView(
                 </div>
               );
             })()}
+            {loggedIn && (
+              <button
+                type="button"
+                class="btn btn-outline w-full mt-3 text-xs"
+                onClick={addAllToShoppingList}
+              >
+                {addedToList.value === "all"
+                  ? "Added!"
+                  : "Shop missing"}
+              </button>
+            )}
           </div>
         )}
         {tools && tools.length > 0 && (

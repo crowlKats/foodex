@@ -12,6 +12,7 @@ import { renderRecipeSteps } from "../../../lib/markdown.ts";
 import { formatDuration } from "../../../lib/duration.ts";
 import { scaleIngredients } from "../../../lib/template.ts";
 import { computeIngredientCost } from "../../../lib/unit-convert.ts";
+import { formatAmount } from "../../../lib/format.ts";
 import { formatQuantity } from "../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../lib/quantity.ts";
 import RecipeView from "../../../islands/RecipeView.tsx";
@@ -284,6 +285,51 @@ export const handler = define.handlers({
     );
     const forkCount = forkCountRes.rows[0]?.count ?? 0;
 
+    // Load output ingredient name
+    let outputIngredient: {
+      ingredient_id: string;
+      name: string;
+      amount: number | null;
+      unit: string | null;
+      expires_days: number | null;
+    } | null = null;
+    if (recipe.output_ingredient_id) {
+      const oRes = await ctx.state.db.query<{ name: string }>(
+        "SELECT name FROM ingredients WHERE id = $1",
+        [recipe.output_ingredient_id],
+      );
+      if (oRes.rows.length > 0) {
+        outputIngredient = {
+          ingredient_id: recipe.output_ingredient_id,
+          name: oRes.rows[0].name,
+          amount: recipe.output_amount,
+          unit: recipe.output_unit,
+          expires_days: recipe.output_expires_days,
+        };
+      }
+    }
+
+    // Load source recipes for ingredients (recipes that output an ingredient used here)
+    const sourceRecipes = new Map<string, { title: string; slug: string }>();
+    if (ingredientIds.length > 0) {
+      const srcRes = await ctx.state.db.query<{
+        output_ingredient_id: string;
+        title: string;
+        slug: string;
+      }>(
+        `SELECT output_ingredient_id, title, slug FROM recipes
+         WHERE output_ingredient_id = ANY($1) AND id != $2
+         LIMIT 100`,
+        [ingredientIds, recipe.id],
+      );
+      for (const row of srcRes.rows) {
+        sourceRecipes.set(row.output_ingredient_id, {
+          title: row.title,
+          slug: row.slug,
+        });
+      }
+    }
+
     // Load user's collections for "add to collection" button
     let collections: { id: string; name: string; hasRecipe: boolean }[] = [];
     if (ctx.state.householdId) {
@@ -330,6 +376,8 @@ export const handler = define.handlers({
       forkedFrom,
       forkCount,
       collections,
+      outputIngredient,
+      sourceRecipes: Object.fromEntries(sourceRecipes),
     });
   },
   async POST(ctx) {
@@ -389,6 +437,8 @@ export default define.page<typeof handler>(function RecipeViewPage({
     forkedFrom,
     forkCount,
     collections,
+    outputIngredient,
+    sourceRecipes,
   },
 }) {
   return (
@@ -534,6 +584,30 @@ export default define.page<typeof handler>(function RecipeViewPage({
         )}
       </div>
 
+      {outputIngredient && (
+        <p class="text-sm text-stone-500 mt-2">
+          Yields: {outputIngredient.amount != null && (
+            <span>
+              {formatAmount(outputIngredient.amount, outputIngredient.unit ?? undefined)}
+              {outputIngredient.unit ? ` ${outputIngredient.unit}` : ""}
+              {" "}
+            </span>
+          )}
+          {outputIngredient.name}
+          {outputIngredient.expires_days != null && (
+            <span class="ml-2 text-stone-400">
+              ({outputIngredient.expires_days % 30 === 0 &&
+                  outputIngredient.expires_days >= 30
+                ? `${outputIngredient.expires_days / 30} month`
+                : outputIngredient.expires_days % 7 === 0 &&
+                    outputIngredient.expires_days >= 7
+                ? `${outputIngredient.expires_days / 7} week`
+                : `${outputIngredient.expires_days} day`} shelf life)
+            </span>
+          )}
+        </p>
+      )}
+
       <div class="mt-6">
         <RecipeView
           steps={steps.map((s) => ({
@@ -563,6 +637,8 @@ export default define.page<typeof handler>(function RecipeViewPage({
           pantryItems={pantryItems}
           householdId={householdId}
           unitSystem={unitSystem}
+          sourceRecipes={sourceRecipes}
+          outputIngredient={outputIngredient}
         />
       </div>
     </div>

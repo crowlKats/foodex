@@ -23,6 +23,10 @@ export interface Recipe {
   source_type: string | null;
   source_name: string | null;
   source_url: string | null;
+  output_ingredient_id: string | null;
+  output_amount: number | null;
+  output_unit: string | null;
+  output_expires_days: number | null;
   created_at: string;
   updated_at: string;
 }

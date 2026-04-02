@@ -12,6 +12,7 @@ import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { DurationInput } from "../../components/DurationInput.tsx";
+import RecipeOutputForm from "../../islands/RecipeOutputForm.tsx";
 import { RefForm } from "../../components/RefForm.tsx";
 import {
   DIETARY_TAGS,
@@ -104,6 +105,15 @@ export const handler = define.handlers({
     const sourceType = (form.get("source_type") as string) || null;
     const sourceName = (form.get("source_name") as string)?.trim() || null;
     const sourceUrl = (form.get("source_url") as string)?.trim() || null;
+    const outputIngredientId = (form.get("output_ingredient_id") as string) ||
+      null;
+    const outputAmountRaw = form.get("output_amount") as string;
+    const outputAmount = outputAmountRaw ? parseFloat(outputAmountRaw) : null;
+    const outputUnit = (form.get("output_unit") as string) || null;
+    const outputExpiresDaysRaw = form.get("output_expires_days") as string;
+    const outputExpiresDays = outputExpiresDaysRaw
+      ? parseInt(outputExpiresDaysRaw)
+      : null;
 
     if (!title?.trim()) {
       const ingredientsRes = await ctx.state.db.query<Ingredient>(
@@ -126,8 +136,8 @@ export const handler = define.handlers({
     try {
       await ctx.state.db.transaction(async (q) => {
         const res = await q<{ id: string }>(
-          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
            RETURNING id`,
           [
             title.trim(),
@@ -148,6 +158,10 @@ export const handler = define.handlers({
             sourceType,
             sourceName,
             sourceUrl,
+            outputIngredientId,
+            outputAmount,
+            outputUnit,
+            outputExpiresDays,
           ],
         );
         await saveRecipeChildren(q, res.rows[0].id, form);
@@ -331,6 +345,17 @@ export default define.page<typeof handler>(
               <a href="/docs/templates" class="link text-xs">Full reference</a>
             </p>
             <StepForm initialSteps={[]} />
+          </div>
+
+          <div class="card">
+            <h2 class="font-semibold mb-2">Output Ingredient</h2>
+            <RecipeOutputForm
+              ingredients={ingredients.map((g) => ({
+                id: String(g.id),
+                name: g.name,
+                unit: g.unit ?? "",
+              }))}
+            />
           </div>
 
           <div class="card">

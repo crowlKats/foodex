@@ -8,6 +8,7 @@ import ToolForm from "./ToolForm.tsx";
 import StepForm from "./StepForm.tsx";
 import MediaUpload from "./MediaUpload.tsx";
 import RecipePreview from "./RecipePreview.tsx";
+import RecipeOutputForm from "./RecipeOutputForm.tsx";
 import ConfirmButton from "./ConfirmButton.tsx";
 import { SOURCE_TYPE_LABELS, SOURCE_TYPES } from "../lib/recipe-tags.ts";
 
@@ -312,6 +313,25 @@ export default function DraftEditor({
         </div>
 
         <div class="card">
+          <h2 class="font-semibold mb-2">Output Ingredient</h2>
+          <RecipeOutputForm
+            ingredients={ingredients}
+            initialIngredientId={(r.output_ingredient_id as string) ??
+              undefined}
+            initialIngredientName={r.output_ingredient_id
+              ? ingredients.find((g) => g.id === r.output_ingredient_id)?.name
+              : undefined}
+            initialAmount={r.output_amount != null
+              ? String(r.output_amount)
+              : undefined}
+            initialUnit={(r.output_unit as string) ?? undefined}
+            initialExpiresDays={r.output_expires_days != null
+              ? String(r.output_expires_days)
+              : undefined}
+          />
+        </div>
+
+        <div class="card">
           <h2 class="font-semibold mb-2">Sub-recipe References</h2>
           {/* RefForm is a server component, rendered as static HTML. We render a simple version here. */}
           <select name="refs[0][referenced_recipe_id]" class="w-full text-sm">
@@ -395,5 +415,15 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     ingredients,
     steps,
     cover_image: null,
+    output_ingredient_id: (fd.get("output_ingredient_id") as string) || null,
+    output_amount: fd.has("output_amount") &&
+        (fd.get("output_amount") as string)
+      ? parseFloat(fd.get("output_amount") as string)
+      : null,
+    output_unit: (fd.get("output_unit") as string) || null,
+    output_expires_days: fd.has("output_expires_days") &&
+        (fd.get("output_expires_days") as string)
+      ? parseInt(fd.get("output_expires_days") as string)
+      : null,
   };
 }

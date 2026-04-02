@@ -149,7 +149,9 @@
 
 - **recipes** — title, slug, description, quantity_type/value/unit (+
   value2/value3/unit2 for dimensions), prep_time, cook_time, difficulty,
-  cover_image_id, household_id, private
+  cover_image_id, household_id, private,
+  output_ingredient_id/output_amount/output_unit (optional: links recipe to the
+  ingredient it produces with yield amount)
 - **recipe_ingredients** — recipe_id, ingredient_id (nullable), name, amount,
   unit, key, sort_order
 - **recipe_steps** — recipe_id, title, body (markdown + template syntax),

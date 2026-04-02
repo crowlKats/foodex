@@ -24,6 +24,10 @@ export interface OcrRecipeData {
   source_type?: string | null;
   source_name?: string | null;
   source_url?: string | null;
+  output_ingredient_id?: string | null;
+  output_amount?: number | null;
+  output_unit?: string | null;
+  output_expires_days?: number | null;
 }
 
 const SYSTEM_PROMPT =
