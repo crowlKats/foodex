@@ -83,9 +83,7 @@ export async function saveRecipeChildren(
     // Parse "after" field: comma-separated form indices
     const afterStr = step.after?.trim() ?? "";
     stepAfters.push(
-      afterStr
-        ? afterStr.split(",").map(Number).filter((n) => !isNaN(n))
-        : [],
+      afterStr ? afterStr.split(",").map(Number).filter((n) => !isNaN(n)) : [],
     );
   }
 

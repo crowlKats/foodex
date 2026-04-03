@@ -171,9 +171,16 @@ function renderStepsClient(
     const ann = annotations[i].annotation;
     let html = "";
     if (ann) {
-      html += `<div class="text-sm text-orange-600 dark:text-orange-400 italic mb-1">${escapeHtml(ann)}</div>`;
+      html +=
+        `<div class="text-sm text-orange-600 dark:text-orange-400 italic mb-1">${
+          escapeHtml(ann)
+        }</div>`;
     }
-    html += `<h2 id="step-${i + 1}" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${i + 1}.</span>${escapeHtml(step.title)}</h2>\n${stepHtmls[i]}`;
+    html += `<h2 id="step-${
+      i + 1
+    }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
+      i + 1
+    }.</span>${escapeHtml(step.title)}</h2>\n${stepHtmls[i]}`;
     parts.push(html);
   }
   return parts.join("\n");
@@ -1152,9 +1159,7 @@ export default function RecipeView(
                 class="btn btn-outline w-full mt-3 text-xs"
                 onClick={addAllToShoppingList}
               >
-                {addedToList.value === "all"
-                  ? "Added!"
-                  : "Shop missing"}
+                {addedToList.value === "all" ? "Added!" : "Shop missing"}
               </button>
             )}
           </div>
@@ -1273,7 +1278,9 @@ export default function RecipeView(
             <div
               class="cooking-mode-step-content"
               // deno-lint-ignore react-no-danger
-              dangerouslySetInnerHTML={{ __html: getCookingStepHtmlFor(cookingStep.value) }}
+              dangerouslySetInnerHTML={{
+                __html: getCookingStepHtmlFor(cookingStep.value),
+              }}
             />
             {ingredients.length > 0 && (
               <details class="cooking-mode-ingredients">
@@ -1349,82 +1356,96 @@ export default function RecipeView(
               </div>
             </div>
 
-            {allDone ? (
-              <div class="cooking-mode-body">
-                <div class="text-center py-12">
-                  <div class="text-3xl font-bold mb-2">Done!</div>
-                  <div class="text-stone-500">All steps completed.</div>
+            {allDone
+              ? (
+                <div class="cooking-mode-body">
+                  <div class="text-center py-12">
+                    <div class="text-3xl font-bold mb-2">Done!</div>
+                    <div class="text-stone-500">All steps completed.</div>
+                  </div>
                 </div>
-              </div>
-            ) : (() => {
-              // Build columns: each available step gets a column,
-              // each done step that's waiting for parallel siblings gets a "waiting" column.
-              const done = cookingDone.value;
-              const waitingSteps: number[] = [];
-              for (const idx of done) {
-                // Check if any dependent of this step is still blocked
-                // (i.e. this step is done but a parallel sibling isn't)
-                const hasPendingDependent = steps.some((s, si) => {
-                  if (done.has(si) || !s.after?.includes(idx)) return false;
-                  // si depends on idx, but is si available? If not, idx is "waiting"
-                  return !available.includes(si);
-                });
-                if (hasPendingDependent) waitingSteps.push(idx);
-              }
+              )
+              : (() => {
+                // Build columns: each available step gets a column,
+                // each done step that's waiting for parallel siblings gets a "waiting" column.
+                const done = cookingDone.value;
+                const waitingSteps: number[] = [];
+                for (const idx of done) {
+                  // Check if any dependent of this step is still blocked
+                  // (i.e. this step is done but a parallel sibling isn't)
+                  const hasPendingDependent = steps.some((s, si) => {
+                    if (done.has(si) || !s.after?.includes(idx)) return false;
+                    // si depends on idx, but is si available? If not, idx is "waiting"
+                    return !available.includes(si);
+                  });
+                  if (hasPendingDependent) waitingSteps.push(idx);
+                }
 
-              // Interleave: show available and waiting columns
-              // Sort by step index for consistent ordering
-              const columns: { idx: number; waiting: boolean }[] = [
-                ...available.map((idx) => ({ idx, waiting: false })),
-                ...waitingSteps.filter((idx) => !available.includes(idx)).map((idx) => ({ idx, waiting: true })),
-              ].sort((a, b) => a.idx - b.idx);
+                // Interleave: show available and waiting columns
+                // Sort by step index for consistent ordering
+                const columns: { idx: number; waiting: boolean }[] = [
+                  ...available.map((idx) => ({ idx, waiting: false })),
+                  ...waitingSteps.filter((idx) => !available.includes(idx)).map(
+                    (idx) => ({ idx, waiting: true }),
+                  ),
+                ].sort((a, b) => a.idx - b.idx);
 
-              return (
-                <div class="flex-1 flex overflow-hidden">
-                  {columns.map(({ idx, waiting }) => (
-                    <div
-                      key={idx}
-                      class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0"
-                    >
-                      {waiting ? (
-                        <div class="flex-1 flex items-center justify-center px-6 py-6">
-                          <div class="text-center text-stone-400">
-                            <div class="text-lg font-semibold mb-1">
-                              <span class="text-stone-300 mr-2">{idx + 1}.</span>
-                              {steps[idx].title}
+                return (
+                  <div class="flex-1 flex overflow-hidden">
+                    {columns.map(({ idx, waiting }) => (
+                      <div
+                        key={idx}
+                        class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0"
+                      >
+                        {waiting
+                          ? (
+                            <div class="flex-1 flex items-center justify-center px-6 py-6">
+                              <div class="text-center text-stone-400">
+                                <div class="text-lg font-semibold mb-1">
+                                  <span class="text-stone-300 mr-2">
+                                    {idx + 1}.
+                                  </span>
+                                  {steps[idx].title}
+                                </div>
+                                <div class="text-sm">
+                                  Waiting on other steps
+                                </div>
+                              </div>
                             </div>
-                            <div class="text-sm">Waiting on other steps</div>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
-                            <div class="cooking-mode-step-title">
-                              <span class="text-stone-400 mr-2">{idx + 1}.</span>
-                              {steps[idx].title}
-                            </div>
-                            <div
-                              class="cooking-mode-step-content"
-                              // deno-lint-ignore react-no-danger
-                              dangerouslySetInnerHTML={{ __html: getCookingStepHtmlFor(idx) }}
-                            />
-                          </div>
-                          <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700">
-                            <button
-                              type="button"
-                              class="cooking-mode-nav-btn btn-primary w-full"
-                              onClick={() => markStepDone(idx)}
-                            >
-                              Mark done
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+                          )
+                          : (
+                            <>
+                              <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
+                                <div class="cooking-mode-step-title">
+                                  <span class="text-stone-400 mr-2">
+                                    {idx + 1}.
+                                  </span>
+                                  {steps[idx].title}
+                                </div>
+                                <div
+                                  class="cooking-mode-step-content"
+                                  // deno-lint-ignore react-no-danger
+                                  dangerouslySetInnerHTML={{
+                                    __html: getCookingStepHtmlFor(idx),
+                                  }}
+                                />
+                              </div>
+                              <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700">
+                                <button
+                                  type="button"
+                                  class="cooking-mode-nav-btn btn-primary w-full"
+                                  onClick={() => markStepDone(idx)}
+                                >
+                                  Mark done
+                                </button>
+                              </div>
+                            </>
+                          )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
           </div>
         );
       })()}

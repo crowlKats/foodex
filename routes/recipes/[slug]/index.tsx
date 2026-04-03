@@ -604,7 +604,10 @@ export default define.page<typeof handler>(function RecipeViewPage({
         <p class="text-sm text-stone-500 mt-2">
           Yields: {outputIngredient.amount != null && (
             <span>
-              {formatAmount(outputIngredient.amount, outputIngredient.unit ?? undefined)}
+              {formatAmount(
+                outputIngredient.amount,
+                outputIngredient.unit ?? undefined,
+              )}
               {outputIngredient.unit ? ` ${outputIngredient.unit}` : ""}
               {" "}
             </span>

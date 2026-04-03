@@ -1,4 +1,4 @@
-import { useSignal, signal } from "@preact/signals";
+import { signal, useSignal } from "@preact/signals";
 import type { OcrRecipeData } from "../lib/ocr.ts";
 import RefineInput from "./RefineInput.tsx";
 import type { AiMessage } from "./RefineInput.tsx";

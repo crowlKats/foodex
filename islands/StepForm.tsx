@@ -64,7 +64,9 @@ function reindexSteps(steps: StepEntry[], selectedIdx: number | null) {
   return {
     steps: order.map((oldIdx) => ({
       ...steps[oldIdx],
-      after: steps[oldIdx].after.map((a) => remap.get(a)!).sort((a, b) => a - b),
+      after: steps[oldIdx].after.map((a) => remap.get(a)!).sort((a, b) =>
+        a - b
+      ),
     })),
     selected: selectedIdx != null ? (remap.get(selectedIdx) ?? null) : null,
   };
@@ -86,11 +88,20 @@ interface GraphLayout {
   svgH: number;
   stepY: Map<number, number>;
   colSorted: Map<number, number[]>;
-  edges: { d: string; active: boolean; key: string; fromIdx: number; toIdx: number }[];
+  edges: {
+    d: string;
+    active: boolean;
+    key: string;
+    fromIdx: number;
+    toIdx: number;
+  }[];
   leafNodes: number[];
 }
 
-function computeGraphLayout(steps: StepEntry[], sel: number | null): GraphLayout {
+function computeGraphLayout(
+  steps: StepEntry[],
+  sel: number | null,
+): GraphLayout {
   const cols = computeColumns(steps);
   const maxCol = Math.max(0, ...cols);
 
@@ -112,7 +123,8 @@ function computeGraphLayout(steps: StepEntry[], sel: number | null): GraphLayout
       inCol.sort((a, b) => {
         const avg = (idx: number) =>
           steps[idx].after.length > 0
-            ? steps[idx].after.reduce((s, d) => s + (stepY.get(d) ?? 0), 0) / steps[idx].after.length
+            ? steps[idx].after.reduce((s, d) => s + (stepY.get(d) ?? 0), 0) /
+              steps[idx].after.length
             : 0;
         return avg(a) - avg(b);
       });
@@ -139,7 +151,9 @@ function computeGraphLayout(steps: StepEntry[], sel: number | null): GraphLayout
       const p2x = cols[i] * COL_WIDTH;
       const p2y = stepY.get(i) ?? 0;
       const dx = Math.abs(p2x - p1x) * 0.5;
-      const d = `M${p1x},${p1y} C${p1x + dx},${p1y} ${p2x - dx},${p2y} ${p2x},${p2y}`;
+      const d = `M${p1x},${p1y} C${p1x + dx},${p1y} ${
+        p2x - dx
+      },${p2y} ${p2x},${p2y}`;
       const active = sel != null && (sel === i || sel === dep);
       edges.push({ d, active, key: `${dep}-${i}`, fromIdx: dep, toIdx: i });
     }
@@ -181,14 +195,28 @@ function StepEditor(
         <div class="flex flex-wrap gap-2">
           {step.media.map((m, mi) => (
             <div key={m.id} class="relative group">
-              <img src={m.url} alt="" class="w-20 h-20 object-cover border-2 border-stone-300 dark:border-stone-700" />
-              <button type="button" onClick={() => onRemoveMedia(mi)} class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"><TbX class="size-3" /></button>
+              <img
+                src={m.url}
+                alt=""
+                class="w-20 h-20 object-cover border-2 border-stone-300 dark:border-stone-700"
+              />
+              <button
+                type="button"
+                onClick={() => onRemoveMedia(mi)}
+                class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              >
+                <TbX class="size-3" />
+              </button>
             </div>
           ))}
         </div>
       )}
       <button type="button" class="link text-xs" onClick={onUploadMedia}>
-        {uploading ? "Uploading..." : <span><TbUpload class="size-3 inline mr-0.5" />Add images</span>}
+        {uploading ? "Uploading..." : (
+          <span>
+            <TbUpload class="size-3 inline mr-0.5" />Add images
+          </span>
+        )}
       </button>
     </div>
   );
@@ -229,7 +257,10 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
         const data = await res.json();
         next[stepIndex] = {
           ...next[stepIndex],
-          media: [...next[stepIndex].media, { id: String(data.id), url: String(data.url) }],
+          media: [...next[stepIndex].media, {
+            id: String(data.id),
+            url: String(data.url),
+          }],
         };
       } catch { /* skip */ }
     }
@@ -240,8 +271,12 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
   function removeMedia(stepIndex: number, mediaIndex: number) {
     const next = [...items.value];
     const item = next[stepIndex];
-    fetch(`/api/media/${item.media[mediaIndex].id}`, { method: "DELETE" }).catch(() => {});
-    next[stepIndex] = { ...item, media: item.media.filter((_, i) => i !== mediaIndex) };
+    fetch(`/api/media/${item.media[mediaIndex].id}`, { method: "DELETE" })
+      .catch(() => {});
+    next[stepIndex] = {
+      ...item,
+      media: item.media.filter((_, i) => i !== mediaIndex),
+    };
     items.value = next;
   }
 
@@ -256,7 +291,10 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
 
   // ── Graph mutations ──
 
-  function applyGraphChange(next: StepEntry[], newSelIdx: number | null = selected.value) {
+  function applyGraphChange(
+    next: StepEntry[],
+    newSelIdx: number | null = selected.value,
+  ) {
     const r = reindexSteps(next, newSelIdx);
     items.value = r.steps;
     selected.value = r.selected;
@@ -291,17 +329,24 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
   }
 
   function graphRemoveStep(index: number) {
-    const newSel = selected.value === index ? null
-      : selected.value != null && selected.value > index ? selected.value - 1
+    const newSel = selected.value === index
+      ? null
+      : selected.value != null && selected.value > index
+      ? selected.value - 1
       : selected.value;
 
     const deletedDeps = items.value[index].after;
     const next = items.value.filter((_, i) => i !== index).map((s) => {
       let after = s.after;
       if (after.includes(index)) {
-        after = [...new Set([...after.filter((a) => a !== index), ...deletedDeps])];
+        after = [
+          ...new Set([...after.filter((a) => a !== index), ...deletedDeps]),
+        ];
       }
-      return { ...s, after: after.map((a) => (a > index ? a - 1 : a)).sort((a, b) => a - b) };
+      return {
+        ...s,
+        after: after.map((a) => (a > index ? a - 1 : a)).sort((a, b) => a - b),
+      };
     });
 
     if (next.length === 0) {
@@ -316,13 +361,19 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
     if (stepIndex === depIndex) return;
     if (items.value[stepIndex].after.includes(depIndex)) return;
     const next = [...items.value];
-    next[stepIndex] = { ...next[stepIndex], after: [...next[stepIndex].after, depIndex].sort((a, b) => a - b) };
+    next[stepIndex] = {
+      ...next[stepIndex],
+      after: [...next[stepIndex].after, depIndex].sort((a, b) => a - b),
+    };
     applyGraphChange(next);
   }
 
   function removeDep(stepIndex: number, depIndex: number) {
     const next = [...items.value];
-    next[stepIndex] = { ...next[stepIndex], after: next[stepIndex].after.filter((a) => a !== depIndex) };
+    next[stepIndex] = {
+      ...next[stepIndex],
+      after: next[stepIndex].after.filter((a) => a !== depIndex),
+    };
     applyGraphChange(next);
   }
 
@@ -333,7 +384,9 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
     e.stopPropagation();
     dragFrom.value = index;
 
-    const container = (e.target as HTMLElement).closest("[data-graph-container]") as HTMLElement;
+    const container = (e.target as HTMLElement).closest(
+      "[data-graph-container]",
+    ) as HTMLElement;
     if (!container) return;
     const rect = container.getBoundingClientRect();
     dragPos.value = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -367,7 +420,10 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
     selected.value = null;
   } else if (mode.value === "graph" && savedGraphDeps.value != null) {
     if (savedGraphDeps.value.length === items.value.length) {
-      items.value = items.value.map((s, i) => ({ ...s, after: savedGraphDeps.value![i] }));
+      items.value = items.value.map((s, i) => ({
+        ...s,
+        after: savedGraphDeps.value![i],
+      }));
     }
     savedGraphDeps.value = null;
   }
@@ -394,7 +450,9 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
     const p1y = layout.stepY.get(dragFrom.value) ?? 0;
     const p2 = dragPos.value;
     const dx = Math.abs(p2.x - p1x) * 0.4;
-    return `M${p1x},${p1y} C${p1x + dx},${p1y} ${p2.x - dx},${p2.y} ${p2.x},${p2.y}`;
+    return `M${p1x},${p1y} C${p1x + dx},${p1y} ${
+      p2.x - dx
+    },${p2.y} ${p2.x},${p2.y}`;
   })();
 
   return (
@@ -405,36 +463,70 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
           {steps.map((item, i) => (
             <div key={i} class="card p-3 space-y-2">
               <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center min-w-0">
-                <span class="text-xs text-stone-400 font-mono shrink-0 max-sm:order-1">#{i + 1}</span>
+                <span class="text-xs text-stone-400 font-mono shrink-0 max-sm:order-1">
+                  #{i + 1}
+                </span>
                 <input
                   type="text"
                   placeholder="Step title"
                   value={item.title}
-                  onInput={(e) => updateField(i, "title", (e.target as HTMLInputElement).value)}
+                  onInput={(e) =>
+                    updateField(
+                      i,
+                      "title",
+                      (e.target as HTMLInputElement).value,
+                    )}
                   class="flex-1 min-w-0 text-sm font-medium max-sm:order-3 max-sm:basis-full"
                 />
                 <div class="flex items-center gap-1 shrink-0 max-sm:order-2 max-sm:ml-auto">
-                  <button type="button" disabled={i === 0} class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default" onClick={() => {
-                    if (i === 0) return;
-                    const n = [...items.value];
-                    [n[i], n[i - 1]] = [n[i - 1], n[i]];
-                    items.value = toLinearChain(n);
-                  }}><TbArrowUp class="size-4" /></button>
-                  <button type="button" disabled={i === items.value.length - 1} class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default" onClick={() => {
-                    if (i >= items.value.length - 1) return;
-                    const n = [...items.value];
-                    [n[i], n[i + 1]] = [n[i + 1], n[i]];
-                    items.value = toLinearChain(n);
-                  }}><TbArrowDown class="size-4" /></button>
-                  <button type="button" class="text-red-600 hover:text-red-700 p-1 cursor-pointer" onClick={() => {
-                    items.value = toLinearChain(items.value.filter((_, j) => j !== i));
-                  }}><TbTrash class="size-4" /></button>
+                  <button
+                    type="button"
+                    disabled={i === 0}
+                    class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"
+                    onClick={() => {
+                      if (i === 0) return;
+                      const n = [...items.value];
+                      [n[i], n[i - 1]] = [n[i - 1], n[i]];
+                      items.value = toLinearChain(n);
+                    }}
+                  >
+                    <TbArrowUp class="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={i === items.value.length - 1}
+                    class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"
+                    onClick={() => {
+                      if (i >= items.value.length - 1) return;
+                      const n = [...items.value];
+                      [n[i], n[i + 1]] = [n[i + 1], n[i]];
+                      items.value = toLinearChain(n);
+                    }}
+                  >
+                    <TbArrowDown class="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    class="text-red-600 hover:text-red-700 p-1 cursor-pointer"
+                    onClick={() => {
+                      items.value = toLinearChain(
+                        items.value.filter((_, j) => j !== i),
+                      );
+                    }}
+                  >
+                    <TbTrash class="size-4" />
+                  </button>
                 </div>
               </div>
               <textarea
                 placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
                 value={item.body}
-                onInput={(e) => updateField(i, "body", (e.target as HTMLTextAreaElement).value)}
+                onInput={(e) =>
+                  updateField(
+                    i,
+                    "body",
+                    (e.target as HTMLTextAreaElement).value,
+                  )}
                 rows={6}
                 class="w-full text-sm font-mono"
               />
@@ -442,20 +534,47 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
                 <div class="flex flex-wrap gap-2">
                   {item.media.map((m, mi) => (
                     <div key={m.id} class="relative group">
-                      <img src={m.url} alt="" class="w-20 h-20 object-cover border-2 border-stone-300 dark:border-stone-700" />
-                      <button type="button" onClick={() => removeMedia(i, mi)} class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"><TbX class="size-3" /></button>
+                      <img
+                        src={m.url}
+                        alt=""
+                        class="w-20 h-20 object-cover border-2 border-stone-300 dark:border-stone-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeMedia(i, mi)}
+                        class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        <TbX class="size-3" />
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
-              <button type="button" class="link text-xs" onClick={() => triggerFileUpload(i)}>
-                {uploading.value === i ? "Uploading..." : <span><TbUpload class="size-3 inline mr-0.5" />Add images</span>}
+              <button
+                type="button"
+                class="link text-xs"
+                onClick={() => triggerFileUpload(i)}
+              >
+                {uploading.value === i ? "Uploading..." : (
+                  <span>
+                    <TbUpload class="size-3 inline mr-0.5" />Add images
+                  </span>
+                )}
               </button>
             </div>
           ))}
           <button
             type="button"
-            onClick={() => { const prev = items.value.length - 1; items.value = [...items.value, { title: "", body: "", media: [], after: prev >= 0 ? [prev] : [] }]; }}
+            onClick={() => {
+              const prev = items.value.length - 1;
+              items.value = [...items.value, {
+                title: "",
+                body: "",
+                media: [],
+                after: prev >= 0 ? [prev] : [],
+              }];
+            }}
             class="link text-sm font-medium"
           >
             <TbPlus class="size-3.5 inline mr-1" />Add Step
@@ -467,7 +586,14 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
       {isGraph && layout && (
         <div class="space-y-4">
           <div class="overflow-x-auto pb-2">
-            <div data-graph-container style={{ position: "relative", width: `${layout.svgW}px`, minHeight: `${layout.svgH + ROW_HEIGHT}px` }}>
+            <div
+              data-graph-container
+              style={{
+                position: "relative",
+                width: `${layout.svgW}px`,
+                minHeight: `${layout.svgH + ROW_HEIGHT}px`,
+              }}
+            >
               <div style={{ position: "relative", zIndex: 2 }}>
                 {steps.map((step, index) => {
                   const y = (layout.stepY.get(index) ?? 0) - CARD_H / 2;
@@ -477,32 +603,86 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
                     ? "border-orange-400 ring-2 ring-orange-200 dark:ring-orange-800"
                     : isSelected
                     ? "border-orange-500 ring-2 ring-orange-200 dark:ring-orange-800"
-                    : selDeps.has(index) ? "border-green-400 dark:border-green-600"
-                    : selDependents.has(index) ? "border-blue-300 dark:border-blue-700"
+                    : selDeps.has(index)
+                    ? "border-green-400 dark:border-green-600"
+                    : selDependents.has(index)
+                    ? "border-blue-300 dark:border-blue-700"
                     : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600";
 
                   return (
                     <div
                       key={index}
                       data-step-idx={index}
-                      style={{ position: "absolute", left: `${x}px`, top: `${y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }}
+                      style={{
+                        position: "absolute",
+                        left: `${x}px`,
+                        top: `${y}px`,
+                        width: `${CARD_W}px`,
+                        height: `${CARD_H}px`,
+                      }}
                       class={`p-2 border-2 cursor-pointer transition-colors text-sm bg-white dark:bg-stone-900 ${borderClass}`}
-                      onClick={() => { selected.value = isSelected ? null : index; }}
+                      onClick={() => {
+                        selected.value = isSelected ? null : index;
+                      }}
                     >
                       <div class="flex items-center justify-between gap-1">
                         <div class="min-w-0 flex-1 flex items-center gap-1.5">
-                          <span class="text-xs text-stone-400 font-mono shrink-0">#{index + 1}</span>
-                          <span class="font-medium truncate">{step.title.trim() || <span class="text-stone-400 italic">untitled</span>}</span>
+                          <span class="text-xs text-stone-400 font-mono shrink-0">
+                            #{index + 1}
+                          </span>
+                          <span class="font-medium truncate">
+                            {step.title.trim() || (
+                              <span class="text-stone-400 italic">
+                                untitled
+                              </span>
+                            )}
+                          </span>
                         </div>
                         <div class="flex items-center shrink-0">
-                          <button type="button" title="Insert step in sequence" class="text-stone-400 hover:text-orange-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphInsertAfter(index); }}><TbPlus class="size-3.5" /></button>
-                          <button type="button" title="Add parallel branch" class="text-stone-400 hover:text-blue-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphBranchAfter(index); }}><TbPlus class="size-3.5" style={{ transform: "rotate(45deg)" }} /></button>
-                          <button type="button" class="text-stone-400 hover:text-red-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphRemoveStep(index); }}><TbTrash class="size-3.5" /></button>
+                          <button
+                            type="button"
+                            title="Insert step in sequence"
+                            class="text-stone-400 hover:text-orange-600 p-0.5 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              graphInsertAfter(index);
+                            }}
+                          >
+                            <TbPlus class="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Add parallel branch"
+                            class="text-stone-400 hover:text-blue-600 p-0.5 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              graphBranchAfter(index);
+                            }}
+                          >
+                            <TbPlus
+                              class="size-3.5"
+                              style={{ transform: "rotate(45deg)" }}
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            class="text-stone-400 hover:text-red-600 p-0.5 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              graphRemoveStep(index);
+                            }}
+                          >
+                            <TbTrash class="size-3.5" />
+                          </button>
                         </div>
                       </div>
                       <div
                         class="absolute top-1/2 -right-2.5 w-5 h-5 -mt-2.5 flex items-center justify-center cursor-crosshair"
-                        onMouseDown={(e) => onDragHandleMouseDown(index, e as unknown as MouseEvent)}
+                        onMouseDown={(e) =>
+                          onDragHandleMouseDown(
+                            index,
+                            e as unknown as MouseEvent,
+                          )}
                       >
                         <div class="w-2.5 h-2.5 rounded-full bg-stone-300 dark:bg-stone-600 hover:bg-orange-400 dark:hover:bg-orange-500 transition-colors" />
                       </div>
@@ -519,7 +699,13 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
                     : 0;
                   return (
                     <div
-                      style={{ position: "absolute", left: 0, top: `${y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }}
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: `${y}px`,
+                        width: `${CARD_W}px`,
+                        height: `${CARD_H}px`,
+                      }}
                       class="border-2 border-dashed border-stone-300 dark:border-stone-600 hover:border-stone-400 dark:hover:border-stone-500 cursor-pointer transition-colors flex items-center justify-center text-stone-400 hover:text-stone-600 text-xs"
                       onClick={graphAddStart}
                     >
@@ -530,15 +716,50 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
               </div>
 
               {/* SVG edges */}
-              <svg style={{ position: "absolute", top: 0, left: 0, zIndex: 1, pointerEvents: "none", overflow: "visible" }} width={layout.svgW} height={layout.svgH}>
+              <svg
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  zIndex: 1,
+                  pointerEvents: "none",
+                  overflow: "visible",
+                }}
+                width={layout.svgW}
+                height={layout.svgH}
+              >
                 {layout.edges.map(({ d, active, key, fromIdx, toIdx }) => (
                   <g key={key}>
-                    <path d={d} fill="none" stroke="transparent" stroke-width={12} style={{ pointerEvents: "stroke", cursor: "pointer" }} onClick={() => removeDep(toIdx, fromIdx)} />
-                    <path d={d} fill="none" stroke={active ? "var(--color-orange-500)" : "var(--color-stone-400)"} stroke-width={active ? 2.5 : 1.5} opacity={active ? 1 : 0.4} style={{ pointerEvents: "none" }} />
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke="transparent"
+                      stroke-width={12}
+                      style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                      onClick={() =>
+                        removeDep(toIdx, fromIdx)}
+                    />
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke={active
+                        ? "var(--color-orange-500)"
+                        : "var(--color-stone-400)"}
+                      stroke-width={active ? 2.5 : 1.5}
+                      opacity={active ? 1 : 0.4}
+                      style={{ pointerEvents: "none" }}
+                    />
                   </g>
                 ))}
                 {dragLine && (
-                  <path d={dragLine} fill="none" stroke="var(--color-orange-500)" stroke-width={2} stroke-dasharray="6 4" opacity={0.7} />
+                  <path
+                    d={dragLine}
+                    fill="none"
+                    stroke="var(--color-orange-500)"
+                    stroke-width={2}
+                    stroke-dasharray="6 4"
+                    opacity={0.7}
+                  />
                 )}
               </svg>
             </div>
@@ -547,16 +768,27 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
           {/* Legend */}
           {sel != null && (
             <div class="flex flex-wrap gap-3 text-xs text-stone-500">
-              <span><span class="inline-block w-3 h-3 border-2 border-orange-500 mr-1 align-middle" />selected</span>
-              <span><span class="inline-block w-3 h-3 border-2 border-green-400 mr-1 align-middle" />dependency</span>
-              <span><span class="inline-block w-3 h-3 border-2 border-blue-300 mr-1 align-middle" />depends on selected</span>
+              <span>
+                <span class="inline-block w-3 h-3 border-2 border-orange-500 mr-1 align-middle" />selected
+              </span>
+              <span>
+                <span class="inline-block w-3 h-3 border-2 border-green-400 mr-1 align-middle" />dependency
+              </span>
+              <span>
+                <span class="inline-block w-3 h-3 border-2 border-blue-300 mr-1 align-middle" />depends
+                on selected
+              </span>
             </div>
           )}
 
           {/* Single end node validation */}
           {layout.leafNodes.length > 1 && (
             <div class="text-xs text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-700 p-2">
-              Recipe must have a single final step. Currently {layout.leafNodes.length} steps have nothing after them: {layout.leafNodes.map((i) => `#${i + 1} ${steps[i].title.trim() || "untitled"}`).join(", ")}. Connect them or remove extras.
+              Recipe must have a single final step. Currently{" "}
+              {layout.leafNodes.length} steps have nothing after them:{" "}
+              {layout.leafNodes.map((i) =>
+                `#${i + 1} ${steps[i].title.trim() || "untitled"}`
+              ).join(", ")}. Connect them or remove extras.
             </div>
           )}
 
@@ -564,8 +796,18 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
           {sel != null && steps[sel] && (
             <div class="card p-4 border-orange-300 dark:border-orange-700 border-2">
               <div class="flex items-center gap-2 mb-3">
-                <span class="text-sm font-semibold text-stone-500">Step {sel + 1}</span>
-                <button type="button" onClick={() => { selected.value = null; }} class="text-stone-400 hover:text-stone-600 ml-auto cursor-pointer"><TbX class="size-4" /></button>
+                <span class="text-sm font-semibold text-stone-500">
+                  Step {sel + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    selected.value = null;
+                  }}
+                  class="text-stone-400 hover:text-stone-600 ml-auto cursor-pointer"
+                >
+                  <TbX class="size-4" />
+                </button>
               </div>
               <StepEditor
                 step={steps[sel]}
@@ -586,9 +828,18 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
         <div key={`hidden-${i}`}>
           <input type="hidden" name={`steps[${i}][title]`} value={step.title} />
           <input type="hidden" name={`steps[${i}][body]`} value={step.body} />
-          <input type="hidden" name={`steps[${i}][after]`} value={step.after.join(",")} />
+          <input
+            type="hidden"
+            name={`steps[${i}][after]`}
+            value={step.after.join(",")}
+          />
           {step.media.map((m, mi) => (
-            <input key={m.id} type="hidden" name={`steps[${i}][media][${mi}]`} value={m.id} />
+            <input
+              key={m.id}
+              type="hidden"
+              name={`steps[${i}][media][${mi}]`}
+              value={m.id}
+            />
           ))}
         </div>
       ))}

@@ -344,9 +344,12 @@ export default define.page<typeof handler>(function RecipeEdit({
     after: s.after ?? [],
   }));
 
-  const hasGraph = stepData.length > 0 && !stepData.every((s, i) =>
-    i === 0 ? s.after.length === 0 : (s.after.length === 1 && s.after[0] === i - 1)
-  );
+  const hasGraph = stepData.length > 0 &&
+    !stepData.every((s, i) =>
+      i === 0
+        ? s.after.length === 0
+        : (s.after.length === 1 && s.after[0] === i - 1)
+    );
   const stepMode = signal<"list" | "graph">(hasGraph ? "graph" : "list");
 
   const refData = refs.map((r) => ({

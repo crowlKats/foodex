@@ -49,7 +49,10 @@ export async function renderRecipeSteps(
         if (ref) {
           const safeTitle = ref.title.replace(/[\[\]\\]/g, (c) => `\\${c}`);
           const safeSlug = encodeURIComponent(ref.slug);
-          result = result.replace(match[0], `[${safeTitle}](/recipes/${safeSlug})`);
+          result = result.replace(
+            match[0],
+            `[${safeTitle}](/recipes/${safeSlug})`,
+          );
         } else {
           const safeSlug = slug.replace(/[\[\]\\*_]/g, (c) => `\\${c}`);
           result = result.replace(match[0], `*unknown recipe: ${safeSlug}*`);
@@ -61,7 +64,9 @@ export async function renderRecipeSteps(
     if (step.media && step.media.length > 0) {
       html += `<div class="flex flex-wrap gap-2 mt-3">${
         step.media.map((m) =>
-          `<img src="${escapeHtml(m.url)}" alt="" class="max-w-sm border-2 border-stone-300 dark:border-stone-700" />`
+          `<img src="${
+            escapeHtml(m.url)
+          }" alt="" class="max-w-sm border-2 border-stone-300 dark:border-stone-700" />`
         ).join("")
       }</div>`;
     }
@@ -81,10 +86,17 @@ export async function renderRecipeSteps(
     let stepHtml = "";
 
     if (ann) {
-      stepHtml += `<div class="text-sm text-orange-600 dark:text-orange-400 italic mb-1">${escapeHtml(ann)}</div>`;
+      stepHtml +=
+        `<div class="text-sm text-orange-600 dark:text-orange-400 italic mb-1">${
+          escapeHtml(ann)
+        }</div>`;
     }
 
-    stepHtml += `<h2 id="step-${i + 1}" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${i + 1}.</span>${escapeHtml(step.title)}</h2>\n${stepHtmls[i]}`;
+    stepHtml += `<h2 id="step-${
+      i + 1
+    }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
+      i + 1
+    }.</span>${escapeHtml(step.title)}</h2>\n${stepHtmls[i]}`;
     parts.push(stepHtml);
   }
 
