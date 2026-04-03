@@ -1,4 +1,4 @@
-import { useSignal } from "@preact/signals";
+import { useSignal, signal } from "@preact/signals";
 import type { OcrRecipeData } from "../lib/ocr.ts";
 import RefineInput from "./RefineInput.tsx";
 import type { AiMessage } from "./RefineInput.tsx";
@@ -304,11 +304,13 @@ export default function DraftEditor({
           </p>
           <StepForm
             key={`steps-${v}`}
-            initialSteps={(r.steps ?? []).map((s) => ({
+            initialSteps={(r.steps ?? []).map((s, i) => ({
               title: s.title ?? "",
               body: s.body ?? "",
               media: [],
+              after: i > 0 ? [i - 1] : [],
             }))}
+            mode={signal<"list" | "graph">("list")}
           />
         </div>
 

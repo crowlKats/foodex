@@ -3,6 +3,8 @@ import { renderRecipeSteps } from "../../../../lib/markdown.ts";
 import { scaleIngredients } from "../../../../lib/template.ts";
 import { computeScaleRatio } from "../../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../../lib/quantity.ts";
+import type { RecipeStepDep } from "../../../../db/types.ts";
+import { computeStepColumns } from "../../../../lib/step-graph.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -73,6 +75,18 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
+    const stepDepsRes = await ctx.state.db.query<RecipeStepDep>(
+      `SELECT sd.step_id, sd.depends_on
+       FROM recipe_step_deps sd
+       JOIN recipe_steps rs ON rs.id = sd.step_id
+       WHERE rs.recipe_id = $1`,
+      [recipe.id],
+    );
+    const stepColumnMap = computeStepColumns(
+      stepsRes.rows.map((s) => String(s.id)),
+      stepDepsRes.rows,
+    );
+
     const ingredientsRes = await ctx.state.db.query(
       `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit
        FROM recipe_ingredients ri
@@ -96,9 +110,21 @@ export const handler = define.handlers({
       ratio,
     );
 
-    const steps = stepsRes.rows.map((s) => ({
+    const stepIdToIndex = new Map<string, number>();
+    stepsRes.rows.forEach((s, i) => stepIdToIndex.set(String(s.id), i));
+    const stepAfterMap = new Map<string, number[]>();
+    for (const dep of stepDepsRes.rows) {
+      const idx = stepIdToIndex.get(dep.depends_on);
+      if (idx == null) continue;
+      if (!stepAfterMap.has(dep.step_id)) stepAfterMap.set(dep.step_id, []);
+      stepAfterMap.get(dep.step_id)!.push(idx);
+    }
+
+    const steps = stepsRes.rows.map((s, i) => ({
       title: String(s.title),
       body: String(s.body),
+      column: stepColumnMap.get(String(s.id)) ?? 0,
+      after: (stepAfterMap.get(String(s.id)) ?? (i > 0 ? [i - 1] : [])).sort((a, b) => a - b),
     }));
 
     const html = await renderRecipeSteps(

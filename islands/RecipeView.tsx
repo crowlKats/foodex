@@ -12,6 +12,7 @@ import { getCurrencySymbol } from "../lib/currencies.ts";
 import { convertAmount } from "../lib/unit-convert.ts";
 import { replaceTimers } from "../lib/timer.ts";
 import { formatTimer } from "../lib/timer.ts";
+import { computeStepAnnotations } from "../lib/step-layout.ts";
 import { toDisplayUnit } from "../lib/unit-display.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
 import { marked } from "marked";
@@ -40,6 +41,8 @@ interface RecipeStep {
   title: string;
   body: string;
   media?: { id: string; url: string }[];
+  column?: number;
+  after?: number[];
 }
 
 interface RecipeIngredient {
@@ -113,6 +116,39 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function renderStepBody(
+  step: RecipeStep,
+  stepIndex: number,
+  steps: RecipeStep[],
+  vars: Record<string, number>,
+  scaled: ReturnType<typeof scaleIngredients>,
+): string {
+  let evaluated = evaluateTemplate(step.body, vars, scaled);
+  // Resolve step references: @step(N) → anchor link
+  evaluated = evaluated.replace(/@step\((\d+)\)/g, (_m, num: string) => {
+    const n = parseInt(num);
+    if (n < 1 || n > steps.length) return `*unknown step: ${num}*`;
+    const title = steps[n - 1].title;
+    const label = title ? `step ${n} (${title})` : `step ${n}`;
+    return `[${label}](#step-${n})`;
+  });
+  const parsed = marked.parse(evaluated);
+  const html = typeof parsed === "string" ? replaceTimers(parsed) : parsed;
+  if (typeof html !== "string") return "";
+
+  let stepHtml = html;
+  if (step.media && step.media.length > 0) {
+    stepHtml += `<div class="flex flex-wrap gap-2 mt-3">${
+      step.media.map((m) =>
+        `<img src="${
+          escapeHtml(m.url)
+        }" alt="" class="max-w-sm border-2 border-stone-300 dark:border-stone-700" />`
+      ).join("")
+    }</div>`;
+  }
+  return stepHtml;
+}
+
 function renderStepsClient(
   steps: RecipeStep[],
   ratio: number,
@@ -120,38 +156,26 @@ function renderStepsClient(
 ): string {
   const scaled = scaleIngredients(ingredients, ratio);
   const vars: Record<string, number> = { ratio };
-  const parts: string[] = [];
 
-  for (let si = 0; si < steps.length; si++) {
-    const step = steps[si];
-    let evaluated = evaluateTemplate(step.body, vars, scaled);
-    // Resolve step references: @step(N) → anchor link
-    evaluated = evaluated.replace(/@step\((\d+)\)/g, (_m, num: string) => {
-      const n = parseInt(num);
-      if (n < 1 || n > steps.length) return `*unknown step: ${num}*`;
-      const title = steps[n - 1].title;
-      const label = title ? `step ${n} (${title})` : `step ${n}`;
-      return `[${label}](#step-${n})`;
-    });
-    const parsed = marked.parse(evaluated);
-    const html = typeof parsed === "string" ? replaceTimers(parsed) : parsed;
-    if (typeof html === "string") {
-      let stepHtml = `<h2 id="step-${
-        si + 1
-      }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
-        si + 1
-      }.</span>${escapeHtml(step.title)}</h2>\n${html}`;
-      if (step.media && step.media.length > 0) {
-        stepHtml += `<div class="flex flex-wrap gap-2 mt-3">${
-          step.media.map((m) =>
-            `<img src="${
-              escapeHtml(m.url)
-            }" alt="" class="max-w-sm border-2 border-stone-300 dark:border-stone-700" />`
-          ).join("")
-        }</div>`;
-      }
-      parts.push(stepHtml);
+  const stepHtmls = steps.map((step, si) =>
+    renderStepBody(step, si, steps, vars, scaled)
+  );
+
+  const annotations = computeStepAnnotations(steps, (idx) => {
+    const t = steps[idx].title.trim();
+    return t ? `step ${idx + 1} (${escapeHtml(t)})` : `step ${idx + 1}`;
+  });
+
+  const parts: string[] = [];
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const ann = annotations[i].annotation;
+    let html = "";
+    if (ann) {
+      html += `<div class="text-sm text-orange-600 dark:text-orange-400 italic mb-1">${escapeHtml(ann)}</div>`;
     }
+    html += `<h2 id="step-${i + 1}" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${i + 1}.</span>${escapeHtml(step.title)}</h2>\n${stepHtmls[i]}`;
+    parts.push(html);
   }
   return parts.join("\n");
 }
@@ -732,21 +756,61 @@ export default function RecipeView(
 
   // ── Cooking Mode ──
   const cookingMode = useSignal(false);
-  const cookingStep = useSignal(0);
+  const cookingStep = useSignal(0); // for linear mode
+  const cookingDone = useSignal<Set<number>>(new Set()); // for graph mode
+  const cookingFocused = useSignal<number | null>(null); // which step is expanded in graph mode
   const cookingRef = useRef<HTMLDivElement>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+
+  const isLinearRecipe = steps.every((s, i) => {
+    const after = s.after ?? [];
+    if (i === 0) return after.length === 0;
+    return after.length === 1 && after[0] === i - 1;
+  });
 
   function getCookingStepHtml(): string {
     const ratio = getCurrentRatio();
     return renderSingleStepHtml(steps, cookingStep.value, ratio, ingredients);
   }
 
+  function getCookingStepHtmlFor(idx: number): string {
+    const ratio = getCurrentRatio();
+    return renderSingleStepHtml(steps, idx, ratio, ingredients);
+  }
+
+  /** Get steps whose deps are all done */
+  function availableSteps(): number[] {
+    const done = cookingDone.value;
+    const available: number[] = [];
+    for (let i = 0; i < steps.length; i++) {
+      if (done.has(i)) continue;
+      const after = steps[i].after ?? [];
+      if (after.length === 0 || after.every((d) => done.has(d))) {
+        available.push(i);
+      }
+    }
+    return available;
+  }
+
+  function markStepDone(idx: number) {
+    const next = new Set(cookingDone.value);
+    next.add(idx);
+    cookingDone.value = next;
+  }
+
+  function unmarkStepDone(idx: number) {
+    const next = new Set(cookingDone.value);
+    next.delete(idx);
+    cookingDone.value = next;
+  }
+
   function enterCookingMode() {
     cookingMode.value = true;
     cookingStep.value = 0;
-    // Request wake lock
+    cookingDone.value = new Set();
+    cookingFocused.value = null;
     if ("wakeLock" in navigator) {
       (navigator as Navigator & {
         wakeLock: { request: (type: string) => Promise<WakeLockSentinel> };
@@ -783,13 +847,29 @@ export default function RecipeView(
   useEffect(() => {
     if (!cookingMode.value) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "ArrowRight" || e.key === " ") {
-        e.preventDefault();
-        cookingNext();
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        cookingPrev();
-      } else if (e.key === "Escape") {
+      if (isLinearRecipe) {
+        if (e.key === "ArrowRight" || e.key === " ") {
+          e.preventDefault();
+          cookingNext();
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          cookingPrev();
+        }
+      } else {
+        const avail = availableSteps();
+        if (avail.length === 1 && (e.key === "ArrowRight" || e.key === " ")) {
+          e.preventDefault();
+          markStepDone(avail[0]);
+        } else if (e.key === "ArrowLeft") {
+          // Undo last completed step
+          const doneArr = [...cookingDone.value].sort((a, b) => a - b);
+          if (doneArr.length > 0) {
+            e.preventDefault();
+            unmarkStepDone(doneArr[doneArr.length - 1]);
+          }
+        }
+      }
+      if (e.key === "Escape") {
         exitCookingMode();
       }
     }
@@ -797,10 +877,10 @@ export default function RecipeView(
     return () => globalThis.removeEventListener("keydown", handleKey);
   });
 
-  // Touch/swipe navigation for cooking mode
+  // Touch/swipe navigation for cooking mode (linear only)
   useEffect(() => {
     const el = cookingRef.current;
-    if (!el || !cookingMode.value) return;
+    if (!el || !cookingMode.value || !isLinearRecipe) return;
     function onTouchStart(e: TouchEvent) {
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
@@ -1186,7 +1266,7 @@ export default function RecipeView(
           ))}
         </div>
       )}
-      {cookingMode.value && (
+      {cookingMode.value && isLinearRecipe && (
         <div class="cooking-mode" ref={cookingRef}>
           <div class="cooking-mode-header">
             <button
@@ -1269,6 +1349,116 @@ export default function RecipeView(
           </div>
         </div>
       )}
+      {cookingMode.value && !isLinearRecipe && (() => {
+        const available = availableSteps();
+        const allDone = cookingDone.value.size === steps.length;
+
+        return (
+          <div class="cooking-mode" ref={cookingRef}>
+            <div class="cooking-mode-header">
+              <button
+                type="button"
+                class="cooking-mode-close"
+                onClick={exitCookingMode}
+                title="Exit cooking mode (Esc)"
+              >
+                &times;
+              </button>
+              <div class="cooking-mode-progress">
+                {steps.map((_, i) => (
+                  <span
+                    key={i}
+                    class={`cooking-mode-dot ${
+                      cookingDone.value.has(i) ? "done" : ""
+                    } ${available.includes(i) ? "active" : ""}`}
+                  />
+                ))}
+              </div>
+              <div class="cooking-mode-counter">
+                {cookingDone.value.size} / {steps.length}
+              </div>
+            </div>
+
+            {allDone ? (
+              <div class="cooking-mode-body">
+                <div class="text-center py-12">
+                  <div class="text-3xl font-bold mb-2">Done!</div>
+                  <div class="text-stone-500">All steps completed.</div>
+                </div>
+              </div>
+            ) : (() => {
+              // Build columns: each available step gets a column,
+              // each done step that's waiting for parallel siblings gets a "waiting" column.
+              const done = cookingDone.value;
+              const waitingSteps: number[] = [];
+              for (const idx of done) {
+                // Check if any dependent of this step is still blocked
+                // (i.e. this step is done but a parallel sibling isn't)
+                const hasPendingDependent = steps.some((s, si) => {
+                  if (done.has(si) || !s.after?.includes(idx)) return false;
+                  // si depends on idx, but is si available? If not, idx is "waiting"
+                  return !available.includes(si);
+                });
+                if (hasPendingDependent) waitingSteps.push(idx);
+              }
+
+              // Interleave: show available and waiting columns
+              // Sort by step index for consistent ordering
+              const columns: { idx: number; waiting: boolean }[] = [
+                ...available.map((idx) => ({ idx, waiting: false })),
+                ...waitingSteps.filter((idx) => !available.includes(idx)).map((idx) => ({ idx, waiting: true })),
+              ].sort((a, b) => a.idx - b.idx);
+
+              return (
+                <div class="flex-1 flex overflow-hidden">
+                  {columns.map(({ idx, waiting }) => (
+                    <div
+                      key={idx}
+                      class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0"
+                    >
+                      {waiting ? (
+                        <div class="flex-1 flex items-center justify-center px-6 py-6">
+                          <div class="text-center text-stone-400">
+                            <div class="text-lg font-semibold mb-1">
+                              <span class="text-stone-300 mr-2">{idx + 1}.</span>
+                              {steps[idx].title}
+                            </div>
+                            <div class="text-sm">Waiting on other steps</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
+                            <div class="cooking-mode-step-title">
+                              <span class="text-stone-400 mr-2">{idx + 1}.</span>
+                              {steps[idx].title}
+                            </div>
+                            <div
+                              class="cooking-mode-step-content"
+                              // deno-lint-ignore react-no-danger
+                              dangerouslySetInnerHTML={{ __html: getCookingStepHtmlFor(idx) }}
+                            />
+                          </div>
+                          <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700">
+                            <button
+                              type="button"
+                              class="cooking-mode-nav-btn w-full"
+                              style={{ backgroundColor: "rgb(234 88 12)", color: "white", borderColor: "rgb(234 88 12)" }}
+                              onClick={() => markStepDone(idx)}
+                            >
+                              Mark done
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        );
+      })()}
     </div>
   );
 }

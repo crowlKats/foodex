@@ -3,8 +3,10 @@ import { define } from "../../../../utils.ts";
 import type {
   RecipeIngredient,
   RecipeStep,
+  RecipeStepDep,
   RecipeTag,
 } from "../../../../db/types.ts";
+import { computeStepColumns } from "../../../../lib/step-graph.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -58,6 +60,18 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
+    const stepDepsRes = await ctx.state.db.query<RecipeStepDep>(
+      `SELECT sd.step_id, sd.depends_on
+       FROM recipe_step_deps sd
+       JOIN recipe_steps rs ON rs.id = sd.step_id
+       WHERE rs.recipe_id = $1`,
+      [recipe.id],
+    );
+    const stepColumnMap = computeStepColumns(
+      stepsRes.rows.map((s) => s.id),
+      stepDepsRes.rows,
+    );
+
     const tagsRes = await ctx.state.db.query<RecipeTag>(
       "SELECT tag_type, tag_value FROM recipe_tags WHERE recipe_id = $1",
       [recipe.id],
@@ -91,6 +105,7 @@ export const handler = define.handlers({
       steps: stepsRes.rows.map((s) => ({
         title: s.title,
         body: s.body,
+        column: stepColumnMap.get(s.id) ?? 0,
       })),
       tags: {
         meal_types: mealTypes,

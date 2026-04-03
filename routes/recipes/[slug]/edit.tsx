@@ -1,4 +1,5 @@
 import { HttpError, page } from "fresh";
+import { signal } from "@preact/signals";
 import { define } from "../../../utils.ts";
 import type {
   Ingredient,
@@ -6,6 +7,7 @@ import type {
   RecipeIngredient,
   RecipeReference,
   RecipeStep,
+  RecipeStepDep,
   RecipeTag,
   RecipeTool,
   RecipeWithCoverMedia,
@@ -16,6 +18,7 @@ import QuantityInput from "../../../islands/QuantityInput.tsx";
 import IngredientForm from "../../../islands/IngredientForm.tsx";
 import ToolForm from "../../../islands/ToolForm.tsx";
 import StepForm from "../../../islands/StepForm.tsx";
+import SegmentToggle from "../../../islands/SegmentToggle.tsx";
 import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePreview from "../../../islands/RecipePreview.tsx";
 import MultiSearchSelect from "../../../islands/MultiSearchSelect.tsx";
@@ -78,17 +81,27 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const stepMediaRes = await ctx.state.db.query<
-      { step_id: string; sort_order: number; media_id: string; url: string }
-    >(
-      `SELECT rsm.step_id, rsm.sort_order, m.id as media_id, m.url
-       FROM recipe_step_media rsm
-       JOIN media m ON m.id = rsm.media_id
-       JOIN recipe_steps rs ON rs.id = rsm.step_id
-       WHERE rs.recipe_id = $1
-       ORDER BY rsm.step_id, rsm.sort_order`,
-      [recipe.id],
-    );
+    const [stepMediaRes, stepDepsRes] = await Promise.all([
+      ctx.state.db.query<
+        { step_id: string; sort_order: number; media_id: string; url: string }
+      >(
+        `SELECT rsm.step_id, rsm.sort_order, m.id as media_id, m.url
+         FROM recipe_step_media rsm
+         JOIN media m ON m.id = rsm.media_id
+         JOIN recipe_steps rs ON rs.id = rsm.step_id
+         WHERE rs.recipe_id = $1
+         ORDER BY rsm.step_id, rsm.sort_order`,
+        [recipe.id],
+      ),
+      ctx.state.db.query<RecipeStepDep>(
+        `SELECT sd.step_id, sd.depends_on
+         FROM recipe_step_deps sd
+         JOIN recipe_steps rs ON rs.id = sd.step_id
+         WHERE rs.recipe_id = $1`,
+        [recipe.id],
+      ),
+    ]);
+
     const stepMediaMap = new Map<string, { id: string; url: string }[]>();
     for (const row of stepMediaRes.rows) {
       const stepId = String(row.step_id);
@@ -97,6 +110,17 @@ export const handler = define.handlers({
         id: String(row.media_id),
         url: String(row.url),
       });
+    }
+
+    // Build a map from step ID → indices of steps it depends on
+    const stepIdToIndex = new Map<string, number>();
+    stepsRes.rows.forEach((s, i) => stepIdToIndex.set(s.id, i));
+    const stepAfterMap = new Map<string, number[]>();
+    for (const dep of stepDepsRes.rows) {
+      const idx = stepIdToIndex.get(dep.depends_on);
+      if (idx == null) continue;
+      if (!stepAfterMap.has(dep.step_id)) stepAfterMap.set(dep.step_id, []);
+      stepAfterMap.get(dep.step_id)!.push(idx);
     }
 
     const refsRes = await ctx.state.db.query<RecipeReference>(
@@ -130,9 +154,12 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const stepsWithMedia = stepsRes.rows.map((s) => ({
+    const stepsWithMedia = stepsRes.rows.map((s, i) => ({
       ...s,
       media: stepMediaMap.get(String(s.id)) ?? [],
+      after: (stepAfterMap.get(s.id) ?? (i > 0 ? [i - 1] : [])).sort(
+        (a, b) => a - b,
+      ),
     }));
 
     let outputIngredientName = "";
@@ -261,6 +288,7 @@ export const handler = define.handlers({
         ],
       );
 
+      // recipe_step_deps cascade-deletes via recipe_steps FK
       await Promise.all([
         q("DELETE FROM recipe_ingredients WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_tools WHERE recipe_id = $1", [recipeId]),
@@ -313,7 +341,13 @@ export default define.page<typeof handler>(function RecipeEdit({
     title: s.title ?? "",
     body: s.body ?? "",
     media: s.media ?? [],
+    after: s.after ?? [],
   }));
+
+  const hasGraph = stepData.length > 0 && !stepData.every((s, i) =>
+    i === 0 ? s.after.length === 0 : (s.after.length === 1 && s.after[0] === i - 1)
+  );
+  const stepMode = signal<"list" | "graph">(hasGraph ? "graph" : "list");
 
   const refData = refs.map((r) => ({
     referenced_recipe_id: String(r.referenced_recipe_id),
@@ -484,7 +518,13 @@ export default define.page<typeof handler>(function RecipeEdit({
         </div>
 
         <div class="card">
-          <h2 class="font-semibold mb-2">Steps</h2>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold">Steps</h2>
+            <SegmentToggle
+              value={stepMode}
+              options={["list", "graph"]}
+            />
+          </div>
           <p class="text-xs text-stone-500 mb-2">
             Use <code class="code-hint">{"{{ key }}"}</code>{" "}
             for scaled ingredients,{" "}
@@ -492,7 +532,7 @@ export default define.page<typeof handler>(function RecipeEdit({
             for just the number. Supports math and functions.{" "}
             <a href="/docs/templates" class="link text-xs">Full reference</a>
           </p>
-          <StepForm initialSteps={stepData} />
+          <StepForm initialSteps={stepData} mode={stepMode} />
         </div>
 
         <div class="card">

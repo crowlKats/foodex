@@ -124,6 +124,7 @@ export const handler = define.handlers({
       `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
       [recipe.id],
     );
+    const oldToNewStepId = new Map<string, string>();
     for (const step of stepsRes.rows) {
       const newStepRes = await ctx.state.db.query(
         `INSERT INTO recipe_steps (recipe_id, title, body, sort_order)
@@ -131,6 +132,7 @@ export const handler = define.handlers({
         [newRecipeId, step.title, step.body, step.sort_order],
       );
       const newStepId = newStepRes.rows[0].id;
+      oldToNewStepId.set(String(step.id), String(newStepId));
 
       const mediaRes = await ctx.state.db.query(
         `SELECT * FROM recipe_step_media WHERE step_id = $1 ORDER BY sort_order`,
@@ -141,6 +143,25 @@ export const handler = define.handlers({
           `INSERT INTO recipe_step_media (step_id, media_id, sort_order)
            VALUES ($1, $2, $3)`,
           [newStepId, media.media_id, media.sort_order],
+        );
+      }
+    }
+
+    // Clone step dependencies
+    const depsRes = await ctx.state.db.query(
+      `SELECT sd.step_id, sd.depends_on
+       FROM recipe_step_deps sd
+       JOIN recipe_steps rs ON rs.id = sd.step_id
+       WHERE rs.recipe_id = $1`,
+      [recipe.id],
+    );
+    for (const dep of depsRes.rows) {
+      const newStepId = oldToNewStepId.get(String(dep.step_id));
+      const newDepId = oldToNewStepId.get(String(dep.depends_on));
+      if (newStepId && newDepId) {
+        await ctx.state.db.query(
+          `INSERT INTO recipe_step_deps (step_id, depends_on) VALUES ($1, $2)`,
+          [newStepId, newDepId],
         );
       }
     }

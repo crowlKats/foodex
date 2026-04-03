@@ -74,6 +74,11 @@ export interface RecipeStep {
   sort_order: number;
 }
 
+export interface RecipeStepDep {
+  step_id: string;
+  depends_on: string;
+}
+
 export interface RecipeReference {
   id: string;
   recipe_id: string;

@@ -65,10 +65,11 @@ export async function saveRecipeChildren(
     ], toolRows);
   }
 
-  // Steps (need RETURNING id for media)
+  // Steps (need RETURNING id for media and deps)
   const steps = parseFormArray(form, "steps");
   const stepRows: unknown[][] = [];
   const stepIndexes: number[] = []; // original form indexes for media lookup
+  const stepAfters: number[][] = []; // dependency indices per inserted step
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
     if (!step.title?.trim() && !step.body?.trim()) continue;
@@ -79,6 +80,13 @@ export async function saveRecipeChildren(
       i,
     ]);
     stepIndexes.push(i);
+    // Parse "after" field: comma-separated form indices
+    const afterStr = step.after?.trim() ?? "";
+    stepAfters.push(
+      afterStr
+        ? afterStr.split(",").map(Number).filter((n) => !isNaN(n))
+        : [],
+    );
   }
 
   if (stepRows.length > 0) {
@@ -89,6 +97,12 @@ export async function saveRecipeChildren(
       stepRows,
       { returning: "id" },
     );
+
+    // Build mapping: form index → inserted DB id
+    const formIdxToDbId = new Map<number, string>();
+    for (let si = 0; si < stepRes.rows.length; si++) {
+      formIdxToDbId.set(stepIndexes[si], stepRes.rows[si].id as string);
+    }
 
     // Step media - collect all then bulk insert
     const mediaRows: unknown[][] = [];
@@ -110,6 +124,24 @@ export async function saveRecipeChildren(
         "media_id",
         "sort_order",
       ], mediaRows);
+    }
+
+    // Step dependencies from explicit "after" indices
+    const depRows: unknown[][] = [];
+    for (let si = 0; si < stepRes.rows.length; si++) {
+      const stepId = stepRes.rows[si].id as string;
+      for (const depFormIdx of stepAfters[si]) {
+        const depDbId = formIdxToDbId.get(depFormIdx);
+        if (depDbId) {
+          depRows.push([stepId, depDbId]);
+        }
+      }
+    }
+    if (depRows.length > 0) {
+      await bulkInsert(q, "recipe_step_deps", [
+        "step_id",
+        "depends_on",
+      ], depRows);
     }
   }
 

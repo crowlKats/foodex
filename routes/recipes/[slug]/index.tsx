@@ -4,11 +4,13 @@ import type {
   RecipeIngredient,
   RecipeReference,
   RecipeStep,
+  RecipeStepDep,
   RecipeTag,
   RecipeTool,
   RecipeWithCover,
 } from "../../../db/types.ts";
 import { renderRecipeSteps } from "../../../lib/markdown.ts";
+import { computeStepColumns } from "../../../lib/step-graph.ts";
 import { formatDuration } from "../../../lib/duration.ts";
 import { scaleIngredients } from "../../../lib/template.ts";
 import { computeIngredientCost } from "../../../lib/unit-convert.ts";
@@ -67,16 +69,29 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
-    const stepMediaRes = await ctx.state.db.query<
-      { step_id: string; media_id: string; url: string }
-    >(
-      `SELECT rsm.step_id, m.id as media_id, m.url
-       FROM recipe_step_media rsm
-       JOIN media m ON m.id = rsm.media_id
-       JOIN recipe_steps rs ON rs.id = rsm.step_id
-       WHERE rs.recipe_id = $1
-       ORDER BY rsm.step_id, rsm.sort_order`,
-      [recipe.id],
+    const [stepMediaRes, stepDepsRes] = await Promise.all([
+      ctx.state.db.query<
+        { step_id: string; media_id: string; url: string }
+      >(
+        `SELECT rsm.step_id, m.id as media_id, m.url
+         FROM recipe_step_media rsm
+         JOIN media m ON m.id = rsm.media_id
+         JOIN recipe_steps rs ON rs.id = rsm.step_id
+         WHERE rs.recipe_id = $1
+         ORDER BY rsm.step_id, rsm.sort_order`,
+        [recipe.id],
+      ),
+      ctx.state.db.query<RecipeStepDep>(
+        `SELECT sd.step_id, sd.depends_on
+         FROM recipe_step_deps sd
+         JOIN recipe_steps rs ON rs.id = sd.step_id
+         WHERE rs.recipe_id = $1`,
+        [recipe.id],
+      ),
+    ]);
+    const stepColumnMap = computeStepColumns(
+      stepsRes.rows.map((s) => s.id),
+      stepDepsRes.rows,
     );
     const stepMediaMap = new Map<string, { id: string; url: string }[]>();
     for (const row of stepMediaRes.rows) {
@@ -198,10 +213,23 @@ export const handler = define.handlers({
       /@recipe\([a-z0-9_-]+\)/.test(s.body)
     );
 
-    const stepsData = stepsRes.rows.map((s) => ({
+    // Build after indices from deps
+    const stepIdToIndex = new Map<string, number>();
+    stepsRes.rows.forEach((s, i) => stepIdToIndex.set(s.id, i));
+    const stepAfterMap = new Map<string, number[]>();
+    for (const dep of stepDepsRes.rows) {
+      const idx = stepIdToIndex.get(dep.depends_on);
+      if (idx == null) continue;
+      if (!stepAfterMap.has(dep.step_id)) stepAfterMap.set(dep.step_id, []);
+      stepAfterMap.get(dep.step_id)!.push(idx);
+    }
+
+    const stepsData = stepsRes.rows.map((s, i) => ({
       title: s.title,
       body: s.body,
       media: stepMediaMap.get(String(s.id)) ?? [],
+      column: stepColumnMap.get(s.id) ?? 0,
+      after: (stepAfterMap.get(s.id) ?? (i > 0 ? [i - 1] : [])).sort((a, b) => a - b),
     }));
 
     const renderedHtml = await renderRecipeSteps(
@@ -613,6 +641,8 @@ export default define.page<typeof handler>(function RecipeViewPage({
           steps={steps.map((s) => ({
             title: s.title,
             body: s.body,
+            column: s.column,
+            after: s.after,
           }))}
           ingredients={ingredientsForTemplate}
           tools={tools.map((m) => ({
