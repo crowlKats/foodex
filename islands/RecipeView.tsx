@@ -41,7 +41,6 @@ interface RecipeStep {
   title: string;
   body: string;
   media?: { id: string; url: string }[];
-  column?: number;
   after?: number[];
 }
 
@@ -188,31 +187,7 @@ function renderSingleStepHtml(
 ): string {
   const scaled = scaleIngredients(ingredients, ratio);
   const vars: Record<string, number> = { ratio };
-  const step = steps[index];
-  let evaluated = evaluateTemplate(step.body, vars, scaled);
-  evaluated = evaluated.replace(/@step\((\d+)\)/g, (_m, num: string) => {
-    const n = parseInt(num);
-    if (n < 1 || n > steps.length) return `*unknown step: ${num}*`;
-    const title = steps[n - 1].title;
-    const label = title ? `step ${n} (${title})` : `step ${n}`;
-    return `**${label}**`;
-  });
-  const parsed = marked.parse(evaluated);
-  const html = typeof parsed === "string" ? replaceTimers(parsed) : parsed;
-  if (typeof html === "string") {
-    let stepHtml = html;
-    if (step.media && step.media.length > 0) {
-      stepHtml += `<div class="flex flex-wrap gap-3 mt-4 justify-center">${
-        step.media.map((m) =>
-          `<img src="${
-            escapeHtml(m.url)
-          }" alt="" class="max-h-48 border-2 border-stone-300 dark:border-stone-700" />`
-        ).join("")
-      }</div>`;
-    }
-    return stepHtml;
-  }
-  return "";
+  return renderStepBody(steps[index], index, steps, vars, scaled);
 }
 
 function buildQueryParams(target: RecipeQuantity): string {
@@ -770,11 +745,6 @@ export default function RecipeView(
     return after.length === 1 && after[0] === i - 1;
   });
 
-  function getCookingStepHtml(): string {
-    const ratio = getCurrentRatio();
-    return renderSingleStepHtml(steps, cookingStep.value, ratio, ingredients);
-  }
-
   function getCookingStepHtmlFor(idx: number): string {
     const ratio = getCurrentRatio();
     return renderSingleStepHtml(steps, idx, ratio, ingredients);
@@ -1303,7 +1273,7 @@ export default function RecipeView(
             <div
               class="cooking-mode-step-content"
               // deno-lint-ignore react-no-danger
-              dangerouslySetInnerHTML={{ __html: getCookingStepHtml() }}
+              dangerouslySetInnerHTML={{ __html: getCookingStepHtmlFor(cookingStep.value) }}
             />
             {ingredients.length > 0 && (
               <details class="cooking-mode-ingredients">
@@ -1442,8 +1412,7 @@ export default function RecipeView(
                           <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700">
                             <button
                               type="button"
-                              class="cooking-mode-nav-btn w-full"
-                              style={{ backgroundColor: "rgb(234 88 12)", color: "white", borderColor: "rgb(234 88 12)" }}
+                              class="cooking-mode-nav-btn btn-primary w-full"
                               onClick={() => markStepDone(idx)}
                             >
                               Mark done

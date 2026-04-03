@@ -3,8 +3,7 @@
  * Computes per-step annotations describing dependency relationships.
  */
 
-export interface StepWithColumn {
-  column?: number;
+export interface StepWithDeps {
   after?: number[];
 }
 
@@ -14,7 +13,7 @@ export interface StepAnnotation {
 }
 
 export function computeStepAnnotations(
-  steps: StepWithColumn[],
+  steps: StepWithDeps[],
   stepLabel: (index: number) => string,
 ): StepAnnotation[] {
   const result: StepAnnotation[] = [];

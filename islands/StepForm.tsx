@@ -25,34 +25,30 @@ interface StepFormProps {
   mode: Signal<"list" | "graph">;
 }
 
+// ── Pure helpers ──
+
 function computeColumns(steps: StepEntry[]): number[] {
   const cols = new Array(steps.length).fill(-1);
   function resolve(i: number): number {
     if (cols[i] >= 0) return cols[i];
     cols[i] = 0;
-    if (steps[i].after.length === 0) return 0;
-    let max = 0;
     for (const dep of steps[i].after) {
       if (dep >= 0 && dep < steps.length) {
-        max = Math.max(max, resolve(dep) + 1);
+        cols[i] = Math.max(cols[i], resolve(dep) + 1);
       }
     }
-    cols[i] = max;
-    return max;
+    return cols[i];
   }
   for (let i = 0; i < steps.length; i++) resolve(i);
   return cols;
 }
 
 function isLinearChain(steps: StepEntry[]): boolean {
-  for (let i = 0; i < steps.length; i++) {
-    if (i === 0) {
-      if (steps[i].after.length > 0) return false;
-    } else {
-      if (steps[i].after.length !== 1 || steps[i].after[0] !== i - 1) return false;
-    }
-  }
-  return true;
+  return steps.every((s, i) =>
+    i === 0
+      ? s.after.length === 0
+      : s.after.length === 1 && s.after[0] === i - 1
+  );
 }
 
 function toLinearChain(steps: StepEntry[]): StepEntry[] {
@@ -60,28 +56,145 @@ function toLinearChain(steps: StepEntry[]): StepEntry[] {
 }
 
 function reindexSteps(steps: StepEntry[], selectedIdx: number | null) {
-  const c = computeColumns(steps);
+  const cols = computeColumns(steps);
   const order = steps.map((_, i) => i);
-  order.sort((a, b) => c[a] - c[b] || a - b);
+  order.sort((a, b) => cols[a] - cols[b] || a - b);
   const remap = new Map<number, number>();
   order.forEach((oldIdx, newIdx) => remap.set(oldIdx, newIdx));
-  const sorted = order.map((oldIdx) => ({
-    ...steps[oldIdx],
-    after: steps[oldIdx].after.map((a) => remap.get(a)!).sort((a, b) => a - b),
-  }));
   return {
-    steps: sorted,
+    steps: order.map((oldIdx) => ({
+      ...steps[oldIdx],
+      after: steps[oldIdx].after.map((a) => remap.get(a)!).sort((a, b) => a - b),
+    })),
     selected: selectedIdx != null ? (remap.get(selectedIdx) ?? null) : null,
   };
 }
 
-// Layout constants
+// ── Layout constants ──
 const COL_WIDTH = 194;
 const ROW_HEIGHT = 76;
 const CARD_W = 170;
 const CARD_H = 52;
-const COL_GAP = COL_WIDTH - CARD_W;
 const ROW_GAP = ROW_HEIGHT - CARD_H;
+
+// ── Graph layout computation ──
+
+interface GraphLayout {
+  cols: number[];
+  maxCol: number;
+  svgW: number;
+  svgH: number;
+  stepY: Map<number, number>;
+  colSorted: Map<number, number[]>;
+  edges: { d: string; active: boolean; key: string; fromIdx: number; toIdx: number }[];
+  leafNodes: number[];
+}
+
+function computeGraphLayout(steps: StepEntry[], sel: number | null): GraphLayout {
+  const cols = computeColumns(steps);
+  const maxCol = Math.max(0, ...cols);
+
+  const colCounts = new Array(maxCol + 1).fill(0);
+  for (const c of cols) if (c >= 0) colCounts[c]++;
+  const maxRows = Math.max(1, ...colCounts);
+  const svgW = (maxCol + 1) * COL_WIDTH;
+  const svgH = maxRows * ROW_HEIGHT;
+
+  const stepY = new Map<number, number>();
+  const colSorted = new Map<number, number[]>();
+
+  for (let c = 0; c <= maxCol; c++) {
+    const inCol: number[] = [];
+    for (let i = 0; i < steps.length; i++) {
+      if (cols[i] === c) inCol.push(i);
+    }
+    if (c > 0) {
+      inCol.sort((a, b) => {
+        const avg = (idx: number) =>
+          steps[idx].after.length > 0
+            ? steps[idx].after.reduce((s, d) => s + (stepY.get(d) ?? 0), 0) / steps[idx].after.length
+            : 0;
+        return avg(a) - avg(b);
+      });
+    }
+    colSorted.set(c, inCol);
+    const colH = inCol.length * ROW_HEIGHT;
+    const offsetY = (svgH - colH) / 2;
+    inCol.forEach((idx, row) => {
+      stepY.set(idx, offsetY + row * ROW_HEIGHT + CARD_H / 2);
+    });
+  }
+
+  const hasDependent = new Set<number>();
+  for (const step of steps) {
+    for (const dep of step.after) hasDependent.add(dep);
+  }
+  const leafNodes = steps.map((_, i) => i).filter((i) => !hasDependent.has(i));
+
+  const edges: GraphLayout["edges"] = [];
+  for (let i = 0; i < steps.length; i++) {
+    for (const dep of steps[i].after) {
+      const p1x = cols[dep] * COL_WIDTH + CARD_W;
+      const p1y = stepY.get(dep) ?? 0;
+      const p2x = cols[i] * COL_WIDTH;
+      const p2y = stepY.get(i) ?? 0;
+      const dx = Math.abs(p2x - p1x) * 0.5;
+      const d = `M${p1x},${p1y} C${p1x + dx},${p1y} ${p2x - dx},${p2y} ${p2x},${p2y}`;
+      const active = sel != null && (sel === i || sel === dep);
+      edges.push({ d, active, key: `${dep}-${i}`, fromIdx: dep, toIdx: i });
+    }
+  }
+
+  return { cols, maxCol, svgW, svgH, stepY, colSorted, edges, leafNodes };
+}
+
+// ── Step editor (shared between list and graph modes) ──
+
+function StepEditor(
+  { step, index, onTitle, onBody, onRemoveMedia, onUploadMedia, uploading }: {
+    step: StepEntry;
+    index: number;
+    onTitle: (v: string) => void;
+    onBody: (v: string) => void;
+    onRemoveMedia: (mi: number) => void;
+    onUploadMedia: () => void;
+    uploading: boolean;
+  },
+) {
+  return (
+    <div class="space-y-2">
+      <input
+        type="text"
+        placeholder="Step title"
+        value={step.title}
+        onInput={(e) => onTitle((e.target as HTMLInputElement).value)}
+        class="w-full text-sm font-medium"
+      />
+      <textarea
+        placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
+        value={step.body}
+        onInput={(e) => onBody((e.target as HTMLTextAreaElement).value)}
+        rows={6}
+        class="w-full text-sm font-mono"
+      />
+      {step.media.length > 0 && (
+        <div class="flex flex-wrap gap-2">
+          {step.media.map((m, mi) => (
+            <div key={m.id} class="relative group">
+              <img src={m.url} alt="" class="w-20 h-20 object-cover border-2 border-stone-300 dark:border-stone-700" />
+              <button type="button" onClick={() => onRemoveMedia(mi)} class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"><TbX class="size-3" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <button type="button" class="link text-xs" onClick={onUploadMedia}>
+        {uploading ? "Uploading..." : <span><TbUpload class="size-3 inline mr-0.5" />Add images</span>}
+      </button>
+    </div>
+  );
+}
+
+// ── Main component ──
 
 export default function StepForm({ initialSteps, mode }: StepFormProps) {
   const items = useSignal<StepEntry[]>(
@@ -91,10 +204,7 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
   );
   const selected = useSignal<number | null>(null);
   const uploading = useSignal<number | null>(null);
-  // Snapshot of graph deps before switching to list mode, so we can restore
   const savedGraphDeps = useSignal<number[][] | null>(null);
-
-  // Drag-to-connect state
   const dragFrom = useSignal<number | null>(null);
   const dragPos = useSignal<{ x: number; y: number } | null>(null);
 
@@ -135,7 +245,22 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
     items.value = next;
   }
 
-  // ── Graph helpers ──
+  function triggerFileUpload(stepIndex: number) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.onchange = () => uploadMedia(stepIndex, input.files);
+    input.click();
+  }
+
+  // ── Graph mutations ──
+
+  function applyGraphChange(next: StepEntry[], newSelIdx: number | null = selected.value) {
+    const r = reindexSteps(next, newSelIdx);
+    items.value = r.steps;
+    selected.value = r.selected;
+  }
 
   function graphInsertAfter(depIndex: number) {
     const newIdx = items.value.length;
@@ -143,26 +268,26 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
       ...s,
       after: s.after.map((a) => (a === depIndex ? newIdx : a)),
     }));
-    const next = [...rewired, { title: "", body: "", media: [], after: [depIndex] }];
-    const r = reindexSteps(next, newIdx);
-    items.value = r.steps;
-    selected.value = r.selected;
+    applyGraphChange(
+      [...rewired, { title: "", body: "", media: [], after: [depIndex] }],
+      newIdx,
+    );
   }
 
   function graphBranchAfter(depIndex: number) {
     const newIdx = items.value.length;
-    const next = [...items.value, { title: "", body: "", media: [], after: [depIndex] }];
-    const r = reindexSteps(next, newIdx);
-    items.value = r.steps;
-    selected.value = r.selected;
+    applyGraphChange(
+      [...items.value, { title: "", body: "", media: [], after: [depIndex] }],
+      newIdx,
+    );
   }
 
   function graphAddStart() {
     const newIdx = items.value.length;
-    const next = [...items.value, { title: "", body: "", media: [], after: [] }];
-    const r = reindexSteps(next, newIdx);
-    items.value = r.steps;
-    selected.value = r.selected;
+    applyGraphChange(
+      [...items.value, { title: "", body: "", media: [], after: [] }],
+      newIdx,
+    );
   }
 
   function graphRemoveStep(index: number) {
@@ -170,23 +295,13 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
       : selected.value != null && selected.value > index ? selected.value - 1
       : selected.value;
 
-    // The deleted step's own dependencies — these get inherited by its dependents
     const deletedDeps = items.value[index].after;
-
     const next = items.value.filter((_, i) => i !== index).map((s) => {
       let after = s.after;
       if (after.includes(index)) {
-        // Replace dep on deleted step with deleted step's own deps (bridge the gap)
-        after = [
-          ...after.filter((a) => a !== index),
-          ...deletedDeps,
-        ];
-        // Deduplicate
-        after = [...new Set(after)];
+        after = [...new Set([...after.filter((a) => a !== index), ...deletedDeps])];
       }
-      // Remap indices for the removed element
-      after = after.map((a) => (a > index ? a - 1 : a));
-      return { ...s, after: after.sort((a, b) => a - b) };
+      return { ...s, after: after.map((a) => (a > index ? a - 1 : a)).sort((a, b) => a - b) };
     });
 
     if (next.length === 0) {
@@ -194,136 +309,25 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
       selected.value = null;
       return;
     }
-    const r = reindexSteps(next, newSel);
-    items.value = r.steps;
-    selected.value = r.selected;
+    applyGraphChange(next, newSel);
   }
 
   function addDep(stepIndex: number, depIndex: number) {
     if (stepIndex === depIndex) return;
-    const step = items.value[stepIndex];
-    if (step.after.includes(depIndex)) return;
+    if (items.value[stepIndex].after.includes(depIndex)) return;
     const next = [...items.value];
-    next[stepIndex] = { ...step, after: [...step.after, depIndex].sort((a, b) => a - b) };
-    const r = reindexSteps(next, selected.value);
-    items.value = r.steps;
-    selected.value = r.selected;
+    next[stepIndex] = { ...next[stepIndex], after: [...next[stepIndex].after, depIndex].sort((a, b) => a - b) };
+    applyGraphChange(next);
   }
 
   function removeDep(stepIndex: number, depIndex: number) {
-    const step = items.value[stepIndex];
     const next = [...items.value];
-    next[stepIndex] = { ...step, after: step.after.filter((a) => a !== depIndex) };
-    const r = reindexSteps(next, selected.value);
-    items.value = r.steps;
-    selected.value = r.selected;
+    next[stepIndex] = { ...next[stepIndex], after: next[stepIndex].after.filter((a) => a !== depIndex) };
+    applyGraphChange(next);
   }
 
-  function stepLabel(index: number): string {
-    const t = items.value[index]?.title?.trim();
-    return t || `Step ${index + 1}`;
-  }
+  // ── Drag-to-connect ──
 
-  // ── Render ──
-
-  // Save graph deps when switching to list, restore when switching back
-  if (mode.value === "list" && !isLinearChain(items.value)) {
-    savedGraphDeps.value = items.value.map((s) => [...s.after]);
-    items.value = toLinearChain(items.value);
-    selected.value = null;
-  } else if (mode.value === "graph" && savedGraphDeps.value != null) {
-    // Restore graph deps (only if step count hasn't changed)
-    if (savedGraphDeps.value.length === items.value.length) {
-      items.value = items.value.map((s, i) => ({ ...s, after: savedGraphDeps.value![i] }));
-    }
-    savedGraphDeps.value = null;
-  }
-
-  const steps = items.value;
-  const sel = selected.value;
-  const selStep = sel != null ? steps[sel] : null;
-  const isGraph = mode.value === "graph";
-
-  const cols = computeColumns(steps);
-  const maxCol = Math.max(0, ...cols);
-
-  // Vertical positioning
-  const colCounts: number[] = new Array(maxCol + 1).fill(0);
-  for (const c of cols) if (c >= 0) colCounts[c]++;
-  const maxRows = Math.max(1, ...colCounts);
-  const svgW = (maxCol + 1) * COL_WIDTH;
-  const svgH = maxRows * ROW_HEIGHT;
-  const containerH = svgH + ROW_HEIGHT; // extra space for "add step" card
-
-  // stepY: vertical center (px) of each step's card. Computed column-by-column
-  // so later columns can sort by their deps' Y positions. Columns are centered.
-  const stepY = new Map<number, number>();
-  const colSorted = new Map<number, number[]>();
-
-  for (let c = 0; c <= maxCol; c++) {
-    const inCol: number[] = [];
-    for (let i = 0; i < steps.length; i++) {
-      if (cols[i] === c) inCol.push(i);
-    }
-    if (c > 0) {
-      inCol.sort((a, b) => {
-        const aAvg = steps[a].after.length > 0
-          ? steps[a].after.reduce((s, d) => s + (stepY.get(d) ?? 0), 0) / steps[a].after.length
-          : 0;
-        const bAvg = steps[b].after.length > 0
-          ? steps[b].after.reduce((s, d) => s + (stepY.get(d) ?? 0), 0) / steps[b].after.length
-          : 0;
-        return aAvg - bAvg;
-      });
-    }
-    colSorted.set(c, inCol);
-    const colH = inCol.length * ROW_HEIGHT;
-    const offsetY = (svgH - colH) / 2;
-    inCol.forEach((idx, row) => {
-      stepY.set(idx, offsetY + row * ROW_HEIGHT + CARD_H / 2);
-    });
-  }
-
-  // Find leaf nodes (steps that no other step depends on)
-  const hasDependent = new Set<number>();
-  for (const step of steps) {
-    for (const dep of step.after) hasDependent.add(dep);
-  }
-  const leafNodes = steps.map((_, i) => i).filter((i) => !hasDependent.has(i));
-
-  function cardRight(index: number) {
-    return { x: cols[index] * COL_WIDTH + CARD_W, y: stepY.get(index) ?? 0 };
-  }
-  function cardLeft(index: number) {
-    return { x: cols[index] * COL_WIDTH, y: stepY.get(index) ?? 0 };
-  }
-
-  // SVG edge paths
-  const svgEdges: { d: string; active: boolean; key: string; fromIdx: number; toIdx: number }[] = [];
-  for (let i = 0; i < steps.length; i++) {
-    for (const dep of steps[i].after) {
-      const p1 = cardRight(dep);
-      const p2 = cardLeft(i);
-      const dx = Math.abs(p2.x - p1.x) * 0.5;
-      const d = `M${p1.x},${p1.y} C${p1.x + dx},${p1.y} ${p2.x - dx},${p2.y} ${p2.x},${p2.y}`;
-      const active = sel != null && (sel === i || sel === dep);
-      svgEdges.push({ d, active, key: `${dep}-${i}`, fromIdx: dep, toIdx: i });
-    }
-  }
-
-  function getStepsInCol(col: number) {
-    return (colSorted.get(col) ?? []).map((i) => ({ index: i, step: steps[i] }));
-  }
-
-  const selDeps = new Set(selStep?.after ?? []);
-  const selDependents = new Set<number>();
-  if (sel != null) {
-    for (let i = 0; i < steps.length; i++) {
-      if (steps[i].after.includes(sel)) selDependents.add(i);
-    }
-  }
-
-  // Drag handlers
   function onDragHandleMouseDown(index: number, e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -332,43 +336,65 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
     const container = (e.target as HTMLElement).closest("[data-graph-container]") as HTMLElement;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-
     dragPos.value = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
     const onMove = (me: MouseEvent) => {
       dragPos.value = { x: me.clientX - rect.left, y: me.clientY - rect.top };
     };
-
     const onUp = (ue: MouseEvent) => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
-
-      // Find which card we dropped on
       const target = document.elementFromPoint(ue.clientX, ue.clientY);
       const cardEl = target?.closest("[data-step-idx]") as HTMLElement | null;
       if (cardEl && dragFrom.value != null) {
         const toIdx = parseInt(cardEl.dataset.stepIdx!);
         if (!isNaN(toIdx) && toIdx !== dragFrom.value) {
-          // from → to means "toIdx depends on fromIdx"
           addDep(toIdx, dragFrom.value);
         }
       }
-
       dragFrom.value = null;
       dragPos.value = null;
     };
-
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }
 
+  // ── Mode switching ──
+
+  if (mode.value === "list" && !isLinearChain(items.value)) {
+    savedGraphDeps.value = items.value.map((s) => [...s.after]);
+    items.value = toLinearChain(items.value);
+    selected.value = null;
+  } else if (mode.value === "graph" && savedGraphDeps.value != null) {
+    if (savedGraphDeps.value.length === items.value.length) {
+      items.value = items.value.map((s, i) => ({ ...s, after: savedGraphDeps.value![i] }));
+    }
+    savedGraphDeps.value = null;
+  }
+
+  // ── Render ──
+
+  const steps = items.value;
+  const sel = selected.value;
+  const isGraph = mode.value === "graph";
+  const layout = isGraph ? computeGraphLayout(steps, sel) : null;
+
+  const selDeps = new Set(sel != null ? steps[sel]?.after ?? [] : []);
+  const selDependents = new Set<number>();
+  if (sel != null) {
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].after.includes(sel)) selDependents.add(i);
+    }
+  }
+
   // Live drag line
   const dragLine = (() => {
-    if (dragFrom.value == null || !dragPos.value) return null;
-    const p1 = cardRight(dragFrom.value);
+    if (dragFrom.value == null || !dragPos.value || !layout) return null;
+    const p1x = layout.cols[dragFrom.value] * COL_WIDTH + CARD_W;
+    const p1y = layout.stepY.get(dragFrom.value) ?? 0;
     const p2 = dragPos.value;
-    const dx = Math.abs(p2.x - p1.x) * 0.4;
-    return `M${p1.x},${p1.y} C${p1.x + dx},${p1.y} ${p2.x - dx},${p2.y} ${p2.x},${p2.y}`;
+    const dx = Math.abs(p2.x - p1x) * 0.4;
+    return `M${p1x},${p1y} C${p1x + dx},${p1y} ${p2.x - dx},${p2.y} ${p2.x},${p2.y}`;
   })();
 
   return (
@@ -388,9 +414,21 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
                   class="flex-1 min-w-0 text-sm font-medium max-sm:order-3 max-sm:basis-full"
                 />
                 <div class="flex items-center gap-1 shrink-0 max-sm:order-2 max-sm:ml-auto">
-                  <button type="button" onClick={() => { const t = i - 1; if (t < 0) return; const n = [...items.value]; [n[i], n[t]] = [n[t], n[i]]; items.value = toLinearChain(n); }} disabled={i === 0} class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"><TbArrowUp class="size-4" /></button>
-                  <button type="button" onClick={() => { const t = i + 1; if (t >= items.value.length) return; const n = [...items.value]; [n[i], n[t]] = [n[t], n[i]]; items.value = toLinearChain(n); }} disabled={i === items.value.length - 1} class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"><TbArrowDown class="size-4" /></button>
-                  <button type="button" onClick={() => { items.value = toLinearChain(items.value.filter((_, j) => j !== i)); }} class="text-red-600 hover:text-red-700 p-1 cursor-pointer"><TbTrash class="size-4" /></button>
+                  <button type="button" disabled={i === 0} class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default" onClick={() => {
+                    if (i === 0) return;
+                    const n = [...items.value];
+                    [n[i], n[i - 1]] = [n[i - 1], n[i]];
+                    items.value = toLinearChain(n);
+                  }}><TbArrowUp class="size-4" /></button>
+                  <button type="button" disabled={i === items.value.length - 1} class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default" onClick={() => {
+                    if (i >= items.value.length - 1) return;
+                    const n = [...items.value];
+                    [n[i], n[i + 1]] = [n[i + 1], n[i]];
+                    items.value = toLinearChain(n);
+                  }}><TbArrowDown class="size-4" /></button>
+                  <button type="button" class="text-red-600 hover:text-red-700 p-1 cursor-pointer" onClick={() => {
+                    items.value = toLinearChain(items.value.filter((_, j) => j !== i));
+                  }}><TbTrash class="size-4" /></button>
                 </div>
               </div>
               <textarea
@@ -410,11 +448,7 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
                   ))}
                 </div>
               )}
-              <button
-                type="button"
-                class="link text-xs"
-                onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.multiple = true; input.onchange = () => uploadMedia(i, input.files); input.click(); }}
-              >
+              <button type="button" class="link text-xs" onClick={() => triggerFileUpload(i)}>
                 {uploading.value === i ? "Uploading..." : <span><TbUpload class="size-3 inline mr-0.5" />Add images</span>}
               </button>
             </div>
@@ -430,70 +464,64 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
       )}
 
       {/* ── Graph mode ── */}
-      {isGraph && (
+      {isGraph && layout && (
         <div class="space-y-4">
           <div class="overflow-x-auto pb-2">
-            <div data-graph-container style={{ position: "relative", width: `${svgW}px`, minHeight: `${containerH}px` }}>
-              {/* Cards — absolutely positioned to match SVG coordinates */}
+            <div data-graph-container style={{ position: "relative", width: `${layout.svgW}px`, minHeight: `${layout.svgH + ROW_HEIGHT}px` }}>
               <div style={{ position: "relative", zIndex: 2 }}>
                 {steps.map((step, index) => {
-                  const y = (stepY.get(index) ?? 0) - CARD_H / 2;
-                  const x = cols[index] * COL_WIDTH;
+                  const y = (layout.stepY.get(index) ?? 0) - CARD_H / 2;
+                  const x = layout.cols[index] * COL_WIDTH;
                   const isSelected = sel === index;
-                  const isDep = selDeps.has(index);
-                  const isDependent = selDependents.has(index);
-                  const isDragSource = dragFrom.value === index;
+                  const borderClass = dragFrom.value === index
+                    ? "border-orange-400 ring-2 ring-orange-200 dark:ring-orange-800"
+                    : isSelected
+                    ? "border-orange-500 ring-2 ring-orange-200 dark:ring-orange-800"
+                    : selDeps.has(index) ? "border-green-400 dark:border-green-600"
+                    : selDependents.has(index) ? "border-blue-300 dark:border-blue-700"
+                    : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600";
+
                   return (
                     <div
                       key={index}
                       data-step-idx={index}
                       style={{ position: "absolute", left: `${x}px`, top: `${y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }}
-                      class={`p-2 border-2 cursor-pointer transition-colors text-sm bg-white dark:bg-stone-900 ${
-                            isDragSource
-                              ? "border-orange-400 ring-2 ring-orange-200 dark:ring-orange-800"
-                              : isSelected
-                              ? "border-orange-500 ring-2 ring-orange-200 dark:ring-orange-800"
-                              : isDep ? "border-green-400 dark:border-green-600"
-                              : isDependent ? "border-blue-300 dark:border-blue-700"
-                              : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600"
-                          }`}
-                          onClick={() => { selected.value = isSelected ? null : index; }}
-                        >
-                          <div class="flex items-center justify-between gap-1">
-                            <div class="min-w-0 flex-1 flex items-center gap-1.5">
-                              <span class="text-xs text-stone-400 font-mono shrink-0">#{index + 1}</span>
-                              <span class="font-medium truncate">{step.title.trim() || <span class="text-stone-400 italic">untitled</span>}</span>
-                            </div>
-                            <div class="flex items-center shrink-0">
-                              <button type="button" title="Insert step in sequence" class="text-stone-400 hover:text-orange-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphInsertAfter(index); }}><TbPlus class="size-3.5" /></button>
-                              <button type="button" title="Add parallel branch" class="text-stone-400 hover:text-blue-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphBranchAfter(index); }}><TbPlus class="size-3.5" style={{ transform: "rotate(45deg)" }} /></button>
-                              <button type="button" class="text-stone-400 hover:text-red-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphRemoveStep(index); }}><TbTrash class="size-3.5" /></button>
-                            </div>
-                          </div>
-
-                          {/* Drag handle — right edge dot */}
-                          <div
-                            class="absolute top-1/2 -right-2.5 w-5 h-5 -mt-2.5 flex items-center justify-center cursor-crosshair"
-                            onMouseDown={(e) => onDragHandleMouseDown(index, e as unknown as MouseEvent)}
-                          >
-                            <div class="w-2.5 h-2.5 rounded-full bg-stone-300 dark:bg-stone-600 hover:bg-orange-400 dark:hover:bg-orange-500 transition-colors" />
-                          </div>
+                      class={`p-2 border-2 cursor-pointer transition-colors text-sm bg-white dark:bg-stone-900 ${borderClass}`}
+                      onClick={() => { selected.value = isSelected ? null : index; }}
+                    >
+                      <div class="flex items-center justify-between gap-1">
+                        <div class="min-w-0 flex-1 flex items-center gap-1.5">
+                          <span class="text-xs text-stone-400 font-mono shrink-0">#{index + 1}</span>
+                          <span class="font-medium truncate">{step.title.trim() || <span class="text-stone-400 italic">untitled</span>}</span>
+                        </div>
+                        <div class="flex items-center shrink-0">
+                          <button type="button" title="Insert step in sequence" class="text-stone-400 hover:text-orange-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphInsertAfter(index); }}><TbPlus class="size-3.5" /></button>
+                          <button type="button" title="Add parallel branch" class="text-stone-400 hover:text-blue-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphBranchAfter(index); }}><TbPlus class="size-3.5" style={{ transform: "rotate(45deg)" }} /></button>
+                          <button type="button" class="text-stone-400 hover:text-red-600 p-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); graphRemoveStep(index); }}><TbTrash class="size-3.5" /></button>
+                        </div>
+                      </div>
+                      <div
+                        class="absolute top-1/2 -right-2.5 w-5 h-5 -mt-2.5 flex items-center justify-center cursor-crosshair"
+                        onMouseDown={(e) => onDragHandleMouseDown(index, e as unknown as MouseEvent)}
+                      >
+                        <div class="w-2.5 h-2.5 rounded-full bg-stone-300 dark:bg-stone-600 hover:bg-orange-400 dark:hover:bg-orange-500 transition-colors" />
+                      </div>
                     </div>
                   );
                 })}
 
-                {/* Add starting step — dashed card below column 0 */}
+                {/* Add starting step */}
                 {(() => {
-                  const col0 = colSorted.get(0) ?? [];
-                  const lastInCol0 = col0.length > 0 ? col0[col0.length - 1] : -1;
-                  const y = lastInCol0 >= 0
-                    ? (stepY.get(lastInCol0) ?? 0) + CARD_H / 2 + ROW_GAP
+                  const col0 = layout.colSorted.get(0) ?? [];
+                  const lastInCol0 = col0[col0.length - 1];
+                  const y = lastInCol0 != null
+                    ? (layout.stepY.get(lastInCol0) ?? 0) + CARD_H / 2 + ROW_GAP
                     : 0;
                   return (
                     <div
                       style={{ position: "absolute", left: 0, top: `${y}px`, width: `${CARD_W}px`, height: `${CARD_H}px` }}
                       class="border-2 border-dashed border-stone-300 dark:border-stone-600 hover:border-stone-400 dark:hover:border-stone-500 cursor-pointer transition-colors flex items-center justify-center text-stone-400 hover:text-stone-600 text-xs"
-                      onClick={() => graphAddStart()}
+                      onClick={graphAddStart}
                     >
                       <TbPlus class="size-3.5 mr-1" />Add starting step
                     </div>
@@ -501,45 +529,20 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
                 })()}
               </div>
 
-              {/* SVG edges + drag line */}
-              <svg style={{ position: "absolute", top: 0, left: 0, zIndex: 1, pointerEvents: "none", overflow: "visible" }} width={svgW} height={svgH}>
-                {svgEdges.map(({ d, active, key, fromIdx, toIdx }) => (
+              {/* SVG edges */}
+              <svg style={{ position: "absolute", top: 0, left: 0, zIndex: 1, pointerEvents: "none", overflow: "visible" }} width={layout.svgW} height={layout.svgH}>
+                {layout.edges.map(({ d, active, key, fromIdx, toIdx }) => (
                   <g key={key}>
-                    {/* Invisible thick hit area */}
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke="transparent"
-                      stroke-width={12}
-                      style={{ pointerEvents: "stroke", cursor: "pointer" }}
-                      onClick={() => removeDep(toIdx, fromIdx)}
-                    />
-                    {/* Visible line */}
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke={active ? "#f97316" : "#a8a29e"}
-                      stroke-width={active ? 2.5 : 1.5}
-                      opacity={active ? 1 : 0.4}
-                      style={{ pointerEvents: "none" }}
-                    />
+                    <path d={d} fill="none" stroke="transparent" stroke-width={12} style={{ pointerEvents: "stroke", cursor: "pointer" }} onClick={() => removeDep(toIdx, fromIdx)} />
+                    <path d={d} fill="none" stroke={active ? "var(--color-orange-500)" : "var(--color-stone-400)"} stroke-width={active ? 2.5 : 1.5} opacity={active ? 1 : 0.4} style={{ pointerEvents: "none" }} />
                   </g>
                 ))}
-                {/* Live drag line */}
                 {dragLine && (
-                  <path
-                    d={dragLine}
-                    fill="none"
-                    stroke="#f97316"
-                    stroke-width={2}
-                    stroke-dasharray="6 4"
-                    opacity={0.7}
-                  />
+                  <path d={dragLine} fill="none" stroke="var(--color-orange-500)" stroke-width={2} stroke-dasharray="6 4" opacity={0.7} />
                 )}
               </svg>
             </div>
           </div>
-
 
           {/* Legend */}
           {sel != null && (
@@ -550,51 +553,29 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
             </div>
           )}
 
-          {/* Validation: single end node */}
-          {leafNodes.length > 1 && (
+          {/* Single end node validation */}
+          {layout.leafNodes.length > 1 && (
             <div class="text-xs text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-700 p-2">
-              Recipe must have a single final step. Currently {leafNodes.length} steps have nothing after them: {leafNodes.map((i) => `#${i + 1} ${steps[i].title.trim() || "untitled"}`).join(", ")}. Connect them or remove extras.
+              Recipe must have a single final step. Currently {layout.leafNodes.length} steps have nothing after them: {layout.leafNodes.map((i) => `#${i + 1} ${steps[i].title.trim() || "untitled"}`).join(", ")}. Connect them or remove extras.
             </div>
           )}
 
           {/* Editor panel */}
-          {sel != null && selStep && (
-            <div class="card p-4 space-y-3 border-orange-300 dark:border-orange-700 border-2">
-              <div class="flex items-center gap-2">
+          {sel != null && steps[sel] && (
+            <div class="card p-4 border-orange-300 dark:border-orange-700 border-2">
+              <div class="flex items-center gap-2 mb-3">
                 <span class="text-sm font-semibold text-stone-500">Step {sel + 1}</span>
                 <button type="button" onClick={() => { selected.value = null; }} class="text-stone-400 hover:text-stone-600 ml-auto cursor-pointer"><TbX class="size-4" /></button>
               </div>
-              <input
-                type="text"
-                placeholder="Step title"
-                value={selStep.title}
-                onInput={(e) => updateField(sel, "title", (e.target as HTMLInputElement).value)}
-                class="w-full text-sm font-medium"
+              <StepEditor
+                step={steps[sel]}
+                index={sel}
+                onTitle={(v) => updateField(sel, "title", v)}
+                onBody={(v) => updateField(sel, "body", v)}
+                onRemoveMedia={(mi) => removeMedia(sel, mi)}
+                onUploadMedia={() => triggerFileUpload(sel)}
+                uploading={uploading.value === sel}
               />
-              <textarea
-                placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
-                value={selStep.body}
-                onInput={(e) => updateField(sel, "body", (e.target as HTMLTextAreaElement).value)}
-                rows={6}
-                class="w-full text-sm font-mono"
-              />
-              {selStep.media.length > 0 && (
-                <div class="flex flex-wrap gap-2">
-                  {selStep.media.map((m, mi) => (
-                    <div key={m.id} class="relative group">
-                      <img src={m.url} alt="" class="w-20 h-20 object-cover border-2 border-stone-300 dark:border-stone-700" />
-                      <button type="button" onClick={() => removeMedia(sel, mi)} class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"><TbX class="size-3" /></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <button
-                type="button"
-                class="link text-xs"
-                onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.multiple = true; input.onchange = () => uploadMedia(sel, input.files); input.click(); }}
-              >
-                {uploading.value === sel ? "Uploading..." : <span><TbUpload class="size-3 inline mr-0.5" />Add images</span>}
-              </button>
             </div>
           )}
         </div>

@@ -6,7 +6,7 @@ import type {
   RecipeStepDep,
   RecipeTag,
 } from "../../../../db/types.ts";
-import { computeStepColumns } from "../../../../lib/step-graph.ts";
+import { computeStepAfters } from "../../../../lib/step-graph.ts";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -67,7 +67,7 @@ export const handler = define.handlers({
        WHERE rs.recipe_id = $1`,
       [recipe.id],
     );
-    const stepColumnMap = computeStepColumns(
+    const stepAfterMap = computeStepAfters(
       stepsRes.rows.map((s) => s.id),
       stepDepsRes.rows,
     );
@@ -105,7 +105,7 @@ export const handler = define.handlers({
       steps: stepsRes.rows.map((s) => ({
         title: s.title,
         body: s.body,
-        column: stepColumnMap.get(s.id) ?? 0,
+        after: stepAfterMap.get(s.id) ?? [],
       })),
       tags: {
         meal_types: mealTypes,

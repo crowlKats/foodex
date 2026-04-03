@@ -14,7 +14,6 @@ export interface Step {
   title: string;
   body: string;
   media?: { id: string; url: string }[];
-  column?: number;
   after?: number[];
 }
 
