@@ -1,6 +1,6 @@
 import { page } from "fresh";
 import { signal } from "@preact/signals";
-import { define } from "../../utils.ts";
+import { define, slugify } from "../../utils.ts";
 import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
 import { saveRecipeChildren } from "../../lib/recipe-save.ts";
 import QuantityInput from "../../islands/QuantityInput.tsx";
@@ -23,15 +23,6 @@ import {
   SOURCE_TYPE_LABELS,
   SOURCE_TYPES,
 } from "../../lib/recipe-tags.ts";
-
-function slugify(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 export const handler = define.handlers({
   async GET(ctx) {

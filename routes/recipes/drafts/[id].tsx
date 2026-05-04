@@ -1,5 +1,5 @@
 import { HttpError, page } from "fresh";
-import { define } from "../../../utils.ts";
+import { define, slugify } from "../../../utils.ts";
 import type {
   Ingredient,
   Media,
@@ -11,15 +11,6 @@ import type { OcrRecipeData } from "../../../lib/ocr.ts";
 import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
 import DraftEditor from "../../../islands/DraftEditor.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
-
-function slugify(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 export const handler = define.handlers({
   async GET(ctx) {

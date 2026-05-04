@@ -1,14 +1,5 @@
 import { HttpError } from "fresh";
-import { define } from "../../../utils.ts";
-
-function slugify(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
+import { define, slugify } from "../../../utils.ts";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -27,12 +18,9 @@ export const handler = define.handlers({
     if (recipeRes.rows.length === 0) throw new HttpError(404);
     const recipe = recipeRes.rows[0];
 
-    // Generate a unique slug
-    const originalTitle = String(recipe.title);
-    const baseTitle = originalTitle.startsWith("Fork of ")
-      ? originalTitle
-      : `Fork of ${originalTitle}`;
-    let newSlug = slugify(baseTitle);
+    const title = String(recipe.title);
+    const baseSlug = slugify(title);
+    let newSlug = baseSlug;
     let suffix = 1;
     while (true) {
       const existing = await ctx.state.db.query(
@@ -41,7 +29,7 @@ export const handler = define.handlers({
       );
       if (existing.rows.length === 0) break;
       suffix++;
-      newSlug = slugify(baseTitle) + `-${suffix}`;
+      newSlug = `${baseSlug}-${suffix}`;
     }
 
     // Track the original recipe: if the source is itself a fork, link to the root
@@ -53,7 +41,7 @@ export const handler = define.handlers({
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
        RETURNING id`,
       [
-        baseTitle,
+        title,
         newSlug,
         recipe.description,
         recipe.quantity_type,

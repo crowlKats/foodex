@@ -1,6 +1,6 @@
 import { HttpError, page } from "fresh";
 import { signal } from "@preact/signals";
-import { define } from "../../../utils.ts";
+import { define, slugify } from "../../../utils.ts";
 import type {
   Ingredient,
   Recipe,
@@ -262,9 +262,23 @@ export const handler = define.handlers({
       ? parseInt(outputExpiresDaysRaw)
       : null;
 
+    let newSlug = slug;
     await ctx.state.db.transaction(async (q) => {
+      const baseSlug = slugify(title?.trim() || "");
+      newSlug = baseSlug;
+      let suffix = 1;
+      while (true) {
+        const existing = await q<{ id: string }>(
+          "SELECT id FROM recipes WHERE slug = $1 AND id != $2",
+          [newSlug, recipeId],
+        );
+        if (existing.rows.length === 0) break;
+        suffix++;
+        newSlug = `${baseSlug}-${suffix}`;
+      }
+
       await q(
-        `UPDATE recipes SET title=$1, description=$2,
+        `UPDATE recipes SET title=$1, slug=$23, description=$2,
          quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
          prep_time=$9, cook_time=$10, rest_time=$22, cover_image_id=$11, difficulty=$13, private=$14,
          source_type=$15, source_name=$16, source_url=$17,
@@ -293,6 +307,7 @@ export const handler = define.handlers({
           outputUnit,
           outputExpiresDays,
           restTime,
+          newSlug,
         ],
       );
 
@@ -310,7 +325,7 @@ export const handler = define.handlers({
 
     return new Response(null, {
       status: 303,
-      headers: { Location: `/recipes/${slug}` },
+      headers: { Location: `/recipes/${newSlug}` },
     });
   },
 });
