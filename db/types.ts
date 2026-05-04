@@ -309,7 +309,7 @@ export interface RecipeDraft {
   ai_messages: { role: "user" | "assistant"; content: string }[];
   ai_thinking: string | null;
   cover_image_id: string | null;
-  source: "manual" | "ocr" | "generate";
+  source: "manual" | "ocr" | "generate" | "url" | "text";
   created_at: string;
   updated_at: string;
 }

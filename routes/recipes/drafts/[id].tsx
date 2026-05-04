@@ -243,7 +243,8 @@ export default define.page<typeof handler>(
           draftId={draft.id}
           initialRecipe={recipeData}
           aiMessages={draft.ai_messages}
-          hasAi={draft.source === "ocr" || draft.source === "generate"}
+          hasAi={draft.source === "ocr" || draft.source === "generate" ||
+            draft.source === "text"}
           coverImage={coverImage}
           ingredients={ingredients.map((g) => ({
             id: String(g.id),

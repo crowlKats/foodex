@@ -4,6 +4,7 @@ import type { RecipeDraft } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import OcrUpload from "../../../islands/OcrUpload.tsx";
 import UrlImport from "../../../islands/UrlImport.tsx";
+import TextImport from "../../../islands/TextImport.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -17,7 +18,7 @@ export const handler = define.handlers({
     const draftsRes = await ctx.state.db.query<RecipeDraft>(
       `SELECT id, recipe_data, source, updated_at
        FROM recipe_drafts
-       WHERE household_id = $1 AND source IN ('ocr', 'generate', 'url')
+       WHERE household_id = $1 AND source IN ('ocr', 'generate', 'url', 'text')
        ORDER BY updated_at DESC`,
       [ctx.state.householdId],
     );
@@ -34,6 +35,8 @@ export default define.page<typeof handler>(function ImportIndexPage({ data }) {
         return "Imported from image";
       case "url":
         return "Imported from URL";
+      case "text":
+        return "Imported from text";
       default:
         return "Generated from pantry";
     }
@@ -54,6 +57,11 @@ export default define.page<typeof handler>(function ImportIndexPage({ data }) {
         <section>
           <h2 class="text-lg font-semibold mb-3">From Image</h2>
           <OcrUpload />
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold mb-3">From Text</h2>
+          <TextImport />
         </section>
       </div>
 
