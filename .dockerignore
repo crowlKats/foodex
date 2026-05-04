@@ -1,0 +1,11 @@
+.git
+.gitignore
+.vscode
+.DS_Store
+README.md
+Dockerfile
+node_modules
+_fresh
+*.log
+.env
+.env.*
