@@ -16,6 +16,18 @@ interface StepEntry {
   body: string;
   media: MediaItem[];
   after: number[];
+  _uid?: string;
+}
+
+function newStep(partial: Partial<StepEntry> = {}): StepEntry {
+  return {
+    title: "",
+    body: "",
+    media: [],
+    after: [],
+    ...partial,
+    _uid: crypto.randomUUID(),
+  };
 }
 
 import type { Signal } from "@preact/signals";
@@ -227,8 +239,8 @@ function StepEditor(
 export default function StepForm({ initialSteps, mode }: StepFormProps) {
   const items = useSignal<StepEntry[]>(
     initialSteps.length > 0
-      ? [...initialSteps]
-      : [{ title: "", body: "", media: [], after: [] }],
+      ? initialSteps.map((s) => ({ ...s, _uid: crypto.randomUUID() }))
+      : [newStep()],
   );
   const selected = useSignal<number | null>(null);
   const uploading = useSignal<number | null>(null);
@@ -307,7 +319,7 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
       after: s.after.map((a) => (a === depIndex ? newIdx : a)),
     }));
     applyGraphChange(
-      [...rewired, { title: "", body: "", media: [], after: [depIndex] }],
+      [...rewired, newStep({ after: [depIndex] })],
       newIdx,
     );
   }
@@ -315,7 +327,7 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
   function graphBranchAfter(depIndex: number) {
     const newIdx = items.value.length;
     applyGraphChange(
-      [...items.value, { title: "", body: "", media: [], after: [depIndex] }],
+      [...items.value, newStep({ after: [depIndex] })],
       newIdx,
     );
   }
@@ -323,7 +335,7 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
   function graphAddStart() {
     const newIdx = items.value.length;
     applyGraphChange(
-      [...items.value, { title: "", body: "", media: [], after: [] }],
+      [...items.value, newStep()],
       newIdx,
     );
   }
@@ -350,7 +362,7 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
     });
 
     if (next.length === 0) {
-      items.value = [{ title: "", body: "", media: [], after: [] }];
+      items.value = [newStep()];
       selected.value = null;
       return;
     }
@@ -461,7 +473,7 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
       {!isGraph && (
         <div class="space-y-4">
           {steps.map((item, i) => (
-            <div key={i} class="card p-3 space-y-2">
+            <div key={item._uid ?? i} class="card p-3 space-y-2">
               <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center min-w-0">
                 <span class="text-xs text-stone-400 font-mono shrink-0 max-sm:order-1">
                   #{i + 1}
@@ -568,12 +580,10 @@ export default function StepForm({ initialSteps, mode }: StepFormProps) {
             type="button"
             onClick={() => {
               const prev = items.value.length - 1;
-              items.value = [...items.value, {
-                title: "",
-                body: "",
-                media: [],
-                after: prev >= 0 ? [prev] : [],
-              }];
+              items.value = [
+                ...items.value,
+                newStep({ after: prev >= 0 ? [prev] : [] }),
+              ];
             }}
             class="link text-sm font-medium"
           >

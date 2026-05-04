@@ -10,6 +10,10 @@ interface ToolEntry {
   settings: string;
 }
 
+interface ToolItem extends ToolEntry {
+  _uid: string;
+}
+
 interface ToolFormProps {
   initialTools: ToolEntry[];
   tools: { id: string; name: string }[];
@@ -18,10 +22,11 @@ interface ToolFormProps {
 export default function ToolForm(
   { initialTools, tools }: ToolFormProps,
 ) {
-  const items = useSignal<ToolEntry[]>(
-    initialTools.length > 0
-      ? [...initialTools]
-      : [{ tool_id: "", tool_name: "", usage_description: "", settings: "" }],
+  const items = useSignal<ToolItem[]>(
+    (initialTools.length > 0
+      ? initialTools
+      : [{ tool_id: "", tool_name: "", usage_description: "", settings: "" }])
+      .map((t) => ({ ...t, _uid: crypto.randomUUID() })),
   );
 
   const options = tools.map((t) => ({ id: t.id, name: t.name }));
@@ -32,6 +37,7 @@ export default function ToolForm(
       tool_name: "",
       usage_description: "",
       settings: "",
+      _uid: crypto.randomUUID(),
     }];
   }
 
@@ -48,7 +54,7 @@ export default function ToolForm(
   return (
     <div class="space-y-2">
       {items.value.map((item, i) => (
-        <div key={i} class="space-y-2">
+        <div key={item._uid} class="space-y-2">
           <div class="flex gap-2 items-center min-w-0">
             <SearchSelect
               value={{ id: item.tool_id, name: item.tool_name }}

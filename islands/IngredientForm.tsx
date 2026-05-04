@@ -12,6 +12,10 @@ interface Ingredient {
   ingredient_id: string;
 }
 
+interface IngredientItem extends Ingredient {
+  _uid: string;
+}
+
 interface IngredientFormProps {
   initialIngredients: Ingredient[];
   ingredients: { id: string; name: string; unit: string }[];
@@ -28,10 +32,11 @@ export default function IngredientForm(
   { initialIngredients, ingredients: availableIngredients }:
     IngredientFormProps,
 ) {
-  const items = useSignal<Ingredient[]>(
-    initialIngredients.length > 0
-      ? [...initialIngredients]
-      : [{ key: "", name: "", amount: "", unit: "", ingredient_id: "" }],
+  const items = useSignal<IngredientItem[]>(
+    (initialIngredients.length > 0
+      ? initialIngredients
+      : [{ key: "", name: "", amount: "", unit: "", ingredient_id: "" }])
+      .map((i) => ({ ...i, _uid: crypto.randomUUID() })),
   );
 
   const options = availableIngredients.map((g) => ({
@@ -43,7 +48,14 @@ export default function IngredientForm(
   function add() {
     items.value = [
       ...items.value,
-      { key: "", name: "", amount: "", unit: "", ingredient_id: "" },
+      {
+        key: "",
+        name: "",
+        amount: "",
+        unit: "",
+        ingredient_id: "",
+        _uid: crypto.randomUUID(),
+      },
     ];
   }
 
@@ -92,7 +104,7 @@ export default function IngredientForm(
   return (
     <div class="space-y-3">
       {items.value.map((item, i) => (
-        <div key={i} class="card p-3 space-y-2">
+        <div key={item._uid} class="card p-3 space-y-2">
           <div class="flex gap-2 items-center min-w-0">
             <SearchSelect
               value={{ id: item.ingredient_id, name: item.name }}
