@@ -5,6 +5,7 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET") ?? "";
 const AUTHENTIK_CLIENT_ID = Deno.env.get("AUTHENTIK_CLIENT_ID") ?? "";
 const AUTHENTIK_CLIENT_SECRET = Deno.env.get("AUTHENTIK_CLIENT_SECRET") ?? "";
 const AUTHENTIK_ISSUER = Deno.env.get("AUTHENTIK_ISSUER") ?? "";
+const ALWAYS_HTTPS = Deno.env.get("ALWAYS_HTTPS") === "true";
 
 export const providers = {
   github: !!(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET),
@@ -15,7 +16,7 @@ export const providers = {
 
 function getBaseUrl(req: Request): string {
   const url = new URL(req.url);
-  return `${url.protocol}//${url.host}`;
+  return `${ALWAYS_HTTPS ? "https" : url.protocol}//${url.host}`;
 }
 
 export function generateOAuthState(): string {
