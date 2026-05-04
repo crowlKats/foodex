@@ -239,6 +239,21 @@ function toSnakeCase(name: string): string {
     .slice(0, 40);
 }
 
+/**
+ * Many sites populate HowToStep `name` with the same content as `text`
+ * (or its first sentence). Drop `name` when it's redundant so it doesn't
+ * appear duplicated in both the step title and body.
+ */
+function pickStepTitle(name: string | undefined, text: string): string {
+  const n = (name || "").trim();
+  const t = text.trim();
+  if (!n) return "";
+  if (n === t) return "";
+  const strip = (s: string) => s.replace(/[.!?…]+$/, "").trim().toLowerCase();
+  if (strip(t).startsWith(strip(n))) return "";
+  return n;
+}
+
 /** Parse recipeInstructions into steps. */
 function parseInstructions(
   instructions: SchemaRecipe["recipeInstructions"],
@@ -250,20 +265,19 @@ function parseInstructions(
     return instructions
       .split(/\n+/)
       .filter((s) => s.trim())
-      .map((s, i) => ({ title: `Step ${i + 1}`, body: s.trim() }));
+      .map((s) => ({ title: "", body: s.trim() }));
   }
 
   // Array of strings
   if (Array.isArray(instructions) && typeof instructions[0] === "string") {
     return (instructions as string[])
       .filter((s) => s.trim())
-      .map((s, i) => ({ title: `Step ${i + 1}`, body: s.trim() }));
+      .map((s) => ({ title: "", body: s.trim() }));
   }
 
   // Array of HowToStep / HowToSection objects
   if (Array.isArray(instructions)) {
     const steps: { title: string; body: string }[] = [];
-    let stepNum = 1;
     for (
       const item of instructions as {
         "@type": string;
@@ -273,19 +287,18 @@ function parseInstructions(
       }[]
     ) {
       if (item["@type"] === "HowToSection" && item.itemListElement) {
-        for (const sub of item.itemListElement) {
-          steps.push({
-            title: sub.name || `Step ${stepNum}`,
-            body: sub.text || "",
-          });
-          stepNum++;
-        }
-      } else {
-        steps.push({
-          title: item.name || `Step ${stepNum}`,
-          body: item.text || "",
+        const sectionName = (item.name || "").trim();
+        item.itemListElement.forEach((sub, i) => {
+          const body = sub.text || "";
+          let title = pickStepTitle(sub.name, body);
+          // Use the section name as the title of the first step in the section
+          // when the step itself has no meaningful title.
+          if (!title && i === 0 && sectionName) title = sectionName;
+          steps.push({ title, body });
         });
-        stepNum++;
+      } else {
+        const body = item.text || "";
+        steps.push({ title: pickStepTitle(item.name, body), body });
       }
     }
     return steps;
