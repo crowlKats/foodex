@@ -72,6 +72,7 @@ export const handler = define.handlers({
     const storeId = form.get("store_id") as string;
     const price = form.get("price") as string;
     const amount = form.get("amount") as string;
+    const action = form.get("action") as string;
 
     if (!name?.trim()) {
       return new Response(null, {
@@ -102,9 +103,12 @@ export const handler = define.handlers({
       );
     }
 
+    const location = action === "add_another"
+      ? "/ingredients"
+      : `/ingredients/${ingredientId}`;
     return new Response(null, {
       status: 303,
-      headers: { Location: `/ingredients/${ingredientId}` },
+      headers: { Location: location },
     });
   },
 });
@@ -174,12 +178,24 @@ export default define.page<typeof handler>(
                 </FormField>
               </div>
 
-              <button
-                type="submit"
-                class="btn btn-primary"
-              >
-                Add Ingredient
-              </button>
+              <div class="flex gap-2 flex-wrap">
+                <button
+                  type="submit"
+                  name="action"
+                  value="add_another"
+                  class="btn btn-primary"
+                >
+                  Add, and add another
+                </button>
+                <button
+                  type="submit"
+                  name="action"
+                  value="add"
+                  class="btn"
+                >
+                  Add
+                </button>
+              </div>
             </form>
           </div>
 
