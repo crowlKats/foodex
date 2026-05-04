@@ -248,6 +248,65 @@ function evaluate(expr: Expr, vars: Record<string, number>): number {
 
 export { formatAmount } from "./format.ts";
 
+function collectIngredientVars(
+  expr: Expr,
+  ingredients: Record<string, IngredientVar>,
+  out: Set<string>,
+): void {
+  switch (expr.kind) {
+    case "var":
+      if (expr.name in ingredients) out.add(expr.name);
+      else {
+        const lower = expr.name.charAt(0).toLowerCase() + expr.name.slice(1);
+        if (lower in ingredients) out.add(lower);
+      }
+      break;
+    case "binary":
+      collectIngredientVars(expr.left, ingredients, out);
+      collectIngredientVars(expr.right, ingredients, out);
+      break;
+    case "unary":
+      collectIngredientVars(expr.operand, ingredients, out);
+      break;
+    case "call":
+      for (const a of expr.args) collectIngredientVars(a, ingredients, out);
+      break;
+  }
+}
+
+function isCapitalized(name: string): boolean {
+  const c = name.charAt(0);
+  return c >= "A" && c <= "Z";
+}
+
+function findFirstIngredientVarCasing(
+  expr: Expr,
+  ingredients: Record<string, IngredientVar>,
+): string | null {
+  switch (expr.kind) {
+    case "var":
+      if (expr.name in ingredients) return expr.name;
+      if (
+        (expr.name.charAt(0).toLowerCase() + expr.name.slice(1)) in ingredients
+      ) return expr.name;
+      return null;
+    case "binary": {
+      return findFirstIngredientVarCasing(expr.left, ingredients) ??
+        findFirstIngredientVarCasing(expr.right, ingredients);
+    }
+    case "unary":
+      return findFirstIngredientVarCasing(expr.operand, ingredients);
+    case "call": {
+      for (const a of expr.args) {
+        const r = findFirstIngredientVarCasing(a, ingredients);
+        if (r) return r;
+      }
+      return null;
+    }
+  }
+  return null;
+}
+
 export function evaluateExpression(
   expression: string,
   variables: Record<string, number>,
@@ -256,23 +315,6 @@ export function evaluateExpression(
   try {
     const tokens = tokenize(expression);
     const ast = new Parser(tokens).parse();
-
-    if (ast.kind === "var" && ingredients && ast.name in ingredients) {
-      const ing = ingredients[ast.name];
-      return `${
-        formatAmount(ing.amount, ing.unit)
-      }${ing.unit} ${ing.name.toLowerCase()}`;
-    }
-
-    if (ast.kind === "var" && ingredients) {
-      const lower = ast.name.charAt(0).toLowerCase() + ast.name.slice(1);
-      if (lower in ingredients) {
-        const ing = ingredients[lower];
-        return `${formatAmount(ing.amount, ing.unit)}${ing.unit} ${
-          ing.name.charAt(0).toUpperCase()
-        }${ing.name.slice(1).toLowerCase()}`;
-      }
-    }
 
     if (ast.kind === "prop" && ingredients && ast.object in ingredients) {
       const ing = ingredients[ast.object];
@@ -283,6 +325,24 @@ export function evaluateExpression(
     if (ingredients) {
       for (const [key, ing] of Object.entries(ingredients)) {
         allVars[`${key}_amount`] = ing.amount;
+      }
+    }
+
+    if (ingredients) {
+      const refs = new Set<string>();
+      collectIngredientVars(ast, ingredients, refs);
+      if (refs.size === 1) {
+        const [key] = refs;
+        const ing = ingredients[key];
+        const scoped = { ...allVars, [key]: ing.amount };
+        const amount = evaluate(ast, scoped);
+        const originalRef = findFirstIngredientVarCasing(ast, ingredients) ??
+          key;
+        const capitalize = isCapitalized(originalRef);
+        const name = capitalize
+          ? ing.name.charAt(0).toUpperCase() + ing.name.slice(1).toLowerCase()
+          : ing.name.toLowerCase();
+        return `${formatAmount(amount, ing.unit)}${ing.unit} ${name}`;
       }
     }
 
