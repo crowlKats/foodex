@@ -42,12 +42,14 @@
     "npm:@preact/signals@^2.8.2": "2.8.2_preact@10.29.0",
     "npm:@prefresh/vite@^2.4.8": "2.4.12_preact@10.29.0_vite@7.3.1",
     "npm:@tailwindcss/vite@^4.2.2": "4.2.2_vite@7.3.1",
+    "npm:@types/nodemailer@^6.4.17": "6.4.23",
     "npm:@types/pg@^8.20.0": "8.20.0",
     "npm:barcode-detector@^3.0.3": "3.1.1_@types+emscripten@1.41.5",
     "npm:esbuild-wasm@~0.25.11": "0.25.12",
     "npm:esbuild@0.25.7": "0.25.7",
     "npm:esbuild@~0.25.5": "0.25.12",
     "npm:marked@^15.0.12": "15.0.12",
+    "npm:nodemailer@^6.9.16": "6.10.1",
     "npm:pg@^8.20.0": "8.20.0",
     "npm:preact-render-to-string@^6.6.3": "6.6.6_preact@10.29.0",
     "npm:preact@^10.22.1": "10.29.0",
@@ -2051,6 +2053,12 @@
         "undici-types"
       ]
     },
+    "@types/nodemailer@6.4.23": {
+      "integrity": "sha512-aFV3/NsYFLSx9mbb5gtirBSXJnAlrusoKNuPbxsASWc7vrKLmIrTQRpdcxNcSFL3VW2A2XpeLEavwb2qMi6nlQ==",
+      "dependencies": [
+        "@types/node"
+      ]
+    },
     "@types/pg@8.20.0": {
       "integrity": "sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==",
       "dependencies": [
@@ -2367,6 +2375,9 @@
     "node-releases@2.0.36": {
       "integrity": "sha512-TdC8FSgHz8Mwtw9g5L4gR/Sh9XhSP/0DEkQxfEFXOpiul5IiHgHan2VhYYb6agDSfp4KuvltmGApc8HMgUrIkA=="
     },
+    "nodemailer@6.10.1": {
+      "integrity": "sha512-Z+iLaBGVaSjbIzQ4pX6XV41HrooLsQ10ZWPUehGmuantvzWoDVBnmsdUcOIDM1t+yPor5pDhVlDESgOMEGxhHA=="
+    },
     "path-expression-matcher@1.2.0": {
       "integrity": "sha512-DwmPWeFn+tq7TiyJ2CxezCAirXjFxvaiD03npak3cRjlP9+OjTmSy1EpIrEbh+l6JgUundniloMLDQ/6VTdhLQ=="
     },
@@ -2585,9 +2596,11 @@
       "npm:@aws-sdk/s3-request-presigner@^3.1014.0",
       "npm:@preact/signals@^2.8.2",
       "npm:@tailwindcss/vite@^4.2.2",
+      "npm:@types/nodemailer@^6.4.17",
       "npm:@types/pg@^8.20.0",
       "npm:barcode-detector@^3.0.3",
       "npm:marked@^15.0.12",
+      "npm:nodemailer@^6.9.16",
       "npm:pg@^8.20.0",
       "npm:preact@^10.29.0",
       "npm:tailwindcss@^4.2.2",
