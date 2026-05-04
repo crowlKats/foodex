@@ -26,11 +26,17 @@ export default function IngredientUnitFields({ unit, density }: Props) {
             selectedUnit.value = (e.target as HTMLSelectElement).value;
           }}
         >
-          <option value="">-- Unit --</option>
+          <option value="" selected={selectedUnit.value === ""}>
+            -- Unit --
+          </option>
           {UNIT_GROUPS.map((group) => (
             <optgroup key={group.label} label={group.label}>
               {group.units.map((u) => (
-                <option key={u.name} value={u.name}>
+                <option
+                  key={u.name}
+                  value={u.name}
+                  selected={u.name === selectedUnit.value}
+                >
                   {u.name}
                 </option>
               ))}
