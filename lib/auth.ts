@@ -16,7 +16,7 @@ export const providers = {
 
 function getBaseUrl(req: Request): string {
   const url = new URL(req.url);
-  return `${ALWAYS_HTTPS ? "https" : url.protocol}//${url.host}`;
+  return `${ALWAYS_HTTPS ? "https:" : url.protocol}//${url.host}`;
 }
 
 export function generateOAuthState(): string {
