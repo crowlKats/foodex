@@ -4,6 +4,7 @@ import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
+import IngredientNameInput from "../../islands/IngredientNameInput.tsx";
 import {
   getPage,
   Pagination,
@@ -51,14 +52,19 @@ export const handler = define.handlers({
     }
     const totalCount = Number(countRes.rows[0].cnt);
 
-    const storesRes = await ctx.state.db.query(
-      "SELECT * FROM stores ORDER BY name",
-    );
+    const [storesRes, allNamesRes] = await Promise.all([
+      ctx.state.db.query("SELECT * FROM stores ORDER BY name"),
+      ctx.state.db.query("SELECT id, name FROM ingredients"),
+    ]);
     const error = ctx.url.searchParams.get("error") || undefined;
     ctx.state.pageTitle = "Ingredients";
     return page({
       ingredients: result.rows,
       stores: storesRes.rows,
+      existingNames: allNamesRes.rows.map((r) => ({
+        id: String(r.id),
+        name: String(r.name),
+      })),
       q,
       currentPage,
       totalCount,
@@ -115,7 +121,18 @@ export const handler = define.handlers({
 
 export default define.page<typeof handler>(
   function IngredientsPage(
-    { data: { ingredients, stores, error, q, currentPage, totalCount }, url },
+    {
+      data: {
+        ingredients,
+        stores,
+        existingNames,
+        error,
+        q,
+        currentPage,
+        totalCount,
+      },
+      url,
+    },
   ) {
     return (
       <div>
@@ -135,12 +152,7 @@ export default define.page<typeof handler>(
               class="card space-y-3"
             >
               <FormField label="Name">
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  class="w-full"
-                />
+                <IngredientNameInput existing={existingNames} />
               </FormField>
               <FormField label="Unit">
                 <UnitSelect name="unit" required />
