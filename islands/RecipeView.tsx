@@ -1116,6 +1116,11 @@ export default function RecipeView(
                         {subsError.value && !subs && (
                           <div class="text-red-600">{subsError.value}</div>
                         )}
+                        {subs && subs.length === 0 && (
+                          <div class="text-stone-400 italic">
+                            No good substitutions for this one.
+                          </div>
+                        )}
                         {subs &&
                           subs.map((sub, i) => (
                             <div

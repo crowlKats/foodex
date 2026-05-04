@@ -50,11 +50,11 @@ export const handler = define.handlers({
           {
             role: "user",
             content:
-              `I'm making "${recipeTitle}" and I don't have "${ingredientName}".${ingredientContext}\n\nSuggest 3-5 substitutions for "${ingredientName}" in this recipe. For each, give:\n- The substitute ingredient name\n- The ratio (e.g. "use same amount" or "use half as much")\n- A brief note on how it changes the dish\n\nRespond as JSON array: [{"name": "...", "ratio": "...", "note": "..."}]`,
+              `I'm making "${recipeTitle}" and I don't have "${ingredientName}".${ingredientContext}\n\nSuggest up to 5 substitutions for "${ingredientName}" in this recipe. Only include substitutions that would genuinely work in the dish — if the ingredient is essential or there's no reasonable home-kitchen alternative, return an empty array. Quality over quantity: it is better to return 0 or 1 good options than to pad with poor ones. For each suggestion, give:\n- The substitute ingredient name\n- The ratio (e.g. "use same amount" or "use half as much")\n- A brief note on how it changes the dish\n\nRespond as JSON array: [{"name": "...", "ratio": "...", "note": "..."}]. Return [] if no good substitution exists.`,
           },
         ],
         system:
-          "You are a knowledgeable cooking assistant. Suggest practical ingredient substitutions that maintain the dish's character. Respond with ONLY the JSON array, no other text.",
+          "You are a knowledgeable cooking assistant. Suggest practical ingredient substitutions that maintain the dish's character. Only suggest substitutes that would actually work — never pad the list with weak or unusual alternatives just to hit a count. An empty array is the correct answer when nothing reasonable substitutes for the ingredient. Respond with ONLY the JSON array, no other text.",
       });
 
       const textBlock = response.content.find((b) => b.type === "text");
