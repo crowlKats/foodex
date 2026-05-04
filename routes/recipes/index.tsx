@@ -22,6 +22,7 @@ import {
 } from "../../lib/recipe-tags.ts";
 import TbClock from "tb-icons/TbClock";
 import TbFlame from "tb-icons/TbFlame";
+import TbZzz from "tb-icons/TbZzz";
 import TbUsers from "tb-icons/TbUsers";
 import TbFilter from "tb-icons/TbFilter";
 import TbX from "tb-icons/TbX";
@@ -43,7 +44,8 @@ const SORT_OPTIONS = [
   {
     value: "quickest",
     label: "Total Time",
-    column: "COALESCE(r.prep_time, 0) + COALESCE(r.cook_time, 0)",
+    column:
+      "COALESCE(r.prep_time, 0) + COALESCE(r.cook_time, 0) + COALESCE(r.rest_time, 0)",
     defaultDesc: false,
   },
   {
@@ -665,6 +667,12 @@ export default define.page<typeof handler>(function RecipesPage({
                       <span>
                         <TbFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
                         {formatDuration(r.cook_time)}
+                      </span>
+                    )}
+                    {r.rest_time != null && (
+                      <span>
+                        <TbZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
+                        {formatDuration(r.rest_time)}
                       </span>
                     )}
                   </div>

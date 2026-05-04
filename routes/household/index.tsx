@@ -7,6 +7,7 @@ import CopyButton from "../../islands/CopyButton.tsx";
 import TbTrash from "tb-icons/TbTrash";
 import TbClock from "tb-icons/TbClock";
 import TbFlame from "tb-icons/TbFlame";
+import TbZzz from "tb-icons/TbZzz";
 import TbUsers from "tb-icons/TbUsers";
 import { formatDuration } from "../../lib/duration.ts";
 import { formatQuantity } from "../../lib/quantity.ts";
@@ -397,6 +398,12 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                           <span>
                             <TbFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
                             {formatDuration(r.cook_time)}
+                          </span>
+                        )}
+                        {r.rest_time != null && (
+                          <span>
+                            <TbZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
+                            {formatDuration(r.rest_time)}
                           </span>
                         )}
                       </div>

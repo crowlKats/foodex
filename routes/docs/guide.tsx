@@ -178,7 +178,7 @@ export default define.page(function GuideDocs() {
             </li>
             <li class={listItem}>
               <strong>Details</strong>{" "}
-              — Prep time, cook time, difficulty, and tags.
+              — Prep time, cook time, rest time, difficulty, and tags.
             </li>
             <li class={listItem}>
               <strong>Ingredients</strong>{" "}

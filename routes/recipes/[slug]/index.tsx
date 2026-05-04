@@ -598,6 +598,9 @@ export default define.page<typeof handler>(function RecipeViewPage({
         {recipe.cook_time != null && (
           <span>Cook: {formatDuration(recipe.cook_time)}</span>
         )}
+        {recipe.rest_time != null && (
+          <span>Rest: {formatDuration(recipe.rest_time)}</span>
+        )}
       </div>
 
       {outputIngredient && (

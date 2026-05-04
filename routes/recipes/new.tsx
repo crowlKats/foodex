@@ -101,6 +101,13 @@ export const handler = define.handlers({
         parseFloat(cookTimeRaw) * (cookTimeUnit === "hr" ? 60 : 1),
       )
       : null;
+    const restTimeRaw = form.get("rest_time") as string;
+    const restTimeUnit = form.get("rest_time_unit") as string;
+    const restTime = restTimeRaw
+      ? Math.round(
+        parseFloat(restTimeRaw) * (restTimeUnit === "hr" ? 60 : 1),
+      )
+      : null;
     const coverImageId = form.get("cover_image_id") as string;
     const difficulty = (form.get("difficulty") as string) || null;
     const isPrivate = form.get("private") === "on";
@@ -138,8 +145,8 @@ export const handler = define.handlers({
     try {
       await ctx.state.db.transaction(async (q) => {
         const res = await q<{ id: string }>(
-          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, rest_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
            RETURNING id`,
           [
             title.trim(),
@@ -153,6 +160,7 @@ export const handler = define.handlers({
             quantityUnit2,
             prepTime,
             cookTime,
+            restTime,
             coverImageId || null,
             difficulty,
             ctx.state.householdId,
@@ -245,9 +253,10 @@ export default define.page<typeof handler>(
               />
             </FormField>
             <QuantityInput />
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
               <DurationInput name="prep_time" label="Prep time" />
               <DurationInput name="cook_time" label="Cook time" />
+              <DurationInput name="rest_time" label="Rest time" />
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <FormField label="Difficulty">

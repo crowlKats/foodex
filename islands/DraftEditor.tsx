@@ -88,6 +88,7 @@ export default function DraftEditor({
   const r = recipe.value;
   const prep = formatDuration(r.prep_time);
   const cook = formatDuration(r.cook_time);
+  const rest = formatDuration(r.rest_time);
   const v = version.value;
 
   return (
@@ -146,7 +147,7 @@ export default function DraftEditor({
             initialValue={r.quantity_value ?? 4}
             initialUnit={r.quantity_unit ?? "servings"}
           />
-          <div class="grid grid-cols-2 gap-3 mt-3">
+          <div class="grid grid-cols-3 gap-3 mt-3">
             <div>
               <label class="block text-sm font-medium mb-1">Prep time</label>
               <div class="flex min-w-0">
@@ -190,6 +191,29 @@ export default function DraftEditor({
                     min
                   </option>
                   <option value="hr" selected={cook.unit === "hr"}>hr</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Rest time</label>
+              <div class="flex min-w-0">
+                <input
+                  key={`rest-${v}`}
+                  type="number"
+                  name="rest_time"
+                  min="0"
+                  value={rest.value}
+                  class="flex-1 min-w-0"
+                />
+                <select
+                  key={`restu-${v}`}
+                  name="rest_time_unit"
+                  class="w-20 shrink-0 text-xs -ml-0.5"
+                >
+                  <option value="min" selected={rest.unit === "min"}>
+                    min
+                  </option>
+                  <option value="hr" selected={rest.unit === "hr"}>hr</option>
                 </select>
               </div>
             </div>
@@ -375,6 +399,8 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
   const prepUnit = fd.get("prep_time_unit") as string;
   const cookRaw = fd.get("cook_time") as string;
   const cookUnit = fd.get("cook_time_unit") as string;
+  const restRaw = fd.get("rest_time") as string;
+  const restUnit = fd.get("rest_time_unit") as string;
 
   const ingredients: Record<string, unknown>[] = [];
   let i = 0;
@@ -409,6 +435,9 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
       : null,
     cook_time: cookRaw
       ? Math.round(parseFloat(cookRaw) * (cookUnit === "hr" ? 60 : 1))
+      : null,
+    rest_time: restRaw
+      ? Math.round(parseFloat(restRaw) * (restUnit === "hr" ? 60 : 1))
       : null,
     difficulty: (fd.get("difficulty") as string) || null,
     source_type: (fd.get("source_type") as string) || null,

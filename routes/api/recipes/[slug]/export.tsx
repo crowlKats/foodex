@@ -19,6 +19,7 @@ export const handler = define.handlers({
       description: string;
       prep_time: number | null;
       cook_time: number | null;
+      rest_time: number | null;
       difficulty: string | null;
       quantity_type: string;
       quantity_value: number;
@@ -92,6 +93,7 @@ export const handler = define.handlers({
       description: recipe.description || "",
       prep_time: recipe.prep_time,
       cook_time: recipe.cook_time,
+      rest_time: recipe.rest_time,
       difficulty: recipe.difficulty,
       quantity_type: recipe.quantity_type || "servings",
       quantity_value: recipe.quantity_value ?? 4,

@@ -15,6 +15,7 @@ export interface Recipe {
   quantity_unit2: string | null;
   prep_time: number | null;
   cook_time: number | null;
+  rest_time: number | null;
   cover_image_id: string | null;
   difficulty: string | null;
   household_id: string;

@@ -13,6 +13,7 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
   "description": "Brief description of the dish",
   "prep_time": <number in minutes or null>,
   "cook_time": <number in minutes or null>,
+  "rest_time": <number in minutes or null>,
   "difficulty": "easy" | "medium" | "hard" | null,
   "quantity_type": "servings",
   "quantity_value": <number>,
@@ -37,7 +38,7 @@ export const RECIPE_FIELD_RULES = `\
   ALL_UNITS.join(", ")
 } — or empty string if no unit applies
 - "quantity_type" should be "servings" unless the recipe specifies weight/volume/dimensions
-- If prep or cook time is not specified, use null
+- If prep, cook, or rest time is not specified, use null. "rest_time" covers any inactive waiting (rising dough, marinating, chilling, resting cooked meat, etc.) — not active prep or cook time.
 - "difficulty" should be "easy", "medium", or "hard" based on the recipe's complexity, technique requirements, and skill level needed. Use null if uncertain
 - Step titles should be short (2-4 words). Step bodies support Markdown and a template syntax for dynamic ingredient scaling. Only use template refs when an ingredient amount is explicitly mentioned in a step — if a step just names an ingredient without a specific quantity, use plain text.
 - Template syntax reference:

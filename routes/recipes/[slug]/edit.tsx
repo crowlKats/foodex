@@ -239,6 +239,13 @@ export const handler = define.handlers({
         parseFloat(cookTimeRaw) * (cookTimeUnit === "hr" ? 60 : 1),
       )
       : null;
+    const restTimeRaw = form.get("rest_time") as string;
+    const restTimeUnit = form.get("rest_time_unit") as string;
+    const restTime = restTimeRaw
+      ? Math.round(
+        parseFloat(restTimeRaw) * (restTimeUnit === "hr" ? 60 : 1),
+      )
+      : null;
     const coverImageId = form.get("cover_image_id") as string;
     const difficulty = (form.get("difficulty") as string) || null;
     const isPrivate = form.get("private") === "on";
@@ -259,7 +266,7 @@ export const handler = define.handlers({
       await q(
         `UPDATE recipes SET title=$1, description=$2,
          quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
-         prep_time=$9, cook_time=$10, cover_image_id=$11, difficulty=$13, private=$14,
+         prep_time=$9, cook_time=$10, rest_time=$22, cover_image_id=$11, difficulty=$13, private=$14,
          source_type=$15, source_name=$16, source_url=$17,
          output_ingredient_id=$18, output_amount=$19, output_unit=$20, output_expires_days=$21, updated_at=now()
          WHERE id=$12`,
@@ -285,6 +292,7 @@ export const handler = define.handlers({
           outputAmount,
           outputUnit,
           outputExpiresDays,
+          restTime,
         ],
       );
 
@@ -414,7 +422,7 @@ export default define.page<typeof handler>(function RecipeEdit({
             initialValue2={recipe.quantity_value2 ?? undefined}
             initialValue3={recipe.quantity_value3 ?? undefined}
           />
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
             <DurationInput
               name="prep_time"
               label="Prep time"
@@ -424,6 +432,11 @@ export default define.page<typeof handler>(function RecipeEdit({
               name="cook_time"
               label="Cook time"
               value={recipe.cook_time != null ? String(recipe.cook_time) : ""}
+            />
+            <DurationInput
+              name="rest_time"
+              label="Rest time"
+              value={recipe.rest_time != null ? String(recipe.rest_time) : ""}
             />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">

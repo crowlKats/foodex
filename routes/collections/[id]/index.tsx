@@ -13,6 +13,7 @@ import { formatQuantity } from "../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../lib/quantity.ts";
 import TbClock from "tb-icons/TbClock";
 import TbFlame from "tb-icons/TbFlame";
+import TbZzz from "tb-icons/TbZzz";
 import TbUsers from "tb-icons/TbUsers";
 import TbEdit from "tb-icons/TbEdit";
 import TbShare from "tb-icons/TbShare";
@@ -400,6 +401,12 @@ export default define.page<typeof handler>(
                         <span>
                           <TbFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
                           {formatDuration(r.cook_time)}
+                        </span>
+                      )}
+                      {r.rest_time != null && (
+                        <span>
+                          <TbZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
+                          {formatDuration(r.rest_time)}
                         </span>
                       )}
                     </div>
