@@ -1498,16 +1498,64 @@ export default function RecipeView(
               >
                 &times;
               </button>
-              <div class="cooking-mode-progress">
-                {steps.map((_, i) => (
-                  <span
-                    key={i}
-                    class={`cooking-mode-dot ${
-                      cookingDone.value.has(i) ? "done" : ""
-                    } ${available.includes(i) ? "active" : ""}`}
-                  />
-                ))}
-              </div>
+              {sections != null && sections.length > 0
+                ? (
+                  <div class="flex flex-wrap gap-1.5 flex-1 min-w-0 px-2">
+                    {sections.map((sec, sIdx) => {
+                      const done = cookingDone.value;
+                      const locked = (sec.after ?? []).some(
+                        (d) => !isSectionComplete(d, done),
+                      );
+                      const complete = isSectionComplete(sIdx, done);
+                      const state = locked
+                        ? "locked"
+                        : complete
+                        ? "complete"
+                        : "active";
+                      const cls = state === "locked"
+                        ? "border-stone-300 dark:border-stone-700 text-stone-400 dark:text-stone-600"
+                        : state === "complete"
+                        ? "border-stone-400 dark:border-stone-500 text-stone-500 dark:text-stone-400 hover:border-orange-500 hover:text-orange-600 cursor-pointer"
+                        : "border-orange-500 text-orange-600 dark:text-orange-400";
+                      const onClick = state === "complete"
+                        ? () => {
+                          const stepIdxs = sectionStepIdxByIndex[sIdx] ?? [];
+                          const last = stepIdxs[stepIdxs.length - 1];
+                          if (last != null) cookingPrevInSection(last);
+                        }
+                        : undefined;
+                      return (
+                        <button
+                          key={sIdx}
+                          type="button"
+                          disabled={state !== "complete"}
+                          class={`text-[11px] font-mono uppercase tracking-[0.12em] border-2 px-2 py-0.5 ${cls} disabled:cursor-default`}
+                          onClick={onClick}
+                          title={state === "locked"
+                            ? "Locked"
+                            : state === "complete"
+                            ? "Click to revisit"
+                            : "Active"}
+                        >
+                          {state === "complete" && "✓ "}
+                          {sec.title.trim() || `Section ${sIdx + 1}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )
+                : (
+                  <div class="cooking-mode-progress">
+                    {steps.map((_, i) => (
+                      <span
+                        key={i}
+                        class={`cooking-mode-dot ${
+                          cookingDone.value.has(i) ? "done" : ""
+                        } ${available.includes(i) ? "active" : ""}`}
+                      />
+                    ))}
+                  </div>
+                )}
               <div class="cooking-mode-counter">
                 {cookingDone.value.size} / {steps.length}
               </div>
@@ -1523,113 +1571,130 @@ export default function RecipeView(
                 </div>
               )
               : (() => {
-                // Build columns: each available step gets a column,
-                // each done step that's waiting for parallel siblings gets a "waiting" column.
+                // When sections exist, columns are per-section. When not, each
+                // available step gets a column (DAG case).
+                const sectionAware = sections != null && sections.length > 0;
                 const done = cookingDone.value;
-                const waitingSteps: number[] = [];
-                for (const idx of done) {
-                  // Check if any dependent of this step is still blocked
-                  // (i.e. this step is done but a parallel sibling isn't)
-                  const hasPendingDependent = steps.some((s, si) => {
-                    if (done.has(si) || !s.after?.includes(idx)) return false;
-                    // si depends on idx, but is si available? If not, idx is "waiting"
-                    return !available.includes(si);
-                  });
-                  if (hasPendingDependent) waitingSteps.push(idx);
+
+                interface Col {
+                  key: string;
+                  /** Which step this column displays (current step for active,
+                   *  last step for complete), or null if locked/empty. */
+                  showStepIdx: number | null;
+                  /** Section idx this column represents (null for loose-step cols). */
+                  sectionIdx: number | null;
+                  state: "active" | "complete" | "locked";
                 }
 
-                // Interleave: show available and waiting columns
-                // Sort by step index for consistent ordering
-                const columns: { idx: number; waiting: boolean }[] = [
-                  ...available.map((idx) => ({ idx, waiting: false })),
-                  ...waitingSteps.filter((idx) => !available.includes(idx)).map(
-                    (idx) => ({ idx, waiting: true }),
-                  ),
-                ].sort((a, b) => a.idx - b.idx);
+                const columns: Col[] = [];
+                if (sectionAware) {
+                  // Only ACTIVE sections become full columns; locked + complete
+                  // are surfaced as chips in the header instead.
+                  for (let sIdx = 0; sIdx < (sections ?? []).length; sIdx++) {
+                    const sec = sections![sIdx];
+                    const locked = (sec.after ?? []).some(
+                      (d) => !isSectionComplete(d, done),
+                    );
+                    if (locked) continue;
+                    if (isSectionComplete(sIdx, done)) continue;
+                    const stepIdxs = sectionStepIdxByIndex[sIdx] ?? [];
+                    let showIdx: number | null = null;
+                    for (const i of stepIdxs) {
+                      if (done.has(i)) continue;
+                      const after = steps[i].after ?? [];
+                      if (after.every((d) => done.has(d))) {
+                        showIdx = i;
+                        break;
+                      }
+                    }
+                    if (showIdx == null) continue;
+                    columns.push({
+                      key: `sec-${sIdx}`,
+                      showStepIdx: showIdx,
+                      sectionIdx: sIdx,
+                      state: "active",
+                    });
+                  }
+                  // Loose steps (no section) — each available one becomes its own column
+                  available.forEach((idx) => {
+                    if (steps[idx].section_id == null) {
+                      columns.push({
+                        key: `loose-${idx}`,
+                        showStepIdx: idx,
+                        sectionIdx: null,
+                        state: "active",
+                      });
+                    }
+                  });
+                } else {
+                  // No sections: one column per available step
+                  available.forEach((idx) => {
+                    columns.push({
+                      key: `step-${idx}`,
+                      showStepIdx: idx,
+                      sectionIdx: null,
+                      state: "active",
+                    });
+                  });
+                }
 
                 return (
                   <div class="flex-1 flex overflow-hidden">
-                    {columns.map(({ idx, waiting }) => (
-                      <div
-                        key={idx}
-                        class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0"
-                      >
-                        {waiting
-                          ? (() => {
-                            const { section, num } = getCookingStepLabel(idx);
-                            return (
-                              <div class="flex-1 flex items-center justify-center px-6 py-6">
-                                <div class="text-center text-stone-400">
+                    {columns.map((col) => {
+                      const idx = col.showStepIdx;
+                      if (idx == null) return null;
+                      return (
+                        <div
+                          key={col.key}
+                          class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0"
+                        >
+                          <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
+                            {(() => {
+                              const { section, num } = getCookingStepLabel(idx);
+                              return (
+                                <>
                                   {section && (
-                                    <div class="text-[11px] font-mono uppercase tracking-[0.18em] text-orange-500 dark:text-orange-400 mb-1">
+                                    <div class="text-[11px] font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
                                       {section}
                                     </div>
                                   )}
-                                  <div class="text-lg font-semibold mb-1">
-                                    <span class="text-stone-300 mr-2">
+                                  <div class="cooking-mode-step-title">
+                                    <span class="text-stone-400 mr-2">
                                       {num}.
                                     </span>
                                     {steps[idx].title}
                                   </div>
-                                  <div class="text-sm">
-                                    Waiting on other steps
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })()
-                          : (
-                            <>
-                              <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
-                                {(() => {
-                                  const { section, num } = getCookingStepLabel(
-                                    idx,
-                                  );
-                                  return (
-                                    <>
-                                      {section && (
-                                        <div class="text-[11px] font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
-                                          {section}
-                                        </div>
-                                      )}
-                                      <div class="cooking-mode-step-title">
-                                        <span class="text-stone-400 mr-2">
-                                          {num}.
-                                        </span>
-                                        {steps[idx].title}
-                                      </div>
-                                    </>
-                                  );
-                                })()}
-                                <div
-                                  class="cooking-mode-step-content"
-                                  // deno-lint-ignore react-no-danger
-                                  dangerouslySetInnerHTML={{
-                                    __html: getCookingStepHtmlFor(idx),
-                                  }}
-                                />
-                              </div>
-                              <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 flex gap-2">
-                                <button
-                                  type="button"
-                                  class="cooking-mode-nav-btn flex-1"
-                                  disabled={!hasSectionPrev(idx)}
-                                  onClick={() => cookingPrevInSection(idx)}
-                                >
-                                  Prev
-                                </button>
-                                <button
-                                  type="button"
-                                  class="cooking-mode-nav-btn btn-primary flex-1"
-                                  onClick={() => markStepDone(idx)}
-                                >
-                                  Next
-                                </button>
-                              </div>
-                            </>
-                          )}
-                      </div>
-                    ))}
+                                </>
+                              );
+                            })()}
+                            <div
+                              class="cooking-mode-step-content"
+                              // deno-lint-ignore react-no-danger
+                              dangerouslySetInnerHTML={{
+                                __html: getCookingStepHtmlFor(idx),
+                              }}
+                            />
+                          </div>
+                          <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 flex gap-2">
+                            <button
+                              type="button"
+                              class="cooking-mode-nav-btn flex-1"
+                              disabled={!hasSectionPrev(idx)}
+                              onClick={() => cookingPrevInSection(idx)}
+                            >
+                              Prev
+                            </button>
+                            <button
+                              type="button"
+                              class="cooking-mode-nav-btn btn-primary flex-1"
+                              onClick={() => markStepDone(idx)}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}
