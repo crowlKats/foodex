@@ -1,9 +1,10 @@
 import { useSignal } from "@preact/signals";
-import { evaluateTemplate, scaleIngredients } from "../lib/template.ts";
-import { replaceTimers } from "../lib/timer.ts";
-import { marked } from "marked";
-
-marked.use({ renderer: { html: () => "" } });
+import {
+  type RenderIngredient,
+  type RenderStep,
+  renderStepsHtml,
+} from "../lib/render-steps.ts";
+import type { SectionInfo } from "../lib/step-sections.ts";
 import TbEye from "tb-icons/TbEye";
 import TbX from "tb-icons/TbX";
 
@@ -27,33 +28,49 @@ export default function RecipePreview() {
 
     const data = new FormData(form);
 
-    const ingredients: {
-      key: string;
-      amount: number;
-      unit: string;
-      name: string;
-    }[] = [];
+    const ingredients: RenderIngredient[] = [];
     let i = 0;
     while (data.has(`ingredients[${i}][name]`)) {
-      const key = data.get(`ingredients[${i}][key]`) as string;
-      const name = data.get(`ingredients[${i}][name]`) as string;
+      const key = (data.get(`ingredients[${i}][key]`) as string) || "";
+      const name = (data.get(`ingredients[${i}][name]`) as string) || "";
       const amount = parseFloat(
-        data.get(`ingredients[${i}][amount]`) as string,
+        (data.get(`ingredients[${i}][amount]`) as string) || "",
       ) || 0;
-      const unit = data.get(`ingredients[${i}][unit]`) as string;
+      const unit = (data.get(`ingredients[${i}][unit]`) as string) || "";
       if (key && name) {
-        ingredients.push({ key, amount, unit: unit || "", name });
+        ingredients.push({ key, amount, unit, name });
       }
       i++;
     }
 
-    const steps: { title: string; body: string }[] = [];
+    // Sections — synthesize ids from form indices so the renderer can
+    // wire them up to step.section_id below.
+    const sections: SectionInfo[] = [];
+    let s = 0;
+    while (data.has(`sections[${s}][title]`)) {
+      const title = (data.get(`sections[${s}][title]`) as string) || "";
+      const key = (data.get(`sections[${s}][key]`) as string) || "";
+      const afterStr = (data.get(`sections[${s}][after]`) as string) || "";
+      const after = afterStr
+        ? afterStr.split(",").map(Number).filter((n) => !isNaN(n))
+        : [];
+      sections.push({ id: `s${s}`, key, title, after });
+      s++;
+    }
+
+    const steps: RenderStep[] = [];
     let j = 0;
     while (data.has(`steps[${j}][title]`) || data.has(`steps[${j}][body]`)) {
       const title = (data.get(`steps[${j}][title]`) as string) || "";
       const body = (data.get(`steps[${j}][body]`) as string) || "";
+      const secIdxRaw = (data.get(`steps[${j}][section]`) as string) || "";
+      const sectionIdx = secIdxRaw === "" ? null : parseInt(secIdxRaw);
+      const section_id = sectionIdx != null && !isNaN(sectionIdx) &&
+          sections[sectionIdx]
+        ? sections[sectionIdx].id
+        : null;
       if (title || body) {
-        steps.push({ title, body });
+        steps.push({ title, body, after: [], section_id });
       }
       j++;
     }
@@ -62,35 +79,7 @@ export default function RecipePreview() {
       return "<p class='text-stone-500'>No steps to preview.</p>";
     }
 
-    const scaled = scaleIngredients(ingredients, 1);
-    const vars: Record<string, number> = { ratio: 1 };
-    const parts: string[] = [];
-
-    for (let si = 0; si < steps.length; si++) {
-      const step = steps[si];
-      const evaluated = evaluateTemplate(step.body, vars, scaled);
-      const parsed = marked.parse(evaluated);
-      const rendered = typeof parsed === "string"
-        ? replaceTimers(parsed)
-        : parsed;
-      if (typeof rendered === "string") {
-        const titleText = step.title.trim();
-        const escapedTitle = titleText
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;");
-        parts.push(
-          titleText
-            ? `<h2 class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
-              si + 1
-            }.</span>${escapedTitle}</h2>\n${rendered}`
-            : `<div class="mt-6 mb-3 text-sm font-semibold text-stone-400">${
-              si + 1
-            }.</div>\n${rendered}`,
-        );
-      }
-    }
-
-    return parts.join("\n");
+    return renderStepsHtml(steps, sections, 1, ingredients);
   }
 
   function show(e: Event) {

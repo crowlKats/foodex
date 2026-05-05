@@ -111,9 +111,11 @@ export async function renderRecipeSteps(
   }
 
   // Annotations for parallel/merge steps — use refLabel so they pick up section context
-  const annotations = computeStepAnnotations(steps, (idx) => {
-    return escapeHtml(refLabel(idx, true));
-  });
+  const annotations = computeStepAnnotations(
+    steps,
+    (idx) => escapeHtml(refLabel(idx, true)),
+    (i) => layout.bySectionId.get(steps[i].section_id ?? null) ?? [],
+  );
 
   const parts: string[] = [];
   const sectionAnns = sections ? computeSectionAnnotations(sections) : [];
