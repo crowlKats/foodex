@@ -815,6 +815,7 @@ export default function RecipeView(
   const cookingMode = useSignal(false);
   const cookingStep = useSignal(0); // for linear mode
   const cookingDone = useSignal<Set<number>>(new Set()); // for graph mode
+  const cookingDoneOrder = useSignal<number[]>([]); // LIFO undo history for graph mode
   const cookingFocused = useSignal<number | null>(null); // which step is expanded in graph mode
   const cookingRef = useRef<HTMLDivElement>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -894,21 +895,42 @@ export default function RecipeView(
   }
 
   function markStepDone(idx: number) {
+    if (cookingDone.value.has(idx)) return;
     const next = new Set(cookingDone.value);
     next.add(idx);
     cookingDone.value = next;
+    cookingDoneOrder.value = [...cookingDoneOrder.value, idx];
   }
 
   function unmarkStepDone(idx: number) {
     const next = new Set(cookingDone.value);
     next.delete(idx);
     cookingDone.value = next;
+    cookingDoneOrder.value = cookingDoneOrder.value.filter((i) => i !== idx);
+  }
+
+  /** Undo the most-recent done step in the same section as `columnStepIdx`. */
+  function cookingPrevInSection(columnStepIdx: number) {
+    const sid = steps[columnStepIdx].section_id ?? null;
+    const sameSec = cookingDoneOrder.value.filter((i) =>
+      (steps[i].section_id ?? null) === sid
+    );
+    if (sameSec.length === 0) return;
+    unmarkStepDone(sameSec[sameSec.length - 1]);
+  }
+
+  function hasSectionPrev(columnStepIdx: number): boolean {
+    const sid = steps[columnStepIdx].section_id ?? null;
+    return cookingDoneOrder.value.some((i) =>
+      (steps[i].section_id ?? null) === sid
+    );
   }
 
   function enterCookingMode() {
     cookingMode.value = true;
     cookingStep.value = 0;
     cookingDone.value = new Set();
+    cookingDoneOrder.value = [];
     cookingFocused.value = null;
     if ("wakeLock" in navigator) {
       (navigator as Navigator & {
@@ -959,13 +981,9 @@ export default function RecipeView(
         if (avail.length === 1 && (e.key === "ArrowRight" || e.key === " ")) {
           e.preventDefault();
           markStepDone(avail[0]);
-        } else if (e.key === "ArrowLeft") {
-          // Undo last completed step
-          const doneArr = [...cookingDone.value].sort((a, b) => a - b);
-          if (doneArr.length > 0) {
-            e.preventDefault();
-            unmarkStepDone(doneArr[doneArr.length - 1]);
-          }
+        } else if (e.key === "ArrowLeft" && avail.length === 1) {
+          e.preventDefault();
+          cookingPrevInSection(avail[0]);
         }
       }
       if (e.key === "Escape") {
@@ -1591,13 +1609,21 @@ export default function RecipeView(
                                   }}
                                 />
                               </div>
-                              <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700">
+                              <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 flex gap-2">
                                 <button
                                   type="button"
-                                  class="cooking-mode-nav-btn btn-primary w-full"
+                                  class="cooking-mode-nav-btn flex-1"
+                                  disabled={!hasSectionPrev(idx)}
+                                  onClick={() => cookingPrevInSection(idx)}
+                                >
+                                  Prev
+                                </button>
+                                <button
+                                  type="button"
+                                  class="cooking-mode-nav-btn btn-primary flex-1"
                                   onClick={() => markStepDone(idx)}
                                 >
-                                  Mark done
+                                  Next
                                 </button>
                               </div>
                             </>

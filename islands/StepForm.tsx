@@ -1384,23 +1384,6 @@ export default function StepForm(
                   </button>
                 </div>
               </div>
-              {sections.value.length > 0 && (
-                <select
-                  value={item.section ?? ""}
-                  onChange={(e) => {
-                    const v = (e.target as HTMLSelectElement).value;
-                    setStepSection(i, v === "" ? null : parseInt(v));
-                  }}
-                  class="text-xs"
-                >
-                  <option value="">— no section —</option>
-                  {sections.value.map((sec, si) => (
-                    <option key={sec._uid ?? si} value={si}>
-                      {sec.title.trim() || `Section ${si + 1}`}
-                    </option>
-                  ))}
-                </select>
-              )}
               <textarea
                 placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
                 value={item.body}
