@@ -328,12 +328,31 @@ export default function DraftEditor({
           </p>
           <StepForm
             key={`steps-${v}`}
-            initialSteps={(r.steps ?? []).map((s, i) => ({
-              title: s.title ?? "",
-              body: s.body ?? "",
-              media: [],
-              after: i > 0 ? [i - 1] : [],
-            }))}
+            initialSteps={(r.steps ?? []).map((s, i) => {
+              const secKey = s.section ?? null;
+              const secIdx = secKey != null
+                ? (r.sections ?? []).findIndex((sec) => sec.key === secKey)
+                : -1;
+              return {
+                title: s.title ?? "",
+                body: s.body ?? "",
+                media: [],
+                after: i > 0 ? [i - 1] : [],
+                section: secIdx >= 0 ? secIdx : null,
+              };
+            })}
+            initialSections={(() => {
+              const all = r.sections ?? [];
+              const keyToIdx = new Map<string, number>();
+              all.forEach((s, i) => keyToIdx.set(s.key ?? "", i));
+              return all.map((s) => ({
+                title: s.title ?? "",
+                key: s.key ?? "",
+                after: (s.after ?? [])
+                  .map((k) => keyToIdx.get(k))
+                  .filter((v): v is number => v != null),
+              }));
+            })()}
             mode={signal<"list" | "graph">("list")}
           />
         </div>
@@ -414,12 +433,43 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     i++;
   }
 
+  const sectionsRaw: { title: string; key: string; afterIdx: number[] }[] = [];
+  let secIdx = 0;
+  while (fd.has(`sections[${secIdx}][title]`)) {
+    const afterStr = String(fd.get(`sections[${secIdx}][after]`) ?? "");
+    const afterIdx = afterStr
+      ? afterStr.split(",").map(Number).filter((n) => !isNaN(n))
+      : [];
+    sectionsRaw.push({
+      title: String(fd.get(`sections[${secIdx}][title]`) ?? ""),
+      key: String(fd.get(`sections[${secIdx}][key]`) ?? ""),
+      afterIdx,
+    });
+    secIdx++;
+  }
+  // Translate section indices to keys for the OcrRecipeData shape
+  const sections = sectionsRaw.map((s) => ({
+    title: s.title,
+    key: s.key,
+    after: s.afterIdx
+      .map((i) => sectionsRaw[i]?.key)
+      .filter((k): k is string => !!k),
+  }));
+
   const steps: Record<string, unknown>[] = [];
   let s = 0;
   while (fd.has(`steps[${s}][title]`) || fd.has(`steps[${s}][body]`)) {
+    const secIdxRaw = fd.get(`steps[${s}][section]`);
+    const sIdx = secIdxRaw && secIdxRaw !== ""
+      ? parseInt(secIdxRaw as string)
+      : null;
+    const sectionKey = sIdx != null && !isNaN(sIdx) && sections[sIdx]
+      ? sections[sIdx].key
+      : null;
     steps.push({
       title: fd.get(`steps[${s}][title]`) ?? "",
       body: fd.get(`steps[${s}][body]`) ?? "",
+      section: sectionKey,
     });
     s++;
   }
@@ -444,6 +494,7 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     source_name: (fd.get("source_name") as string)?.trim() || null,
     source_url: (fd.get("source_url") as string)?.trim() || null,
     ingredients,
+    sections,
     steps,
     cover_image: null,
     output_ingredient_id: (fd.get("output_ingredient_id") as string) || null,

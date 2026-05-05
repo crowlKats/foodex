@@ -102,7 +102,7 @@ export default function IngredientForm(
   }
 
   return (
-    <div class="space-y-3">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       {items.value.map((item, i) => (
         <div key={item._uid} class="card p-3 space-y-2">
           <div class="flex gap-2 items-center min-w-0">
@@ -110,8 +110,10 @@ export default function IngredientForm(
               value={{ id: item.ingredient_id, name: item.name }}
               options={options}
               placeholder="Search or type ingredient..."
-              onSelect={(o) => selectIngredient(i, o.id)}
-              onClear={() => clearIngredient(i)}
+              onSelect={(o) =>
+                selectIngredient(i, o.id)}
+              onClear={() =>
+                clearIngredient(i)}
               onChange={(text) => handleFreeText(i, text)}
             />
             <button
@@ -205,7 +207,7 @@ export default function IngredientForm(
       <button
         type="button"
         onClick={add}
-        class="link text-sm font-medium"
+        class="link text-sm font-medium my-14"
       >
         <TbPlus class="size-3.5 inline mr-1" />Add Ingredient
       </button>

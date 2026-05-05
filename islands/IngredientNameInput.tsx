@@ -50,8 +50,8 @@ export default function IngredientNameInput(
       {matches.value.length > 0 && (
         <div class="mt-2 text-xs rounded border border-yellow-400 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-950 p-2 text-yellow-900 dark:text-yellow-200">
           <div class="font-medium mb-1">
-            Similar ingredient{matches.value.length > 1 ? "s" : ""} already
-            exist{matches.value.length > 1 ? "" : "s"}:
+            Similar ingredient{matches.value.length > 1 ? "s" : ""}{" "}
+            already exist{matches.value.length > 1 ? "" : "s"}:
           </div>
           <ul class="space-y-0.5">
             {matches.value.map((m) => (

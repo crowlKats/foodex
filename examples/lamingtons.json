@@ -1,0 +1,91 @@
+{
+  "title": "Classic Lamingtons",
+  "description": "Australian cubes of butter sponge dipped in chocolate and rolled in coconut.",
+  "quantity_type": "servings",
+  "quantity_value": 16,
+  "quantity_unit": "servings",
+  "prep_time": 40,
+  "cook_time": 30,
+  "rest_time": 240,
+  "difficulty": "medium",
+  "private": false,
+  "source_type": "website",
+  "source_name": "RecipeTin Eats",
+  "source_url": "https://www.recipetineats.com/classic-lamingtons/",
+  "tags": { "meal_type": ["dessert"], "dietary": [] },
+  "ingredients": [
+    {
+      "key": "flour",
+      "name": "self-raising flour",
+      "amount": 225,
+      "unit": "g"
+    },
+    { "key": "sugar", "name": "caster sugar", "amount": 150, "unit": "g" },
+    { "key": "butter", "name": "unsalted butter", "amount": 125, "unit": "g" },
+    { "key": "eggs", "name": "eggs", "amount": 3, "unit": "" },
+    { "key": "milk", "name": "milk", "amount": 125, "unit": "ml" },
+    { "key": "vanilla", "name": "vanilla extract", "amount": 1, "unit": "tsp" },
+    { "key": "icing_sugar", "name": "icing sugar", "amount": 500, "unit": "g" },
+    { "key": "cocoa", "name": "cocoa powder", "amount": 30, "unit": "g" },
+    {
+      "key": "coating_butter",
+      "name": "unsalted butter",
+      "amount": 30,
+      "unit": "g"
+    },
+    { "key": "coating_milk", "name": "milk", "amount": 125, "unit": "ml" },
+    {
+      "key": "coconut",
+      "name": "desiccated coconut",
+      "amount": 200,
+      "unit": "g"
+    }
+  ],
+  "sections": [
+    { "key": "sponge", "title": "Butter Sponge" },
+    { "key": "prepare", "title": "Prepare Cake to Coat" },
+    { "key": "coating", "title": "Coating" }
+  ],
+  "steps": [
+    {
+      "title": "Cream butter and sugar",
+      "section": "sponge",
+      "body": "Cream {{ butter }} and {{ sugar }} until light and fluffy, about 4 minutes."
+    },
+    {
+      "title": "Add eggs",
+      "section": "sponge",
+      "body": "Add {{ eggs }} one at a time, beating well after each. Stir in {{ vanilla }}."
+    },
+    {
+      "title": "Fold in flour and milk",
+      "section": "sponge",
+      "body": "Sift in {{ flour.name }}, then alternate folding in flour and {{ milk }} in three additions."
+    },
+    {
+      "title": "Bake",
+      "section": "sponge",
+      "body": "Pour into a lined 20x30cm tin and bake at 180°C for @timer(25m) until a skewer comes out clean."
+    },
+    {
+      "title": "Cool overnight",
+      "section": "prepare",
+      "body": "Cool the cake from @step(sponge.4) completely, then chill overnight — this firms it up so it won't crumble when dipped."
+    },
+    {
+      "title": "Cut into cubes",
+      "section": "prepare",
+      "body": "Trim the edges and cut into 16 even squares."
+    },
+    {
+      "title": "Make chocolate icing",
+      "section": "coating",
+      "body": "Sift {{ icing_sugar }} and {{ cocoa }} together. Melt {{ coating_butter }} into {{ coating_milk }}, then whisk into the dry mix until smooth and glossy."
+    },
+    {
+      "title": "Dip and roll",
+      "section": "coating",
+      "body": "Spread {{ coconut }} on a tray. Dip each cube from @step(prepare.2) into the icing from @step(coating.1), let excess drip, then roll in coconut to coat. Set on a wire rack to dry."
+    }
+  ]
+}

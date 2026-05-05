@@ -13,6 +13,11 @@ import { convertAmount } from "../lib/unit-convert.ts";
 import { replaceTimers } from "../lib/timer.ts";
 import { formatTimer } from "../lib/timer.ts";
 import { computeStepAnnotations } from "../lib/step-layout.ts";
+import {
+  computeSectionAnnotations,
+  computeSectionLayout,
+  type SectionInfo,
+} from "../lib/step-sections.ts";
 import { toDisplayUnit } from "../lib/unit-display.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
 import { marked } from "marked";
@@ -42,6 +47,7 @@ interface RecipeStep {
   body: string;
   media?: { id: string; url: string }[];
   after?: number[];
+  section_id?: string | null;
 }
 
 interface RecipeIngredient {
@@ -82,6 +88,7 @@ interface Substitution {
 
 interface RecipeViewProps {
   steps: RecipeStep[];
+  sections?: SectionInfo[];
   ingredients: RecipeIngredient[];
   tools?: RecipeTool[];
   refs?: RecipeRef[];
@@ -117,20 +124,42 @@ function escapeHtml(text: string): string {
 
 function renderStepBody(
   step: RecipeStep,
-  stepIndex: number,
   steps: RecipeStep[],
   vars: Record<string, number>,
   scaled: ReturnType<typeof scaleIngredients>,
+  layout: ReturnType<typeof computeSectionLayout>,
 ): string {
   let evaluated = evaluateTemplate(step.body, vars, scaled);
-  // Resolve step references: @step(N) → anchor link
+
+  // @step(key.N) — section-relative
+  evaluated = evaluated.replace(
+    /@step\(([a-z0-9_-]+)\.(\d+)\)/g,
+    (_m, key: string, num: string) => {
+      const sec = layout.byKey.get(key);
+      if (!sec) return `*unknown section: ${key}*`;
+      const indices = layout.bySectionId.get(sec.id) ?? [];
+      const n = parseInt(num);
+      if (n < 1 || n > indices.length) {
+        return `*unknown step: ${key}.${num}*`;
+      }
+      const targetIdx = indices[n - 1];
+      const title = steps[targetIdx].title;
+      const base = `${sec.title} step ${n}`;
+      const label = title ? `${base} (${title})` : base;
+      return `[${label}](#${layout.anchors[targetIdx]})`;
+    },
+  );
+
+  // @step(N) — global
   evaluated = evaluated.replace(/@step\((\d+)\)/g, (_m, num: string) => {
     const n = parseInt(num);
     if (n < 1 || n > steps.length) return `*unknown step: ${num}*`;
-    const title = steps[n - 1].title;
+    const targetIdx = n - 1;
+    const title = steps[targetIdx].title;
     const label = title ? `step ${n} (${title})` : `step ${n}`;
-    return `[${label}](#step-${n})`;
+    return `[${label}](#${layout.anchors[targetIdx]})`;
   });
+
   const parsed = marked.parse(evaluated);
   const html = typeof parsed === "string" ? replaceTimers(parsed) : parsed;
   if (typeof html !== "string") return "";
@@ -150,24 +179,64 @@ function renderStepBody(
 
 function renderStepsClient(
   steps: RecipeStep[],
+  sections: SectionInfo[] | undefined,
   ratio: number,
   ingredients: RecipeIngredient[],
 ): string {
   const scaled = scaleIngredients(ingredients, ratio);
   const vars: Record<string, number> = { ratio };
+  const layout = computeSectionLayout(steps, sections);
 
-  const stepHtmls = steps.map((step, si) =>
-    renderStepBody(step, si, steps, vars, scaled)
+  const stepHtmls = steps.map((step) =>
+    renderStepBody(step, steps, vars, scaled, layout)
   );
 
   const annotations = computeStepAnnotations(steps, (idx) => {
     const t = steps[idx].title.trim();
-    return t ? `step ${idx + 1} (${escapeHtml(t)})` : `step ${idx + 1}`;
+    const sid = steps[idx].section_id ?? null;
+    const sec = sid ? layout.byId.get(sid) : null;
+    const num = layout.displayNum[idx];
+    const base = sec ? `${sec.title} step ${num}` : `step ${num}`;
+    return t ? `${escapeHtml(base)} (${escapeHtml(t)})` : escapeHtml(base);
   });
 
+  const sectionAnns = sections ? computeSectionAnnotations(sections) : [];
   const parts: string[] = [];
+  let currentSectionId: string | null | undefined = undefined;
+  let openSection = false;
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
+    const sid = step.section_id ?? null;
+    if (sid !== currentSectionId) {
+      if (openSection) {
+        parts.push(`</div></section>`);
+        openSection = false;
+      }
+      const sec = sid ? layout.byId.get(sid) : null;
+      if (sec) {
+        const partIdx = (sections ?? []).findIndex((s) => s.id === sec.id);
+        const ann = sectionAnns[partIdx];
+        let annHtml = "";
+        if (ann?.afterTitles?.length) {
+          annHtml += `<div class="recipe-section-note">After ${
+            ann.afterTitles.map(escapeHtml).join(" and ")
+          }.</div>`;
+        }
+        if (ann?.parallelTitles?.length) {
+          annHtml += `<div class="recipe-section-note">Runs in parallel with ${
+            ann.parallelTitles.map(escapeHtml).join(" and ")
+          }.</div>`;
+        }
+        parts.push(
+          `<section class="recipe-section">` +
+            `<h2 class="recipe-section-title">${escapeHtml(sec.title)}</h2>` +
+            annHtml +
+            `<div class="recipe-section-body">`,
+        );
+        openSection = true;
+      }
+      currentSectionId = sid;
+    }
     const ann = annotations[i].annotation;
     let html = "";
     if (ann) {
@@ -176,32 +245,33 @@ function renderStepsClient(
           escapeHtml(ann)
         }</div>`;
     }
+    const num = layout.displayNum[i];
+    const anchor = layout.anchors[i];
     const titleText = step.title.trim();
     html += titleText
-      ? `<h2 id="step-${
-        i + 1
-      }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
-        i + 1
-      }.</span>${escapeHtml(titleText)}</h2>\n${stepHtmls[i]}`
-      : `<h2 id="step-${
-        i + 1
-      }" class="sr-only">Step ${i + 1}</h2><div class="mt-6 mb-3 text-sm font-semibold text-stone-400">${
-        i + 1
-      }.</div>\n${stepHtmls[i]}`;
+      ? `<h3 id="${anchor}" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${num}.</span>${
+        escapeHtml(titleText)
+      }</h3>\n${stepHtmls[i]}`
+      : `<h3 id="${anchor}" class="sr-only">Step ${num}</h3><div class="mt-6 mb-3 text-sm font-semibold text-stone-400">${num}.</div>\n${
+        stepHtmls[i]
+      }`;
     parts.push(html);
   }
+  if (openSection) parts.push(`</div></section>`);
   return parts.join("\n");
 }
 
 function renderSingleStepHtml(
   steps: RecipeStep[],
+  sections: SectionInfo[] | undefined,
   index: number,
   ratio: number,
   ingredients: RecipeIngredient[],
 ): string {
   const scaled = scaleIngredients(ingredients, ratio);
   const vars: Record<string, number> = { ratio };
-  return renderStepBody(steps[index], index, steps, vars, scaled);
+  const layout = computeSectionLayout(steps, sections);
+  return renderStepBody(steps[index], steps, vars, scaled, layout);
 }
 
 function buildQueryParams(target: RecipeQuantity): string {
@@ -218,6 +288,7 @@ function buildQueryParams(target: RecipeQuantity): string {
 export default function RecipeView(
   {
     steps,
+    sections,
     ingredients,
     tools,
     refs,
@@ -237,6 +308,7 @@ export default function RecipeView(
     outputIngredient,
   }: RecipeViewProps,
 ) {
+  const layout = computeSectionLayout(steps, sections);
   const unitSystem = unitSystemProp ?? "metric";
   const pantryIdSet = new Set(pantryIngredientIds ?? []);
   const pantryNameSet = new Set(
@@ -332,7 +404,7 @@ export default function RecipeView(
     const target = getTarget();
     const ratio = computeScaleRatio(baseQuantity, target);
 
-    html.value = renderStepsClient(steps, ratio, ingredients);
+    html.value = renderStepsClient(steps, sections, ratio, ingredients);
 
     if (hasSubRecipes) {
       loading.value = true;
@@ -747,6 +819,7 @@ export default function RecipeView(
   const cookingMode = useSignal(false);
   const cookingStep = useSignal(0); // for linear mode
   const cookingDone = useSignal<Set<number>>(new Set()); // for graph mode
+  const cookingDoneOrder = useSignal<number[]>([]); // LIFO undo history for graph mode
   const cookingFocused = useSignal<number | null>(null); // which step is expanded in graph mode
   const cookingRef = useRef<HTMLDivElement>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -761,39 +834,107 @@ export default function RecipeView(
 
   function getCookingStepHtmlFor(idx: number): string {
     const ratio = getCurrentRatio();
-    return renderSingleStepHtml(steps, idx, ratio, ingredients);
+    return renderSingleStepHtml(steps, sections, idx, ratio, ingredients);
   }
 
-  /** Get steps whose deps are all done */
+  function getCookingStepLabel(idx: number): {
+    section: string | null;
+    num: number;
+  } {
+    const sid = steps[idx].section_id ?? null;
+    const sec = sid ? layout.byId.get(sid) : null;
+    return { section: sec?.title ?? null, num: layout.displayNum[idx] };
+  }
+
+  /**
+   * Map section index → set of global step indices in that section.
+   * Lets us check section completion in O(1) per section.
+   */
+  const sectionStepIdxByIndex: number[][] = (sections ?? []).map(() => []);
+  if (sections && sections.length > 0) {
+    const sectionIdToIndex = new Map<string, number>();
+    sections.forEach((s, i) => sectionIdToIndex.set(s.id, i));
+    for (let i = 0; i < steps.length; i++) {
+      const sid = steps[i].section_id ?? null;
+      if (!sid) continue;
+      const sIdx = sectionIdToIndex.get(sid);
+      if (sIdx != null) sectionStepIdxByIndex[sIdx].push(i);
+    }
+  }
+
+  /** Section is complete when all its steps are done. */
+  function isSectionComplete(secIdx: number, done: Set<number>): boolean {
+    const stepIdxs = sectionStepIdxByIndex[secIdx];
+    if (!stepIdxs || stepIdxs.length === 0) return true;
+    return stepIdxs.every((i) => done.has(i));
+  }
+
+  /** Get steps whose deps are all done — including section-level gating. */
   function availableSteps(): number[] {
     const done = cookingDone.value;
     const available: number[] = [];
+    const sectionIdToIndex = new Map<string, number>();
+    (sections ?? []).forEach((s, i) => sectionIdToIndex.set(s.id, i));
     for (let i = 0; i < steps.length; i++) {
       if (done.has(i)) continue;
       const after = steps[i].after ?? [];
-      if (after.length === 0 || after.every((d) => done.has(d))) {
-        available.push(i);
+      const stepDepsDone = after.length === 0 ||
+        after.every((d) => done.has(d));
+      if (!stepDepsDone) continue;
+      // Section gating: this step's section must have all its dep sections complete
+      const sid = steps[i].section_id ?? null;
+      if (sid && sections) {
+        const sIdx = sectionIdToIndex.get(sid);
+        if (sIdx != null) {
+          const secAfter = sections[sIdx].after ?? [];
+          const sectionDepsDone = secAfter.every((dIdx) =>
+            isSectionComplete(dIdx, done)
+          );
+          if (!sectionDepsDone) continue;
+        }
       }
+      available.push(i);
     }
     return available;
   }
 
   function markStepDone(idx: number) {
+    if (cookingDone.value.has(idx)) return;
     const next = new Set(cookingDone.value);
     next.add(idx);
     cookingDone.value = next;
+    cookingDoneOrder.value = [...cookingDoneOrder.value, idx];
   }
 
   function unmarkStepDone(idx: number) {
     const next = new Set(cookingDone.value);
     next.delete(idx);
     cookingDone.value = next;
+    cookingDoneOrder.value = cookingDoneOrder.value.filter((i) => i !== idx);
+  }
+
+  /** Undo the most-recent done step in the same section as `columnStepIdx`. */
+  function cookingPrevInSection(columnStepIdx: number) {
+    const sid = steps[columnStepIdx].section_id ?? null;
+    const sameSec = cookingDoneOrder.value.filter((i) =>
+      (steps[i].section_id ?? null) === sid
+    );
+    if (sameSec.length === 0) return;
+    unmarkStepDone(sameSec[sameSec.length - 1]);
+  }
+
+  function hasSectionPrev(columnStepIdx: number): boolean {
+    const sid = steps[columnStepIdx].section_id ?? null;
+    return cookingDoneOrder.value.some((i) =>
+      (steps[i].section_id ?? null) === sid
+    );
   }
 
   function enterCookingMode() {
     cookingMode.value = true;
     cookingStep.value = 0;
     cookingDone.value = new Set();
+    cookingDoneOrder.value = [];
     cookingFocused.value = null;
     if ("wakeLock" in navigator) {
       (navigator as Navigator & {
@@ -844,13 +985,9 @@ export default function RecipeView(
         if (avail.length === 1 && (e.key === "ArrowRight" || e.key === " ")) {
           e.preventDefault();
           markStepDone(avail[0]);
-        } else if (e.key === "ArrowLeft") {
-          // Undo last completed step
-          const doneArr = [...cookingDone.value].sort((a, b) => a - b);
-          if (doneArr.length > 0) {
-            e.preventDefault();
-            unmarkStepDone(doneArr[doneArr.length - 1]);
-          }
+        } else if (e.key === "ArrowLeft" && avail.length === 1) {
+          e.preventDefault();
+          cookingPrevInSection(avail[0]);
         }
       }
       if (e.key === "Escape") {
@@ -1283,20 +1420,31 @@ export default function RecipeView(
             </div>
           </div>
           <div class="cooking-mode-body recipe-body">
-            {steps[cookingStep.value].title.trim()
-              ? (
-                <div class="cooking-mode-step-title">
-                  <span class="text-stone-400 mr-2">
-                    {cookingStep.value + 1}.
-                  </span>
-                  {steps[cookingStep.value].title}
-                </div>
-              )
-              : (
-                <div class="text-sm font-semibold text-stone-400 mb-3">
-                  {cookingStep.value + 1}.
-                </div>
-              )}
+            {(() => {
+              const { section, num } = getCookingStepLabel(cookingStep.value);
+              const titleText = steps[cookingStep.value].title.trim();
+              return (
+                <>
+                  {section && (
+                    <div class="text-xs font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
+                      {section}
+                    </div>
+                  )}
+                  {titleText
+                    ? (
+                      <div class="cooking-mode-step-title">
+                        <span class="text-stone-400 mr-2">{num}.</span>
+                        {titleText}
+                      </div>
+                    )
+                    : (
+                      <div class="text-sm font-semibold text-stone-400 mb-3">
+                        {num}.
+                      </div>
+                    )}
+                </>
+              );
+            })()}
             <div
               class="cooking-mode-step-content"
               // deno-lint-ignore react-no-danger
@@ -1363,16 +1511,64 @@ export default function RecipeView(
               >
                 &times;
               </button>
-              <div class="cooking-mode-progress">
-                {steps.map((_, i) => (
-                  <span
-                    key={i}
-                    class={`cooking-mode-dot ${
-                      cookingDone.value.has(i) ? "done" : ""
-                    } ${available.includes(i) ? "active" : ""}`}
-                  />
-                ))}
-              </div>
+              {sections != null && sections.length > 0
+                ? (
+                  <div class="flex flex-wrap gap-1.5 flex-1 min-w-0 px-2">
+                    {sections.map((sec, sIdx) => {
+                      const done = cookingDone.value;
+                      const locked = (sec.after ?? []).some(
+                        (d) => !isSectionComplete(d, done),
+                      );
+                      const complete = isSectionComplete(sIdx, done);
+                      const state = locked
+                        ? "locked"
+                        : complete
+                        ? "complete"
+                        : "active";
+                      const cls = state === "locked"
+                        ? "border-stone-300 dark:border-stone-700 text-stone-400 dark:text-stone-600"
+                        : state === "complete"
+                        ? "border-stone-400 dark:border-stone-500 text-stone-500 dark:text-stone-400 hover:border-orange-500 hover:text-orange-600 cursor-pointer"
+                        : "border-orange-500 text-orange-600 dark:text-orange-400";
+                      const onClick = state === "complete"
+                        ? () => {
+                          const stepIdxs = sectionStepIdxByIndex[sIdx] ?? [];
+                          const last = stepIdxs[stepIdxs.length - 1];
+                          if (last != null) cookingPrevInSection(last);
+                        }
+                        : undefined;
+                      return (
+                        <button
+                          key={sIdx}
+                          type="button"
+                          disabled={state !== "complete"}
+                          class={`text-[11px] font-mono uppercase tracking-[0.12em] border-2 px-2 py-0.5 ${cls} disabled:cursor-default`}
+                          onClick={onClick}
+                          title={state === "locked"
+                            ? "Locked"
+                            : state === "complete"
+                            ? "Click to revisit"
+                            : "Active"}
+                        >
+                          {state === "complete" && "✓ "}
+                          {sec.title.trim() || `Section ${sIdx + 1}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )
+                : (
+                  <div class="cooking-mode-progress">
+                    {steps.map((_, i) => (
+                      <span
+                        key={i}
+                        class={`cooking-mode-dot ${
+                          cookingDone.value.has(i) ? "done" : ""
+                        } ${available.includes(i) ? "active" : ""}`}
+                      />
+                    ))}
+                  </div>
+                )}
               <div class="cooking-mode-counter">
                 {cookingDone.value.size} / {steps.length}
               </div>
@@ -1388,95 +1584,139 @@ export default function RecipeView(
                 </div>
               )
               : (() => {
-                // Build columns: each available step gets a column,
-                // each done step that's waiting for parallel siblings gets a "waiting" column.
+                // When sections exist, columns are per-section. When not, each
+                // available step gets a column (DAG case).
+                const sectionAware = sections != null && sections.length > 0;
                 const done = cookingDone.value;
-                const waitingSteps: number[] = [];
-                for (const idx of done) {
-                  // Check if any dependent of this step is still blocked
-                  // (i.e. this step is done but a parallel sibling isn't)
-                  const hasPendingDependent = steps.some((s, si) => {
-                    if (done.has(si) || !s.after?.includes(idx)) return false;
-                    // si depends on idx, but is si available? If not, idx is "waiting"
-                    return !available.includes(si);
-                  });
-                  if (hasPendingDependent) waitingSteps.push(idx);
+
+                interface Col {
+                  key: string;
+                  /** Which step this column displays (current step for active,
+                   *  last step for complete), or null if locked/empty. */
+                  showStepIdx: number | null;
+                  /** Section idx this column represents (null for loose-step cols). */
+                  sectionIdx: number | null;
+                  state: "active" | "complete" | "locked";
                 }
 
-                // Interleave: show available and waiting columns
-                // Sort by step index for consistent ordering
-                const columns: { idx: number; waiting: boolean }[] = [
-                  ...available.map((idx) => ({ idx, waiting: false })),
-                  ...waitingSteps.filter((idx) => !available.includes(idx)).map(
-                    (idx) => ({ idx, waiting: true }),
-                  ),
-                ].sort((a, b) => a.idx - b.idx);
+                const columns: Col[] = [];
+                if (sectionAware) {
+                  // Only ACTIVE sections become full columns; locked + complete
+                  // are surfaced as chips in the header instead.
+                  for (let sIdx = 0; sIdx < (sections ?? []).length; sIdx++) {
+                    const sec = sections![sIdx];
+                    const locked = (sec.after ?? []).some(
+                      (d) => !isSectionComplete(d, done),
+                    );
+                    if (locked) continue;
+                    if (isSectionComplete(sIdx, done)) continue;
+                    const stepIdxs = sectionStepIdxByIndex[sIdx] ?? [];
+                    let showIdx: number | null = null;
+                    for (const i of stepIdxs) {
+                      if (done.has(i)) continue;
+                      const after = steps[i].after ?? [];
+                      if (after.every((d) => done.has(d))) {
+                        showIdx = i;
+                        break;
+                      }
+                    }
+                    if (showIdx == null) continue;
+                    columns.push({
+                      key: `sec-${sIdx}`,
+                      showStepIdx: showIdx,
+                      sectionIdx: sIdx,
+                      state: "active",
+                    });
+                  }
+                  // Loose steps (no section) — each available one becomes its own column
+                  available.forEach((idx) => {
+                    if (steps[idx].section_id == null) {
+                      columns.push({
+                        key: `loose-${idx}`,
+                        showStepIdx: idx,
+                        sectionIdx: null,
+                        state: "active",
+                      });
+                    }
+                  });
+                } else {
+                  // No sections: one column per available step
+                  available.forEach((idx) => {
+                    columns.push({
+                      key: `step-${idx}`,
+                      showStepIdx: idx,
+                      sectionIdx: null,
+                      state: "active",
+                    });
+                  });
+                }
 
                 return (
                   <div class="flex-1 flex overflow-hidden">
-                    {columns.map(({ idx, waiting }) => (
-                      <div
-                        key={idx}
-                        class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0"
-                      >
-                        {waiting
-                          ? (
-                            <div class="flex-1 flex items-center justify-center px-6 py-6">
-                              <div class="text-center text-stone-400">
-                                <div class="text-lg font-semibold mb-1">
-                                  <span
-                                    class={steps[idx].title.trim()
-                                      ? "text-stone-300 mr-2"
-                                      : "text-stone-300"}
-                                  >
-                                    {idx + 1}.
-                                  </span>
-                                  {steps[idx].title}
-                                </div>
-                                <div class="text-sm">
-                                  Waiting on other steps
-                                </div>
-                              </div>
-                            </div>
-                          )
-                          : (
-                            <>
-                              <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
-                                {steps[idx].title.trim()
-                                  ? (
-                                    <div class="cooking-mode-step-title">
-                                      <span class="text-stone-400 mr-2">
-                                        {idx + 1}.
-                                      </span>
-                                      {steps[idx].title}
-                                    </div>
-                                  )
-                                  : (
-                                    <div class="text-sm font-semibold text-stone-400 mb-3">
-                                      {idx + 1}.
+                    {columns.map((col) => {
+                      const idx = col.showStepIdx;
+                      if (idx == null) return null;
+                      return (
+                        <div
+                          key={col.key}
+                          class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0"
+                        >
+                          <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
+                            {(() => {
+                              const { section, num } = getCookingStepLabel(idx);
+                              const titleText = steps[idx].title.trim();
+                              return (
+                                <>
+                                  {section && (
+                                    <div class="text-[11px] font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
+                                      {section}
                                     </div>
                                   )}
-                                <div
-                                  class="cooking-mode-step-content"
-                                  // deno-lint-ignore react-no-danger
-                                  dangerouslySetInnerHTML={{
-                                    __html: getCookingStepHtmlFor(idx),
-                                  }}
-                                />
-                              </div>
-                              <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700">
-                                <button
-                                  type="button"
-                                  class="cooking-mode-nav-btn btn-primary w-full"
-                                  onClick={() => markStepDone(idx)}
-                                >
-                                  Mark done
-                                </button>
-                              </div>
-                            </>
-                          )}
-                      </div>
-                    ))}
+                                  {titleText
+                                    ? (
+                                      <div class="cooking-mode-step-title">
+                                        <span class="text-stone-400 mr-2">
+                                          {num}.
+                                        </span>
+                                        {titleText}
+                                      </div>
+                                    )
+                                    : (
+                                      <div class="text-sm font-semibold text-stone-400 mb-3">
+                                        {num}.
+                                      </div>
+                                    )}
+                                </>
+                              );
+                            })()}
+                            <div
+                              class="cooking-mode-step-content"
+                              // deno-lint-ignore react-no-danger
+                              dangerouslySetInnerHTML={{
+                                __html: getCookingStepHtmlFor(idx),
+                              }}
+                            />
+                          </div>
+                          <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 flex gap-2">
+                            <button
+                              type="button"
+                              class="cooking-mode-nav-btn flex-1"
+                              disabled={!hasSectionPrev(idx)}
+                              onClick={() => cookingPrevInSection(idx)}
+                            >
+                              Prev
+                            </button>
+                            <button
+                              type="button"
+                              class="cooking-mode-nav-btn btn-primary flex-1"
+                              onClick={() => markStepDone(idx)}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}

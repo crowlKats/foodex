@@ -60,6 +60,10 @@ Reference another step using \`@step(N)\` where N is the step number.
 Example: \`@step(2)\` renders as a clickable link like "step 2 (Mix dry ingredients)" that scrolls to that step.
 Use when a later step refers back to something produced earlier: "Take the mixture from @step(2) and fold in {{ butter }}."
 
+If the recipe has sections (groups of steps), step numbers restart at 1 in each section. To reference a step inside a section, use \`@step(section-key.N)\`.
+Example: \`@step(coating.2)\` renders as "Coating step 2 (Dip and roll)".
+Plain \`@step(N)\` always refers to the Nth step counted globally across the whole recipe — useful when you want to reference a step in another section without naming it.
+
 ## Sub-recipe References
 Link to other recipes using \`@recipe(slug)\` where slug is the URL-friendly recipe name.
 Example: \`@recipe(pizza-dough)\` renders as a clickable link to that recipe.
