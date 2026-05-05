@@ -108,6 +108,40 @@ export const handler = define.handlers({
       );
     }
 
+    // Clone sections (insert before steps so we can remap section_id)
+    const sectionsRes = await ctx.state.db.query(
+      `SELECT * FROM recipe_step_sections WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+    const oldToNewSectionId = new Map<string, string>();
+    for (const sec of sectionsRes.rows) {
+      const newSecRes = await ctx.state.db.query(
+        `INSERT INTO recipe_step_sections (recipe_id, key, title, sort_order)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [newRecipeId, sec.key, sec.title, sec.sort_order],
+      );
+      oldToNewSectionId.set(String(sec.id), String(newSecRes.rows[0].id));
+    }
+
+    // Clone section-to-section deps
+    const secDepsRes = await ctx.state.db.query(
+      `SELECT sd.section_id, sd.depends_on
+       FROM recipe_section_deps sd
+       JOIN recipe_step_sections s ON s.id = sd.section_id
+       WHERE s.recipe_id = $1`,
+      [recipe.id],
+    );
+    for (const dep of secDepsRes.rows) {
+      const newSecId = oldToNewSectionId.get(String(dep.section_id));
+      const newDepId = oldToNewSectionId.get(String(dep.depends_on));
+      if (newSecId && newDepId) {
+        await ctx.state.db.query(
+          `INSERT INTO recipe_section_deps (section_id, depends_on) VALUES ($1, $2)`,
+          [newSecId, newDepId],
+        );
+      }
+    }
+
     // Clone steps and their media
     const stepsRes = await ctx.state.db.query(
       `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
@@ -115,10 +149,13 @@ export const handler = define.handlers({
     );
     const oldToNewStepId = new Map<string, string>();
     for (const step of stepsRes.rows) {
+      const newSectionId = step.section_id != null
+        ? oldToNewSectionId.get(String(step.section_id)) ?? null
+        : null;
       const newStepRes = await ctx.state.db.query(
-        `INSERT INTO recipe_steps (recipe_id, title, body, sort_order)
-         VALUES ($1, $2, $3, $4) RETURNING id`,
-        [newRecipeId, step.title, step.body, step.sort_order],
+        `INSERT INTO recipe_steps (recipe_id, title, body, sort_order, section_id)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [newRecipeId, step.title, step.body, step.sort_order, newSectionId],
       );
       const newStepId = newStepRes.rows[0].id;
       oldToNewStepId.set(String(step.id), String(newStepId));

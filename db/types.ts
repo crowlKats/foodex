@@ -73,10 +73,24 @@ export interface RecipeStep {
   title: string;
   body: string;
   sort_order: number;
+  section_id: string | null;
+}
+
+export interface RecipeStepSection {
+  id: string;
+  recipe_id: string;
+  key: string;
+  title: string;
+  sort_order: number;
 }
 
 export interface RecipeStepDep {
   step_id: string;
+  depends_on: string;
+}
+
+export interface RecipeSectionDep {
+  section_id: string;
   depends_on: string;
 }
 

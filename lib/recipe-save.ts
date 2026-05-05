@@ -65,6 +65,69 @@ export async function saveRecipeChildren(
     ], toolRows);
   }
 
+  // Sections (insert before steps so steps can reference section_id)
+  const sectionEntries = parseFormArray(form, "sections");
+  const sectionFormIdxToDbId = new Map<number, string>();
+  // afters by section form index — collected here, inserted after sections exist
+  const sectionAfters: { idx: number; after: number[] }[] = [];
+  if (sectionEntries.length > 0) {
+    const sectionRows: unknown[][] = [];
+    const sectionFormIdxs: number[] = [];
+    for (let i = 0; i < sectionEntries.length; i++) {
+      const sec = sectionEntries[i];
+      if (!sec.title?.trim()) continue;
+      sectionRows.push([
+        recipeId,
+        sec.key?.trim() || "",
+        sec.title.trim(),
+        i,
+      ]);
+      sectionFormIdxs.push(i);
+      const afterStr = sec.after?.trim() ?? "";
+      const after = afterStr
+        ? afterStr.split(",").map(Number).filter((n) => !isNaN(n))
+        : [];
+      sectionAfters.push({ idx: i, after });
+    }
+    if (sectionRows.length > 0) {
+      const sectionRes = await bulkInsert(
+        q,
+        "recipe_step_sections",
+        ["recipe_id", "key", "title", "sort_order"],
+        sectionRows,
+        { returning: "id" },
+      );
+      for (let i = 0; i < sectionRes.rows.length; i++) {
+        sectionFormIdxToDbId.set(
+          sectionFormIdxs[i],
+          sectionRes.rows[i].id as string,
+        );
+      }
+
+      // Section-to-section deps
+      const secDepRows: unknown[][] = [];
+      for (const { idx, after } of sectionAfters) {
+        const depId = sectionFormIdxToDbId.get(idx);
+        if (!depId) continue;
+        for (const depFormIdx of after) {
+          const dependsOnId = sectionFormIdxToDbId.get(depFormIdx);
+          if (dependsOnId && dependsOnId !== depId) {
+            secDepRows.push([depId, dependsOnId]);
+          }
+        }
+      }
+      if (secDepRows.length > 0) {
+        await bulkInsert(
+          q,
+          "recipe_section_deps",
+          ["section_id", "depends_on"],
+          secDepRows,
+          { suffix: "ON CONFLICT DO NOTHING" },
+        );
+      }
+    }
+  }
+
   // Steps (need RETURNING id for media and deps)
   const steps = parseFormArray(form, "steps");
   const stepRows: unknown[][] = [];
@@ -73,11 +136,17 @@ export async function saveRecipeChildren(
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
     if (!step.title?.trim() && !step.body?.trim()) continue;
+    const secIdxRaw = step.section?.trim() ?? "";
+    const secIdx = secIdxRaw === "" ? null : parseInt(secIdxRaw);
+    const sectionId = secIdx != null && !isNaN(secIdx)
+      ? sectionFormIdxToDbId.get(secIdx) ?? null
+      : null;
     stepRows.push([
       recipeId,
       step.title?.trim() || "",
       step.body?.trim() || "",
       i,
+      sectionId,
     ]);
     stepIndexes.push(i);
     // Parse "after" field: comma-separated form indices
@@ -91,7 +160,7 @@ export async function saveRecipeChildren(
     const stepRes = await bulkInsert(
       q,
       "recipe_steps",
-      ["recipe_id", "title", "body", "sort_order"],
+      ["recipe_id", "title", "body", "sort_order", "section_id"],
       stepRows,
       { returning: "id" },
     );
@@ -124,13 +193,25 @@ export async function saveRecipeChildren(
       ], mediaRows);
     }
 
-    // Step dependencies from explicit "after" indices
+    // Step dependencies from explicit "after" indices.
+    // Drop any cross-section deps — those should be section-level, not step-level.
+    const stepIdToSection = new Map<string, string | null>();
+    for (let si = 0; si < stepRes.rows.length; si++) {
+      stepIdToSection.set(
+        stepRes.rows[si].id as string,
+        (stepRows[si][4] as string | null) ?? null,
+      );
+    }
     const depRows: unknown[][] = [];
     for (let si = 0; si < stepRes.rows.length; si++) {
       const stepId = stepRes.rows[si].id as string;
+      const stepSection = stepIdToSection.get(stepId) ?? null;
       for (const depFormIdx of stepAfters[si]) {
         const depDbId = formIdxToDbId.get(depFormIdx);
-        if (depDbId) {
+        if (!depDbId) continue;
+        const depSection = stepIdToSection.get(depDbId) ?? null;
+        // Same section (including both null) is allowed; cross-section is dropped.
+        if (depSection === stepSection) {
           depRows.push([stepId, depDbId]);
         }
       }

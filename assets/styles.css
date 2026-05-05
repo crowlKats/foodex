@@ -180,6 +180,37 @@ select {
     dark:text-stone-400 my-3;
 }
 
+/* ── Recipe sections (group of steps) ── */
+.recipe-section {
+  @apply mt-10 mb-6 border-l border-orange-400 dark:border-orange-600 pl-5
+    relative;
+}
+
+.recipe-section:first-child {
+  @apply mt-2;
+}
+
+.recipe-section-eyebrow {
+  @apply text-[11px] font-mono uppercase tracking-[0.18em] text-orange-600
+    dark:text-orange-400 mb-1;
+}
+
+.recipe-section-note {
+  @apply text-sm italic text-stone-500 dark:text-stone-400 mb-3;
+}
+
+/* Override .recipe-body h2 for section titles */
+.recipe-body .recipe-section-title,
+.recipe-section-title {
+  @apply text-2xl font-bold mt-0 mb-4 pb-0 border-0 text-stone-900
+    dark:text-stone-100;
+}
+
+/* Step h3s nested in a section: lose the top margin of the first one */
+.recipe-section-body > :first-child h3 {
+  @apply mt-0;
+}
+
 /* ── Cooking Mode ── */
 .cooking-mode {
   @apply fixed inset-0 z-[100] bg-white dark:bg-stone-950 flex flex-col

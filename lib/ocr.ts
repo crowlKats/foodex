@@ -20,7 +20,10 @@ export interface OcrRecipeData {
   quantity_value: number;
   quantity_unit: string;
   ingredients: { key: string; name: string; amount: string; unit: string }[];
-  steps: { title: string; body: string }[];
+  /** Optional grouping of steps. Step.section refers to a section by key.
+   * Sections form their own DAG: `after` is a list of section keys that must complete first. */
+  sections?: { key: string; title: string; after?: string[] }[];
+  steps: { title: string; body: string; section?: string | null }[];
   cover_image: CoverImageBounds | null;
   source_type?: string | null;
   source_name?: string | null;

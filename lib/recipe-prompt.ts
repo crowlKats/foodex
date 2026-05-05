@@ -21,8 +21,11 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
   "ingredients": [
     { "key": "snake_case_key", "name": "Ingredient name", "amount": "numeric amount as string", "unit": "unit" }
   ],
+  "sections": [
+    { "key": "kebab-case-key", "title": "Section title", "after": ["other-section-key"] }
+  ],
   "steps": [
-    { "title": "Step title (short)", "body": "Detailed step instructions" }
+    { "title": "Step title (short)", "body": "Detailed step instructions", "section": "kebab-case-key or null" }
   ],
 ${coverLine},
   "source_type": "book" | "website" | "family" | "ai_generated" | "personal" | "other" | null,
@@ -41,6 +44,8 @@ export const RECIPE_FIELD_RULES = `\
 - If prep, cook, or rest time is not specified, use null. "rest_time" covers any inactive waiting (rising dough, marinating, chilling, resting cooked meat, etc.) — not active prep or cook time.
 - "difficulty" should be "easy", "medium", or "hard" based on the recipe's complexity, technique requirements, and skill level needed. Use null if uncertain
 - Step titles should be short (2-4 words). Step bodies support Markdown and a template syntax for dynamic ingredient scaling. Only use template refs when an ingredient amount is explicitly mentioned in a step — if a step just names an ingredient without a specific quantity, use plain text.
+- "sections" is OPTIONAL. Only include sections if the source recipe explicitly groups steps under sub-headings (e.g. "Sponge", "Coating", "Sauce"). If the recipe is one continuous list of steps, omit "sections" or return an empty array, and set every step's "section" to null. Section "key" must be a unique kebab-case identifier derived from the section title (e.g. "butter-sponge", "coating"). When sections are used, each step's "section" field is the matching section key, and steps within a section should appear contiguously in the "steps" array in their natural order.
+- Sections form their own dependency graph. A section's "after" array lists keys of other sections that must finish before this one can start. If sections run in parallel (e.g. you make the sauce while the pasta cooks), they share no dependency. If section B is a finishing step after A, then B.after = ["A"]. Use this to capture the cooking flow — most cookbooks describe sections sequentially, but many natural workflows are actually parallel and should be modeled that way.
 - Template syntax reference:
 ${TEMPLATE_DOCS}
 - "source_type": Identify the origin of the recipe when possible. Use "book" for cookbook/printed sources, "website" for online sources, "family" for family/friend recipes, "ai_generated" for AI-created recipes, "personal" for original creations, "other" for anything else. Use null only if truly unknown.

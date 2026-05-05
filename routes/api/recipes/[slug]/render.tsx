@@ -3,7 +3,7 @@ import { renderRecipeSteps } from "../../../../lib/markdown.ts";
 import { scaleIngredients } from "../../../../lib/template.ts";
 import { computeScaleRatio } from "../../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../../lib/quantity.ts";
-import type { RecipeStepDep } from "../../../../db/types.ts";
+import type { RecipeStepDep, RecipeStepSection } from "../../../../db/types.ts";
 import { computeStepAfters } from "../../../../lib/step-graph.ts";
 
 export const handler = define.handlers({
@@ -70,19 +70,31 @@ export const handler = define.handlers({
 
     const ratio = computeScaleRatio(baseQuantity, targetQuantity);
 
-    const [stepsRes, stepDepsRes] = await Promise.all([
-      ctx.state.db.query(
-        `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
-        [recipe.id],
-      ),
-      ctx.state.db.query<RecipeStepDep>(
-        `SELECT sd.step_id, sd.depends_on
+    const [stepsRes, stepDepsRes, sectionsRes, sectionDepsRes] = await Promise
+      .all([
+        ctx.state.db.query(
+          `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
+          [recipe.id],
+        ),
+        ctx.state.db.query<RecipeStepDep>(
+          `SELECT sd.step_id, sd.depends_on
          FROM recipe_step_deps sd
          JOIN recipe_steps rs ON rs.id = sd.step_id
          WHERE rs.recipe_id = $1`,
-        [recipe.id],
-      ),
-    ]);
+          [recipe.id],
+        ),
+        ctx.state.db.query<RecipeStepSection>(
+          `SELECT * FROM recipe_step_sections WHERE recipe_id = $1 ORDER BY sort_order, id`,
+          [recipe.id],
+        ),
+        ctx.state.db.query<{ section_id: string; depends_on: string }>(
+          `SELECT sd.section_id, sd.depends_on
+         FROM recipe_section_deps sd
+         JOIN recipe_step_sections s ON s.id = sd.section_id
+         WHERE s.recipe_id = $1`,
+          [recipe.id],
+        ),
+      ]);
 
     const stepAfterMap = computeStepAfters(
       stepsRes.rows.map((s) => String(s.id)),
@@ -116,6 +128,24 @@ export const handler = define.handlers({
       title: String(s.title),
       body: String(s.body),
       after: stepAfterMap.get(String(s.id)) ?? [],
+      section_id: s.section_id != null ? String(s.section_id) : null,
+    }));
+
+    const sectionIndexById = new Map<string, number>();
+    sectionsRes.rows.forEach((s, i) => sectionIndexById.set(s.id, i));
+    const sectionAfters: number[][] = sectionsRes.rows.map(() => []);
+    for (const dep of sectionDepsRes.rows) {
+      const sIdx = sectionIndexById.get(dep.section_id);
+      const dIdx = sectionIndexById.get(dep.depends_on);
+      if (sIdx != null && dIdx != null) sectionAfters[sIdx].push(dIdx);
+    }
+    sectionAfters.forEach((arr) => arr.sort((a, b) => a - b));
+
+    const sections = sectionsRes.rows.map((s, i) => ({
+      id: s.id,
+      key: s.key,
+      title: s.title,
+      after: sectionAfters[i],
     }));
 
     const html = await renderRecipeSteps(
@@ -133,6 +163,7 @@ export const handler = define.handlers({
           slug: String(res.rows[0].slug),
         };
       },
+      sections,
     );
 
     return new Response(JSON.stringify({ html }), {

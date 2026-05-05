@@ -6,7 +6,8 @@
     "build": "vite build",
     "start": "deno serve -A _fresh/server.js",
     "update": "deno run -A -r jsr:@fresh/update .",
-    "migrate": "deno run -A db/migrate.ts"
+    "migrate": "deno run -A --env db/migrate.ts",
+    "examples": "deno run -A --env examples/import.ts"
   },
   "lint": {
     "rules": {

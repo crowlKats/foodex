@@ -5,6 +5,7 @@ import type {
   RecipeReference,
   RecipeStep,
   RecipeStepDep,
+  RecipeStepSection,
   RecipeTag,
   RecipeTool,
   RecipeWithCover,
@@ -66,6 +67,21 @@ export const handler = define.handlers({
 
     const stepsRes = await ctx.state.db.query<RecipeStep>(
       `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+
+    const sectionsRes = await ctx.state.db.query<RecipeStepSection>(
+      `SELECT * FROM recipe_step_sections WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+
+    const sectionDepsRes = await ctx.state.db.query<
+      { section_id: string; depends_on: string }
+    >(
+      `SELECT sd.section_id, sd.depends_on
+       FROM recipe_section_deps sd
+       JOIN recipe_step_sections s ON s.id = sd.section_id
+       WHERE s.recipe_id = $1`,
       [recipe.id],
     );
 
@@ -218,6 +234,25 @@ export const handler = define.handlers({
       body: s.body,
       media: stepMediaMap.get(String(s.id)) ?? [],
       after: stepAfterMap.get(s.id) ?? [],
+      section_id: s.section_id,
+    }));
+
+    // Build per-section index of which other sections it depends on (by index in sectionsData)
+    const sectionIndexById = new Map<string, number>();
+    sectionsRes.rows.forEach((s, i) => sectionIndexById.set(s.id, i));
+    const sectionAfters: number[][] = sectionsRes.rows.map(() => []);
+    for (const dep of sectionDepsRes.rows) {
+      const sIdx = sectionIndexById.get(dep.section_id);
+      const dIdx = sectionIndexById.get(dep.depends_on);
+      if (sIdx != null && dIdx != null) sectionAfters[sIdx].push(dIdx);
+    }
+    sectionAfters.forEach((arr) => arr.sort((a, b) => a - b));
+
+    const sectionsData = sectionsRes.rows.map((s, i) => ({
+      id: s.id,
+      key: s.key,
+      title: s.title,
+      after: sectionAfters[i],
     }));
 
     const renderedHtml = await renderRecipeSteps(
@@ -235,6 +270,7 @@ export const handler = define.handlers({
           slug: res.rows[0].slug,
         };
       },
+      sectionsData,
     );
 
     const isOwner = ctx.state.householdId != null &&
@@ -375,6 +411,7 @@ export const handler = define.handlers({
       ingredientsForTemplate,
       tools: toolsRes.rows,
       steps: stepsData,
+      sections: sectionsData,
       refs: refsRes.rows,
       mealTypes,
       dietaryTags,
@@ -436,6 +473,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
     ingredientsForTemplate,
     tools,
     steps,
+    sections,
     refs,
     mealTypes,
     dietaryTags,
@@ -636,7 +674,9 @@ export default define.page<typeof handler>(function RecipeViewPage({
             title: s.title,
             body: s.body,
             after: s.after,
+            section_id: s.section_id,
           }))}
+          sections={sections}
           ingredients={ingredientsForTemplate}
           tools={tools.map((m) => ({
             id: m.tool_id,

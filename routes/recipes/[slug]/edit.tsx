@@ -8,6 +8,7 @@ import type {
   RecipeReference,
   RecipeStep,
   RecipeStepDep,
+  RecipeStepSection,
   RecipeTag,
   RecipeTool,
   RecipeWithCoverMedia,
@@ -78,6 +79,21 @@ export const handler = define.handlers({
 
     const stepsRes = await ctx.state.db.query<RecipeStep>(
       `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+
+    const sectionsRes = await ctx.state.db.query<RecipeStepSection>(
+      `SELECT * FROM recipe_step_sections WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+
+    const sectionDepsRes = await ctx.state.db.query<
+      { section_id: string; depends_on: string }
+    >(
+      `SELECT sd.section_id, sd.depends_on
+       FROM recipe_section_deps sd
+       JOIN recipe_step_sections s ON s.id = sd.section_id
+       WHERE s.recipe_id = $1`,
       [recipe.id],
     );
 
@@ -154,12 +170,19 @@ export const handler = define.handlers({
       [recipe.id],
     );
 
+    // Map section UUID → index in the sections array (form expects index)
+    const sectionIdToIndex = new Map<string, number>();
+    sectionsRes.rows.forEach((s, i) => sectionIdToIndex.set(s.id, i));
+
     const stepsWithMedia = stepsRes.rows.map((s, i) => ({
       ...s,
       media: stepMediaMap.get(String(s.id)) ?? [],
       after: (stepAfterMap.get(s.id) ?? (i > 0 ? [i - 1] : [])).sort(
         (a, b) => a - b,
       ),
+      section: s.section_id != null
+        ? (sectionIdToIndex.get(s.section_id) ?? null)
+        : null,
     }));
 
     let outputIngredientName = "";
@@ -172,11 +195,27 @@ export const handler = define.handlers({
     }
 
     ctx.state.pageTitle = `Edit: ${recipe.title}`;
+    // Build per-section "after" arrays of section indices for the form
+    const sectionIndexById = new Map<string, number>();
+    sectionsRes.rows.forEach((s, i) => sectionIndexById.set(s.id, i));
+    const sectionAfters = sectionsRes.rows.map(() => [] as number[]);
+    for (const dep of sectionDepsRes.rows) {
+      const sIdx = sectionIndexById.get(dep.section_id);
+      const dIdx = sectionIndexById.get(dep.depends_on);
+      if (sIdx != null && dIdx != null) sectionAfters[sIdx].push(dIdx);
+    }
+    sectionAfters.forEach((arr) => arr.sort((a, b) => a - b));
+
     return page({
       recipe,
       ingredients: ingredientsRes.rows,
       tools: toolsRes.rows,
       steps: stepsWithMedia,
+      sections: sectionsRes.rows.map((s, i) => ({
+        title: s.title,
+        key: s.key,
+        after: sectionAfters[i],
+      })),
       refs: refsRes.rows,
       mealTypes,
       dietaryTags,
@@ -311,11 +350,13 @@ export const handler = define.handlers({
         ],
       );
 
-      // recipe_step_deps cascade-deletes via recipe_steps FK
+      // recipe_step_deps cascade-deletes via recipe_steps FK;
+      // recipe_section_deps cascade-deletes via recipe_step_sections FK
       await Promise.all([
         q("DELETE FROM recipe_ingredients WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_tools WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_steps WHERE recipe_id = $1", [recipeId]),
+        q("DELETE FROM recipe_step_sections WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_references WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_tags WHERE recipe_id = $1", [recipeId]),
       ]);
@@ -336,6 +377,7 @@ export default define.page<typeof handler>(function RecipeEdit({
     ingredients,
     tools,
     steps,
+    sections,
     refs,
     mealTypes,
     dietaryTags,
@@ -365,6 +407,7 @@ export default define.page<typeof handler>(function RecipeEdit({
     body: s.body ?? "",
     media: s.media ?? [],
     after: s.after ?? [],
+    section: s.section ?? null,
   }));
 
   const hasGraph = stepData.length > 0 &&
@@ -563,7 +606,11 @@ export default define.page<typeof handler>(function RecipeEdit({
             for just the number. Supports math and functions.{" "}
             <a href="/docs/templates" class="link text-xs">Full reference</a>
           </p>
-          <StepForm initialSteps={stepData} mode={stepMode} />
+          <StepForm
+            initialSteps={stepData}
+            initialSections={sections}
+            mode={stepMode}
+          />
         </div>
 
         <div class="card">

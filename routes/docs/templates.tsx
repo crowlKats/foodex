@@ -183,6 +183,43 @@ export default define.page(function TemplateDocs() {
 
         <section>
           <h2 class="text-xl font-bold mb-3 pb-1 border-b-2 border-stone-300 dark:border-stone-700">
+            Step References
+          </h2>
+          <p class="mb-3">
+            Reference another step using <code class="code-hint">@step(N)</code>
+            {" "}
+            where N is the step number.
+          </p>
+          <div class="card space-y-3">
+            <div>
+              <div class="text-xs font-bold uppercase text-stone-500 mb-1">
+                Global reference
+              </div>
+              <code class="code-hint">@step(2)</code>
+              <span class="text-stone-500 mx-2">&rarr;</span>
+              <span>step 2 (Mix dry ingredients)</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase text-stone-500 mb-1">
+                Section-relative reference (when the recipe has sections)
+              </div>
+              <code class="code-hint">@step(coating.2)</code>
+              <span class="text-stone-500 mx-2">&rarr;</span>
+              <span>Coating step 2 (Dip and roll)</span>
+            </div>
+          </div>
+          <p class="text-sm text-stone-500 mt-2">
+            If the recipe has sections, step numbers restart at 1 in each
+            section. Use <code class="code-hint">@step(section-key.N)</code>
+            {" "}
+            to point at the Nth step inside a section, or plain{" "}
+            <code class="code-hint">@step(N)</code>{" "}
+            to count globally across the whole recipe.
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-bold mb-3 pb-1 border-b-2 border-stone-300 dark:border-stone-700">
             Sub-recipe References
           </h2>
           <p class="mb-3">
