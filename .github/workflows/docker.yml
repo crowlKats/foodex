@@ -21,6 +21,8 @@ jobs:
   docker:
     name: build and push
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image-ref.outputs.ref }}
 
     steps:
       - name: Check out repository
@@ -53,6 +55,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -64,6 +67,11 @@ jobs:
             GIT_REVISION=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Image ref by digest
+        id: image-ref
+        if: github.event_name != 'pull_request'
+        run: echo "ref=${{ steps.prep.outputs.image }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
 
   deploy:
     name: deploy to k8s
@@ -101,14 +109,9 @@ jobs:
             --cluster=k8s --user=gh --namespace=foodex
           kubectl config use-context k8s
 
-      - name: Compute image
-        id: image
-        run: |
-          echo "ref=ghcr.io/${GITHUB_REPOSITORY,,}:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-
       - name: Run migration job
         env:
-          IMAGE: ${{ steps.image.outputs.ref }}
+          IMAGE: ${{ needs.docker.outputs.image }}
         run: |
           kubectl set image cronjob/foodex-migrate "*=$IMAGE"
           JOB_NAME="foodex-migrate-${GITHUB_SHA::7}-$(date +%s)"
@@ -117,7 +120,7 @@ jobs:
 
       - name: Roll out foodex deployment
         env:
-          IMAGE: ${{ steps.image.outputs.ref }}
+          IMAGE: ${{ needs.docker.outputs.image }}
         run: |
           kubectl set image deployment/foodex "*=$IMAGE"
           kubectl rollout status deployment/foodex --timeout=5m

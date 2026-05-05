@@ -176,11 +176,18 @@ function renderStepsClient(
           escapeHtml(ann)
         }</div>`;
     }
-    html += `<h2 id="step-${
-      i + 1
-    }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
-      i + 1
-    }.</span>${escapeHtml(step.title)}</h2>\n${stepHtmls[i]}`;
+    const titleText = step.title.trim();
+    html += titleText
+      ? `<h2 id="step-${
+        i + 1
+      }" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${
+        i + 1
+      }.</span>${escapeHtml(titleText)}</h2>\n${stepHtmls[i]}`
+      : `<h2 id="step-${
+        i + 1
+      }" class="sr-only">Step ${i + 1}</h2><div class="mt-6 mb-3 text-sm font-semibold text-stone-400">${
+        i + 1
+      }.</div>\n${stepHtmls[i]}`;
     parts.push(html);
   }
   return parts.join("\n");
@@ -1276,10 +1283,20 @@ export default function RecipeView(
             </div>
           </div>
           <div class="cooking-mode-body recipe-body">
-            <div class="cooking-mode-step-title">
-              <span class="text-stone-400 mr-2">{cookingStep.value + 1}.</span>
-              {steps[cookingStep.value].title}
-            </div>
+            {steps[cookingStep.value].title.trim()
+              ? (
+                <div class="cooking-mode-step-title">
+                  <span class="text-stone-400 mr-2">
+                    {cookingStep.value + 1}.
+                  </span>
+                  {steps[cookingStep.value].title}
+                </div>
+              )
+              : (
+                <div class="text-sm font-semibold text-stone-400 mb-3">
+                  {cookingStep.value + 1}.
+                </div>
+              )}
             <div
               class="cooking-mode-step-content"
               // deno-lint-ignore react-no-danger
@@ -1407,7 +1424,11 @@ export default function RecipeView(
                             <div class="flex-1 flex items-center justify-center px-6 py-6">
                               <div class="text-center text-stone-400">
                                 <div class="text-lg font-semibold mb-1">
-                                  <span class="text-stone-300 mr-2">
+                                  <span
+                                    class={steps[idx].title.trim()
+                                      ? "text-stone-300 mr-2"
+                                      : "text-stone-300"}
+                                  >
                                     {idx + 1}.
                                   </span>
                                   {steps[idx].title}
@@ -1421,12 +1442,20 @@ export default function RecipeView(
                           : (
                             <>
                               <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
-                                <div class="cooking-mode-step-title">
-                                  <span class="text-stone-400 mr-2">
-                                    {idx + 1}.
-                                  </span>
-                                  {steps[idx].title}
-                                </div>
+                                {steps[idx].title.trim()
+                                  ? (
+                                    <div class="cooking-mode-step-title">
+                                      <span class="text-stone-400 mr-2">
+                                        {idx + 1}.
+                                      </span>
+                                      {steps[idx].title}
+                                    </div>
+                                  )
+                                  : (
+                                    <div class="text-sm font-semibold text-stone-400 mb-3">
+                                      {idx + 1}.
+                                    </div>
+                                  )}
                                 <div
                                   class="cooking-mode-step-content"
                                   // deno-lint-ignore react-no-danger
