@@ -64,3 +64,60 @@ jobs:
             GIT_REVISION=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: deploy to k8s
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Mint OIDC token for k8s
+        id: token
+        run: |
+          TOKEN=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=k8s.routing.cafe" | jq -r .value)
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubectl
+        env:
+          KUBE_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          echo "${{ secrets.K8S_CA_CERT }}" > "$HOME/ca.crt"
+          kubectl config set-cluster k8s \
+            --server="${{ vars.K8S_API_SERVER }}" \
+            --certificate-authority="$HOME/ca.crt" \
+            --embed-certs=true
+          kubectl config set-credentials gh --token="$KUBE_TOKEN"
+          kubectl config set-context k8s \
+            --cluster=k8s --user=gh --namespace=foodex
+          kubectl config use-context k8s
+
+      - name: Compute image
+        id: image
+        run: |
+          echo "ref=ghcr.io/${GITHUB_REPOSITORY,,}:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Run migration job
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          kubectl set image cronjob/foodex-migrate "*=$IMAGE"
+          JOB_NAME="foodex-migrate-${GITHUB_SHA::7}-$(date +%s)"
+          kubectl create job "$JOB_NAME" --from=cronjob/foodex-migrate
+          kubectl wait --for=condition=complete --timeout=10m "job/$JOB_NAME"
+
+      - name: Roll out foodex deployment
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          kubectl set image deployment/foodex "*=$IMAGE"
+          kubectl rollout status deployment/foodex --timeout=5m
