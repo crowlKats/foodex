@@ -202,41 +202,9 @@ function renderStepsClient(
 
   const sectionAnns = sections ? computeSectionAnnotations(sections) : [];
   const parts: string[] = [];
-  let currentSectionId: string | null | undefined = undefined;
-  let openSection = false;
-  for (let i = 0; i < steps.length; i++) {
+
+  function renderStep(i: number): string {
     const step = steps[i];
-    const sid = step.section_id ?? null;
-    if (sid !== currentSectionId) {
-      if (openSection) {
-        parts.push(`</div></section>`);
-        openSection = false;
-      }
-      const sec = sid ? layout.byId.get(sid) : null;
-      if (sec) {
-        const partIdx = (sections ?? []).findIndex((s) => s.id === sec.id);
-        const ann = sectionAnns[partIdx];
-        let annHtml = "";
-        if (ann?.afterTitles?.length) {
-          annHtml += `<div class="recipe-section-note">After ${
-            ann.afterTitles.map(escapeHtml).join(" and ")
-          }.</div>`;
-        }
-        if (ann?.parallelTitles?.length) {
-          annHtml += `<div class="recipe-section-note">Runs in parallel with ${
-            ann.parallelTitles.map(escapeHtml).join(" and ")
-          }.</div>`;
-        }
-        parts.push(
-          `<section class="recipe-section">` +
-            `<h2 class="recipe-section-title">${escapeHtml(sec.title)}</h2>` +
-            annHtml +
-            `<div class="recipe-section-body">`,
-        );
-        openSection = true;
-      }
-      currentSectionId = sid;
-    }
     const ann = annotations[i].annotation;
     let html = "";
     if (ann) {
@@ -255,9 +223,40 @@ function renderStepsClient(
       : `<h3 id="${anchor}" class="sr-only">Step ${num}</h3><div class="mt-6 mb-3 text-sm font-semibold text-stone-400">${num}.</div>\n${
         stepHtmls[i]
       }`;
-    parts.push(html);
+    return html;
   }
-  if (openSection) parts.push(`</div></section>`);
+
+  // Loose steps (no section) first
+  const looseIdxs = layout.bySectionId.get(null) ?? [];
+  for (const i of looseIdxs) parts.push(renderStep(i));
+
+  // Each section in order, with all its steps inside
+  for (let sIdx = 0; sIdx < (sections ?? []).length; sIdx++) {
+    const sec = sections![sIdx];
+    const stepIdxs = layout.bySectionId.get(sec.id) ?? [];
+    if (stepIdxs.length === 0) continue;
+    const ann = sectionAnns[sIdx];
+    let annHtml = "";
+    if (ann?.afterTitles?.length) {
+      annHtml += `<div class="recipe-section-note">After ${
+        ann.afterTitles.map(escapeHtml).join(" and ")
+      }.</div>`;
+    }
+    if (ann?.parallelTitles?.length) {
+      annHtml += `<div class="recipe-section-note">Runs in parallel with ${
+        ann.parallelTitles.map(escapeHtml).join(" and ")
+      }.</div>`;
+    }
+    parts.push(
+      `<section class="recipe-section">` +
+        `<h2 class="recipe-section-title">${escapeHtml(sec.title)}</h2>` +
+        annHtml +
+        `<div class="recipe-section-body">`,
+    );
+    for (const i of stepIdxs) parts.push(renderStep(i));
+    parts.push(`</div></section>`);
+  }
+
   return parts.join("\n");
 }
 

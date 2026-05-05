@@ -1078,6 +1078,35 @@ export default function StepForm(
     items.value = toLinearChain(next);
   }
 
+  /**
+   * List mode: move a step from its current group into another section
+   * (or `null` for loose). `toEnd` = true positions it at the end of the
+   * target group (used when moving "up"); false = start (used when moving "down").
+   */
+  function listMoveStepToGroup(
+    stepIdx: number,
+    newSection: number | null,
+    toEnd: boolean,
+  ) {
+    const next = [...items.value];
+    const [step] = next.splice(stepIdx, 1);
+    const moved = { ...step, section: newSection };
+    const targetIdxs: number[] = [];
+    for (let i = 0; i < next.length; i++) {
+      if ((next[i].section ?? null) === newSection) targetIdxs.push(i);
+    }
+    let insertAt: number;
+    if (targetIdxs.length === 0) {
+      insertAt = next.length;
+    } else if (toEnd) {
+      insertAt = targetIdxs[targetIdxs.length - 1] + 1;
+    } else {
+      insertAt = targetIdxs[0];
+    }
+    next.splice(insertAt, 0, moved);
+    items.value = toLinearChain(next);
+  }
+
   function graphRemoveStep(index: number) {
     const newSel = selected.value === index
       ? null
@@ -1323,12 +1352,32 @@ export default function StepForm(
           }
         });
 
+        // Visible groups in render order. Loose group is included only if it
+        // has any steps; sections are always visible (so user can drop steps
+        // into empty sections via up/down on a boundary step).
+        const allGroups: { section: number | null; stepIdxs: number[] }[] = [];
+        if (looseStepIdxs.length > 0) {
+          allGroups.push({ section: null, stepIdxs: looseStepIdxs });
+        }
+        sections.value.forEach((_, sIdx) => {
+          allGroups.push({ section: sIdx, stepIdxs: stepsBySection[sIdx] });
+        });
+
         function renderStepCard(
           i: number,
           displayN: number,
           group: number[],
           posInGroup: number,
+          groupIdx: number,
         ) {
+          const atTop = posInGroup === 0;
+          const atBottom = posInGroup === group.length - 1;
+          const prevGroup = groupIdx > 0 ? allGroups[groupIdx - 1] : null;
+          const nextGroup = groupIdx < allGroups.length - 1
+            ? allGroups[groupIdx + 1]
+            : null;
+          const upDisabled = atTop && prevGroup == null;
+          const downDisabled = atBottom && nextGroup == null;
           const item = steps[i];
           return (
             <div key={item._uid ?? i} class="card p-3 space-y-2">
@@ -1351,22 +1400,32 @@ export default function StepForm(
                 <div class="flex items-center gap-1 shrink-0 max-sm:order-2 max-sm:ml-auto">
                   <button
                     type="button"
-                    disabled={posInGroup === 0}
+                    disabled={upDisabled}
+                    title={atTop ? "Move to previous section" : "Move up"}
                     class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"
                     onClick={() => {
-                      if (posInGroup === 0) return;
-                      listSwapSteps(i, group[posInGroup - 1]);
+                      if (upDisabled) return;
+                      if (atTop) {
+                        listMoveStepToGroup(i, prevGroup!.section, true);
+                      } else {
+                        listSwapSteps(i, group[posInGroup - 1]);
+                      }
                     }}
                   >
                     <TbArrowUp class="size-4" />
                   </button>
                   <button
                     type="button"
-                    disabled={posInGroup === group.length - 1}
+                    disabled={downDisabled}
+                    title={atBottom ? "Move to next section" : "Move down"}
                     class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"
                     onClick={() => {
-                      if (posInGroup === group.length - 1) return;
-                      listSwapSteps(i, group[posInGroup + 1]);
+                      if (downDisabled) return;
+                      if (atBottom) {
+                        listMoveStepToGroup(i, nextGroup!.section, false);
+                      } else {
+                        listSwapSteps(i, group[posInGroup + 1]);
+                      }
                     }}
                   >
                     <TbArrowDown class="size-4" />
@@ -1438,7 +1497,7 @@ export default function StepForm(
             {looseStepIdxs.length > 0 && (
               <div class="space-y-3">
                 {looseStepIdxs.map((i, n) =>
-                  renderStepCard(i, n + 1, looseStepIdxs, n)
+                  renderStepCard(i, n + 1, looseStepIdxs, n, 0)
                 )}
                 {sections.value.length === 0 && (
                   <button
@@ -1510,7 +1569,15 @@ export default function StepForm(
                   </div>
                   {group.length > 0 && (
                     <div class="space-y-3">
-                      {group.map((i, n) => renderStepCard(i, n + 1, group, n))}
+                      {group.map((i, n) =>
+                        renderStepCard(
+                          i,
+                          n + 1,
+                          group,
+                          n,
+                          (looseStepIdxs.length > 0 ? 1 : 0) + sIdx,
+                        )
+                      )}
                     </div>
                   )}
                   <button
@@ -1818,6 +1885,25 @@ export default function StepForm(
           </div>
         </div>
       )}
+
+      {/* Single-ending-section validation (nested graph) */}
+      {isGraph && nested && (() => {
+        const leafSecs = sections.value
+          .map((_, i) => i)
+          .filter((i) =>
+            !sections.value.some((s) => (s.after ?? []).includes(i))
+          );
+        if (leafSecs.length <= 1) return null;
+        return (
+          <div class="text-xs text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-700 p-2">
+            Recipe must have a single final section. Currently {leafSecs.length}
+            {" "}
+            sections have nothing after them: {leafSecs.map((i) =>
+              sections.value[i].title.trim() || `Section ${i + 1}`
+            ).join(", ")}. Connect them or remove extras.
+          </div>
+        );
+      })()}
 
       {/* ── Flat graph mode (no sections) ── */}
       {isGraph && flatLayout && (
