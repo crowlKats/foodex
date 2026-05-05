@@ -32,7 +32,7 @@ const SORT_OPTIONS = [
   {
     value: "newest",
     label: "Newest",
-    column: "r.updated_at",
+    column: "r.created_at",
     defaultDesc: true,
   },
   {
