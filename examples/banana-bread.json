@@ -1,0 +1,50 @@
+{
+  "title": "Banana Bread",
+  "description": "A simple, moist banana loaf — uses up overripe bananas.",
+  "quantity_type": "servings",
+  "quantity_value": 10,
+  "quantity_unit": "slices",
+  "prep_time": 15,
+  "cook_time": 60,
+  "rest_time": 20,
+  "difficulty": "easy",
+  "private": false,
+  "tags": { "meal_type": ["breakfast", "snack"], "dietary": ["vegetarian"] },
+  "ingredients": [
+    { "key": "bananas", "name": "ripe bananas", "amount": 3, "unit": "" },
+    { "key": "butter", "name": "unsalted butter", "amount": 80, "unit": "g" },
+    { "key": "sugar", "name": "brown sugar", "amount": 150, "unit": "g" },
+    { "key": "egg", "name": "egg", "amount": 1, "unit": "" },
+    { "key": "vanilla", "name": "vanilla extract", "amount": 1, "unit": "tsp" },
+    { "key": "flour", "name": "all-purpose flour", "amount": 220, "unit": "g" },
+    { "key": "soda", "name": "baking soda", "amount": 1, "unit": "tsp" },
+    { "key": "salt", "name": "salt", "amount": 0.5, "unit": "tsp" },
+    { "key": "walnuts", "name": "walnuts, chopped", "amount": 60, "unit": "g" }
+  ],
+  "steps": [
+    {
+      "title": "Preheat and prep",
+      "body": "Preheat oven to 175°C. Grease a standard 23x13cm loaf pan."
+    },
+    {
+      "title": "Mash bananas",
+      "body": "Mash {{ bananas }} in a large bowl until mostly smooth."
+    },
+    {
+      "title": "Mix wet ingredients",
+      "body": "Stir in melted {{ butter }}, {{ sugar }}, {{ egg }}, and {{ vanilla }}."
+    },
+    {
+      "title": "Fold in dry ingredients",
+      "body": "Sprinkle {{ soda.name }} and {{ salt.name }} over the batter, then fold in {{ flour }} until just combined. Stir in {{ walnuts }}."
+    },
+    {
+      "title": "Bake",
+      "body": "Pour into the prepared pan and bake for @timer(60m) until a toothpick comes out clean."
+    },
+    {
+      "title": "Cool",
+      "body": "Let cool in the pan for @timer(20m) before turning out onto a rack."
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "title": "Spaghetti Bolognese",
+  "description": "Classic ragù simmered low and slow, served over spaghetti.",
+  "quantity_type": "servings",
+  "quantity_value": 4,
+  "quantity_unit": "servings",
+  "prep_time": 15,
+  "cook_time": 90,
+  "rest_time": null,
+  "difficulty": "easy",
+  "private": false,
+  "tags": { "meal_type": ["dinner"], "dietary": [] },
+  "ingredients": [
+    { "key": "beef", "name": "ground beef", "amount": 500, "unit": "g" },
+    {
+      "key": "pancetta",
+      "name": "pancetta, diced",
+      "amount": 100,
+      "unit": "g"
+    },
+    { "key": "onion", "name": "yellow onion", "amount": 1, "unit": "" },
+    { "key": "carrot", "name": "carrot", "amount": 1, "unit": "" },
+    { "key": "celery", "name": "celery stalk", "amount": 1, "unit": "" },
+    { "key": "garlic", "name": "garlic cloves", "amount": 3, "unit": "" },
+    {
+      "key": "tomatoes",
+      "name": "crushed tomatoes",
+      "amount": 400,
+      "unit": "g"
+    },
+    { "key": "wine", "name": "red wine", "amount": 200, "unit": "ml" },
+    { "key": "milk", "name": "whole milk", "amount": 100, "unit": "ml" },
+    { "key": "olive_oil", "name": "olive oil", "amount": 2, "unit": "tbsp" },
+    { "key": "spaghetti", "name": "spaghetti", "amount": 400, "unit": "g" },
+    { "key": "parmesan", "name": "parmesan, grated", "amount": 60, "unit": "g" }
+  ],
+  "steps": [
+    {
+      "title": "Chop sofrito",
+      "body": "Finely dice {{ onion.name }}, {{ carrot.name }}, and {{ celery.name }}. Mince {{ garlic.name }}."
+    },
+    {
+      "title": "Render pancetta",
+      "body": "Heat {{ olive_oil }} in a heavy pot, add {{ pancetta }} and cook until fat renders, ~5 minutes.",
+      "after": [0]
+    },
+    {
+      "title": "Soften vegetables",
+      "body": "Add the sofrito from @step(1) and cook 8–10 minutes until soft and golden.",
+      "after": [1]
+    },
+    {
+      "title": "Brown beef",
+      "body": "Push veg aside, add {{ beef }} and brown well, breaking up clumps.",
+      "after": [2]
+    },
+    {
+      "title": "Deglaze and simmer",
+      "body": "Pour in {{ wine }} and reduce by half. Add {{ tomatoes }} and {{ milk }}, season, then simmer uncovered for @timer(75m).",
+      "after": [3]
+    },
+    {
+      "title": "Boil pasta water",
+      "body": "While the sauce simmers, bring a large pot of salted water to a boil."
+    },
+    {
+      "title": "Cook spaghetti",
+      "body": "Cook {{ spaghetti }} al dente, ~@timer(9m). Reserve a cup of pasta water before draining.",
+      "after": [5]
+    },
+    {
+      "title": "Combine and serve",
+      "body": "Toss the drained spaghetti from @step(7) with the bolognese from @step(5), loosening with pasta water as needed. Serve topped with {{ parmesan }}.",
+      "after": [4, 6]
+    }
+  ]
+}

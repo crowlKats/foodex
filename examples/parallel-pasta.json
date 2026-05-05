@@ -1,0 +1,73 @@
+{
+  "title": "Pasta with Tomato Sauce",
+  "description": "Demonstrates parallel sections — the sauce and the pasta run side by side, then converge.",
+  "quantity_type": "servings",
+  "quantity_value": 2,
+  "quantity_unit": "servings",
+  "prep_time": 10,
+  "cook_time": 25,
+  "rest_time": null,
+  "difficulty": "easy",
+  "private": false,
+  "tags": { "meal_type": ["dinner"], "dietary": ["vegetarian"] },
+  "ingredients": [
+    { "key": "pasta", "name": "spaghetti", "amount": 200, "unit": "g" },
+    {
+      "key": "tomatoes",
+      "name": "crushed tomatoes",
+      "amount": 400,
+      "unit": "g"
+    },
+    { "key": "garlic", "name": "garlic cloves", "amount": 2, "unit": "" },
+    { "key": "olive_oil", "name": "olive oil", "amount": 2, "unit": "tbsp" },
+    { "key": "basil", "name": "fresh basil", "amount": 6, "unit": "leaves" },
+    {
+      "key": "parmesan",
+      "name": "parmesan, grated",
+      "amount": 30,
+      "unit": "g"
+    },
+    { "key": "salt", "name": "salt", "amount": 1, "unit": "tsp" }
+  ],
+  "sections": [
+    { "key": "sauce", "title": "Tomato Sauce" },
+    { "key": "pasta", "title": "Pasta" },
+    {
+      "key": "serve",
+      "title": "Combine and Serve",
+      "after": ["sauce", "pasta"]
+    }
+  ],
+  "steps": [
+    {
+      "title": "Sweat garlic",
+      "section": "sauce",
+      "body": "Mince {{ garlic.name }}. Heat {{ olive_oil }} in a saucepan over medium-low heat, add the garlic, and cook 1 minute until fragrant — don't let it brown."
+    },
+    {
+      "title": "Simmer tomatoes",
+      "section": "sauce",
+      "body": "Add {{ tomatoes }} and a pinch of {{ salt.name }}. Simmer for @timer(15m), stirring occasionally."
+    },
+    {
+      "title": "Boil pasta water",
+      "section": "pasta",
+      "body": "Bring a large pot of water with {{ salt }} to a rolling boil."
+    },
+    {
+      "title": "Cook spaghetti",
+      "section": "pasta",
+      "body": "Add {{ pasta }} and cook al dente, ~@timer(9m). Reserve a cup of pasta water before draining."
+    },
+    {
+      "title": "Combine",
+      "section": "serve",
+      "body": "Toss the drained pasta with the sauce, loosening with pasta water as needed. Tear in {{ basil }} leaves."
+    },
+    {
+      "title": "Serve",
+      "section": "serve",
+      "body": "Plate up and top with {{ parmesan }}."
+    }
+  ]
+}

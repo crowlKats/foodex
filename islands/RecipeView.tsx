@@ -247,10 +247,14 @@ function renderStepsClient(
     }
     const num = layout.displayNum[i];
     const anchor = layout.anchors[i];
-    html +=
-      `<h3 id="${anchor}" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${num}.</span>${
-        escapeHtml(step.title)
-      }</h3>\n${stepHtmls[i]}`;
+    const titleText = step.title.trim();
+    html += titleText
+      ? `<h3 id="${anchor}" class="text-xl font-semibold mt-6 mb-3"><span class="text-stone-400 mr-2">${num}.</span>${
+        escapeHtml(titleText)
+      }</h3>\n${stepHtmls[i]}`
+      : `<h3 id="${anchor}" class="sr-only">Step ${num}</h3><div class="mt-6 mb-3 text-sm font-semibold text-stone-400">${num}.</div>\n${
+        stepHtmls[i]
+      }`;
     parts.push(html);
   }
   if (openSection) parts.push(`</div></section>`);
@@ -1418,6 +1422,7 @@ export default function RecipeView(
           <div class="cooking-mode-body recipe-body">
             {(() => {
               const { section, num } = getCookingStepLabel(cookingStep.value);
+              const titleText = steps[cookingStep.value].title.trim();
               return (
                 <>
                   {section && (
@@ -1425,10 +1430,18 @@ export default function RecipeView(
                       {section}
                     </div>
                   )}
-                  <div class="cooking-mode-step-title">
-                    <span class="text-stone-400 mr-2">{num}.</span>
-                    {steps[cookingStep.value].title}
-                  </div>
+                  {titleText
+                    ? (
+                      <div class="cooking-mode-step-title">
+                        <span class="text-stone-400 mr-2">{num}.</span>
+                        {titleText}
+                      </div>
+                    )
+                    : (
+                      <div class="text-sm font-semibold text-stone-400 mb-3">
+                        {num}.
+                      </div>
+                    )}
                 </>
               );
             })()}
@@ -1651,6 +1664,7 @@ export default function RecipeView(
                           <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
                             {(() => {
                               const { section, num } = getCookingStepLabel(idx);
+                              const titleText = steps[idx].title.trim();
                               return (
                                 <>
                                   {section && (
@@ -1658,12 +1672,20 @@ export default function RecipeView(
                                       {section}
                                     </div>
                                   )}
-                                  <div class="cooking-mode-step-title">
-                                    <span class="text-stone-400 mr-2">
-                                      {num}.
-                                    </span>
-                                    {steps[idx].title}
-                                  </div>
+                                  {titleText
+                                    ? (
+                                      <div class="cooking-mode-step-title">
+                                        <span class="text-stone-400 mr-2">
+                                          {num}.
+                                        </span>
+                                        {titleText}
+                                      </div>
+                                    )
+                                    : (
+                                      <div class="text-sm font-semibold text-stone-400 mb-3">
+                                        {num}.
+                                      </div>
+                                    )}
                                 </>
                               );
                             })()}
