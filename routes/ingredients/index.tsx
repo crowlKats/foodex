@@ -70,9 +70,17 @@ export const handler = define.handlers({
       currentPage,
       totalCount,
       error,
+      loggedIn: ctx.state.user != null,
     });
   },
   async POST(ctx) {
+    if (!ctx.state.user) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login" },
+      });
+    }
+
     const form = await ctx.req.formData();
     const name = form.get("name") as string;
     const unit = form.get("unit") as string;
@@ -131,6 +139,7 @@ export default define.page<typeof handler>(
         q,
         currentPage,
         totalCount,
+        loggedIn,
       },
       url,
     },
@@ -145,73 +154,77 @@ export default define.page<typeof handler>(
           </div>
         )}
 
-        <div class="grid gap-6 lg:grid-cols-3">
-          <div class="lg:col-span-1">
-            <h2 class="text-lg font-semibold mb-3">Add Ingredient</h2>
-            <form
-              method="POST"
-              class="card space-y-3"
-            >
-              <FormField label="Name">
-                <IngredientNameInput existing={existingNames} />
-              </FormField>
-              <FormField label="Unit">
-                <UnitSelect name="unit" required />
-              </FormField>
-
-              <hr class="my-2 border-stone-300 dark:border-stone-700" />
-              <h3 class="text-sm font-semibold">Initial Price (optional)</h3>
-              <FormField label="Store">
-                <select name="store_id" class="w-full">
-                  <option value="">-- No store yet --</option>
-                  {stores.map((s) => (
-                    <option key={String(s.id)} value={String(s.id)}>
-                      {String(s.name)}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <FormField label="Price">
-                  <input
-                    type="number"
-                    name="price"
-                    step="0.01"
-                    class="w-full"
-                  />
+        <div
+          class={`grid gap-6 ${loggedIn ? "lg:grid-cols-3" : "lg:grid-cols-1"}`}
+        >
+          {loggedIn && (
+            <div class="lg:col-span-1">
+              <h2 class="text-lg font-semibold mb-3">Add Ingredient</h2>
+              <form
+                method="POST"
+                class="card space-y-3"
+              >
+                <FormField label="Name">
+                  <IngredientNameInput existing={existingNames} />
                 </FormField>
-                <FormField label="Per amount">
-                  <input
-                    type="number"
-                    name="amount"
-                    step="0.001"
-                    placeholder="e.g. 500"
-                    class="w-full"
-                  />
+                <FormField label="Unit">
+                  <UnitSelect name="unit" required />
                 </FormField>
-              </div>
 
-              <div class="flex gap-2 flex-wrap">
-                <Button
-                  type="submit"
-                  name="action"
-                  value="add_another"
-                >
-                  Add, and add another
-                </Button>
-                <Button
-                  type="submit"
-                  name="action"
-                  value="add"
-                  variant="plain"
-                >
-                  Add
-                </Button>
-              </div>
-            </form>
-          </div>
+                <hr class="my-2 border-stone-300 dark:border-stone-700" />
+                <h3 class="text-sm font-semibold">Initial Price (optional)</h3>
+                <FormField label="Store">
+                  <select name="store_id" class="w-full">
+                    <option value="">-- No store yet --</option>
+                    {stores.map((s) => (
+                      <option key={String(s.id)} value={String(s.id)}>
+                        {String(s.name)}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <FormField label="Price">
+                    <input
+                      type="number"
+                      name="price"
+                      step="0.01"
+                      class="w-full"
+                    />
+                  </FormField>
+                  <FormField label="Per amount">
+                    <input
+                      type="number"
+                      name="amount"
+                      step="0.001"
+                      placeholder="e.g. 500"
+                      class="w-full"
+                    />
+                  </FormField>
+                </div>
 
-          <div class="lg:col-span-2">
+                <div class="flex gap-2 flex-wrap">
+                  <Button
+                    type="submit"
+                    name="action"
+                    value="add_another"
+                  >
+                    Add, and add another
+                  </Button>
+                  <Button
+                    type="submit"
+                    name="action"
+                    value="add"
+                    variant="outline"
+                  >
+                    Add
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div class={loggedIn ? "lg:col-span-2" : ""}>
             <h2 class="text-lg font-semibold mb-3">
               All Ingredients ({totalCount})
             </h2>

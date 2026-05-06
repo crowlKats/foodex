@@ -77,6 +77,7 @@ export const handler = define.handlers({
       currentPage,
       totalCount,
       error,
+      loggedIn: ctx.state.user != null,
     });
   },
   async POST(ctx) {
@@ -134,7 +135,18 @@ export const handler = define.handlers({
 
 export default define.page<typeof handler>(
   function StoresPage(
-    { data: { stores, error, q, ownedStoreIds, currentPage, totalCount }, url },
+    {
+      data: {
+        stores,
+        error,
+        q,
+        ownedStoreIds,
+        currentPage,
+        totalCount,
+        loggedIn,
+      },
+      url,
+    },
   ) {
     const ownedSet = new Set(ownedStoreIds ?? []);
     return (
@@ -147,39 +159,41 @@ export default define.page<typeof handler>(
           </div>
         )}
 
-        <div class="grid gap-6 md:grid-cols-2">
-          <div>
-            <h2 class="text-lg font-semibold mb-3">Add Store</h2>
-            <form
-              method="POST"
-              class="card space-y-3"
-            >
-              <FormField label="Name">
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  class="w-full"
-                />
-              </FormField>
-              <FormField label="Currency">
-                <select name="currency" class="w-full">
-                  {CURRENCIES.map((c) => (
-                    <option
-                      key={c.code}
-                      value={c.code}
-                      selected={c.code === "EUR"}
-                    >
-                      {c.symbol} {c.name}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <Button type="submit">
-                Add Store
-              </Button>
-            </form>
-          </div>
+        <div class={`grid gap-6 ${loggedIn ? "md:grid-cols-2" : ""}`}>
+          {loggedIn && (
+            <div>
+              <h2 class="text-lg font-semibold mb-3">Add Store</h2>
+              <form
+                method="POST"
+                class="card space-y-3"
+              >
+                <FormField label="Name">
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    class="w-full"
+                  />
+                </FormField>
+                <FormField label="Currency">
+                  <select name="currency" class="w-full">
+                    {CURRENCIES.map((c) => (
+                      <option
+                        key={c.code}
+                        value={c.code}
+                        selected={c.code === "EUR"}
+                      >
+                        {c.symbol} {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <Button type="submit">
+                  Add Store
+                </Button>
+              </form>
+            </div>
+          )}
 
           <div>
             <h2 class="text-lg font-semibold mb-3">

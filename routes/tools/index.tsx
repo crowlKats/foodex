@@ -65,6 +65,7 @@ export const handler = define.handlers({
       currentPage,
       totalCount,
       error,
+      loggedIn: ctx.state.user != null,
     });
   },
   async POST(ctx) {
@@ -106,7 +107,18 @@ export const handler = define.handlers({
 
 export default define.page<typeof handler>(
   function ToolsPage(
-    { data: { tools, error, q, ownedToolIds, currentPage, totalCount }, url },
+    {
+      data: {
+        tools,
+        error,
+        q,
+        ownedToolIds,
+        currentPage,
+        totalCount,
+        loggedIn,
+      },
+      url,
+    },
   ) {
     const ownedSet = new Set(ownedToolIds ?? []);
     return (
@@ -119,33 +131,35 @@ export default define.page<typeof handler>(
           </div>
         )}
 
-        <div class="grid gap-6 md:grid-cols-2">
-          <div>
-            <h2 class="text-lg font-semibold mb-3">Add Tool</h2>
-            <form
-              method="POST"
-              class="card space-y-3"
-            >
-              <FormField label="Name">
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  class="w-full"
-                />
-              </FormField>
-              <FormField label="Description">
-                <textarea
-                  name="description"
-                  rows={3}
-                  class="w-full"
-                />
-              </FormField>
-              <Button type="submit">
-                Add Tool
-              </Button>
-            </form>
-          </div>
+        <div class={`grid gap-6 ${loggedIn ? "md:grid-cols-2" : ""}`}>
+          {loggedIn && (
+            <div>
+              <h2 class="text-lg font-semibold mb-3">Add Tool</h2>
+              <form
+                method="POST"
+                class="card space-y-3"
+              >
+                <FormField label="Name">
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    class="w-full"
+                  />
+                </FormField>
+                <FormField label="Description">
+                  <textarea
+                    name="description"
+                    rows={3}
+                    class="w-full"
+                  />
+                </FormField>
+                <Button type="submit">
+                  Add Tool
+                </Button>
+              </form>
+            </div>
+          )}
 
           <div>
             <h2 class="text-lg font-semibold mb-3">
