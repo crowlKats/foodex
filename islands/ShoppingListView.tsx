@@ -5,6 +5,7 @@ import { formatAmount, formatCurrency } from "../lib/format.ts";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
+import { Button } from "../components/Button.tsx";
 
 interface ShoppingItem {
   id: string;
@@ -655,15 +656,14 @@ export default function ShoppingListView(
               ))}
             </select>
           </div>
-          <button
+          <Button
             type="button"
-            class="btn btn-primary"
             disabled={adding.value ||
               (!addSelected.value.id && !addName.value.trim())}
             onClick={addItem}
           >
             Add
-          </button>
+          </Button>
         </div>
       </div>
 

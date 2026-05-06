@@ -10,6 +10,7 @@ import MediaUpload from "./MediaUpload.tsx";
 import RecipePreview from "./RecipePreview.tsx";
 import RecipeOutputForm from "./RecipeOutputForm.tsx";
 import ConfirmButton from "./ConfirmButton.tsx";
+import { Button } from "../components/Button.tsx";
 import { SOURCE_TYPE_LABELS, SOURCE_TYPES } from "../lib/recipe-tags.ts";
 
 interface CoverMedia {
@@ -388,21 +389,21 @@ export default function DraftEditor({
         </div>
 
         <div class="flex gap-3 flex-wrap">
-          <button type="submit" class="btn btn-primary">
+          <Button type="submit">
             Create Recipe
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            class="btn btn-outline"
+            variant="outline"
             disabled={saving.value}
             onClick={saveDraft}
           >
             {saving.value ? "Saving..." : "Save Draft"}
-          </button>
+          </Button>
           <RecipePreview />
           <ConfirmButton
             message="Discard this draft?"
-            class="btn text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950"
+            variant="danger-outline"
             onClick={discardDraft}
           >
             Discard

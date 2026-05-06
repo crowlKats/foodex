@@ -3,6 +3,7 @@ import { define } from "../../utils.ts";
 import type { Recipe } from "../../db/types.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import RecipePicker from "../../islands/RecipePicker.tsx";
 
@@ -132,9 +133,9 @@ export default define.page<typeof handler>(
             />
           </div>
 
-          <button type="submit" class="btn btn-primary">
+          <Button type="submit">
             Create Collection
-          </button>
+          </Button>
         </form>
       </div>
     );

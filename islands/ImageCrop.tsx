@@ -3,6 +3,7 @@ import { useSignal } from "@preact/signals";
 import TbCrop from "tb-icons/TbCrop";
 import TbCheck from "tb-icons/TbCheck";
 import TbX from "tb-icons/TbX";
+import { Button } from "../components/Button.tsx";
 
 interface ImageCropProps {
   imageUrl: string;
@@ -176,15 +177,15 @@ export default function ImageCrop(
       <div class="bg-white dark:bg-stone-900 border-2 border-stone-300 dark:border-stone-700 max-w-2xl w-full max-h-[90vh] flex flex-col">
         <div class="flex items-center justify-between p-3 border-b-2 border-stone-300 dark:border-stone-700">
           <span class="text-sm font-semibold select-none">Crop Image</span>
-          <button
+          <Button
             type="button"
-            class="text-stone-400 hover:text-stone-600 cursor-pointer"
+            variant="ghost"
+            icon={TbX}
+            title="Close"
             onClick={() => {
               open.value = false;
             }}
-          >
-            <TbX class="size-5" />
-          </button>
+          />
         </div>
         <div
           ref={containerRef}
@@ -237,24 +238,23 @@ export default function ImageCrop(
           />
         </div>
         <div class="flex gap-2 p-3 border-t-2 border-stone-300 dark:border-stone-700">
-          <button
+          <Button
             type="button"
-            class="btn btn-primary"
+            icon={TbCheck}
             disabled={saving.value}
             onClick={applyCrop}
           >
-            <TbCheck class="size-4" />
             {saving.value ? "Saving..." : "Apply"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            class="btn btn-outline"
+            variant="outline"
             onClick={() => {
               open.value = false;
             }}
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>

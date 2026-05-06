@@ -12,6 +12,7 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
+import { ButtonLink } from "../../components/Button.tsx";
 import { formatDuration } from "../../lib/duration.ts";
 import { formatQuantity } from "../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../lib/quantity.ts";
@@ -403,18 +404,12 @@ export default define.page<typeof handler>(function RecipesPage({
       <PageHeader title="Recipes" query={q}>
         {loggedIn && (
           <>
-            <a
-              href="/recipes/import"
-              class="btn btn-outline"
-            >
+            <ButtonLink href="/recipes/import" variant="outline">
               Import
-            </a>
-            <a
-              href="/recipes/new"
-              class="btn btn-primary"
-            >
+            </ButtonLink>
+            <ButtonLink href="/recipes/new">
               New Recipe
-            </a>
+            </ButtonLink>
           </>
         )}
       </PageHeader>

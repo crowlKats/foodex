@@ -7,6 +7,7 @@ import {
   getGoogleAuthUrl,
   providers,
 } from "../../lib/auth.ts";
+import { Button, ButtonLink } from "../../components/Button.tsx";
 import TbBrandGithub from "tb-icons/TbBrandGithub";
 import TbBrandGoogle from "tb-icons/TbBrandGoogle";
 import TbKey from "tb-icons/TbKey";
@@ -47,31 +48,34 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
       <h1 class="text-2xl font-bold text-center mb-8">Sign in to Foodex</h1>
       <div class="card space-y-3">
         {data.githubUrl && (
-          <a
+          <ButtonLink
             href={data.githubUrl}
-            class="btn w-full flex items-center justify-center gap-2 bg-stone-800 text-white hover:bg-stone-700"
+            variant="outline"
+            class="w-full"
           >
             <TbBrandGithub class="size-5" />
             Continue with GitHub
-          </a>
+          </ButtonLink>
         )}
         {data.googleUrl && (
-          <a
+          <ButtonLink
             href={data.googleUrl}
-            class="btn w-full flex items-center justify-center gap-2 bg-white text-stone-800 border border-stone-300 hover:bg-stone-50"
+            variant="outline"
+            class="w-full"
           >
             <TbBrandGoogle class="size-5" />
             Continue with Google
-          </a>
+          </ButtonLink>
         )}
         {data.authentikUrl && (
-          <a
+          <ButtonLink
             href={data.authentikUrl}
-            class="btn w-full flex items-center justify-center gap-2 bg-stone-800 text-white hover:bg-stone-700"
+            variant="outline"
+            class="w-full"
           >
             <TbKey class="size-5" />
             Continue with Authentik
-          </a>
+          </ButtonLink>
         )}
         {hasOAuthProvider && (
           <div class="flex items-center gap-3 my-1">
@@ -88,13 +92,10 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
             required
             class="w-full px-3 py-2 border-2 border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-orange-500"
           />
-          <button
-            type="submit"
-            class="btn w-full flex items-center justify-center gap-2"
-          >
+          <Button type="submit" variant="outline" class="w-full">
             <TbMail class="size-5" />
             Continue with email
-          </button>
+          </Button>
         </form>
       </div>
     </div>

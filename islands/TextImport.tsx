@@ -1,5 +1,6 @@
 import { useSignal } from "@preact/signals";
 import TbLoader2 from "tb-icons/TbLoader2";
+import { Button } from "../components/Button.tsx";
 
 export default function TextImport() {
   const text = useSignal("");
@@ -79,14 +80,13 @@ export default function TextImport() {
         }}
       />
 
-      <button
+      <Button
         type="button"
-        class="btn btn-primary"
         disabled={text.value.trim().length < 20}
         onClick={submit}
       >
         Extract Recipe
-      </button>
+      </Button>
 
       <p class="text-xs text-stone-500">
         Paste a recipe from anywhere — email, document, message, etc. AI will

@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import TbLink from "tb-icons/TbLink";
 import TbLoader2 from "tb-icons/TbLoader2";
+import { Button } from "../components/Button.tsx";
 
 export default function UrlImport() {
   const url = useSignal("");
@@ -73,14 +74,13 @@ export default function UrlImport() {
             }}
           />
         </div>
-        <button
+        <Button
           type="button"
-          class="btn btn-primary"
           disabled={!url.value.trim()}
           onClick={submit}
         >
           Import
-        </button>
+        </Button>
       </div>
 
       <p class="text-xs text-stone-500">

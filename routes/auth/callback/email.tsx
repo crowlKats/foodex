@@ -1,6 +1,7 @@
 import { page } from "fresh";
 import { define } from "../../../utils.ts";
 import { createSessionCookie, generateSessionId } from "../../../lib/auth.ts";
+import { ButtonLink } from "../../../components/Button.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -67,9 +68,9 @@ export default define.page(function InvalidTokenPage() {
           This sign-in link has expired or has already been used. Please request
           a new one.
         </p>
-        <a href="/auth/login" class="btn w-full text-center">
+        <ButtonLink href="/auth/login" variant="outline" class="w-full">
           Back to sign in
-        </a>
+        </ButtonLink>
       </div>
     </div>
   );

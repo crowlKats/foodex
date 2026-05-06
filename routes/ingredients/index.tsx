@@ -3,6 +3,7 @@ import { define } from "../../utils.ts";
 import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import IngredientNameInput from "../../islands/IngredientNameInput.tsx";
 import {
@@ -191,22 +192,21 @@ export default define.page<typeof handler>(
               </div>
 
               <div class="flex gap-2 flex-wrap">
-                <button
+                <Button
                   type="submit"
                   name="action"
                   value="add_another"
-                  class="btn btn-primary"
                 >
                   Add, and add another
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
                   name="action"
                   value="add"
-                  class="btn"
+                  variant="plain"
                 >
                   Add
-                </button>
+                </Button>
               </div>
             </form>
           </div>

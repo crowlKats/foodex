@@ -26,6 +26,7 @@ import MultiSearchSelect from "../../../islands/MultiSearchSelect.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
+import { Button } from "../../../components/Button.tsx";
 import { DurationInput } from "../../../components/DurationInput.tsx";
 import RecipeOutputForm from "../../../islands/RecipeOutputForm.tsx";
 import { RefForm } from "../../../components/RefForm.tsx";
@@ -647,12 +648,9 @@ export default define.page<typeof handler>(function RecipeEdit({
         </div>
 
         <div class="flex gap-3">
-          <button
-            type="submit"
-            class="btn btn-primary"
-          >
+          <Button type="submit">
             Save Recipe
-          </button>
+          </Button>
           <RecipePreview />
         </div>
       </form>
@@ -665,7 +663,7 @@ export default define.page<typeof handler>(function RecipeEdit({
         <input type="hidden" name="_method" value="DELETE" />
         <ConfirmButton
           message="Delete this recipe? This cannot be undone."
-          class="btn btn-danger"
+          variant="danger"
         >
           Delete Recipe
         </ConfirmButton>

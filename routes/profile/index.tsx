@@ -1,6 +1,7 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
 import type { Household } from "../../db/types.ts";
+import { Button } from "../../components/Button.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -86,7 +87,7 @@ export default define.page<typeof handler>(
                   Imperial (oz, fl oz, inch)
                 </option>
               </select>
-              <button type="submit" class="btn btn-primary">Save</button>
+              <Button type="submit">Save</Button>
             </div>
           </form>
         </div>

@@ -2,6 +2,7 @@ import { page } from "fresh";
 import { define, escapeLike } from "../../utils.ts";
 import { FormField } from "../../components/FormField.tsx";
 import { SearchBar } from "../../components/SearchBar.tsx";
+import { Button, ButtonLink } from "../../components/Button.tsx";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import CopyButton from "../../islands/CopyButton.tsx";
 import TbTrash from "tb-icons/TbTrash";
@@ -284,9 +285,9 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
     <div>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">{household.name}</h1>
-        <a href="/household/pantry" class="btn btn-primary">
+        <ButtonLink href="/household/pantry">
           Pantry
-        </a>
+        </ButtonLink>
       </div>
 
       <div class="grid gap-6 lg:grid-cols-3">
@@ -303,9 +304,9 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                   placeholder="Search recipes..."
                 />
               </div>
-              <a href="/recipes/new" class="btn btn-primary text-sm shrink-0">
+              <ButtonLink href="/recipes/new" class="shrink-0">
                 New Recipe
-              </a>
+              </ButtonLink>
             </div>
             {recipes.length === 0
               ? (
@@ -441,13 +442,12 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                             name="tool_id"
                             value={t.id}
                           />
-                          <button
+                          <Button
                             type="submit"
-                            class="text-stone-400 hover:text-red-500 cursor-pointer text-xs"
+                            variant="danger-ghost"
+                            icon={TbTrash}
                             title="Remove"
-                          >
-                            <TbTrash class="size-3.5" />
-                          </button>
+                          />
                         </form>
                       </div>
                     ))}
@@ -468,9 +468,9 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                     </option>
                   ))}
                 </select>
-                <button type="submit" class="btn btn-primary text-sm">
+                <Button type="submit">
                   Add
-                </button>
+                </Button>
               </form>
             </div>
 
@@ -501,13 +501,12 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                             name="store_id"
                             value={s.id}
                           />
-                          <button
+                          <Button
                             type="submit"
-                            class="text-stone-400 hover:text-red-500 cursor-pointer text-xs"
+                            variant="danger-ghost"
+                            icon={TbTrash}
                             title="Remove"
-                          >
-                            <TbTrash class="size-3.5" />
-                          </button>
+                          />
                         </form>
                       </div>
                     ))}
@@ -528,9 +527,9 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                     </option>
                   ))}
                 </select>
-                <button type="submit" class="btn btn-primary text-sm">
+                <Button type="submit">
                   Add
-                </button>
+                </Button>
               </form>
             </div>
           </div>
@@ -592,13 +591,12 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                           name="member_user_id"
                           value={m.user_id}
                         />
-                        <button
+                        <Button
                           type="submit"
-                          class="text-red-500 hover:text-red-700 p-1"
+                          variant="danger-ghost"
+                          icon={TbTrash}
                           title="Remove member"
-                        >
-                          <TbTrash class="size-4" />
-                        </button>
+                        />
                       </form>
                     )}
                   </div>
@@ -607,12 +605,13 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
               {!isOwner && (
                 <form method="POST" class="mt-4">
                   <input type="hidden" name="_method" value="LEAVE" />
-                  <button
+                  <Button
                     type="submit"
-                    class="btn text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950 w-full"
+                    variant="danger-outline"
+                    class="w-full"
                   >
                     Leave Household
-                  </button>
+                  </Button>
                 </form>
               )}
             </div>
@@ -655,13 +654,12 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                                 name="invite_id"
                                 value={inv.id}
                               />
-                              <button
+                              <Button
                                 type="submit"
-                                class="text-red-500 hover:text-red-700 p-1"
+                                variant="danger-ghost"
+                                icon={TbTrash}
                                 title="Revoke"
-                              >
-                                <TbTrash class="size-3.5" />
-                              </button>
+                              />
                             </form>
                           </div>
                         );
@@ -675,9 +673,9 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                       name="_method"
                       value="CREATE_INVITE"
                     />
-                    <button type="submit" class="btn btn-primary w-full">
+                    <Button type="submit" class="w-full">
                       Generate Invite Link
-                    </button>
+                    </Button>
                   </form>
                 </div>
               </>
@@ -699,9 +697,9 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                       class="w-full"
                     />
                   </FormField>
-                  <button type="submit" class="btn btn-primary">
+                  <Button type="submit">
                     Update
-                  </button>
+                  </Button>
                 </form>
               </div>
 
@@ -715,7 +713,8 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                   <input type="hidden" name="_method" value="DELETE" />
                   <ConfirmButton
                     message="Delete this household? This cannot be undone."
-                    class="btn btn-danger w-full"
+                    variant="danger"
+                    class="w-full"
                   >
                     Delete Household
                   </ConfirmButton>

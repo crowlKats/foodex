@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import TbX from "tb-icons/TbX";
 import TbGripVertical from "tb-icons/TbGripVertical";
+import { Button } from "../components/Button.tsx";
 
 interface RecipeOption {
   id: string;
@@ -107,13 +108,14 @@ export default function RecipePicker({ options, initialSelected }: Props) {
             >
               <TbGripVertical class="size-4 text-stone-400 cursor-grab shrink-0" />
               <span class="flex-1">{r.title}</span>
-              <button
+              <Button
                 type="button"
-                class="text-stone-400 hover:text-red-500 cursor-pointer shrink-0"
+                variant="danger-ghost"
+                icon={TbX}
+                title="Remove"
+                class="shrink-0"
                 onClick={() => remove(r.id)}
-              >
-                <TbX class="size-3.5" />
-              </button>
+              />
             </div>
           ))}
         </div>

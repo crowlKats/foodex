@@ -7,6 +7,7 @@ import type {
   RecipeWithCover,
 } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
+import { Button, ButtonLink } from "../../../components/Button.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { formatDuration } from "../../../lib/duration.ts";
 import { formatQuantity } from "../../../lib/quantity.ts";
@@ -223,13 +224,9 @@ export default define.page<typeof handler>(
                       name="_method"
                       value="REVOKE_SHARE_TOKEN"
                     />
-                    <button
-                      type="submit"
-                      class="btn btn-outline text-sm inline-flex items-center gap-1.5"
-                    >
-                      <TbShare class="size-4" />
+                    <Button type="submit" variant="outline" icon={TbShare}>
                       Unshare
-                    </button>
+                    </Button>
                   </form>
                 </div>
               )
@@ -240,24 +237,20 @@ export default define.page<typeof handler>(
                     name="_method"
                     value="GENERATE_SHARE_TOKEN"
                   />
-                  <button
-                    type="submit"
-                    class="btn btn-outline text-sm inline-flex items-center gap-1.5"
-                  >
-                    <TbShare class="size-4" />
+                  <Button type="submit" variant="outline" icon={TbShare}>
                     Share
-                  </button>
+                  </Button>
                 </form>
               )
           )}
           {isOwner && (
-            <a
+            <ButtonLink
               href={`/collections/${collection.id}/edit`}
-              class="btn btn-outline text-sm inline-flex items-center gap-1.5"
+              variant="outline"
+              icon={TbEdit}
             >
-              <TbEdit class="size-4" />
               Edit
-            </a>
+            </ButtonLink>
           )}
         </div>
 
@@ -287,13 +280,12 @@ export default define.page<typeof handler>(
                     name="share_id"
                     value={String(s.id)}
                   />
-                  <button
+                  <Button
                     type="submit"
-                    class="text-stone-400 hover:text-red-500 cursor-pointer"
+                    variant="danger-ghost"
+                    icon={TbX}
                     title="Remove"
-                  >
-                    <TbX class="size-4" />
-                  </button>
+                  />
                 </form>
               </div>
             ))}
@@ -423,13 +415,12 @@ export default define.page<typeof handler>(
                         name="recipe_id"
                         value={String(r.id)}
                       />
-                      <button
+                      <Button
                         type="submit"
-                        class="text-stone-400 hover:text-red-500 cursor-pointer p-1"
+                        variant="danger-ghost"
+                        icon={TbX}
                         title="Remove from collection"
-                      >
-                        <TbX class="size-4" />
-                      </button>
+                      />
                     </form>
                   )}
                 </div>
@@ -443,7 +434,7 @@ export default define.page<typeof handler>(
               <input type="hidden" name="_method" value="LEAVE" />
               <ConfirmButton
                 message="Leave this shared collection?"
-                class="btn btn-danger"
+                variant="danger"
               >
                 Leave Collection
               </ConfirmButton>

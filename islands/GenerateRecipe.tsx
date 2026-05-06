@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import TbLoader2 from "tb-icons/TbLoader2";
 import TbSparkles from "tb-icons/TbSparkles";
+import { Button } from "../components/Button.tsx";
 
 export default function GenerateRecipe() {
   const maxTime = useSignal("");
@@ -125,14 +126,13 @@ export default function GenerateRecipe() {
         />
       </div>
 
-      <button
+      <Button
         type="button"
-        class="btn btn-primary flex items-center gap-2"
         onClick={generate}
+        icon={TbSparkles}
       >
-        <TbSparkles class="size-4" />
         Generate
-      </button>
+      </Button>
     </div>
   );
 }

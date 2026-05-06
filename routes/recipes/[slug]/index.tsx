@@ -21,6 +21,7 @@ import type { RecipeQuantity } from "../../../lib/quantity.ts";
 import RecipeView from "../../../islands/RecipeView.tsx";
 import ImageLightbox from "../../../islands/ImageLightbox.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
+import { Button, ButtonLink } from "../../../components/Button.tsx";
 import FavoriteButton from "../../../islands/FavoriteButton.tsx";
 import AddToCollectionButton from "../../../islands/AddToCollectionButton.tsx";
 import TbEdit from "tb-icons/TbEdit";
@@ -538,16 +539,17 @@ export default define.page<typeof handler>(function RecipeViewPage({
               method="POST"
               class="inline"
             >
-              <button type="submit" class="btn btn-outline">Fork</button>
+              <Button type="submit" variant="outline">Fork</Button>
             </form>
           )}
           {isOwner && (
-            <a
+            <ButtonLink
               href={`/recipes/${recipe.slug}/edit`}
-              class="btn btn-outline"
+              variant="outline"
+              icon={TbEdit}
             >
-              <TbEdit class="size-3.5" />Edit
-            </a>
+              Edit
+            </ButtonLink>
           )}
         </span>
       </div>

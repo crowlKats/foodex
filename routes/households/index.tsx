@@ -2,6 +2,7 @@ import { page } from "fresh";
 import { define } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import type { Household, HouseholdInvite } from "../../db/types.ts";
 
 export const handler = define.handlers({
@@ -138,9 +139,9 @@ export default define.page<typeof handler>(function HouseholdsPage({ data }) {
                 class="w-full"
               />
             </FormField>
-            <button type="submit" class="btn btn-primary">
+            <Button type="submit">
               Create Household
-            </button>
+            </Button>
           </form>
         </div>
 
@@ -163,9 +164,9 @@ export default define.page<typeof handler>(function HouseholdsPage({ data }) {
                 class="w-full"
               />
             </FormField>
-            <button type="submit" class="btn btn-primary">
+            <Button type="submit">
               Join Household
-            </button>
+            </Button>
           </form>
         </div>
       </div>

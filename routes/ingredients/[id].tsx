@@ -4,6 +4,7 @@ import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import { toBaseUnit } from "../../lib/unit-convert.ts";
 import { formatAmount, formatCurrency } from "../../lib/format.ts";
 import IngredientUnitFields from "../../islands/IngredientUnitFields.tsx";
@@ -278,13 +279,13 @@ export default define.page<typeof handler>(
                   unit={ingredient.unit ?? ""}
                   density={ingredient.density}
                 />
-                <button type="submit" class="btn btn-primary">Save</button>
+                <Button type="submit">Save</Button>
               </form>
               <form method="POST" class="mt-3">
                 <input type="hidden" name="_method" value="DELETE" />
                 <ConfirmButton
                   message="Delete this ingredient and all its brands/prices?"
-                  class="btn btn-danger"
+                  variant="danger"
                 >
                   Delete Ingredient
                 </ConfirmButton>
@@ -311,7 +312,7 @@ export default define.page<typeof handler>(
                 </select>
                 <ConfirmButton
                   message={`Merge "${ingredient.name}" into another ingredient? This cannot be undone.`}
-                  class="btn btn-danger text-sm"
+                  variant="danger"
                 >
                   Merge
                 </ConfirmButton>
@@ -360,7 +361,7 @@ export default define.page<typeof handler>(
                   placeholder="Add brand..."
                   class="flex-1"
                 />
-                <button type="submit" class="btn btn-primary">Add</button>
+                <Button type="submit">Add</Button>
               </form>
             </div>
           </div>
@@ -479,7 +480,7 @@ export default define.page<typeof handler>(
                   />
                 </FormField>
               </div>
-              <button type="submit" class="btn btn-primary">Add Price</button>
+              <Button type="submit">Add Price</Button>
             </form>
           </div>
         </div>

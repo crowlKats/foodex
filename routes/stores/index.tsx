@@ -2,6 +2,7 @@ import { page } from "fresh";
 import { define, escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import { CURRENCIES } from "../../lib/currencies.ts";
 import {
   getPage,
@@ -174,12 +175,9 @@ export default define.page<typeof handler>(
                   ))}
                 </select>
               </FormField>
-              <button
-                type="submit"
-                class="btn btn-primary"
-              >
+              <Button type="submit">
                 Add Store
-              </button>
+              </Button>
             </form>
           </div>
 

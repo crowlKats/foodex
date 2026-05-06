@@ -2,6 +2,7 @@ import { page } from "fresh";
 import { define, escapeLike } from "../../utils.ts";
 import type { CollectionWithCover } from "../../db/types.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
+import { ButtonLink } from "../../components/Button.tsx";
 import {
   getPage,
   Pagination,
@@ -80,9 +81,9 @@ export default define.page<typeof handler>(
     return (
       <div>
         <PageHeader title="Collections" query={q}>
-          <a href="/collections/new" class="btn btn-primary">
+          <ButtonLink href="/collections/new">
             New Collection
-          </a>
+          </ButtonLink>
         </PageHeader>
 
         {collections.length === 0

@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import TbDots from "tb-icons/TbDots";
 import TbX from "tb-icons/TbX";
+import { Button } from "../components/Button.tsx";
 
 const DISMISSED_KEY = "pwa-install-dismissed";
 
@@ -31,14 +32,14 @@ export default function PwaInstallPrompt() {
         show.value ? "" : "hidden"
       }`}
     >
-      <button
-        onClick={dismiss}
+      <Button
         type="button"
-        class="absolute top-2 right-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
-        aria-label="Dismiss"
-      >
-        <TbX class="size-5" />
-      </button>
+        variant="ghost"
+        icon={TbX}
+        title="Dismiss"
+        class="absolute top-2 right-2"
+        onClick={dismiss}
+      />
       <p class="font-bold mb-1">Install Foodex</p>
       <p class="text-sm text-stone-600 dark:text-stone-400">
         Tap <TbDots class="size-4 inline -mt-0.5" /> in your browser, then{" "}

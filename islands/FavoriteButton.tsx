@@ -1,11 +1,16 @@
 import { useSignal } from "@preact/signals";
 import TbHeart from "tb-icons/TbHeart";
 import TbHeartFilled from "tb-icons/TbHeartFilled";
+import { Button, type IconComponent } from "../components/Button.tsx";
 
 interface Props {
   recipeId: string;
   initialFavorited: boolean;
 }
+
+const HeartFilledRed: IconComponent = ({ class: c }) => (
+  <TbHeartFilled class={`${c} text-red-500`} />
+);
 
 export default function FavoriteButton({ recipeId, initialFavorited }: Props) {
   const favorited = useSignal(initialFavorited);
@@ -30,23 +35,14 @@ export default function FavoriteButton({ recipeId, initialFavorited }: Props) {
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={toggle}
-      class="btn btn-outline"
+      variant="outline"
+      icon={favorited.value ? HeartFilledRed : TbHeart}
       title={favorited.value ? "Remove from favorites" : "Add to favorites"}
     >
-      {favorited.value
-        ? (
-          <>
-            <TbHeartFilled class="size-3.5 text-red-500" />Favorited
-          </>
-        )
-        : (
-          <>
-            <TbHeart class="size-3.5" />Favorite
-          </>
-        )}
-    </button>
+      {favorited.value ? "Favorited" : "Favorite"}
+    </Button>
   );
 }

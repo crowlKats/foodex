@@ -1,6 +1,7 @@
 import { HttpError, page } from "fresh";
 import { define } from "../../../utils.ts";
 import type { Collection } from "../../../db/types.ts";
+import { Button, ButtonLink } from "../../../components/Button.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -95,31 +96,28 @@ export default define.page<typeof handler>(
                 <p class="text-stone-500 mb-3">
                   You already have access to this collection.
                 </p>
-                <a
-                  href={`/collections/${collection.id}`}
-                  class="btn btn-primary"
-                >
+                <ButtonLink href={`/collections/${collection.id}`}>
                   View Collection
-                </a>
+                </ButtonLink>
               </div>
             )
             : !loggedIn
             ? (
-              <a href="/auth/login" class="btn btn-primary">
+              <ButtonLink href="/auth/login">
                 Sign in to join
-              </a>
+              </ButtonLink>
             )
             : !hasHousehold
             ? (
-              <a href="/households" class="btn btn-primary">
+              <ButtonLink href="/households">
                 Create a household first
-              </a>
+              </ButtonLink>
             )
             : (
               <form method="POST">
-                <button type="submit" class="btn btn-primary">
+                <Button type="submit">
                   Add to My Collections
-                </button>
+                </Button>
               </form>
             )}
         </div>

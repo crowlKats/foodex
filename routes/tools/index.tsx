@@ -2,6 +2,7 @@ import { page } from "fresh";
 import { define, escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import {
   getPage,
   Pagination,
@@ -140,12 +141,9 @@ export default define.page<typeof handler>(
                   class="w-full"
                 />
               </FormField>
-              <button
-                type="submit"
-                class="btn btn-primary"
-              >
+              <Button type="submit">
                 Add Tool
-              </button>
+              </Button>
             </form>
           </div>
 

@@ -1,6 +1,7 @@
 import { page } from "fresh";
 import { define } from "../../../utils.ts";
 import type { HouseholdInvite, HouseholdMember } from "../../../db/types.ts";
+import { Button, ButtonLink } from "../../../components/Button.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -131,9 +132,9 @@ export default define.page<typeof handler>(function JoinHouseholdPage(
       <div class="max-w-md mx-auto mt-12 text-center">
         <h1 class="text-2xl font-bold mb-4">Invalid Invite</h1>
         <p class="text-stone-500 mb-6">{error}</p>
-        <a href="/households" class="btn btn-primary">
+        <ButtonLink href="/households">
           Go to Households
-        </a>
+        </ButtonLink>
       </div>
     );
   }
@@ -148,9 +149,9 @@ export default define.page<typeof handler>(function JoinHouseholdPage(
         </span>
       </p>
       <form method="POST">
-        <button type="submit" class="btn btn-primary">
+        <Button type="submit">
           Join Household
-        </button>
+        </Button>
       </form>
     </div>
   );

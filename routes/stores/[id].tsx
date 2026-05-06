@@ -4,6 +4,7 @@ import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { CURRENCIES, getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import type { IngredientPrice, Store, StoreLocation } from "../../db/types.ts";
 
 export const handler = define.handlers({
@@ -168,28 +169,24 @@ export default define.page<typeof handler>(
                   </select>
                 </FormField>
                 <div class="flex gap-2">
-                  <button
-                    type="submit"
-                    class="btn btn-primary"
-                  >
+                  <Button type="submit">
                     Save
-                  </button>
+                  </Button>
                 </div>
               </form>
 
               {loggedIn && (
                 <form method="POST" class="mt-4">
                   <input type="hidden" name="_method" value="TOGGLE_OWNED" />
-                  <button
+                  <Button
                     type="submit"
-                    class={`btn w-full ${
-                      householdHasStore ? "btn-outline" : "btn-primary"
-                    }`}
+                    variant={householdHasStore ? "outline" : "primary"}
+                    class="w-full"
                   >
                     {householdHasStore
                       ? "Remove from household"
                       : "We shop here"}
-                  </button>
+                  </Button>
                 </form>
               )}
 
@@ -197,7 +194,7 @@ export default define.page<typeof handler>(
                 <input type="hidden" name="_method" value="DELETE" />
                 <ConfirmButton
                   message="Delete this store?"
-                  class="btn btn-danger"
+                  variant="danger"
                 >
                   Delete Store
                 </ConfirmButton>
@@ -246,7 +243,7 @@ export default define.page<typeof handler>(
                   placeholder="Add address..."
                   class="flex-1"
                 />
-                <button type="submit" class="btn btn-primary">Add</button>
+                <Button type="submit">Add</Button>
               </form>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import TbBrain from "tb-icons/TbBrain";
 import TbX from "tb-icons/TbX";
+import { Button } from "../components/Button.tsx";
 
 interface Props {
   thinking: string;
@@ -37,15 +38,15 @@ export default function ThinkingToggle({ thinking }: Props) {
                 <TbBrain class="size-5" />
                 AI Thinking
               </h3>
-              <button
+              <Button
                 type="button"
-                class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 cursor-pointer"
+                variant="ghost"
+                icon={TbX}
+                title="Close"
                 onClick={() => {
                   open.value = false;
                 }}
-              >
-                <TbX class="size-5" />
-              </button>
+              />
             </div>
             <div class="overflow-y-auto p-4">
               <pre class="text-sm text-stone-600 dark:text-stone-400 whitespace-pre-wrap font-mono">{thinking}</pre>

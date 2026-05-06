@@ -2,6 +2,7 @@ import { page } from "fresh";
 import { define } from "../../utils.ts";
 import { generateSessionId } from "../../lib/auth.ts";
 import { sendMagicLinkEmail } from "../../lib/email.ts";
+import { ButtonLink } from "../../components/Button.tsx";
 
 export const handler = define.handlers({
   async POST(ctx) {
@@ -55,9 +56,9 @@ export default define.page(function MagicLinkSentPage() {
           If an account exists for that email, we've sent a sign-in link. It
           expires in 15 minutes.
         </p>
-        <a href="/auth/login" class="btn w-full text-center">
+        <ButtonLink href="/auth/login" variant="outline" class="w-full">
           Back to sign in
-        </a>
+        </ButtonLink>
       </div>
     </div>
   );

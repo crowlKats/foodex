@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import SearchSelect from "./SearchSelect.tsx";
 import TbPlus from "tb-icons/TbPlus";
 import TbTrash from "tb-icons/TbTrash";
+import { Button } from "../components/Button.tsx";
 
 interface ToolEntry {
   tool_id: string;
@@ -71,13 +72,14 @@ export default function ToolForm(
                 items.value = next;
               }}
             />
-            <button
+            <Button
               type="button"
+              variant="danger-ghost"
+              icon={TbTrash}
+              title="Remove tool"
+              class="shrink-0"
               onClick={() => remove(i)}
-              class="shrink-0 text-red-600 hover:text-red-700 p-1 cursor-pointer"
-            >
-              <TbTrash class="size-4" />
-            </button>
+            />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input

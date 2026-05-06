@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import TbBookmark from "tb-icons/TbBookmark";
 import TbCheck from "tb-icons/TbCheck";
+import { Button } from "../components/Button.tsx";
 
 interface CollectionItem {
   id: string;
@@ -47,18 +48,18 @@ export default function AddToCollectionButton(
 
   return (
     <div class="relative">
-      <button
+      <Button
         type="button"
-        class="btn btn-outline"
+        variant="outline"
+        icon={TbBookmark}
         title="Add to collection"
         onClick={() => {
           open.value = !open.value;
           query.value = "";
         }}
       >
-        <TbBookmark class="size-3.5" />
         Collect
-      </button>
+      </Button>
       {open.value && (
         <div class="absolute z-10 right-0 mt-1 w-64 bg-white dark:bg-stone-800 border-2 border-stone-300 dark:border-stone-600 shadow-lg">
           <div class="p-1.5">

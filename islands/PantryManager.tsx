@@ -11,6 +11,7 @@ import TbAlertTriangle from "tb-icons/TbAlertTriangle";
 import TbScan from "tb-icons/TbScan";
 import TbArrowMerge from "tb-icons/TbArrowMerge";
 import GenerateRecipe from "./GenerateRecipe.tsx";
+import { Button } from "../components/Button.tsx";
 
 interface PantryItem {
   id: string;
@@ -267,16 +268,16 @@ export default function PantryManager(
         <div>
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold">Add Item</h2>
-            <button
+            <Button
               type="button"
-              class="btn btn-primary flex items-center gap-1.5 text-sm py-1 px-2"
+              size="sm"
+              icon={TbScan}
               onClick={() => {
                 scanning.value = true;
               }}
             >
-              <TbScan class="size-4" />
               Scan
-            </button>
+            </Button>
           </div>
           <div class="card space-y-3">
             <div>
@@ -349,15 +350,14 @@ export default function PantryManager(
                 }}
               />
             </div>
-            <button
+            <Button
               type="button"
-              class="btn btn-primary"
               disabled={saving.value ||
                 (!selectedIngredient.value.id && !newName.value.trim())}
               onClick={addItem}
             >
               {saving.value ? "Adding..." : "Add to Pantry"}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -517,14 +517,13 @@ export default function PantryManager(
                           );
                         }}
                       />
-                      <button
+                      <Button
                         type="button"
-                        class="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                        variant="danger-ghost"
+                        icon={TbTrash}
                         title="Remove"
                         onClick={() => removeItem(item.id)}
-                      >
-                        <TbTrash class="size-4" />
-                      </button>
+                      />
                     </div>
                     {isMerging && (
                       <div class="ml-4 mt-1 mb-2 p-2 rounded border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 space-y-1.5">
@@ -543,19 +542,20 @@ export default function PantryManager(
                               {" "}
                               {sib.expires_at ? `(exp. ${sib.expires_at})` : ""}
                             </span>
-                            <button
+                            <Button
                               type="button"
-                              class="btn btn-primary text-xs py-0.5 px-2"
+                              size="xs"
                               onClick={() => mergeItems(item.id, [sib.id])}
                             >
                               Merge
-                            </button>
+                            </Button>
                           </div>
                         ))}
                         {siblings.length > 1 && (
-                          <button
+                          <Button
                             type="button"
-                            class="btn btn-primary text-xs py-0.5 px-2 w-full"
+                            size="xs"
+                            class="w-full"
                             onClick={() =>
                               mergeItems(
                                 item.id,
@@ -563,7 +563,7 @@ export default function PantryManager(
                               )}
                           >
                             Merge all ({siblings.length})
-                          </button>
+                          </Button>
                         )}
                       </div>
                     )}

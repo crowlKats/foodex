@@ -8,6 +8,7 @@ import TbCameraRotate from "tb-icons/TbCameraRotate";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
+import { Button } from "../components/Button.tsx";
 
 interface ProductInfo {
   name: string;
@@ -440,13 +441,13 @@ export default function ScanView(props: Props) {
               manualCode.value = (e.target as HTMLInputElement).value;
             }}
           />
-          <button
+          <Button
             type="submit"
             disabled={manualLoading.value || !manualCode.value.trim()}
-            class="btn btn-primary text-sm !py-2"
+            class="py-2!"
           >
             {manualLoading.value ? "..." : "Go"}
-          </button>
+          </Button>
         </form>
       </div>
       {added.value.length > 0 && (
@@ -464,13 +465,13 @@ export default function ScanView(props: Props) {
       <p class="text-sm text-red-600 dark:text-red-400">
         {error.value}
       </p>
-      <button
+      <Button
         type="button"
-        class={mode === "modal" ? "btn btn-primary w-full" : "btn btn-primary"}
+        class={mode === "modal" ? "w-full" : ""}
         onClick={mode === "modal" ? handleClose : startScanning}
       >
         {mode === "modal" ? "Close" : "Try Again"}
-      </button>
+      </Button>
     </div>
   );
 
@@ -608,23 +609,23 @@ export default function ScanView(props: Props) {
       )}
 
       <div class="flex gap-3">
-        <button
+        <Button
           type="button"
-          class="btn btn-primary flex-1"
+          class="flex-1"
           disabled={saving.value ||
             (!selectedIngredient.value.id && !itemName.value.trim())}
           onClick={handleAdd}
         >
           {saving.value ? "Adding..." : "Add to Pantry"}
-        </button>
+        </Button>
         {mode === "page" && (
-          <button
+          <Button
             type="button"
-            class="btn btn-outline"
+            variant="outline"
             onClick={startScanning}
           >
             Skip
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -723,13 +724,12 @@ export default function ScanView(props: Props) {
                       manualCode.value = (e.target as HTMLInputElement).value;
                     }}
                   />
-                  <button
+                  <Button
                     type="submit"
                     disabled={manualLoading.value || !manualCode.value.trim()}
-                    class="btn btn-primary text-sm"
                   >
                     {manualLoading.value ? "..." : "Go"}
-                  </button>
+                  </Button>
                 </form>
               </div>
             )

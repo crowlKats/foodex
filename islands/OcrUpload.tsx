@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import TbFileImport from "tb-icons/TbFileImport";
 import TbLoader2 from "tb-icons/TbLoader2";
 import TbX from "tb-icons/TbX";
+import { Button } from "../components/Button.tsx";
 
 interface Bounds {
   x: number;
@@ -181,16 +182,16 @@ export default function OcrUpload() {
               class="flex items-center gap-2 text-sm"
             >
               <span class="truncate flex-1">{f.name}</span>
-              <button
+              <Button
                 type="button"
+                variant="danger-ghost"
+                icon={TbX}
+                title="Remove file"
                 onClick={(e) => {
                   e.stopPropagation();
                   removeFile(i);
                 }}
-                class="text-red-600 hover:text-red-700 cursor-pointer"
-              >
-                <TbX class="size-4" />
-              </button>
+              />
             </div>
           ))}
         </div>
@@ -206,14 +207,13 @@ export default function OcrUpload() {
         }}
       />
 
-      <button
+      <Button
         type="button"
-        class="btn btn-primary"
         disabled={files.value.length === 0}
         onClick={submit}
       >
         Extract Recipe
-      </button>
+      </Button>
     </div>
   );
 }

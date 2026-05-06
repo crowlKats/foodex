@@ -3,6 +3,7 @@ import { define } from "../../../utils.ts";
 import type { Collection, Recipe } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
+import { Button } from "../../../components/Button.tsx";
 import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePicker from "../../../islands/RecipePicker.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
@@ -211,14 +212,14 @@ export default define.page<typeof handler>(
         </form>
 
         <div class="flex items-center justify-between">
-          <button type="submit" form="edit-form" class="btn btn-primary">
+          <Button type="submit" form="edit-form">
             Save Changes
-          </button>
+          </Button>
           <form method="POST">
             <input type="hidden" name="_method" value="DELETE" />
             <ConfirmButton
               message="Delete this collection and all its recipe associations?"
-              class="btn btn-danger"
+              variant="danger"
             >
               Delete Collection
             </ConfirmButton>

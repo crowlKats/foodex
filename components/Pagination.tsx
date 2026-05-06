@@ -1,3 +1,5 @@
+import { ButtonLink } from "./Button.tsx";
+
 export const PAGE_SIZE = 50;
 
 export function getPage(url: URL): number {
@@ -31,17 +33,17 @@ export function Pagination(
   return (
     <div class="flex items-center justify-center gap-2 mt-4">
       {currentPage > 1 && (
-        <a href={pageUrl(currentPage - 1)} class="btn btn-outline text-sm">
+        <ButtonLink href={pageUrl(currentPage - 1)} variant="outline">
           Prev
-        </a>
+        </ButtonLink>
       )}
       <span class="text-sm text-stone-500">
         Page {currentPage} of {totalPages}
       </span>
       {currentPage < totalPages && (
-        <a href={pageUrl(currentPage + 1)} class="btn btn-outline text-sm">
+        <ButtonLink href={pageUrl(currentPage + 1)} variant="outline">
           Next
-        </a>
+        </ButtonLink>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { define } from "../../utils.ts";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import type { Tool, ToolUsage } from "../../db/types.ts";
 
 export const handler = define.handlers({
@@ -127,27 +128,23 @@ export default define.page<typeof handler>(
                   {tool.description ?? ""}
                 </textarea>
               </FormField>
-              <button
-                type="submit"
-                class="btn btn-primary"
-              >
+              <Button type="submit">
                 Save
-              </button>
+              </Button>
             </form>
 
             {loggedIn && (
               <form method="POST" class="mt-4">
                 <input type="hidden" name="_method" value="TOGGLE_OWNED" />
-                <button
+                <Button
                   type="submit"
-                  class={`btn w-full ${
-                    householdHasTool ? "btn-outline" : "btn-primary"
-                  }`}
+                  variant={householdHasTool ? "outline" : "primary"}
+                  class="w-full"
                 >
                   {householdHasTool
                     ? "Remove from household"
                     : "We have this tool"}
-                </button>
+                </Button>
               </form>
             )}
 
@@ -155,7 +152,7 @@ export default define.page<typeof handler>(
               <input type="hidden" name="_method" value="DELETE" />
               <ConfirmButton
                 message="Delete this tool?"
-                class="btn btn-danger"
+                variant="danger"
               >
                 Delete Tool
               </ConfirmButton>

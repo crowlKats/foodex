@@ -13,6 +13,7 @@ import RecipePreview from "../../islands/RecipePreview.tsx";
 import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { Button } from "../../components/Button.tsx";
 import { DurationInput } from "../../components/DurationInput.tsx";
 import RecipeOutputForm from "../../islands/RecipeOutputForm.tsx";
 import { RefForm } from "../../components/RefForm.tsx";
@@ -379,12 +380,9 @@ export default define.page<typeof handler>(
           </div>
 
           <div class="flex gap-3">
-            <button
-              type="submit"
-              class="btn btn-primary"
-            >
+            <Button type="submit">
               Create Recipe
-            </button>
+            </Button>
             <RecipePreview />
           </div>
         </form>

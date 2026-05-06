@@ -7,6 +7,7 @@ import {
 import type { SectionInfo } from "../lib/step-sections.ts";
 import TbEye from "tb-icons/TbEye";
 import TbX from "tb-icons/TbX";
+import { Button } from "../components/Button.tsx";
 
 function RecipeHtml({ html }: { html: string }) {
   return (
@@ -89,14 +90,14 @@ export default function RecipePreview() {
 
   return (
     <>
-      <button
+      <Button
         type="button"
         onClick={show}
-        class="btn btn-outline"
+        variant="outline"
+        icon={TbEye}
       >
-        <TbEye class="size-4" />
         Preview
-      </button>
+      </Button>
       {open.value && (
         <div
           class="fixed inset-0 z-50 flex items-start justify-center pt-4 sm:pt-12 bg-black/50"
@@ -111,15 +112,15 @@ export default function RecipePreview() {
           >
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-xl font-bold">Recipe Preview</h2>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                icon={TbX}
+                title="Close"
                 onClick={() => {
                   open.value = false;
                 }}
-                class="text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 cursor-pointer"
-              >
-                <TbX class="size-5" />
-              </button>
+              />
             </div>
             <RecipeHtml html={html.value} />
           </div>

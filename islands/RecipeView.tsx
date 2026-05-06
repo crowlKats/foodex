@@ -17,6 +17,7 @@ import {
 import { renderSingleStepHtml, renderStepsHtml } from "../lib/render-steps.ts";
 import { toDisplayUnit } from "../lib/unit-display.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
+import { Button } from "../components/Button.tsx";
 
 function RecipeHtml({ html }: { html: string }) {
   return (
@@ -934,27 +935,28 @@ export default function RecipeView(
           {renderScalingUI()}
           {steps.length > 0 && (
             <div class="flex gap-2 mt-3">
-              <button
+              <Button
                 type="button"
-                class="btn btn-primary flex-1"
+                class="flex-1"
                 onClick={enterCookingMode}
               >
                 Start Cooking
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                class="btn btn-outline"
+                variant="outline"
                 onClick={() => globalThis.print()}
                 title="Print recipe"
               >
                 Print
-              </button>
+              </Button>
             </div>
           )}
           {loggedIn && householdId && (
-            <button
+            <Button
               type="button"
-              class="btn btn-outline w-full mt-2"
+              variant="outline"
+              class="w-full mt-2"
               disabled={cookedStatus.value === "loading"}
               onClick={markCooked}
             >
@@ -963,7 +965,7 @@ export default function RecipeView(
                 : cookedStatus.value === "loading"
                 ? "Updating..."
                 : "I cooked this"}
-            </button>
+            </Button>
           )}
         </div>
         {ingredients.length > 0 && (
@@ -1137,13 +1139,15 @@ export default function RecipeView(
               );
             })()}
             {loggedIn && (
-              <button
+              <Button
                 type="button"
-                class="btn btn-outline w-full mt-3 text-xs"
+                variant="outline"
+                size="xs"
+                class="w-full mt-3"
                 onClick={addAllToShoppingList}
               >
                 {addedToList.value === "all" ? "Added!" : "Shop missing"}
-              </button>
+              </Button>
             )}
           </div>
         )}
