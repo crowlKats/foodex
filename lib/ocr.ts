@@ -28,6 +28,8 @@ export interface OcrRecipeData {
   source_type?: string | null;
   source_name?: string | null;
   source_url?: string | null;
+  meal_types?: string[];
+  dietary_tags?: string[];
   output_ingredient_id?: string | null;
   output_amount?: number | null;
   output_unit?: string | null;

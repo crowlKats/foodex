@@ -60,6 +60,8 @@ export async function importRecipeFromUrl(
         ingredients: data.ingredients || [],
         steps: data.steps || [],
         cover_image: null,
+        meal_types: data.tags?.meal_types ?? [],
+        dietary_tags: data.tags?.dietary ?? [],
       };
     }
     throw new Error("JSON response is not a recognized recipe format");

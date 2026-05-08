@@ -1,5 +1,6 @@
 import { ALL_UNITS } from "./units.ts";
 import { DOCS as TEMPLATE_DOCS } from "../routes/docs/templates.md.tsx";
+import { DIETARY_TAGS, MEAL_TYPES } from "./recipe-tags.ts";
 
 /** JSON schema + shared rules for recipe output, used by both OCR and generation prompts. */
 export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
@@ -30,7 +31,13 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
 ${coverLine},
   "source_type": "book" | "website" | "family" | "ai_generated" | "personal" | "other" | null,
   "source_name": "Source name (book title, website name, person's name, etc.)" or null,
-  "source_url": "https://..." or null
+  "source_url": "https://..." or null,
+  "meal_types": [<zero or more of: ${
+    MEAL_TYPES.map((m) => `"${m}"`).join(", ")
+  }>],
+  "dietary_tags": [<zero or more of: ${
+    DIETARY_TAGS.map((d) => `"${d}"`).join(", ")
+  }>]
 }`;
 }
 
@@ -51,4 +58,10 @@ ${TEMPLATE_DOCS}
 - "source_type": Identify the origin of the recipe when possible. Use "book" for cookbook/printed sources, "website" for online sources, "family" for family/friend recipes, "ai_generated" for AI-created recipes, "personal" for original creations, "other" for anything else. Use null only if truly unknown.
 - "source_name": The name of the source — book title, website/blog name, person's name, etc. Include as much detail as possible. Use null only if completely unknown.
 - "source_url": The URL if the recipe came from a website. Use null otherwise.
+- "meal_types": Tag the recipe with zero or more meal categories from the allowed list (${
+  MEAL_TYPES.join(", ")
+}). Pick all that apply (e.g. a frittata could be both "breakfast" and "lunch"). Return an empty array if none clearly apply.
+- "dietary_tags": Tag the recipe with zero or more dietary attributes from the allowed list (${
+  DIETARY_TAGS.join(", ")
+}). Only include a tag if the recipe genuinely satisfies it based on its ingredients (e.g. don't mark "vegan" if it contains dairy or eggs; don't mark "gluten-free" if it contains wheat flour). Return an empty array if none clearly apply or you're unsure.
 - Return ONLY the JSON object, no markdown fences or extra text`;

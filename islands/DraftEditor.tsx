@@ -13,7 +13,13 @@ import ConfirmButton from "./ConfirmButton.tsx";
 import { Button } from "../components/Button.tsx";
 import { Input, InputBar, InputMultiline } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
-import { SOURCE_TYPE_LABELS, SOURCE_TYPES } from "../lib/recipe-tags.ts";
+import MultiSearchSelect from "./MultiSearchSelect.tsx";
+import {
+  DIETARY_TAGS,
+  MEAL_TYPES,
+  SOURCE_TYPE_LABELS,
+  SOURCE_TYPES,
+} from "../lib/recipe-tags.ts";
 
 interface CoverMedia {
   id: string;
@@ -33,9 +39,10 @@ interface Props {
   allRecipes: { id: string; title: string }[];
 }
 
-function formatDuration(
-  minutes: number | null,
-): { value: string; unit: string } {
+function formatDuration(minutes: number | null): {
+  value: string;
+  unit: string;
+} {
   if (minutes == null) return { value: "", unit: "min" };
   if (minutes >= 60 && minutes % 60 === 0) {
     return { value: String(minutes / 60), unit: "hr" };
@@ -169,7 +176,9 @@ export default function DraftEditor({
                   <option value="min" selected={prep.unit === "min"}>
                     min
                   </option>
-                  <option value="hr" selected={prep.unit === "hr"}>hr</option>
+                  <option value="hr" selected={prep.unit === "hr"}>
+                    hr
+                  </option>
                 </Select>
               </InputBar>
             </div>
@@ -192,7 +201,9 @@ export default function DraftEditor({
                   <option value="min" selected={cook.unit === "min"}>
                     min
                   </option>
-                  <option value="hr" selected={cook.unit === "hr"}>hr</option>
+                  <option value="hr" selected={cook.unit === "hr"}>
+                    hr
+                  </option>
                 </Select>
               </InputBar>
             </div>
@@ -215,29 +226,49 @@ export default function DraftEditor({
                   <option value="min" selected={rest.unit === "min"}>
                     min
                   </option>
-                  <option value="hr" selected={rest.unit === "hr"}>hr</option>
+                  <option value="hr" selected={rest.unit === "hr"}>
+                    hr
+                  </option>
                 </Select>
               </InputBar>
             </div>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Difficulty</label>
-            <Select
-              key={`diff-${v}`}
-              name="difficulty"
-              class="w-full"
-            >
-              <option value="">—</option>
-              <option value="easy" selected={r.difficulty === "easy"}>
-                Easy
-              </option>
-              <option value="medium" selected={r.difficulty === "medium"}>
-                Medium
-              </option>
-              <option value="hard" selected={r.difficulty === "hard"}>
-                Hard
-              </option>
-            </Select>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Difficulty</label>
+              <Select key={`diff-${v}`} name="difficulty" class="w-full">
+                <option value="">—</option>
+                <option value="easy" selected={r.difficulty === "easy"}>
+                  Easy
+                </option>
+                <option value="medium" selected={r.difficulty === "medium"}>
+                  Medium
+                </option>
+                <option value="hard" selected={r.difficulty === "hard"}>
+                  Hard
+                </option>
+              </Select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Meal Type</label>
+              <MultiSearchSelect
+                key={`meal-${v}`}
+                name="meal_type"
+                options={[...MEAL_TYPES]}
+                initialSelected={r.meal_types ?? []}
+                placeholder="Search meal types..."
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Dietary</label>
+              <MultiSearchSelect
+                key={`diet-${v}`}
+                name="dietary"
+                options={[...DIETARY_TAGS]}
+                initialSelected={r.dietary_tags ?? []}
+                placeholder="Search dietary tags..."
+              />
+            </div>
           </div>
           <label class="flex items-center gap-2 mt-3 cursor-pointer">
             <input
@@ -252,18 +283,10 @@ export default function DraftEditor({
           </label>
           <div>
             <label class="block text-sm font-medium mb-1">Source</label>
-            <Select
-              key={`source-type-${v}`}
-              name="source_type"
-              class="w-full"
-            >
+            <Select key={`source-type-${v}`} name="source_type" class="w-full">
               <option value="">—</option>
               {SOURCE_TYPES.map((s) => (
-                <option
-                  key={s}
-                  value={s}
-                  selected={r.source_type === s}
-                >
+                <option key={s} value={s} selected={r.source_type === s}>
                   {SOURCE_TYPE_LABELS[s]}
                 </option>
               ))}
@@ -312,29 +335,27 @@ export default function DraftEditor({
 
         <div class="card">
           <h2 class="font-semibold mb-2">Tools</h2>
-          <ToolForm
-            key={`tools-${v}`}
-            initialTools={[]}
-            tools={allTools}
-          />
+          <ToolForm key={`tools-${v}`} initialTools={[]} tools={allTools} />
         </div>
 
         <div class="card">
           <h2 class="font-semibold mb-2">Steps</h2>
           <p class="text-xs text-stone-500 mb-2">
-            Use <code class="code-hint">{"{{ key }}"}</code>{" "}
-            for scaled ingredients,{" "}
-            <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
-            for just the number.{" "}
-            <a href="/docs/templates" class="link text-xs">Full reference</a>
+            Use <code class="code-hint">{"{{ key }}"}</code> for scaled
+            ingredients, <code class="code-hint">{"{{ key.amount }}"}</code> for
+            just the number.{" "}
+            <a href="/docs/templates" class="link text-xs">
+              Full reference
+            </a>
           </p>
           <StepForm
             key={`steps-${v}`}
             initialSteps={(r.steps ?? []).map((s, i) => {
               const secKey = s.section ?? null;
-              const secIdx = secKey != null
-                ? (r.sections ?? []).findIndex((sec) => sec.key === secKey)
-                : -1;
+              const secIdx =
+                secKey != null
+                  ? (r.sections ?? []).findIndex((sec) => sec.key === secKey)
+                  : -1;
               return {
                 title: s.title ?? "",
                 body: s.body ?? "",
@@ -363,40 +384,39 @@ export default function DraftEditor({
           <h2 class="font-semibold mb-2">Output Ingredient</h2>
           <RecipeOutputForm
             ingredients={ingredients}
-            initialIngredientId={(r.output_ingredient_id as string) ??
-              undefined}
-            initialIngredientName={r.output_ingredient_id
-              ? ingredients.find((g) => g.id === r.output_ingredient_id)?.name
-              : undefined}
-            initialAmount={r.output_amount != null
-              ? String(r.output_amount)
-              : undefined}
+            initialIngredientId={
+              (r.output_ingredient_id as string) ?? undefined
+            }
+            initialIngredientName={
+              r.output_ingredient_id
+                ? ingredients.find((g) => g.id === r.output_ingredient_id)?.name
+                : undefined
+            }
+            initialAmount={
+              r.output_amount != null ? String(r.output_amount) : undefined
+            }
             initialUnit={(r.output_unit as string) ?? undefined}
-            initialExpiresDays={r.output_expires_days != null
-              ? String(r.output_expires_days)
-              : undefined}
+            initialExpiresDays={
+              r.output_expires_days != null ? r.output_expires_days : undefined
+            }
           />
         </div>
 
         <div class="card">
           <h2 class="font-semibold mb-2">Sub-recipe References</h2>
           {/* RefForm is a server component, rendered as static HTML. We render a simple version here. */}
-          <Select
-            name="refs[0][referenced_recipe_id]"
-            class="w-full"
-            size="sm"
-          >
+          <Select name="refs[0][referenced_recipe_id]" class="w-full" size="sm">
             <option value="">No sub-recipe</option>
             {allRecipes.map((r) => (
-              <option key={r.id} value={r.id}>{r.title}</option>
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
             ))}
           </Select>
         </div>
 
         <div class="flex gap-3 flex-wrap">
-          <Button type="submit">
-            Create Recipe
-          </Button>
+          <Button type="submit">Create Recipe</Button>
           <Button
             type="button"
             variant="outline"
@@ -444,7 +464,10 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
   while (fd.has(`sections[${secIdx}][title]`)) {
     const afterStr = String(fd.get(`sections[${secIdx}][after]`) ?? "");
     const afterIdx = afterStr
-      ? afterStr.split(",").map(Number).filter((n) => !isNaN(n))
+      ? afterStr
+          .split(",")
+          .map(Number)
+          .filter((n) => !isNaN(n))
       : [];
     sectionsRaw.push({
       title: String(fd.get(`sections[${secIdx}][title]`) ?? ""),
@@ -466,12 +489,12 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
   let s = 0;
   while (fd.has(`steps[${s}][title]`) || fd.has(`steps[${s}][body]`)) {
     const secIdxRaw = fd.get(`steps[${s}][section]`);
-    const sIdx = secIdxRaw && secIdxRaw !== ""
-      ? parseInt(secIdxRaw as string)
-      : null;
-    const sectionKey = sIdx != null && !isNaN(sIdx) && sections[sIdx]
-      ? sections[sIdx].key
-      : null;
+    const sIdx =
+      secIdxRaw && secIdxRaw !== "" ? parseInt(secIdxRaw as string) : null;
+    const sectionKey =
+      sIdx != null && !isNaN(sIdx) && sections[sIdx]
+        ? sections[sIdx].key
+        : null;
     steps.push({
       title: fd.get(`steps[${s}][title]`) ?? "",
       body: fd.get(`steps[${s}][body]`) ?? "",
@@ -499,19 +522,21 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     source_type: (fd.get("source_type") as string) || null,
     source_name: (fd.get("source_name") as string)?.trim() || null,
     source_url: (fd.get("source_url") as string)?.trim() || null,
+    meal_types: (fd.getAll("meal_type") as string[]).filter((v) => v.trim()),
+    dietary_tags: (fd.getAll("dietary") as string[]).filter((v) => v.trim()),
     ingredients,
     sections,
     steps,
     cover_image: null,
     output_ingredient_id: (fd.get("output_ingredient_id") as string) || null,
-    output_amount: fd.has("output_amount") &&
-        (fd.get("output_amount") as string)
-      ? parseFloat(fd.get("output_amount") as string)
-      : null,
+    output_amount:
+      fd.has("output_amount") && (fd.get("output_amount") as string)
+        ? parseFloat(fd.get("output_amount") as string)
+        : null,
     output_unit: (fd.get("output_unit") as string) || null,
-    output_expires_days: fd.has("output_expires_days") &&
-        (fd.get("output_expires_days") as string)
-      ? parseInt(fd.get("output_expires_days") as string)
-      : null,
+    output_expires_days:
+      fd.has("output_expires_days") && (fd.get("output_expires_days") as string)
+        ? parseInt(fd.get("output_expires_days") as string)
+        : null,
   };
 }
