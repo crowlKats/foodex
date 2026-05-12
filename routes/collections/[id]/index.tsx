@@ -8,6 +8,7 @@ import type {
 } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { Button, ButtonLink } from "../../../components/Button.tsx";
+import { Input } from "../../../components/Input.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { formatDuration } from "../../../lib/duration.ts";
 import { formatQuantity } from "../../../lib/quantity.ts";
@@ -212,11 +213,12 @@ export default define.page<typeof handler>(
             shareUrl
               ? (
                 <div class="flex items-center gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={shareUrl}
                     readOnly
-                    class="text-sm w-48 sm:w-64 select-all"
+                    class="w-48 sm:w-64 select-all"
+                    size="sm"
                   />
                   <form method="POST" class="inline">
                     <input

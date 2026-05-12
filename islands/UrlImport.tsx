@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import TbLink from "tb-icons/TbLink";
 import TbLoader2 from "tb-icons/TbLoader2";
 import { Button } from "../components/Button.tsx";
+import { Input } from "../components/Input.tsx";
 
 export default function UrlImport() {
   const url = useSignal("");
@@ -56,24 +57,22 @@ export default function UrlImport() {
       {error.value && <div class="alert-error">{error.value}</div>}
 
       <div class="flex gap-2">
-        <div class="relative flex-1">
-          <TbLink class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-stone-400" />
-          <input
-            type="url"
-            placeholder="https://example.com/recipe/..."
-            class="w-full pl-9"
-            value={url.value}
-            onInput={(e) => {
-              url.value = (e.target as HTMLInputElement).value;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                submit();
-              }
-            }}
-          />
-        </div>
+        <Input
+          type="url"
+          placeholder="https://example.com/recipe/..."
+          icon={TbLink}
+          class="flex-1"
+          value={url.value}
+          onValueChange={(v) => {
+            url.value = v;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+        />
         <Button
           type="button"
           disabled={!url.value.trim()}

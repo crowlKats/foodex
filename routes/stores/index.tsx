@@ -3,6 +3,8 @@ import { define, escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
+import { Input } from "../../components/Input.tsx";
+import { Select } from "../../components/Select.tsx";
 import { CURRENCIES } from "../../lib/currencies.ts";
 import {
   getPage,
@@ -168,7 +170,7 @@ export default define.page<typeof handler>(
                 class="card space-y-3"
               >
                 <FormField label="Name">
-                  <input
+                  <Input
                     type="text"
                     name="name"
                     required
@@ -176,7 +178,7 @@ export default define.page<typeof handler>(
                   />
                 </FormField>
                 <FormField label="Currency">
-                  <select name="currency" class="w-full">
+                  <Select name="currency" class="w-full">
                     {CURRENCIES.map((c) => (
                       <option
                         key={c.code}
@@ -186,7 +188,7 @@ export default define.page<typeof handler>(
                         {c.symbol} {c.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </FormField>
                 <Button type="submit">
                   Add Store

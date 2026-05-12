@@ -69,40 +69,42 @@
   @apply text-orange-600 dark:text-orange-400 hover:underline cursor-pointer;
 }
 
-/* Hide number input spinners */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type="number"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
+@layer base {
+  /* Hide number input spinners */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 
-/* ── Inputs (global) ── */
-input,
-select,
-textarea {
-  @apply border-2 border-stone-300 dark:border-stone-700 bg-stone-100
-    dark:bg-stone-800 text-stone-900 dark:text-stone-100 px-3 py-2 text-sm
-    leading-normal transition-colors duration-75 focus:outline-none
-    focus:border-orange-600 dark:focus:border-orange-500;
-  box-sizing: border-box;
-  height: 2.5rem;
-}
+  /* ── Inputs (global) ── */
+  input,
+  select,
+  textarea {
+    @apply border-2 border-stone-300 dark:border-stone-700 bg-stone-100
+      dark:bg-stone-800 text-stone-900 dark:text-stone-100 px-3 py-2 text-sm
+      leading-normal transition-colors duration-75 focus:outline-none
+      focus:border-orange-600 dark:focus:border-orange-500;
+    box-sizing: border-box;
+    height: 2.5rem;
+  }
 
-textarea {
-  height: auto;
-}
+  textarea {
+    height: auto;
+  }
 
-input[type="search"],
-.search-input {
-  @apply bg-white dark:bg-stone-900;
-}
+  input[type="search"],
+  .search-input {
+    @apply bg-white dark:bg-stone-900;
+  }
 
-select {
-  @apply cursor-pointer;
+  select {
+    @apply cursor-pointer;
+  }
 }
 
 /* ── Alerts ── */

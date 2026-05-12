@@ -4,6 +4,7 @@ import type { Collection, Recipe } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
 import { Button } from "../../../components/Button.tsx";
+import { Input, InputMultiline } from "../../../components/Input.tsx";
 import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePicker from "../../../islands/RecipePicker.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
@@ -165,7 +166,7 @@ export default define.page<typeof handler>(
           <div class="card space-y-3">
             <h2 class="font-semibold">Details</h2>
             <FormField label="Name">
-              <input
+              <Input
                 type="text"
                 name="name"
                 value={collection.name}
@@ -174,13 +175,12 @@ export default define.page<typeof handler>(
               />
             </FormField>
             <FormField label="Description">
-              <textarea
+              <InputMultiline
                 name="description"
                 rows={2}
                 class="w-full"
-              >
-                {collection.description ?? ""}
-              </textarea>
+                value={collection.description ?? ""}
+              />
             </FormField>
             <label class="flex items-center gap-2 mt-3 cursor-pointer">
               <input

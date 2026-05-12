@@ -1,4 +1,5 @@
 import { UNIT_GROUPS } from "../lib/units.ts";
+import { Select } from "./Select.tsx";
 
 interface UnitSelectProps {
   name: string;
@@ -11,7 +12,7 @@ export function UnitSelect(
   { name, value, required, class: className }: UnitSelectProps,
 ) {
   return (
-    <select
+    <Select
       name={name}
       required={required}
       class={className ?? "w-full"}
@@ -26,6 +27,6 @@ export function UnitSelect(
           ))}
         </optgroup>
       ))}
-    </select>
+    </Select>
   );
 }

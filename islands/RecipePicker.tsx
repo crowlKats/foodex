@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import TbX from "tb-icons/TbX";
 import TbGripVertical from "tb-icons/TbGripVertical";
 import { Button } from "../components/Button.tsx";
+import { Input } from "../components/Input.tsx";
 
 interface RecipeOption {
   id: string;
@@ -121,13 +122,14 @@ export default function RecipePicker({ options, initialSelected }: Props) {
         </div>
       )}
       <div class="relative">
-        <input
+        <Input
           type="text"
           placeholder="Search recipes to add..."
           value={query}
-          class="w-full text-sm"
+          class="w-full"
+          size="sm"
           onInput={(e) => {
-            query.value = (e.target as HTMLInputElement).value;
+            query.value = (e.currentTarget as HTMLInputElement).value;
             open.value = true;
             highlightIndex.value = -1;
           }}

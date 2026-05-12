@@ -1,4 +1,5 @@
 import TbSearch from "tb-icons/TbSearch";
+import { Input } from "./Input.tsx";
 
 interface SearchBarProps {
   query?: string;
@@ -10,17 +11,14 @@ export function SearchBar(
 ) {
   return (
     <form method="GET">
-      <div class="relative">
-        <TbSearch class="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-        <input
-          type="text"
-          name="q"
-          value={query ?? ""}
-          placeholder={placeholder}
-          class="w-full !pl-10 search-input"
-          autocomplete="off"
-        />
-      </div>
+      <Input
+        type="search"
+        name="q"
+        value={query ?? ""}
+        placeholder={placeholder}
+        icon={TbSearch}
+        autocomplete="off"
+      />
     </form>
   );
 }

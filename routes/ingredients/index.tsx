@@ -4,6 +4,8 @@ import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
+import { Input } from "../../components/Input.tsx";
+import { Select } from "../../components/Select.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import IngredientNameInput from "../../islands/IngredientNameInput.tsx";
 import {
@@ -174,18 +176,18 @@ export default define.page<typeof handler>(
                 <hr class="my-2 border-stone-300 dark:border-stone-700" />
                 <h3 class="text-sm font-semibold">Initial Price (optional)</h3>
                 <FormField label="Store">
-                  <select name="store_id" class="w-full">
+                  <Select name="store_id" class="w-full">
                     <option value="">-- No store yet --</option>
                     {stores.map((s) => (
                       <option key={String(s.id)} value={String(s.id)}>
                         {String(s.name)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </FormField>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <FormField label="Price">
-                    <input
+                    <Input
                       type="number"
                       name="price"
                       step="0.01"
@@ -193,7 +195,7 @@ export default define.page<typeof handler>(
                     />
                   </FormField>
                   <FormField label="Per amount">
-                    <input
+                    <Input
                       type="number"
                       name="amount"
                       step="0.001"

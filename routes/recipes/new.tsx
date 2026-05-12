@@ -14,6 +14,8 @@ import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
+import { Input, InputMultiline } from "../../components/Input.tsx";
+import { Select } from "../../components/Select.tsx";
 import { DurationInput } from "../../components/DurationInput.tsx";
 import RecipeOutputForm from "../../islands/RecipeOutputForm.tsx";
 import { RefForm } from "../../components/RefForm.tsx";
@@ -230,7 +232,7 @@ export default define.page<typeof handler>(
           <div class="card space-y-3">
             <h2 class="font-semibold">Details</h2>
             <FormField label="Title">
-              <input
+              <Input
                 type="text"
                 name="title"
                 required
@@ -238,7 +240,7 @@ export default define.page<typeof handler>(
               />
             </FormField>
             <FormField label="Description">
-              <textarea
+              <InputMultiline
                 name="description"
                 rows={2}
                 class="w-full"
@@ -252,14 +254,14 @@ export default define.page<typeof handler>(
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <FormField label="Difficulty">
-                <select name="difficulty" class="w-full">
+                <Select name="difficulty" class="w-full">
                   <option value="">—</option>
                   {DIFFICULTY_LEVELS.map((d) => (
                     <option key={d} value={d} class="capitalize">
                       {d[0].toUpperCase() + d.slice(1)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </FormField>
               <FormField label="Meal Type">
                 <MultiSearchSelect
@@ -287,18 +289,18 @@ export default define.page<typeof handler>(
               </span>
             </label>
             <FormField label="Source">
-              <select name="source_type" class="w-full" id="source_type">
+              <Select name="source_type" class="w-full" id="source_type">
                 <option value="">—</option>
                 {SOURCE_TYPES.map((s) => (
                   <option key={s} value={s}>
                     {SOURCE_TYPE_LABELS[s]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </FormField>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Source Name">
-                <input
+                <Input
                   type="text"
                   name="source_name"
                   placeholder="e.g. Book title, website name, person's name"
@@ -306,7 +308,7 @@ export default define.page<typeof handler>(
                 />
               </FormField>
               <FormField label="Source URL">
-                <input
+                <Input
                   type="url"
                   name="source_url"
                   placeholder="https://..."

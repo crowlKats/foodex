@@ -1,5 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { UNIT_GROUPS, VOLUME_UNITS, WEIGHT_UNITS } from "../lib/units.ts";
+import { Input, InputBar } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 interface Props {
   unit: string;
@@ -17,14 +19,12 @@ export default function IngredientUnitFields({ unit, density }: Props) {
     <>
       <div class="space-y-1">
         <label class="text-sm font-medium">Unit</label>
-        <select
+        <Select
           name="unit"
           required
           class="w-full"
           value={selectedUnit.value}
-          onChange={(e) => {
-            selectedUnit.value = (e.target as HTMLSelectElement).value;
-          }}
+          onValueChange={(v) => selectedUnit.value = v}
         >
           <option value="" selected={selectedUnit.value === ""}>
             -- Unit --
@@ -42,49 +42,49 @@ export default function IngredientUnitFields({ unit, density }: Props) {
               ))}
             </optgroup>
           ))}
-        </select>
+        </Select>
       </div>
       {isMassOrVolume(selectedUnit.value) && (
         <fieldset class="space-y-1">
           <legend class="text-sm font-medium">Mass/volume conversion</legend>
           <div class="flex items-center gap-1.5 justify-between">
-            <div class="flex min-w-0">
-              <input
+            <InputBar>
+              <Input
                 type="number"
                 name="conv_amount1"
                 step="any"
                 min="0"
                 value={density != null ? +(density * 100).toFixed(2) : ""}
                 placeholder="Amt"
-                class="flex-1 min-w-0 w-20"
+                class="w-20"
               />
-              <select name="conv_unit1" class="w-16 shrink-0 text-sm -ml-0.5">
+              <Select name="conv_unit1" class="w-16" size="sm">
                 {WEIGHT_UNITS.map((u) => (
                   <option key={u} value={u} selected={u === "g"}>
                     {u}
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </InputBar>
             <span class="text-sm text-stone-500 select-none">=</span>
-            <div class="flex min-w-0">
-              <input
+            <InputBar>
+              <Input
                 type="number"
                 name="conv_amount2"
                 step="any"
                 min="0"
                 value={density != null ? "100" : ""}
                 placeholder="Amt"
-                class="flex-1 min-w-0 w-20"
+                class="w-20"
               />
-              <select name="conv_unit2" class="w-16 shrink-0 text-sm -ml-0.5">
+              <Select name="conv_unit2" class="w-16" size="sm">
                 {VOLUME_UNITS.map((u) => (
                   <option key={u} value={u} selected={u === "ml"}>
                     {u}
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </InputBar>
           </div>
           <p class="text-xs text-stone-500">
             Enables cost calculation when recipe and price use different unit

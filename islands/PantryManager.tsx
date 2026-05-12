@@ -12,6 +12,8 @@ import TbScan from "tb-icons/TbScan";
 import TbArrowMerge from "tb-icons/TbArrowMerge";
 import GenerateRecipe from "./GenerateRecipe.tsx";
 import { Button } from "../components/Button.tsx";
+import { Input, InputBar } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 interface PantryItem {
   id: string;
@@ -305,24 +307,19 @@ export default function PantryManager(
               <label class="block text-sm font-medium mb-1">
                 Amount <span class="text-stone-400">(optional)</span>
               </label>
-              <div class="flex min-w-0">
-                <input
+              <InputBar>
+                <Input
                   type="number"
                   min="0"
                   step="any"
                   value={newAmount}
-                  class="flex-1 min-w-0"
                   placeholder="e.g. 500"
-                  onInput={(e) => {
-                    newAmount.value = (e.target as HTMLInputElement).value;
-                  }}
+                  onValueChange={(v) => newAmount.value = v}
                 />
-                <select
+                <Select
                   value={newUnit}
-                  class="w-24 shrink-0 -ml-0.5"
-                  onChange={(e) => {
-                    newUnit.value = (e.target as HTMLSelectElement).value;
-                  }}
+                  class="w-24"
+                  onValueChange={(v) => newUnit.value = v}
                 >
                   <option value="">—</option>
                   {UNIT_GROUPS.map((g) => (
@@ -334,20 +331,18 @@ export default function PantryManager(
                       ))}
                     </optgroup>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </InputBar>
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">
                 Best before <span class="text-stone-400">(optional)</span>
               </label>
-              <input
+              <Input
                 type="date"
                 value={newExpiresAt}
                 class="w-full"
-                onInput={(e) => {
-                  newExpiresAt.value = (e.target as HTMLInputElement).value;
-                }}
+                onValueChange={(v) => newExpiresAt.value = v}
               />
             </div>
             <Button
@@ -374,14 +369,12 @@ export default function PantryManager(
             In Stock ({items.value.length})
           </h2>
           {items.value.length > 0 && (
-            <input
+            <Input
               type="search"
               placeholder="Search pantry..."
               value={search}
               class="flex-1"
-              onInput={(e) => {
-                search.value = (e.target as HTMLInputElement).value;
-              }}
+              onValueChange={(v) => search.value = v}
             />
           )}
         </div>
@@ -464,30 +457,28 @@ export default function PantryManager(
                           <TbArrowMerge class="size-4" />
                         </button>
                       )}
-                      <div class="flex min-w-0">
-                        <input
+                      <InputBar>
+                        <Input
                           type="number"
                           min="0"
                           step="any"
                           value={formatInputValue(item.amount)}
                           placeholder="Qty"
-                          class="flex-1 min-w-0 w-20"
+                          class="w-20"
                           onBlur={(e) => {
-                            const val = (e.target as HTMLInputElement).value;
+                            const val = (e.currentTarget as HTMLInputElement)
+                              .value;
                             const amount = val ? parseFloat(val) : null;
                             if (amount !== (item.amount ?? null)) {
                               updateItem(item, amount, item.unit ?? null);
                             }
                           }}
                         />
-                        <select
+                        <Select
                           value={item.unit ?? ""}
-                          class="w-24 shrink-0 -ml-0.5"
-                          onChange={(e) => {
-                            const unit =
-                              (e.target as HTMLSelectElement).value || null;
-                            updateItem(item, item.amount ?? null, unit);
-                          }}
+                          class="w-24"
+                          onValueChange={(v) =>
+                            updateItem(item, item.amount ?? null, v || null)}
                         >
                           <option value="">—</option>
                           {UNIT_GROUPS.map((g) => (
@@ -499,16 +490,16 @@ export default function PantryManager(
                               ))}
                             </optgroup>
                           ))}
-                        </select>
-                      </div>
-                      <input
+                        </Select>
+                      </InputBar>
+                      <Input
                         type="date"
                         value={item.expires_at ?? ""}
                         title="Best before"
                         class="w-36"
                         onChange={(e) => {
-                          const val = (e.target as HTMLInputElement).value ||
-                            null;
+                          const val =
+                            (e.currentTarget as HTMLInputElement).value || null;
                           updateItem(
                             item,
                             item.amount ?? null,

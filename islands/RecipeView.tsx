@@ -18,6 +18,8 @@ import { renderSingleStepHtml, renderStepsHtml } from "../lib/render-steps.ts";
 import { toDisplayUnit } from "../lib/unit-display.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
 import { Button } from "../components/Button.tsx";
+import { Input } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 function RecipeHtml({ html }: { html: string }) {
   return (
@@ -272,13 +274,13 @@ export default function RecipeView(
             >
               -
             </button>
-            <input
+            <Input
               type="number"
               min="1"
               value={formatInputValue(targetValue.value)}
               class="w-16 text-center"
-              onInput={(e) => {
-                const v = parseInt((e.target as HTMLInputElement).value);
+              onValueChange={(s) => {
+                const v = parseInt(s);
                 if (v > 0) {
                   targetValue.value = v;
                   update();
@@ -308,31 +310,31 @@ export default function RecipeView(
         <div>
           <label class="text-sm font-medium mr-3">Weight:</label>
           <div class="flex items-center gap-2 flex-wrap">
-            <input
+            <Input
               type="number"
               min="0"
               step="any"
               value={formatInputValue(targetValue.value)}
               class="w-24 text-center"
-              onInput={(e) => {
-                const v = parseFloat((e.target as HTMLInputElement).value);
+              onValueChange={(s) => {
+                const v = parseFloat(s);
                 if (v > 0) {
                   targetValue.value = v;
                   update();
                 }
               }}
             />
-            <select
+            <Select
               value={targetUnit}
               class="w-16"
-              onChange={(e) => {
-                targetUnit.value = (e.target as HTMLSelectElement).value;
+              onValueChange={(v) => {
+                targetUnit.value = v;
                 update();
               }}
             >
               <option value="g">g</option>
               <option value="kg">kg</option>
-            </select>
+            </Select>
             {loading.value && (
               <span class="text-xs text-stone-400 ml-2">updating...</span>
             )}
@@ -346,31 +348,31 @@ export default function RecipeView(
         <div>
           <label class="text-sm font-medium mr-3">Volume:</label>
           <div class="flex items-center gap-2 flex-wrap">
-            <input
+            <Input
               type="number"
               min="0"
               step="any"
               value={formatInputValue(targetValue.value)}
               class="w-24 text-center"
-              onInput={(e) => {
-                const v = parseFloat((e.target as HTMLInputElement).value);
+              onValueChange={(s) => {
+                const v = parseFloat(s);
                 if (v > 0) {
                   targetValue.value = v;
                   update();
                 }
               }}
             />
-            <select
+            <Select
               value={targetUnit}
               class="w-16"
-              onChange={(e) => {
-                targetUnit.value = (e.target as HTMLSelectElement).value;
+              onValueChange={(v) => {
+                targetUnit.value = v;
                 update();
               }}
             >
               <option value="ml">ml</option>
               <option value="l">l</option>
-            </select>
+            </Select>
             {loading.value && (
               <span class="text-xs text-stone-400 ml-2">updating...</span>
             )}
@@ -384,14 +386,15 @@ export default function RecipeView(
         <div>
           <label class="text-sm font-medium mr-3">Tray (W x L x D):</label>
           <div class="flex items-center gap-1 flex-nowrap">
-            <input
+            <Input
               type="number"
               min="1"
               step="0.5"
               value={formatInputValue(targetValue.value)}
-              class="w-12 text-center text-xs grow"
-              onInput={(e) => {
-                const v = parseFloat((e.target as HTMLInputElement).value);
+              class="w-12 text-center grow"
+              size="xs"
+              onValueChange={(s) => {
+                const v = parseFloat(s);
                 if (v > 0) {
                   targetValue.value = v;
                   update();
@@ -399,14 +402,15 @@ export default function RecipeView(
               }}
             />
             <span class="text-stone-500 text-xs select-none">&times;</span>
-            <input
+            <Input
               type="number"
               min="1"
               step="0.5"
               value={formatInputValue(targetValue2.value)}
-              class="w-12 text-center text-xs grow"
-              onInput={(e) => {
-                const v = parseFloat((e.target as HTMLInputElement).value);
+              class="w-12 text-center grow"
+              size="xs"
+              onValueChange={(s) => {
+                const v = parseFloat(s);
                 if (v > 0) {
                   targetValue2.value = v;
                   update();
@@ -414,14 +418,15 @@ export default function RecipeView(
               }}
             />
             <span class="text-stone-500 text-xs select-none">&times;</span>
-            <input
+            <Input
               type="number"
               min="1"
               step="0.5"
               value={formatInputValue(targetValue3.value)}
-              class="w-12 text-center text-xs grow"
-              onInput={(e) => {
-                const v = parseFloat((e.target as HTMLInputElement).value);
+              class="w-12 text-center grow"
+              size="xs"
+              onValueChange={(s) => {
+                const v = parseFloat(s);
                 if (v > 0) {
                   targetValue3.value = v;
                   update();

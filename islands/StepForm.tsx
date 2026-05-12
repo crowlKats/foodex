@@ -6,6 +6,8 @@ import TbTrash from "tb-icons/TbTrash";
 import TbUpload from "tb-icons/TbUpload";
 import TbX from "tb-icons/TbX";
 import { slugify } from "../utils.ts";
+import { Input, InputMultiline } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 interface MediaItem {
   id: string;
@@ -684,21 +686,19 @@ function StepEditor(
 ) {
   return (
     <div class="space-y-2">
-      <input
+      <Input
         type="text"
         placeholder="Step title"
         value={step.title}
-        onInput={(e) => onTitle((e.target as HTMLInputElement).value)}
-        class="w-full text-sm font-medium"
+        onValueChange={(v) => onTitle(v)}
+        class="w-full font-medium"
+        size="sm"
       />
       {sections.length > 0 && (
-        <select
+        <Select
           value={step.section ?? ""}
-          onChange={(e) => {
-            const v = (e.target as HTMLSelectElement).value;
-            onSection(v === "" ? null : parseInt(v));
-          }}
-          class="text-xs"
+          onValueChange={(v) => onSection(v === "" ? null : parseInt(v))}
+          size="xs"
         >
           <option value="">— no section —</option>
           {sections.map((sec, si) => (
@@ -706,14 +706,16 @@ function StepEditor(
               {sec.title.trim() || `Section ${si + 1}`}
             </option>
           ))}
-        </select>
+        </Select>
       )}
-      <textarea
+      <InputMultiline
         placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
         value={step.body}
-        onInput={(e) => onBody((e.target as HTMLTextAreaElement).value)}
+        onValueChange={(v) => onBody(v)}
         rows={6}
-        class="w-full text-sm font-mono"
+        class="w-full"
+        size="sm"
+        monospace
       />
       {step.media.length > 0 && (
         <div class="flex flex-wrap gap-2">
@@ -1385,17 +1387,13 @@ export default function StepForm(
                 <span class="text-xs text-stone-400 font-mono shrink-0 max-sm:order-1">
                   #{displayN}
                 </span>
-                <input
+                <Input
                   type="text"
                   placeholder="Step title"
                   value={item.title}
-                  onInput={(e) =>
-                    updateField(
-                      i,
-                      "title",
-                      (e.target as HTMLInputElement).value,
-                    )}
-                  class="flex-1 min-w-0 text-sm font-medium max-sm:order-3 max-sm:basis-full"
+                  onValueChange={(v) => updateField(i, "title", v)}
+                  class="flex-1 min-w-0 font-medium max-sm:order-3 max-sm:basis-full"
+                  size="sm"
                 />
                 <div class="flex items-center gap-1 shrink-0 max-sm:order-2 max-sm:ml-auto">
                   <button
@@ -1443,17 +1441,14 @@ export default function StepForm(
                   </button>
                 </div>
               </div>
-              <textarea
+              <InputMultiline
                 placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
                 value={item.body}
-                onInput={(e) =>
-                  updateField(
-                    i,
-                    "body",
-                    (e.target as HTMLTextAreaElement).value,
-                  )}
+                onValueChange={(v) => updateField(i, "body", v)}
                 rows={6}
-                class="w-full text-sm font-mono"
+                class="w-full"
+                size="sm"
+                monospace
               />
               {item.media.length > 0 && (
                 <div class="flex flex-wrap gap-2">
@@ -1520,27 +1515,21 @@ export default function StepForm(
                   class="border-2 border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/40 p-3 space-y-3"
                 >
                   <div class="flex items-center gap-2">
-                    <input
+                    <Input
                       type="text"
                       placeholder="Section title"
                       value={sec.title}
-                      onInput={(e) =>
-                        updateSectionTitle(
-                          sIdx,
-                          (e.target as HTMLInputElement).value,
-                        )}
+                      onValueChange={(v) => updateSectionTitle(sIdx, v)}
                       class="flex-1 font-bold min-w-0"
                     />
-                    <input
+                    <Input
                       type="text"
                       placeholder="key"
                       value={sec.key}
-                      onInput={(e) =>
-                        updateSectionKey(
-                          sIdx,
-                          (e.target as HTMLInputElement).value,
-                        )}
-                      class="w-32 text-xs font-mono shrink-0"
+                      onValueChange={(v) => updateSectionKey(sIdx, v)}
+                      class="w-32 shrink-0"
+                      size="xs"
+                      monospace
                       title="Used in @step(key.N) references"
                     />
                     <button
@@ -1654,31 +1643,26 @@ export default function StepForm(
                     }}
                   >
                     <div class="px-2 pt-2 pb-1 flex items-center gap-1 min-w-0">
-                      <input
+                      <Input
                         type="text"
                         placeholder="Section title"
                         value={sec.title}
                         onClick={(e) => e.stopPropagation()}
-                        onInput={(e) =>
-                          updateSectionTitle(
-                            sIdx,
-                            (e.target as HTMLInputElement).value,
-                          )}
+                        onValueChange={(v) =>
+                          updateSectionTitle(sIdx, v)}
                         class="flex-1 min-w-0 font-bold"
                       />
-                      <input
+                      <Input
                         type="text"
                         placeholder="key"
                         value={sec.key}
                         onClick={(e) =>
                           e.stopPropagation()}
-                        onInput={(e) =>
-                          updateSectionKey(
-                            sIdx,
-                            (e.target as HTMLInputElement).value,
-                          )}
+                        onValueChange={(v) => updateSectionKey(sIdx, v)}
                         title="Used in @step(key.N) references"
-                        class="w-32 text-xs font-mono shrink-0"
+                        class="w-32 shrink-0"
+                        size="xs"
+                        monospace
                       />
                       <span class="text-[10px] text-stone-400 shrink-0">
                         {stepCount} {stepCount === 1 ? "step" : "steps"}
@@ -1802,8 +1786,7 @@ export default function StepForm(
                         selected.value = isSelected ? null : index;
                       }}
                       onInsert={() => graphInsertAfter(index)}
-                      onBranch={() =>
-                        graphBranchAfter(index)}
+                      onBranch={() => graphBranchAfter(index)}
                       onRemove={() => graphRemoveStep(index)}
                       onDragStart={(e) => onDragHandleMouseDown(index, e)}
                     />

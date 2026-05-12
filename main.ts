@@ -131,7 +131,7 @@ app.use(define.middleware((ctx) => {
 }));
 
 // deno-lint-ignore no-explicit-any
-if (typeof (Deno as any).cron === "function") {
+if (typeof (Deno as any).cron === "function" && !import.meta.env.DEV) {
   // deno-lint-ignore no-explicit-any
   (Deno as any).cron("pantry-expiry-notifications", "0 * * * *", () => {
     sendExpiryNotifications(query).catch((err) =>

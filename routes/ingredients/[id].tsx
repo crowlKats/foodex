@@ -5,6 +5,8 @@ import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
+import { Input } from "../../components/Input.tsx";
+import { Select } from "../../components/Select.tsx";
 import { toBaseUnit } from "../../lib/unit-convert.ts";
 import { formatAmount, formatCurrency } from "../../lib/format.ts";
 import IngredientUnitFields from "../../islands/IngredientUnitFields.tsx";
@@ -267,7 +269,7 @@ export default define.page<typeof handler>(
               <h2 class="text-lg font-semibold mb-3">Details</h2>
               <form method="POST" class="card space-y-3">
                 <FormField label="Name">
-                  <input
+                  <Input
                     type="text"
                     name="name"
                     value={ingredient.name}
@@ -301,7 +303,7 @@ export default define.page<typeof handler>(
               </p>
               <form method="POST" class="flex gap-2">
                 <input type="hidden" name="_method" value="MERGE" />
-                <select name="target_id" required class="flex-1 text-sm">
+                <Select name="target_id" required class="flex-1" size="sm">
                   <option value="">Select target...</option>
                   {otherIngredients.map((i) => (
                     <option key={i.id} value={i.id}>
@@ -309,7 +311,7 @@ export default define.page<typeof handler>(
                       {i.unit ? ` (${i.unit})` : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <ConfirmButton
                   message={`Merge "${ingredient.name}" into another ingredient? This cannot be undone.`}
                   variant="danger"
@@ -355,7 +357,7 @@ export default define.page<typeof handler>(
               )}
               <form method="POST" class="flex gap-2">
                 <input type="hidden" name="_method" value="ADD_BRAND" />
-                <input
+                <Input
                   type="text"
                   name="brand"
                   placeholder="Add brand..."
@@ -440,29 +442,29 @@ export default define.page<typeof handler>(
               <h3 class="text-sm font-semibold">Add Price</h3>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <FormField label="Store">
-                  <select name="store_id" required class="w-full">
+                  <Select name="store_id" required class="w-full">
                     <option value="">Select a store...</option>
                     {stores.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </FormField>
                 <FormField label="Brand">
-                  <select name="brand_id" class="w-full">
+                  <Select name="brand_id" class="w-full">
                     <option value="">-- No brand --</option>
                     {brands.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.brand}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </FormField>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <FormField label="Price">
-                  <input
+                  <Input
                     type="number"
                     name="price"
                     step="0.01"
@@ -471,7 +473,7 @@ export default define.page<typeof handler>(
                   />
                 </FormField>
                 <FormField label="Per amount">
-                  <input
+                  <Input
                     type="number"
                     name="amount"
                     step="any"

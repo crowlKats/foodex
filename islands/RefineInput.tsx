@@ -5,6 +5,7 @@ import TbBrain from "tb-icons/TbBrain";
 import TbX from "tb-icons/TbX";
 import type { OcrRecipeData } from "../lib/ocr.ts";
 import { Button } from "../components/Button.tsx";
+import { Input } from "../components/Input.tsx";
 
 export interface AiMessage {
   role: "user" | "assistant";
@@ -147,15 +148,13 @@ export default function RefineInput(
       {error.value && <div class="alert-error text-sm">{error.value}</div>}
 
       <div class="flex gap-2">
-        <input
+        <Input
           type="text"
           placeholder="e.g. make it vegetarian, simplify the steps, reduce to 2 servings..."
           class="flex-1"
           value={instruction.value}
           disabled={refining.value}
-          onInput={(e) => {
-            instruction.value = (e.target as HTMLInputElement).value;
-          }}
+          onValueChange={(v) => instruction.value = v}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

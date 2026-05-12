@@ -3,6 +3,7 @@ import TbFileImport from "tb-icons/TbFileImport";
 import TbLoader2 from "tb-icons/TbLoader2";
 import TbX from "tb-icons/TbX";
 import { Button } from "../components/Button.tsx";
+import { InputMultiline } from "../components/Input.tsx";
 
 interface Bounds {
   x: number;
@@ -197,14 +198,13 @@ export default function OcrUpload() {
         </div>
       )}
 
-      <textarea
+      <InputMultiline
         placeholder="Additional context (e.g. language, recipe name, number of servings...)"
         rows={2}
-        class="w-full text-sm"
+        class="w-full"
+        size="sm"
         value={context.value}
-        onInput={(e) => {
-          context.value = (e.target as HTMLTextAreaElement).value;
-        }}
+        onValueChange={(v) => context.value = v}
       />
 
       <Button

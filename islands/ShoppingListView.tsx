@@ -6,6 +6,8 @@ import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import { Button } from "../components/Button.tsx";
+import { Input } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 interface ShoppingItem {
   id: string;
@@ -285,19 +287,17 @@ export default function ShoppingListView(
           )}
         </div>
         <div class={STORE_COL}>
-          <select
-            class="text-xs py-1 px-1 w-full"
+          <Select
+            class="py-1 px-1 w-full"
+            size="xs"
             value={item.store_id ?? ""}
-            onChange={(e) => {
-              const val = (e.target as HTMLSelectElement).value;
-              updateStore(item, val || null);
-            }}
+            onValueChange={(v) => updateStore(item, v || null)}
           >
             <option value="">Store...</option>
             {itemStores.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div class={PRICE_COL}>
           {costInfo && (
@@ -432,12 +432,12 @@ export default function ShoppingListView(
           )}
         </div>
         <div class={STORE_COL}>
-          <select
-            class="text-xs py-1 px-1 w-full"
+          <Select
+            class="py-1 px-1 w-full"
+            size="xs"
             value={item.store_id ?? ""}
-            onChange={(e) => {
-              const val = (e.target as HTMLSelectElement).value;
-              const storeId = val || null;
+            onValueChange={(v) => {
+              const storeId = v || null;
               for (const id of item.ids) {
                 const found = items.value.find((i) => i.id === id);
                 if (found) updateStore(found, storeId);
@@ -448,7 +448,7 @@ export default function ShoppingListView(
             {itemStores.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div class={PRICE_COL}>
           {costInfo && (
@@ -624,25 +624,21 @@ export default function ShoppingListView(
           </div>
           <div class="w-20">
             <label class="block text-xs font-medium mb-1">Qty</label>
-            <input
+            <Input
               type="number"
               min="0"
               step="any"
               value={addAmount}
               class="w-full"
-              onInput={(e) => {
-                addAmount.value = (e.target as HTMLInputElement).value;
-              }}
+              onValueChange={(v) => addAmount.value = v}
             />
           </div>
           <div class="w-24">
             <label class="block text-xs font-medium mb-1">Unit</label>
-            <select
+            <Select
               value={addUnit}
               class="w-full"
-              onChange={(e) => {
-                addUnit.value = (e.target as HTMLSelectElement).value;
-              }}
+              onValueChange={(v) => addUnit.value = v}
             >
               <option value="">—</option>
               {UNIT_GROUPS.map((g) => (
@@ -654,7 +650,7 @@ export default function ShoppingListView(
                   ))}
                 </optgroup>
               ))}
-            </select>
+            </Select>
           </div>
           <Button
             type="button"

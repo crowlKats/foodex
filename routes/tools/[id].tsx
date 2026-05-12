@@ -4,6 +4,7 @@ import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
+import { Input, InputMultiline } from "../../components/Input.tsx";
 import type { Tool, ToolUsage } from "../../db/types.ts";
 
 export const handler = define.handlers({
@@ -111,7 +112,7 @@ export default define.page<typeof handler>(
               class="card space-y-3"
             >
               <FormField label="Name">
-                <input
+                <Input
                   type="text"
                   name="name"
                   value={tool.name}
@@ -120,13 +121,12 @@ export default define.page<typeof handler>(
                 />
               </FormField>
               <FormField label="Description">
-                <textarea
+                <InputMultiline
                   name="description"
                   rows={4}
                   class="w-full"
-                >
-                  {tool.description ?? ""}
-                </textarea>
+                  value={tool.description ?? ""}
+                />
               </FormField>
               <Button type="submit">
                 Save

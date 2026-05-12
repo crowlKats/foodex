@@ -2,6 +2,8 @@ import { useSignal } from "@preact/signals";
 import TbLoader2 from "tb-icons/TbLoader2";
 import TbSparkles from "tb-icons/TbSparkles";
 import { Button } from "../components/Button.tsx";
+import { Input, InputBar, InputMultiline } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 export default function GenerateRecipe() {
   const maxTime = useSignal("");
@@ -87,42 +89,37 @@ export default function GenerateRecipe() {
         <label class="block text-sm font-medium mb-1">
           Max total time <span class="text-stone-400">(optional)</span>
         </label>
-        <div class="flex min-w-0">
-          <input
+        <InputBar>
+          <Input
             type="number"
             min="0"
             value={maxTime.value}
             placeholder="Any"
-            class="flex-1 min-w-0"
-            onInput={(e) => {
-              maxTime.value = (e.target as HTMLInputElement).value;
-            }}
+            onValueChange={(v) => maxTime.value = v}
           />
-          <select
+          <Select
             value={maxTimeUnit.value}
-            class="w-20 shrink-0 text-xs -ml-0.5"
-            onChange={(e) => {
-              maxTimeUnit.value = (e.target as HTMLSelectElement).value;
-            }}
+            class="w-20"
+            size="xs"
+            onValueChange={(v) => maxTimeUnit.value = v}
           >
             <option value="min">min</option>
             <option value="hr">hr</option>
-          </select>
-        </div>
+          </Select>
+        </InputBar>
       </div>
 
       <div>
         <label class="block text-sm font-medium mb-1">
           Additional instructions <span class="text-stone-400">(optional)</span>
         </label>
-        <textarea
+        <InputMultiline
           rows={2}
-          class="w-full text-sm"
+          class="w-full"
+          size="sm"
           placeholder="e.g. something Italian, no spicy food, a dessert..."
           value={instructions.value}
-          onInput={(e) => {
-            instructions.value = (e.target as HTMLTextAreaElement).value;
-          }}
+          onValueChange={(v) => instructions.value = v}
         />
       </div>
 

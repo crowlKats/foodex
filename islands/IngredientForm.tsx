@@ -4,6 +4,8 @@ import SearchSelect from "./SearchSelect.tsx";
 import TbPlus from "tb-icons/TbPlus";
 import TbTrash from "tb-icons/TbTrash";
 import { Button } from "../components/Button.tsx";
+import { Input, InputBar } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 interface Ingredient {
   key: string;
@@ -127,21 +129,19 @@ export default function IngredientForm(
             />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
-            <div class="flex min-w-0">
-              <input
+            <InputBar>
+              <Input
                 type="number"
                 placeholder="Amount"
                 step="any"
                 value={item.amount}
-                onInput={(e) =>
-                  update(i, "amount", (e.target as HTMLInputElement).value)}
-                class="flex-1 min-w-0 text-sm"
+                onValueChange={(v) => update(i, "amount", v)}
+                size="sm"
               />
-              <select
+              <Select
                 value={item.unit}
-                onInput={(e) =>
-                  update(i, "unit", (e.target as HTMLSelectElement).value)}
-                class="shrink-0 text-sm -ml-0.5"
+                onValueChange={(v) => update(i, "unit", v)}
+                size="sm"
               >
                 <option value="">-- Unit --</option>
                 {UNIT_GROUPS.map((group) => (
@@ -151,15 +151,15 @@ export default function IngredientForm(
                     ))}
                   </optgroup>
                 ))}
-              </select>
-            </div>
-            <input
+              </Select>
+            </InputBar>
+            <Input
               type="text"
               placeholder="key (for templates)"
               value={item.key}
-              onInput={(e) =>
-                update(i, "key", (e.target as HTMLInputElement).value)}
-              class="text-sm font-mono"
+              onValueChange={(v) => update(i, "key", v)}
+              size="sm"
+              monospace
             />
           </div>
           <p class="text-xs text-stone-400">

@@ -3,6 +3,7 @@ import SearchSelect from "./SearchSelect.tsx";
 import TbPlus from "tb-icons/TbPlus";
 import TbTrash from "tb-icons/TbTrash";
 import { Button } from "../components/Button.tsx";
+import { Input } from "../components/Input.tsx";
 
 interface ToolEntry {
   tool_id: string;
@@ -82,25 +83,19 @@ export default function ToolForm(
             />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input
+            <Input
               type="text"
               placeholder="Settings (e.g. 180C)"
               value={item.settings}
-              onInput={(e) =>
-                update(i, "settings", (e.target as HTMLInputElement).value)}
-              class="text-sm"
+              onValueChange={(v) => update(i, "settings", v)}
+              size="sm"
             />
-            <input
+            <Input
               type="text"
               placeholder="Usage description"
               value={item.usage_description}
-              onInput={(e) =>
-                update(
-                  i,
-                  "usage_description",
-                  (e.target as HTMLInputElement).value,
-                )}
-              class="text-sm"
+              onValueChange={(v) => update(i, "usage_description", v)}
+              size="sm"
             />
           </div>
           <input

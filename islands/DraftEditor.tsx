@@ -11,6 +11,8 @@ import RecipePreview from "./RecipePreview.tsx";
 import RecipeOutputForm from "./RecipeOutputForm.tsx";
 import ConfirmButton from "./ConfirmButton.tsx";
 import { Button } from "../components/Button.tsx";
+import { Input, InputBar, InputMultiline } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 import { SOURCE_TYPE_LABELS, SOURCE_TYPES } from "../lib/recipe-tags.ts";
 
 interface CoverMedia {
@@ -122,7 +124,7 @@ export default function DraftEditor({
           <h2 class="font-semibold">Details</h2>
           <div>
             <label class="block text-sm font-medium mb-1">Title</label>
-            <input
+            <Input
               key={`title-${v}`}
               type="text"
               name="title"
@@ -133,14 +135,13 @@ export default function DraftEditor({
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Description</label>
-            <textarea
+            <InputMultiline
               key={`desc-${v}`}
               name="description"
               rows={2}
               class="w-full"
-            >
-              {r.description ?? ""}
-            </textarea>
+              value={r.description ?? ""}
+            />
           </div>
           <QuantityInput
             key={`qty-${v}`}
@@ -151,77 +152,77 @@ export default function DraftEditor({
           <div class="grid grid-cols-3 gap-3 mt-3">
             <div>
               <label class="block text-sm font-medium mb-1">Prep time</label>
-              <div class="flex min-w-0">
-                <input
+              <InputBar>
+                <Input
                   key={`prep-${v}`}
                   type="number"
                   name="prep_time"
                   min="0"
                   value={prep.value}
-                  class="flex-1 min-w-0"
                 />
-                <select
+                <Select
                   key={`prepu-${v}`}
                   name="prep_time_unit"
-                  class="w-20 shrink-0 text-xs -ml-0.5"
+                  class="w-20"
+                  size="xs"
                 >
                   <option value="min" selected={prep.unit === "min"}>
                     min
                   </option>
                   <option value="hr" selected={prep.unit === "hr"}>hr</option>
-                </select>
-              </div>
+                </Select>
+              </InputBar>
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Cook time</label>
-              <div class="flex min-w-0">
-                <input
+              <InputBar>
+                <Input
                   key={`cook-${v}`}
                   type="number"
                   name="cook_time"
                   min="0"
                   value={cook.value}
-                  class="flex-1 min-w-0"
                 />
-                <select
+                <Select
                   key={`cooku-${v}`}
                   name="cook_time_unit"
-                  class="w-20 shrink-0 text-xs -ml-0.5"
+                  class="w-20"
+                  size="xs"
                 >
                   <option value="min" selected={cook.unit === "min"}>
                     min
                   </option>
                   <option value="hr" selected={cook.unit === "hr"}>hr</option>
-                </select>
-              </div>
+                </Select>
+              </InputBar>
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Rest time</label>
-              <div class="flex min-w-0">
-                <input
+              <InputBar>
+                <Input
                   key={`rest-${v}`}
                   type="number"
                   name="rest_time"
                   min="0"
                   value={rest.value}
-                  class="flex-1 min-w-0"
                 />
-                <select
+                <Select
                   key={`restu-${v}`}
                   name="rest_time_unit"
-                  class="w-20 shrink-0 text-xs -ml-0.5"
+                  class="w-20"
+                  size="xs"
                 >
                   <option value="min" selected={rest.unit === "min"}>
                     min
                   </option>
                   <option value="hr" selected={rest.unit === "hr"}>hr</option>
-                </select>
-              </div>
+                </Select>
+              </InputBar>
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Difficulty</label>
-            <select
+            <Select
               key={`diff-${v}`}
               name="difficulty"
               class="w-full"
@@ -236,7 +237,7 @@ export default function DraftEditor({
               <option value="hard" selected={r.difficulty === "hard"}>
                 Hard
               </option>
-            </select>
+            </Select>
           </div>
           <label class="flex items-center gap-2 mt-3 cursor-pointer">
             <input
@@ -251,7 +252,7 @@ export default function DraftEditor({
           </label>
           <div>
             <label class="block text-sm font-medium mb-1">Source</label>
-            <select
+            <Select
               key={`source-type-${v}`}
               name="source_type"
               class="w-full"
@@ -266,12 +267,12 @@ export default function DraftEditor({
                   {SOURCE_TYPE_LABELS[s]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium mb-1">Source Name</label>
-              <input
+              <Input
                 key={`source-name-${v}`}
                 type="text"
                 name="source_name"
@@ -282,7 +283,7 @@ export default function DraftEditor({
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Source URL</label>
-              <input
+              <Input
                 key={`source-url-${v}`}
                 type="url"
                 name="source_url"
@@ -380,12 +381,16 @@ export default function DraftEditor({
         <div class="card">
           <h2 class="font-semibold mb-2">Sub-recipe References</h2>
           {/* RefForm is a server component, rendered as static HTML. We render a simple version here. */}
-          <select name="refs[0][referenced_recipe_id]" class="w-full text-sm">
+          <Select
+            name="refs[0][referenced_recipe_id]"
+            class="w-full"
+            size="sm"
+          >
             <option value="">No sub-recipe</option>
             {allRecipes.map((r) => (
               <option key={r.id} value={r.id}>{r.title}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div class="flex gap-3 flex-wrap">

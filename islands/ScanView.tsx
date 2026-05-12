@@ -9,6 +9,8 @@ import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import { Button } from "../components/Button.tsx";
+import { Input } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 interface ProductInfo {
   name: string;
@@ -430,16 +432,15 @@ export default function ScanView(props: Props) {
             handleManualSubmit();
           }}
         >
-          <input
+          <Input
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
             placeholder="Enter barcode number..."
             value={manualCode.value}
-            class="flex-1 text-sm px-3 py-2 bg-stone-900/80 text-white placeholder:text-stone-400 border border-stone-600"
-            onInput={(e) => {
-              manualCode.value = (e.target as HTMLInputElement).value;
-            }}
+            class="flex-1 px-3 py-2 bg-stone-900/80 text-white placeholder:text-stone-400 border border-stone-600"
+            size="sm"
+            onValueChange={(v) => manualCode.value = v}
           />
           <Button
             type="submit"
@@ -521,26 +522,22 @@ export default function ScanView(props: Props) {
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">Amount</label>
-          <input
+          <Input
             type="number"
             min="0"
             step="any"
             value={itemAmount.value}
             class="w-full"
             placeholder="e.g. 500"
-            onInput={(e) => {
-              itemAmount.value = (e.target as HTMLInputElement).value;
-            }}
+            onValueChange={(v) => itemAmount.value = v}
           />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Unit</label>
-          <select
+          <Select
             value={itemUnit.value}
             class="w-full"
-            onChange={(e) => {
-              itemUnit.value = (e.target as HTMLSelectElement).value;
-            }}
+            onValueChange={(v) => itemUnit.value = v}
           >
             <option value="">—</option>
             {UNIT_GROUPS.map((g) => (
@@ -550,7 +547,7 @@ export default function ScanView(props: Props) {
                 ))}
               </optgroup>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -558,13 +555,11 @@ export default function ScanView(props: Props) {
         <label class="block text-sm font-medium mb-1">
           Best before <span class="text-stone-400">(optional)</span>
         </label>
-        <input
+        <Input
           type="date"
           value={itemExpiresAt.value}
           class="w-full"
-          onInput={(e) => {
-            itemExpiresAt.value = (e.target as HTMLInputElement).value;
-          }}
+          onValueChange={(v) => itemExpiresAt.value = v}
         />
       </div>
 
@@ -577,31 +572,27 @@ export default function ScanView(props: Props) {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium mb-1">Store</label>
-              <select
+              <Select
                 value={itemStoreId.value}
                 class="w-full"
-                onChange={(e) => {
-                  itemStoreId.value = (e.target as HTMLSelectElement).value;
-                }}
+                onValueChange={(v) => itemStoreId.value = v}
               >
                 <option value="">—</option>
                 {stores.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Price</label>
-              <input
+              <Input
                 type="number"
                 min="0"
                 step="0.01"
                 value={itemPrice.value}
                 class="w-full"
                 placeholder="e.g. 2.49"
-                onInput={(e) => {
-                  itemPrice.value = (e.target as HTMLInputElement).value;
-                }}
+                onValueChange={(v) => itemPrice.value = v}
               />
             </div>
           </div>
@@ -713,16 +704,15 @@ export default function ScanView(props: Props) {
                     handleManualSubmit();
                   }}
                 >
-                  <input
+                  <Input
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     placeholder="Enter barcode number..."
                     value={manualCode.value}
-                    class="flex-1 text-sm"
-                    onInput={(e) => {
-                      manualCode.value = (e.target as HTMLInputElement).value;
-                    }}
+                    class="flex-1"
+                    size="sm"
+                    onValueChange={(v) => manualCode.value = v}
                   />
                   <Button
                     type="submit"

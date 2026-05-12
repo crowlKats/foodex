@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import TbBookmark from "tb-icons/TbBookmark";
 import TbCheck from "tb-icons/TbCheck";
 import { Button } from "../components/Button.tsx";
+import { Input } from "../components/Input.tsx";
 
 interface CollectionItem {
   id: string;
@@ -63,15 +64,14 @@ export default function AddToCollectionButton(
       {open.value && (
         <div class="absolute z-10 right-0 mt-1 w-64 bg-white dark:bg-stone-800 border-2 border-stone-300 dark:border-stone-600 shadow-lg">
           <div class="p-1.5">
-            <input
+            <Input
               type="text"
               placeholder="Search collections..."
               value={query}
-              class="w-full text-sm search-input"
+              class="w-full search-input"
+              size="sm"
               autofocus
-              onInput={(e) => {
-                query.value = (e.target as HTMLInputElement).value;
-              }}
+              onValueChange={(v) => query.value = v}
               onBlur={() => {
                 setTimeout(() => {
                   open.value = false;

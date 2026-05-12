@@ -3,6 +3,8 @@ import { define, escapeLike } from "../../utils.ts";
 import { FormField } from "../../components/FormField.tsx";
 import { SearchBar } from "../../components/SearchBar.tsx";
 import { Button, ButtonLink } from "../../components/Button.tsx";
+import { Input } from "../../components/Input.tsx";
+import { Select } from "../../components/Select.tsx";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import CopyButton from "../../islands/CopyButton.tsx";
 import TbTrash from "tb-icons/TbTrash";
@@ -460,14 +462,14 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                 )}
               <form method="POST" class="flex gap-2">
                 <input type="hidden" name="_method" value="ADD_TOOL" />
-                <select name="tool_id" class="flex-1 text-sm">
+                <Select name="tool_id" class="flex-1" size="sm">
                   <option value="">Add a tool...</option>
                   {availableTools.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <Button type="submit">
                   Add
                 </Button>
@@ -519,14 +521,14 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                 )}
               <form method="POST" class="flex gap-2">
                 <input type="hidden" name="_method" value="ADD_STORE" />
-                <select name="store_id" class="flex-1 text-sm">
+                <Select name="store_id" class="flex-1" size="sm">
                   <option value="">Add a store...</option>
                   {availableStores.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <Button type="submit">
                   Add
                 </Button>
@@ -636,11 +638,12 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                             key={inv.id}
                             class="flex items-center gap-2 text-sm bg-stone-50 dark:bg-stone-800 p-2 border border-stone-200 dark:border-stone-700"
                           >
-                            <input
+                            <Input
                               type="text"
                               readOnly
                               value={inviteUrl}
-                              class="flex-1 text-xs bg-transparent border-none p-0 h-auto"
+                              class="flex-1 bg-transparent border-none p-0 h-auto"
+                              size="xs"
                             />
                             <CopyButton text={inviteUrl} />
                             <form method="POST" class="inline">
@@ -689,7 +692,7 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                 <form method="POST" class="space-y-3">
                   <input type="hidden" name="_method" value="UPDATE_NAME" />
                   <FormField label="Household Name">
-                    <input
+                    <Input
                       type="text"
                       name="name"
                       value={household.name}

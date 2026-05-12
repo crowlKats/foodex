@@ -4,6 +4,7 @@ import type { Recipe } from "../../db/types.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
+import { Input, InputMultiline } from "../../components/Input.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import RecipePicker from "../../islands/RecipePicker.tsx";
 
@@ -105,10 +106,10 @@ export default define.page<typeof handler>(
           <div class="card space-y-3">
             <h2 class="font-semibold">Details</h2>
             <FormField label="Name">
-              <input type="text" name="name" required class="w-full" />
+              <Input type="text" name="name" required class="w-full" />
             </FormField>
             <FormField label="Description">
-              <textarea name="description" rows={2} class="w-full" />
+              <InputMultiline name="description" rows={2} class="w-full" />
             </FormField>
             <label class="flex items-center gap-2 mt-3 cursor-pointer">
               <input

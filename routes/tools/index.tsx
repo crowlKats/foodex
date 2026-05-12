@@ -3,6 +3,7 @@ import { define, escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
+import { Input, InputMultiline } from "../../components/Input.tsx";
 import {
   getPage,
   Pagination,
@@ -140,7 +141,7 @@ export default define.page<typeof handler>(
                 class="card space-y-3"
               >
                 <FormField label="Name">
-                  <input
+                  <Input
                     type="text"
                     name="name"
                     required
@@ -148,7 +149,7 @@ export default define.page<typeof handler>(
                   />
                 </FormField>
                 <FormField label="Description">
-                  <textarea
+                  <InputMultiline
                     name="description"
                     rows={3}
                     class="w-full"

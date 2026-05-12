@@ -1,6 +1,8 @@
 import { useSignal } from "@preact/signals";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import SearchSelect from "./SearchSelect.tsx";
+import { Input, InputBar } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 interface Props {
   ingredients: { id: string; name: string; unit: string }[];
@@ -74,21 +76,19 @@ export default function RecipeOutputForm({
       />
       {ingredientId.value && (
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-          <div class="flex min-w-0">
-            <input
+          <InputBar>
+            <Input
               type="number"
               placeholder="Yield amount"
               step="any"
               value={amount.value}
-              onInput={(e) =>
-                amount.value = (e.target as HTMLInputElement).value}
-              class="flex-1 min-w-0 text-sm"
+              onValueChange={(v) => amount.value = v}
+              size="sm"
             />
-            <select
+            <Select
               value={unit.value}
-              onInput={(e) =>
-                unit.value = (e.target as HTMLSelectElement).value}
-              class="shrink-0 text-sm -ml-0.5"
+              onValueChange={(v) => unit.value = v}
+              size="sm"
             >
               <option value="">-- Unit --</option>
               {UNIT_GROUPS.map((group) => (
@@ -98,31 +98,29 @@ export default function RecipeOutputForm({
                   ))}
                 </optgroup>
               ))}
-            </select>
-          </div>
+            </Select>
+          </InputBar>
           <div>
-            <div class="flex min-w-0">
-              <input
+            <InputBar>
+              <Input
                 type="number"
                 placeholder="Shelf life"
                 min="1"
                 step="1"
                 value={shelfLifeValue.value}
-                onInput={(e) =>
-                  shelfLifeValue.value = (e.target as HTMLInputElement).value}
-                class="flex-1 min-w-0 text-sm"
+                onValueChange={(v) => shelfLifeValue.value = v}
+                size="sm"
               />
-              <select
+              <Select
                 value={shelfLifeUnit.value}
-                onInput={(e) =>
-                  shelfLifeUnit.value = (e.target as HTMLSelectElement).value}
-                class="shrink-0 text-sm -ml-0.5"
+                onValueChange={(v) => shelfLifeUnit.value = v}
+                size="sm"
               >
                 {SHELF_LIFE_UNITS.map((u) => (
                   <option key={u.value} value={u.value}>{u.label}</option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </InputBar>
           </div>
         </div>
       )}

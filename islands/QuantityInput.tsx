@@ -6,6 +6,8 @@ import {
   type QuantityType,
 } from "../lib/quantity.ts";
 import { formatInputValue } from "../lib/format.ts";
+import { Input, InputBar } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 
 interface QuantityInputProps {
   initialType?: string;
@@ -45,18 +47,15 @@ export default function QuantityInput(
     <div class="flex gap-2 max-sm:flex-col">
       <div class="flex-1">
         <label class="block text-sm font-medium mb-1">Quantity type</label>
-        <select
+        <Select
           class="w-full"
           value={qType.value}
-          onChange={(e) =>
-            onTypeChange(
-              (e.target as HTMLSelectElement).value as QuantityType,
-            )}
+          onValueChange={(v) => onTypeChange(v as QuantityType)}
         >
           {QUANTITY_TYPES.map((qt) => (
             <option key={qt.type} value={qt.type}>{qt.label}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {qType.value === "dimensions"
@@ -66,43 +65,34 @@ export default function QuantityInput(
               Tray size (W x L x D)
             </label>
             <div class="flex items-center gap-1">
-              <input
+              <Input
                 type="number"
                 min="1"
                 step="0.5"
                 value={formatInputValue(qValue.value)}
                 placeholder="W"
                 class="flex-1 min-w-0 text-center"
-                onInput={(e) => {
-                  qValue.value =
-                    parseFloat((e.target as HTMLInputElement).value) || 0;
-                }}
+                onValueChange={(v) => qValue.value = parseFloat(v) || 0}
               />
               <span class="text-stone-500 text-sm shrink-0">&times;</span>
-              <input
+              <Input
                 type="number"
                 min="1"
                 step="0.5"
                 value={formatInputValue(qValue2.value)}
                 placeholder="L"
                 class="flex-1 min-w-0 text-center"
-                onInput={(e) => {
-                  qValue2.value =
-                    parseFloat((e.target as HTMLInputElement).value) || 0;
-                }}
+                onValueChange={(v) => qValue2.value = parseFloat(v) || 0}
               />
               <span class="text-stone-500 text-sm shrink-0">&times;</span>
-              <input
+              <Input
                 type="number"
                 min="1"
                 step="0.5"
                 value={formatInputValue(qValue3.value)}
                 placeholder="D"
                 class="flex-1 min-w-0 text-center"
-                onInput={(e) => {
-                  qValue3.value =
-                    parseFloat((e.target as HTMLInputElement).value) || 0;
-                }}
+                onValueChange={(v) => qValue3.value = parseFloat(v) || 0}
               />
               <span class="text-stone-500 text-sm whitespace-nowrap">cm</span>
             </div>
@@ -111,36 +101,40 @@ export default function QuantityInput(
         : (
           <div class="flex-1 min-w-0">
             <label class="block text-sm font-medium mb-1">Amount</label>
-            <div class="flex">
-              <input
-                type="number"
-                min="1"
-                step={qType.value === "servings" ? "1" : "any"}
-                value={formatInputValue(qValue.value)}
-                class={units.length > 1 ? "flex-1 min-w-0" : "w-full"}
-                onInput={(e) => {
-                  qValue.value =
-                    parseFloat((e.target as HTMLInputElement).value) || 0;
-                }}
-              />
-              {units.length > 1
-                ? (
-                  <select
-                    class="w-28 shrink-0 -ml-0.5"
+            {units.length > 1
+              ? (
+                <InputBar>
+                  <Input
+                    type="number"
+                    min="1"
+                    step={qType.value === "servings" ? "1" : "any"}
+                    value={formatInputValue(qValue.value)}
+                    onValueChange={(v) => qValue.value = parseFloat(v) || 0}
+                  />
+                  <Select
+                    class="w-28"
                     value={qUnit}
-                    onChange={(e) => {
-                      qUnit.value = (e.target as HTMLSelectElement).value;
-                    }}
+                    onValueChange={(v) => qUnit.value = v}
                   >
                     {units.map((u) => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                )
-                : (
+                  </Select>
+                </InputBar>
+              )
+              : (
+                <div class="flex">
+                  <Input
+                    type="number"
+                    min="1"
+                    step={qType.value === "servings" ? "1" : "any"}
+                    value={formatInputValue(qValue.value)}
+                    class="w-full"
+                    onValueChange={(v) => qValue.value = parseFloat(v) || 0}
+                  />
                   <span class="flex items-center text-sm text-stone-500 px-2">
                     {units[0] ?? ""}
                   </span>
-                )}
-            </div>
+                </div>
+              )}
           </div>
         )}
 

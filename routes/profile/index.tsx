@@ -2,6 +2,7 @@ import { page } from "fresh";
 import { define } from "../../utils.ts";
 import type { Household } from "../../db/types.ts";
 import { Button } from "../../components/Button.tsx";
+import { Select } from "../../components/Select.tsx";
 
 export const handler = define.handlers({
   async GET(ctx) {
@@ -76,7 +77,7 @@ export default define.page<typeof handler>(
           <form method="POST">
             <label class="text-sm font-medium block mb-1">Unit system</label>
             <div class="flex gap-2">
-              <select name="unit_system" class="flex-1">
+              <Select name="unit_system" class="flex-1">
                 <option value="metric" selected={state.unitSystem === "metric"}>
                   Metric (g, ml, cm)
                 </option>
@@ -86,7 +87,7 @@ export default define.page<typeof handler>(
                 >
                   Imperial (oz, fl oz, inch)
                 </option>
-              </select>
+              </Select>
               <Button type="submit">Save</Button>
             </div>
           </form>

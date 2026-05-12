@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
 import TbLoader2 from "tb-icons/TbLoader2";
 import { Button } from "../components/Button.tsx";
+import { InputMultiline } from "../components/Input.tsx";
 
 export default function TextImport() {
   const text = useSignal("");
@@ -60,24 +61,23 @@ export default function TextImport() {
     <div class="space-y-3">
       {error.value && <div class="alert-error">{error.value}</div>}
 
-      <textarea
+      <InputMultiline
         placeholder="Paste recipe text here..."
         rows={8}
-        class="w-full text-sm font-mono"
+        class="w-full"
+        size="sm"
+        monospace
         value={text.value}
-        onInput={(e) => {
-          text.value = (e.target as HTMLTextAreaElement).value;
-        }}
+        onValueChange={(v) => text.value = v}
       />
 
-      <textarea
+      <InputMultiline
         placeholder="Additional context (e.g. language, recipe name, number of servings...)"
         rows={2}
-        class="w-full text-sm"
+        class="w-full"
+        size="sm"
         value={context.value}
-        onInput={(e) => {
-          context.value = (e.target as HTMLTextAreaElement).value;
-        }}
+        onValueChange={(v) => context.value = v}
       />
 
       <Button

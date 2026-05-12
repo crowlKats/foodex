@@ -1,4 +1,5 @@
 import { useComputed, useSignal } from "@preact/signals";
+import { Input } from "../components/Input.tsx";
 
 interface IngredientNameInputProps {
   existing: { id: string; name: string }[];
@@ -37,14 +38,12 @@ export default function IngredientNameInput(
 
   return (
     <>
-      <input
+      <Input
         type="text"
         name="name"
         required
         value={value}
-        onInput={(e) => {
-          value.value = (e.target as HTMLInputElement).value;
-        }}
+        onValueChange={(v) => value.value = v}
         class="w-full"
       />
       {matches.value.length > 0 && (

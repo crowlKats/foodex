@@ -8,6 +8,7 @@ import {
   providers,
 } from "../../lib/auth.ts";
 import { Button, ButtonLink } from "../../components/Button.tsx";
+import { Input } from "../../components/Input.tsx";
 import TbBrandGithub from "tb-icons/TbBrandGithub";
 import TbBrandGoogle from "tb-icons/TbBrandGoogle";
 import TbKey from "tb-icons/TbKey";
@@ -85,12 +86,12 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
           </div>
         )}
         <form method="POST" action="/auth/magic-link" class="space-y-2">
-          <input
+          <Input
             type="email"
             name="email"
             placeholder="Email address"
             required
-            class="w-full px-3 py-2 border-2 border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-orange-500"
+            class="w-full"
           />
           <Button type="submit" variant="outline" class="w-full">
             <TbMail class="size-5" />

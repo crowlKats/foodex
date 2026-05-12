@@ -3,6 +3,7 @@ import { define } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
+import { Input } from "../../components/Input.tsx";
 import type { Household, HouseholdInvite } from "../../db/types.ts";
 
 export const handler = define.handlers({
@@ -131,7 +132,7 @@ export default define.page<typeof handler>(function HouseholdsPage({ data }) {
           <h2 class="text-lg font-semibold mb-3">Create Household</h2>
           <form method="POST" class="card space-y-3">
             <FormField label="Name">
-              <input
+              <Input
                 type="text"
                 name="name"
                 required
@@ -156,7 +157,7 @@ export default define.page<typeof handler>(function HouseholdsPage({ data }) {
           <form method="POST" class="card space-y-3">
             <input type="hidden" name="_method" value="JOIN" />
             <FormField label="Invite Code">
-              <input
+              <Input
                 type="text"
                 name="code"
                 required
