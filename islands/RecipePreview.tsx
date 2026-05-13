@@ -1,57 +1,64 @@
 import { useSignal } from "@preact/signals";
-import {
-  type RenderIngredient,
-  type RenderStep,
-  renderStepsHtml,
-} from "../lib/render-steps.ts";
+import { RecipeSteps } from "../lib/recipe-template/render-steps.tsx";
+import { scaleIngredients } from "../lib/recipe-template/render.tsx";
 import type { SectionInfo } from "../lib/step-sections.ts";
 import TbEye from "tb-icons/TbEye";
 import TbX from "tb-icons/TbX";
 import { Button } from "../components/Button.tsx";
 
-function RecipeHtml({ html }: { html: string }) {
-  return (
-    <div
-      class="recipe-body"
-      // deno-lint-ignore react-no-danger
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
+interface RenderStep {
+  title: string;
+  body: string;
+  after?: number[];
+  section_id?: string | null;
+}
+
+interface RenderIngredient {
+  key: string;
+  amount: number;
+  unit: string;
+  name: string;
+}
+
+interface PreviewData {
+  steps: RenderStep[];
+  sections: SectionInfo[];
+  ingredients: RenderIngredient[];
 }
 
 export default function RecipePreview() {
   const open = useSignal(false);
-  const html = useSignal("");
+  const data = useSignal<PreviewData | null>(null);
+  const message = useSignal<string | null>(null);
 
-  function collectFromForm(button: HTMLElement): string {
+  function collectFromForm(button: HTMLElement): PreviewData | null {
     const form = button.closest("form") as HTMLFormElement | null;
-    if (!form) return "<p>No form found.</p>";
+    if (!form) {
+      message.value = "No form found.";
+      return null;
+    }
 
-    const data = new FormData(form);
+    const fd = new FormData(form);
 
     const ingredients: RenderIngredient[] = [];
     let i = 0;
-    while (data.has(`ingredients[${i}][name]`)) {
-      const key = (data.get(`ingredients[${i}][key]`) as string) || "";
-      const name = (data.get(`ingredients[${i}][name]`) as string) || "";
+    while (fd.has(`ingredients[${i}][name]`)) {
+      const key = (fd.get(`ingredients[${i}][key]`) as string) || "";
+      const name = (fd.get(`ingredients[${i}][name]`) as string) || "";
       const amount = parseFloat(
-        (data.get(`ingredients[${i}][amount]`) as string) || "",
+        (fd.get(`ingredients[${i}][amount]`) as string) || "",
       ) || 0;
-      const unit = (data.get(`ingredients[${i}][unit]`) as string) || "";
-      if (key && name) {
-        ingredients.push({ key, amount, unit, name });
-      }
+      const unit = (fd.get(`ingredients[${i}][unit]`) as string) || "";
+      if (key && name) ingredients.push({ key, amount, unit, name });
       i++;
     }
 
-    // Sections — synthesize ids from form indices so the renderer can
-    // wire them up to step.section_id below.
     const sections: SectionInfo[] = [];
     let s = 0;
-    while (data.has(`sections[${s}][title]`)) {
-      const title = (data.get(`sections[${s}][title]`) as string) || "";
-      const key = (data.get(`sections[${s}][key]`) as string) || "";
-      const afterStr = (data.get(`sections[${s}][after]`) as string) || "";
+    while (fd.has(`sections[${s}][title]`)) {
+      const title = (fd.get(`sections[${s}][title]`) as string) || "";
+      const key = (fd.get(`sections[${s}][key]`) as string) || "";
+      const afterStr = (fd.get(`sections[${s}][after]`) as string) || "";
       const after = afterStr
         ? afterStr.split(",").map(Number).filter((n) => !isNaN(n))
         : [];
@@ -61,30 +68,30 @@ export default function RecipePreview() {
 
     const steps: RenderStep[] = [];
     let j = 0;
-    while (data.has(`steps[${j}][title]`) || data.has(`steps[${j}][body]`)) {
-      const title = (data.get(`steps[${j}][title]`) as string) || "";
-      const body = (data.get(`steps[${j}][body]`) as string) || "";
-      const secIdxRaw = (data.get(`steps[${j}][section]`) as string) || "";
+    while (fd.has(`steps[${j}][title]`) || fd.has(`steps[${j}][body]`)) {
+      const title = (fd.get(`steps[${j}][title]`) as string) || "";
+      const body = (fd.get(`steps[${j}][body]`) as string) || "";
+      const secIdxRaw = (fd.get(`steps[${j}][section]`) as string) || "";
       const sectionIdx = secIdxRaw === "" ? null : parseInt(secIdxRaw);
       const section_id = sectionIdx != null && !isNaN(sectionIdx) &&
           sections[sectionIdx]
         ? sections[sectionIdx].id
         : null;
-      if (title || body) {
-        steps.push({ title, body, after: [], section_id });
-      }
+      if (title || body) steps.push({ title, body, after: [], section_id });
       j++;
     }
 
     if (steps.length === 0) {
-      return "<p class='text-stone-500'>No steps to preview.</p>";
+      message.value = "No steps to preview.";
+      return null;
     }
 
-    return renderStepsHtml(steps, sections, 1, ingredients);
+    message.value = null;
+    return { steps, sections, ingredients };
   }
 
   function show(e: Event) {
-    html.value = collectFromForm(e.currentTarget as HTMLElement);
+    data.value = collectFromForm(e.currentTarget as HTMLElement);
     open.value = true;
   }
 
@@ -122,7 +129,17 @@ export default function RecipePreview() {
                 }}
               />
             </div>
-            <RecipeHtml html={html.value} />
+            {message.value && <p class="text-stone-500">{message.value}</p>}
+            {data.value && (
+              <div class="recipe-body">
+                <RecipeSteps
+                  steps={data.value.steps}
+                  sections={data.value.sections}
+                  variables={{ ratio: 1 }}
+                  ingredients={scaleIngredients(data.value.ingredients, 1)}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

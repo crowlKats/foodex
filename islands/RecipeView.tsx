@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useMemo, useRef } from "preact/hooks";
 import {
   formatAmount,
   formatCurrency,
@@ -14,22 +14,16 @@ import {
   computeSectionLayout,
   type SectionInfo,
 } from "../lib/step-sections.ts";
-import { renderSingleStepHtml, renderStepsHtml } from "../lib/render-steps.ts";
+import {
+  RecipeStepBody,
+  RecipeSteps,
+} from "../lib/recipe-template/render-steps.tsx";
+import { scaleIngredients } from "../lib/recipe-template/render.tsx";
 import { toDisplayUnit } from "../lib/unit-display.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
-
-function RecipeHtml({ html }: { html: string }) {
-  return (
-    <div
-      class="card p-6 recipe-body"
-      // deno-lint-ignore react-no-danger
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
-}
 
 interface ActiveTimer {
   id: number;
@@ -89,10 +83,10 @@ interface RecipeViewProps {
   ingredients: RecipeIngredient[];
   tools?: RecipeTool[];
   refs?: RecipeRef[];
+  /** Sub-recipes referenced via `@recipe(slug)` in step bodies. */
+  recipeRefs?: { slug: string; title: string }[];
   baseQuantity: RecipeQuantity;
   slug: string;
-  hasSubRecipes: boolean;
-  initialHtml: string;
   recipeId: string;
   recipeTitle: string;
   loggedIn: boolean;
@@ -111,17 +105,6 @@ interface RecipeViewProps {
   } | null;
 }
 
-function buildQueryParams(target: RecipeQuantity): string {
-  const params = new URLSearchParams();
-  params.set("type", target.type);
-  params.set("value", String(target.value));
-  params.set("unit", target.unit);
-  if (target.value2 != null) params.set("value2", String(target.value2));
-  if (target.value3 != null) params.set("value3", String(target.value3));
-  if (target.unit2) params.set("unit2", target.unit2);
-  return params.toString();
-}
-
 export default function RecipeView(
   {
     steps,
@@ -129,10 +112,9 @@ export default function RecipeView(
     ingredients,
     tools,
     refs,
+    recipeRefs: recipeRefsList,
     baseQuantity,
-    slug,
-    hasSubRecipes,
-    initialHtml,
+    slug: _slug,
     recipeId,
     recipeTitle,
     loggedIn,
@@ -217,8 +199,14 @@ export default function RecipeView(
   const targetUnit = useSignal(baseQuantity.unit);
   const targetValue2 = useSignal(baseQuantity.value2 ?? baseQuantity.value);
   const targetValue3 = useSignal(baseQuantity.value3 ?? 1);
-  const html = useSignal(initialHtml);
-  const loading = useSignal(false);
+
+  // Map of sub-recipe references (`@recipe(slug)` → resolved title), built once
+  // from the server-resolved list. Used by the JSX template renderer.
+  const recipeRefsMap = useMemo(() => {
+    const map = new Map<string, { slug: string; title: string }>();
+    for (const r of recipeRefsList ?? []) map.set(r.slug, r);
+    return map;
+  }, [recipeRefsList]);
 
   function getTarget(): RecipeQuantity {
     return {
@@ -237,23 +225,12 @@ export default function RecipeView(
     };
   }
 
+  // Re-rendering happens automatically through signals reads in the JSX —
+  // changing target* signals triggers the `getCurrentRatio()` re-read in the
+  // `<RecipeSteps>` render path.
   function update() {
-    const target = getTarget();
-    const ratio = computeScaleRatio(baseQuantity, target);
-
-    html.value = renderStepsHtml(steps, sections, ratio, ingredients);
-
-    if (hasSubRecipes) {
-      loading.value = true;
-      fetch(`/api/recipes/${slug}/render?${buildQueryParams(target)}`)
-        .then((r) => r.json())
-        .then((data: { html: string }) => {
-          html.value = data.html;
-        })
-        .finally(() => {
-          loading.value = false;
-        });
-    }
+    // No-op: kept so existing onClick handlers compile. The signal updates
+    // they perform already cause a re-render.
   }
 
   function renderScalingUI() {
@@ -297,9 +274,6 @@ export default function RecipeView(
             >
               +
             </button>
-            {loading.value && (
-              <span class="text-xs text-stone-400 ml-2">updating...</span>
-            )}
           </div>
         </div>
       );
@@ -335,9 +309,6 @@ export default function RecipeView(
               <option value="g">g</option>
               <option value="kg">kg</option>
             </Select>
-            {loading.value && (
-              <span class="text-xs text-stone-400 ml-2">updating...</span>
-            )}
           </div>
         </div>
       );
@@ -373,9 +344,6 @@ export default function RecipeView(
               <option value="ml">ml</option>
               <option value="l">l</option>
             </Select>
-            {loading.value && (
-              <span class="text-xs text-stone-400 ml-2">updating...</span>
-            )}
           </div>
         </div>
       );
@@ -434,9 +402,6 @@ export default function RecipeView(
               }}
             />
             <span class="text-stone-500 text-xs select-none">cm</span>
-            {loading.value && (
-              <span class="text-xs text-stone-400 ml-2">updating...</span>
-            )}
           </div>
         </div>
       );
@@ -556,7 +521,6 @@ export default function RecipeView(
   const timers = useSignal<ActiveTimer[]>([]);
   const timerIdCounter = useRef(0);
   const alarmIntervals = useRef<Map<number, number>>(new Map());
-  const stepsRef = useRef<HTMLDivElement>(null);
 
   function playAlarmBeep() {
     try {
@@ -638,23 +602,6 @@ export default function RecipeView(
     return () => clearInterval(interval);
   }, []);
 
-  // Event delegation for timer buttons in rendered HTML
-  useEffect(() => {
-    const el = stepsRef.current;
-    if (!el) return;
-    function handleClick(e: Event) {
-      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
-        ".recipe-timer-btn",
-      );
-      if (!btn) return;
-      const seconds = parseInt(btn.dataset.seconds || "0");
-      const label = btn.dataset.label || "Timer";
-      if (seconds > 0) startTimer(seconds, label);
-    }
-    el.addEventListener("click", handleClick);
-    return () => el.removeEventListener("click", handleClick);
-  });
-
   // ── Cooking Mode ──
   const cookingMode = useSignal(false);
   const cookingStep = useSignal(0); // for linear mode
@@ -672,9 +619,19 @@ export default function RecipeView(
     return after.length === 1 && after[0] === i - 1;
   });
 
-  function getCookingStepHtmlFor(idx: number): string {
+  function cookingStepBody(idx: number) {
     const ratio = getCurrentRatio();
-    return renderSingleStepHtml(steps, sections, idx, ratio, ingredients);
+    return (
+      <RecipeStepBody
+        step={steps[idx]}
+        steps={steps}
+        sections={sections}
+        variables={{ ratio }}
+        ingredients={scaleIngredients(ingredients, ratio)}
+        recipeRefs={recipeRefsMap}
+        onTimerStart={startTimer}
+      />
+    );
   }
 
   function getCookingStepLabel(idx: number): {
@@ -859,23 +816,6 @@ export default function RecipeView(
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchend", onTouchEnd);
     };
-  });
-
-  // Event delegation for timer buttons inside cooking mode
-  useEffect(() => {
-    const el = cookingRef.current;
-    if (!el || !cookingMode.value) return;
-    function handleClick(e: Event) {
-      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
-        ".recipe-timer-btn",
-      );
-      if (!btn) return;
-      const seconds = parseInt(btn.dataset.seconds || "0");
-      const label = btn.dataset.label || "Timer";
-      if (seconds > 0) startTimer(seconds, label);
-    }
-    el.addEventListener("click", handleClick);
-    return () => el.removeEventListener("click", handleClick);
   });
 
   const cookedStatus = useSignal<"idle" | "loading" | "done">("idle");
@@ -1191,8 +1131,17 @@ export default function RecipeView(
           </div>
         )}
       </div>
-      <div class="lg:col-span-3" ref={stepsRef}>
-        <RecipeHtml html={html.value} />
+      <div class="lg:col-span-3">
+        <div class="card p-6 recipe-body">
+          <RecipeSteps
+            steps={steps}
+            sections={sections}
+            variables={{ ratio: getCurrentRatio() }}
+            ingredients={scaleIngredients(ingredients, getCurrentRatio())}
+            recipeRefs={recipeRefsMap}
+            onTimerStart={startTimer}
+          />
+        </div>
       </div>
       {timers.value.length > 0 && (
         <div
@@ -1288,13 +1237,9 @@ export default function RecipeView(
                 </>
               );
             })()}
-            <div
-              class="cooking-mode-step-content"
-              // deno-lint-ignore react-no-danger
-              dangerouslySetInnerHTML={{
-                __html: getCookingStepHtmlFor(cookingStep.value),
-              }}
-            />
+            <div class="cooking-mode-step-content">
+              {cookingStepBody(cookingStep.value)}
+            </div>
             {ingredients.length > 0 && (
               <details class="cooking-mode-ingredients">
                 <summary>Ingredients</summary>
@@ -1532,13 +1477,9 @@ export default function RecipeView(
                                 </>
                               );
                             })()}
-                            <div
-                              class="cooking-mode-step-content"
-                              // deno-lint-ignore react-no-danger
-                              dangerouslySetInnerHTML={{
-                                __html: getCookingStepHtmlFor(idx),
-                              }}
-                            />
+                            <div class="cooking-mode-step-content">
+                              {cookingStepBody(idx)}
+                            </div>
                           </div>
                           <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 flex gap-2">
                             <button
