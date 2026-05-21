@@ -1,3 +1,6 @@
+// Fine-grained metric units where fractional display is noise (e.g. 167 g, not
+// 166.7 g). Count-based units like pcs/clove/slice are deliberately excluded —
+// they can be genuinely fractional (0.25 pcs of nutmeg, half a clove).
 const WHOLE_UNITS = new Set([
   "g",
   "mg",
@@ -5,26 +8,18 @@ const WHOLE_UNITS = new Set([
   "cl",
   "dl",
   "mm",
-  "pcs",
-  "slice",
-  "clove",
-  "bunch",
-  "sprig",
-  "pinch",
-  "dash",
 ]);
 
 /**
  * Format a numeric amount for display — never shows unnecessary trailing zeros.
- * Rounds to 1 decimal place max. Whole units (g, ml, pcs…) always round to integer.
+ * Rounds to 2 decimal places max. Fine-grained metric units (g, ml…) round to integer.
  */
 export function formatAmount(n: number, unit?: string): string {
   if (unit && WHOLE_UNITS.has(unit)) {
     return Math.round(n).toString();
   }
-  const rounded = Math.round(n * 10) / 10;
-  if (rounded % 1 === 0) return rounded.toFixed(0);
-  return rounded.toFixed(1);
+  const rounded = Math.round(n * 100) / 100;
+  return String(rounded);
 }
 
 /** Format a currency value — always 2 decimal places, no trailing-zero issue. */
