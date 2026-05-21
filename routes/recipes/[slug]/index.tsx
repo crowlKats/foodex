@@ -25,7 +25,7 @@ import { Button, ButtonLink } from "../../../components/Button.tsx";
 import FavoriteButton from "../../../islands/FavoriteButton.tsx";
 import AddToCollectionButton from "../../../islands/AddToCollectionButton.tsx";
 import TbEdit from "tb-icons/TbEdit";
-import CopyButton from "../../../islands/CopyButton.tsx";
+import ShareButton from "../../../islands/ShareButton.tsx";
 import { SOURCE_TYPE_LABELS } from "../../../lib/recipe-tags.ts";
 
 export const handler = define.handlers({
@@ -408,7 +408,7 @@ export const handler = define.handlers({
     ctx.state.pageTitle = recipe.title;
     return page({
       recipe,
-      exportUrl: `${origin}/api/recipes/${recipe.slug}/export`,
+      shareUrl: `${origin}/recipes/${recipe.slug}`,
       ingredientsForTemplate,
       tools: toolsRes.rows,
       steps: stepsData,
@@ -470,7 +470,7 @@ export const handler = define.handlers({
 export default define.page<typeof handler>(function RecipeViewPage({
   data: {
     recipe,
-    exportUrl,
+    shareUrl,
     ingredientsForTemplate,
     tools,
     steps,
@@ -532,7 +532,9 @@ export default define.page<typeof handler>(function RecipeViewPage({
               collections={collections}
             />
           )}
-          {!recipe.private && <CopyButton text={exportUrl} />}
+          {!recipe.private && (
+            <ShareButton text={shareUrl} title={recipe.title} />
+          )}
           {loggedIn && (
             <form
               action={`/recipes/${recipe.slug}/clone`}
