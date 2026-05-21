@@ -533,7 +533,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
             />
           )}
           {!recipe.private && (
-            <ShareButton text={shareUrl} title={recipe.title} />
+            <ShareButton url={shareUrl} title={recipe.title} />
           )}
           {loggedIn && (
             <form

@@ -645,7 +645,7 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                               class="flex-1 bg-transparent border-none p-0 h-auto"
                               size="xs"
                             />
-                            <ShareButton text={inviteUrl} />
+                            <ShareButton url={inviteUrl} />
                             <form method="POST" class="inline">
                               <input
                                 type="hidden"
