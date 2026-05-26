@@ -45,7 +45,7 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): EvalResult {
     case "variable": {
       const v = lookupVariable(expr.name, ctx);
       if (v.found) return ok(v.value);
-      return err(`Unknown variable: '${expr.name}'`);
+      return err(`No ingredient called '${expr.name}'.`);
     }
 
     case "property": {
@@ -53,7 +53,10 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): EvalResult {
       // template ingestion in lib/recipe-template/render.tsx populates these).
       const key = `${expr.object}_${expr.property}`;
       if (key in ctx.variables) return ok(ctx.variables[key]);
-      return err(`Unknown property: '${expr.object}.${expr.property}'`);
+      return err(
+        `Can't get '${expr.property}' from '${expr.object}' — ` +
+          "use '.amount' or '.name'.",
+      );
     }
 
     case "unary": {
@@ -75,14 +78,20 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): EvalResult {
         case "*":
           return ok(l.value * r.value);
         case "/":
-          return ok(r.value === 0 ? 0 : l.value / r.value);
+          if (r.value === 0) return err("Can't divide by zero.");
+          return ok(l.value / r.value);
       }
     }
     // eslint-disable-next-line no-fallthrough -- unreachable but keeps TS happy
 
     case "call": {
       const fn = BUILTINS[expr.name];
-      if (!fn) return err(`Unknown function: '${expr.name}'`);
+      if (!fn) {
+        return err(
+          `No function called '${expr.name}' — ` +
+            "available: round, ceil, floor, min, max, abs.",
+        );
+      }
       const args: number[] = [];
       for (const a of expr.args) {
         const r = evaluateExpr(a, ctx);

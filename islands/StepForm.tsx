@@ -1,4 +1,5 @@
 import { useSignal } from "@preact/signals";
+import { useCallback } from "preact/hooks";
 import TbArrowUp from "tb-icons/TbArrowUp";
 import TbArrowDown from "tb-icons/TbArrowDown";
 import TbPlus from "tb-icons/TbPlus";
@@ -6,8 +7,12 @@ import TbTrash from "tb-icons/TbTrash";
 import TbUpload from "tb-icons/TbUpload";
 import TbX from "tb-icons/TbX";
 import { slugify } from "../utils.ts";
-import { Input, InputMultiline } from "../components/Input.tsx";
+import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
+import {
+  type StepBodyContext,
+  StepBodyEditor,
+} from "../components/StepBodyEditor.tsx";
 
 interface MediaItem {
   id: string;
@@ -672,6 +677,7 @@ function StepEditor(
     onRemoveMedia,
     onUploadMedia,
     uploading,
+    getBodyContext,
   }: {
     step: StepEntry;
     index: number;
@@ -682,6 +688,7 @@ function StepEditor(
     onRemoveMedia: (mi: number) => void;
     onUploadMedia: () => void;
     uploading: boolean;
+    getBodyContext: () => StepBodyContext;
   },
 ) {
   return (
@@ -708,14 +715,13 @@ function StepEditor(
           ))}
         </Select>
       )}
-      <InputMultiline
+      <StepBodyEditor
         placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
         value={step.body}
         onValueChange={(v) => onBody(v)}
+        getContext={getBodyContext}
         rows={6}
         class="w-full"
-        size="sm"
-        monospace
       />
       {step.media.length > 0 && (
         <div class="flex flex-wrap gap-2">
@@ -789,6 +795,35 @@ export default function StepForm(
   const secSelected = useSignal<number | null>(null);
   const secDragFrom = useSignal<number | null>(null);
   const secDragPos = useSignal<{ x: number; y: number } | null>(null);
+
+  // Validation context for the step-body editor. Ingredient keys live in a
+  // sibling island (IngredientForm) so we scrape them from the surrounding
+  // form on each invocation; step counts come from our own state.
+  const getStepBodyContext = useCallback((): StepBodyContext => {
+    const ingredientKeys = new Set<string>();
+    const inputs = document.querySelectorAll<HTMLInputElement>(
+      'input[name^="ingredients["][name$="][key]"]',
+    );
+    inputs.forEach((el) => {
+      const k = el.value?.trim();
+      if (k) ingredientKeys.add(k);
+    });
+
+    const sectionStepCounts = new Map<string, number>();
+    for (const sec of sections.value) {
+      const key = sec.key?.trim();
+      if (!key) continue;
+      const count = items.value.filter((s) =>
+        sections.value[s.section ?? -1]?.key === key
+      ).length;
+      sectionStepCounts.set(key, count);
+    }
+    return {
+      ingredientKeys,
+      totalSteps: items.value.length,
+      sectionStepCounts,
+    };
+  }, []);
 
   // ── Section helpers ──
 
@@ -1441,14 +1476,13 @@ export default function StepForm(
                   </button>
                 </div>
               </div>
-              <InputMultiline
+              <StepBodyEditor
                 placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
                 value={item.body}
                 onValueChange={(v) => updateField(i, "body", v)}
+                getContext={getStepBodyContext}
                 rows={6}
                 class="w-full"
-                size="sm"
-                monospace
               />
               {item.media.length > 0 && (
                 <div class="flex flex-wrap gap-2">
@@ -2061,6 +2095,7 @@ export default function StepForm(
             onRemoveMedia={(mi) => removeMedia(sel, mi)}
             onUploadMedia={() => triggerFileUpload(sel)}
             uploading={uploading.value === sel}
+            getBodyContext={getStepBodyContext}
           />
         </div>
       )}

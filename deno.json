@@ -36,6 +36,7 @@
     "@aws-sdk/client-s3": "npm:@aws-sdk/client-s3@^3.1014.0",
     "@aws-sdk/s3-request-presigner": "npm:@aws-sdk/s3-request-presigner@^3.1014.0",
     "tb-icons": "jsr:@preact-icons/tb@^1.0.14",
+    "@luca/highlightable-textarea": "jsr:@luca/highlightable-textarea@^0.1.1",
     "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk@^0.52.0",
     "nodemailer": "npm:nodemailer@^6.9.16",
     "@types/nodemailer": "npm:@types/nodemailer@^6.4.17",

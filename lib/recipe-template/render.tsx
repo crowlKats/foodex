@@ -175,7 +175,7 @@ function renderStepRef(
 ): ComponentChildren {
   const n = node.number;
   if (n < 1 || n > ctx.steps.length) {
-    return renderError(`@step(${n})`, `Unknown step ${n}`);
+    return renderError(`@step(${n})`, `There's no step ${n} in this recipe.`);
   }
   const idx = n - 1;
   const title = ctx.steps[idx].title.trim();
@@ -191,14 +191,14 @@ function renderSectionStepRef(
   if (!sec) {
     return renderError(
       `@step(${node.sectionKey}.${node.number})`,
-      `Unknown section: ${node.sectionKey}`,
+      `No section called "${node.sectionKey}" in this recipe.`,
     );
   }
   const indices = ctx.layout.bySectionId.get(sec.id) ?? [];
   if (node.number < 1 || node.number > indices.length) {
     return renderError(
       `@step(${node.sectionKey}.${node.number})`,
-      `Unknown step ${node.number} in section ${node.sectionKey}`,
+      `The "${node.sectionKey}" section doesn't have a step ${node.number}.`,
     );
   }
   const targetIdx = indices[node.number - 1];
@@ -209,9 +209,6 @@ function renderSectionStepRef(
 }
 
 function renderTimer(node: TimerNode, ctx: RenderContext): ComponentChildren {
-  if (node.seconds == null) {
-    return renderError(`@timer(${node.duration})`, "Invalid duration");
-  }
   const seconds = node.seconds;
   const label = formatDurationLabel(seconds);
   const onClick = ctx.onTimerStart
@@ -236,7 +233,10 @@ function renderRecipeRef(
 ): ComponentChildren {
   const ref = ctx.recipeRefs?.get(node.slug);
   if (!ref) {
-    return renderError(`@recipe(${node.slug})`, `Unknown recipe: ${node.slug}`);
+    return renderError(
+      `@recipe(${node.slug})`,
+      `Can't find a recipe with the slug "${node.slug}".`,
+    );
   }
   return <a href={`/recipes/${encodeURIComponent(ref.slug)}`}>{ref.title}</a>;
 }

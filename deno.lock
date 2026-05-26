@@ -9,6 +9,8 @@
     "jsr:@fresh/core@2": "2.2.0",
     "jsr:@fresh/core@^2.2.0": "2.2.0",
     "jsr:@fresh/plugin-vite@^1.0.8": "1.0.8",
+    "jsr:@luca/highlightable-textarea@~0.1.1": "0.1.1",
+    "jsr:@nic/local-highlight-registry@0.1": "0.1.0",
     "jsr:@preact-icons/common@^1.1.0": "1.1.0",
     "jsr:@preact-icons/tb@*": "1.0.14",
     "jsr:@preact-icons/tb@1.0.14": "1.0.14",
@@ -39,9 +41,9 @@
     "npm:@babel/preset-react@^7.27.1": "7.28.5_@babel+core@7.29.0",
     "npm:@mjackson/node-fetch-server@0.7": "0.7.0",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
-    "npm:@preact/signals@^2.2.1": "2.8.2_preact@10.29.0",
-    "npm:@preact/signals@^2.8.2": "2.8.2_preact@10.29.0",
-    "npm:@prefresh/vite@^2.4.8": "2.4.12_preact@10.29.0_vite@7.3.1",
+    "npm:@preact/signals@^2.2.1": "2.8.2_preact@10.29.2",
+    "npm:@preact/signals@^2.8.2": "2.8.2_preact@10.29.2",
+    "npm:@prefresh/vite@^2.4.8": "2.4.12_preact@10.29.2_vite@7.3.1",
     "npm:@tailwindcss/vite@^4.2.2": "4.2.2_vite@7.3.1",
     "npm:@types/nodemailer@^6.4.17": "6.4.23",
     "npm:@types/pg@^8.20.0": "8.20.0",
@@ -52,11 +54,13 @@
     "npm:marked@^15.0.12": "15.0.12",
     "npm:nodemailer@^6.9.16": "6.10.1",
     "npm:pg@^8.20.0": "8.20.0",
-    "npm:preact-render-to-string@^6.6.3": "6.6.6_preact@10.29.0",
-    "npm:preact@^10.22.1": "10.29.0",
-    "npm:preact@^10.27.0": "10.29.0",
-    "npm:preact@^10.27.2": "10.29.0",
-    "npm:preact@^10.29.0": "10.29.0",
+    "npm:preact-render-to-string@^6.6.3": "6.6.6_preact@10.29.2",
+    "npm:preact-render-to-string@^6.6.6": "6.6.6_preact@10.29.2",
+    "npm:preact@^10.22.1": "10.29.2",
+    "npm:preact@^10.27.0": "10.29.2",
+    "npm:preact@^10.27.2": "10.29.2",
+    "npm:preact@^10.29.0": "10.29.2",
+    "npm:preact@^10.29.2": "10.29.2",
     "npm:rollup@^4.50.0": "4.59.0",
     "npm:tailwindcss@^4.2.2": "4.2.2",
     "npm:vite@^7.1.4": "7.3.1",
@@ -101,7 +105,7 @@
         "npm:@preact/signals@^2.2.1",
         "npm:esbuild-wasm",
         "npm:esbuild@0.25.7",
-        "npm:preact-render-to-string",
+        "npm:preact-render-to-string@^6.6.3",
         "npm:preact@^10.27.0",
         "npm:preact@^10.27.2"
       ]
@@ -122,6 +126,16 @@
         "npm:rollup",
         "npm:vite@^7.1.4"
       ]
+    },
+    "@luca/highlightable-textarea@0.1.1": {
+      "integrity": "a07f3664e3acfc109566a5fa06f0c8977feb9c363f0e64ef2fdbe5f4770febdf",
+      "dependencies": [
+        "jsr:@nic/local-highlight-registry",
+        "npm:preact@^10.29.2"
+      ]
+    },
+    "@nic/local-highlight-registry@0.1.0": {
+      "integrity": "826ae01c443fd6d886d0c036048628685247b88de9a675c799fd86549fed822b"
     },
     "@preact-icons/common@1.1.0": {
       "integrity": "ed191a9f88ee0e35539b8de3482d1f8a223b3f14f3b0dbfcba063c70ca4332fc",
@@ -1341,7 +1355,7 @@
     "@preact/signals-core@1.14.0": {
       "integrity": "sha512-AowtCcCU/33lFlh1zRFf/u+12rfrhtNakj7UpaGEsmMwUKpKWMVvcktOGcwBBNiB4lWrZWc01LhiyyzVklJyaQ=="
     },
-    "@preact/signals@2.8.2_preact@10.29.0": {
+    "@preact/signals@2.8.2_preact@10.29.2": {
       "integrity": "sha512-gym5yoa64c+0w2kL7zRAAjY548qzWXbbuOfjsK9F1nWrEqooDwyWnih5SNdonjhQSp27zUqYh7UrxIRnkCyFCA==",
       "dependencies": [
         "@preact/signals-core",
@@ -1351,7 +1365,7 @@
     "@prefresh/babel-plugin@0.5.3": {
       "integrity": "sha512-57LX2SHs4BX2s1IwCjNzTE2OJeEepRCNf1VTEpbNcUyHfMO68eeOWGDIt4ob9aYlW6PEWZ1SuwNikuoIXANDtQ=="
     },
-    "@prefresh/core@1.5.9_preact@10.29.0": {
+    "@prefresh/core@1.5.9_preact@10.29.2": {
       "integrity": "sha512-IKBKCPaz34OFVC+adiQ2qaTF5qdztO2/4ZPf4KsRTgjKosWqxVXmEbxCiUydYZRY8GVie+DQlKzQr9gt6HQ+EQ==",
       "dependencies": [
         "preact"
@@ -1360,7 +1374,7 @@
     "@prefresh/utils@1.2.1": {
       "integrity": "sha512-vq/sIuN5nYfYzvyayXI4C2QkprfNaHUQ9ZX+3xLD8nL3rWyzpxOm1+K7RtMbhd+66QcaISViK7amjnheQ/4WZw=="
     },
-    "@prefresh/vite@2.4.12_preact@10.29.0_vite@7.3.1": {
+    "@prefresh/vite@2.4.12_preact@10.29.2_vite@7.3.1": {
       "integrity": "sha512-FY1fzXpUjiuosznMV0YM7XAOPZjB5FIdWS0W24+XnlxYkt9hNAwwsiKYn+cuTEoMtD/ZVazS5QVssBr9YhpCQA==",
       "dependencies": [
         "@babel/core",
@@ -2467,14 +2481,14 @@
         "xtend"
       ]
     },
-    "preact-render-to-string@6.6.6_preact@10.29.0": {
+    "preact-render-to-string@6.6.6_preact@10.29.2": {
       "integrity": "sha512-EfqZJytnjJldV+YaaqhthU2oXsEf5e+6rDv957p+zxAvNfFLQOPfvBOTncscQ+akzu6Wrl7s3Pa0LjUQmWJsGQ==",
       "dependencies": [
         "preact"
       ]
     },
-    "preact@10.29.0": {
-      "integrity": "sha512-wSAGyk2bYR1c7t3SZ3jHcM6xy0lcBcDel6lODcs9ME6Th++Dx2KU+6D3HD8wMMKGA8Wpw7OMd3/4RGzYRpzwRg=="
+    "preact@10.29.2": {
+      "integrity": "sha512-7tNmwg/7mzzAoB/8kSg6Hl37JraAZw3Z3A0JSY7VXlZwo82Xn0G7wKbNNs2qoF4ZEEsQGTwDAroNdqKs1ofJxQ=="
     },
     "rollup@4.59.0": {
       "integrity": "sha512-2oMpl67a3zCH9H79LeMcbDhXW/UmWG/y2zuqnF2jQq5uq9TbM9TVyXvA4+t+ne2IIkBdrLpAaRQAvo7YI/Yyeg==",
@@ -2597,6 +2611,7 @@
     "dependencies": [
       "jsr:@fresh/core@^2.2.0",
       "jsr:@fresh/plugin-vite@^1.0.8",
+      "jsr:@luca/highlightable-textarea@~0.1.1",
       "jsr:@preact-icons/tb@^1.0.14",
       "jsr:@std/assert@1",
       "npm:@anthropic-ai/sdk@0.52",

@@ -56,8 +56,9 @@ export interface TimerNode extends Pos {
   /** Raw duration string, e.g. `15m`, `1h30m`. */
   duration: string;
   durationRange: Pos;
-  /** Pre-computed total seconds, or `null` if the duration is malformed. */
-  seconds: number | null;
+  /** Pre-computed total seconds. Malformed/zero durations become an
+   *  `InvalidDirectiveNode` at parse time, so this is always positive. */
+  seconds: number;
 }
 
 export interface RecipeRefNode extends Pos {

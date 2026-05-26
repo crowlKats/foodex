@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import { RecipeSteps } from "../lib/recipe-template/render-steps.tsx";
 import { scaleIngredients } from "../lib/recipe-template/render.tsx";
 import type { SectionInfo } from "../lib/step-sections.ts";
+import { recipeErrorCount } from "../lib/recipe-errors.ts";
 import TbEye from "tb-icons/TbEye";
 import TbX from "tb-icons/TbX";
 import { Button } from "../components/Button.tsx";
@@ -102,6 +103,10 @@ export default function RecipePreview() {
         onClick={show}
         variant="outline"
         icon={TbEye}
+        disabled={recipeErrorCount.value > 0}
+        title={recipeErrorCount.value > 0
+          ? "Fix the errors in the step bodies first."
+          : undefined}
       >
         Preview
       </Button>

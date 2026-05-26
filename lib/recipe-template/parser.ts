@@ -127,7 +127,8 @@ class TemplateParser {
       return {
         kind: "invalid_directive",
         raw,
-        message: "Unterminated `{{`: missing `}}`",
+        message:
+          "You opened `{{` but never closed it. Add `}}` where you want the value to end.",
         start,
         length: raw.length,
       };
@@ -153,7 +154,8 @@ class TemplateParser {
       expr = {
         kind: "invalid_expr",
         raw: "",
-        message: "Empty interpolation",
+        message: "`{{ }}` is empty — put an ingredient name or a " +
+          "calculation inside, like `{{ flour }}` or `{{ ratio * 2 }}`.",
         start: exprStart,
         length: 0,
       };
@@ -194,7 +196,8 @@ class TemplateParser {
       return {
         kind: "invalid_directive",
         raw,
-        message: `Unterminated @${name}(...)`,
+        message:
+          `You started \`@${name}(\` but never closed it — add a \`)\` to finish.`,
         start,
         length: raw.length,
       };
@@ -253,7 +256,9 @@ class TemplateParser {
       kind: "invalid_directive",
       raw: this.src.slice(start, start + totalLen),
       message:
-        `@step(...) expects a number (e.g. @step(3)) or section reference (e.g. @step(sauce.2))`,
+        "`@step(...)` should point at another step — either by its number " +
+        "(like `@step(3)` for step 3) or by section (like `@step(sauce.2)` " +
+        "for step 2 of the sauce section).",
       start,
       length: totalLen,
     };
@@ -265,16 +270,27 @@ class TemplateParser {
     start: number,
     totalLen: number,
   ): TimerNode | InvalidDirectiveNode {
-    if (!/^\d+[hms](?:\d+[hms])*$/.test(arg)) {
+    // A duration is only valid if it matches the shape `<n>(h|m|s)…` AND
+    // the parsed total is strictly greater than zero. `@timer(1)` (no unit)
+    // and `@timer(0s)` (zero) are both "not a length of time", so we collapse
+    // them into a single diagnostic.
+    const shapeOk = /^\d+[hms](?:\d+[hms])*$/.test(arg);
+    const seconds = shapeOk ? parseDurationStrict(arg) : null;
+    if (!shapeOk || seconds == null) {
       return {
         kind: "invalid_directive",
         raw: this.src.slice(start, start + totalLen),
-        message: `@timer(...) expects a duration like 15m, 1h30m, or 90s`,
+        message: arg.length === 0
+          ? "`@timer(...)` needs a length of time inside. Try " +
+            "`@timer(15m)` for 15 minutes, `@timer(1h30m)` for an hour " +
+            "and a half, or `@timer(90s)` for 90 seconds."
+          : `\`${arg}\` isn't a valid length of time. Try ` +
+            "`15m` (15 minutes), `1h30m` (1 hour 30 minutes), " +
+            "or `90s` (90 seconds).",
         start,
         length: totalLen,
       };
     }
-    const seconds = parseDurationStrict(arg);
     return {
       kind: "timer",
       duration: arg,
@@ -295,8 +311,10 @@ class TemplateParser {
       return {
         kind: "invalid_directive",
         raw: this.src.slice(start, start + totalLen),
-        message:
-          `@recipe(...) expects a slug (lowercase letters, digits, '-' or '_')`,
+        message: "`@recipe(...)` needs the slug of another recipe — " +
+          "that's the part at the end of the recipe's web address. " +
+          "It uses lowercase letters, numbers, `-` and `_` " +
+          "(e.g. `@recipe(tomato-sauce)`).",
         start,
         length: totalLen,
       };
@@ -353,7 +371,8 @@ class ExpressionParser {
       return {
         kind: "invalid_expr",
         raw: this.src.slice(start - this.offset, start - this.offset + length),
-        message: `Unexpected trailing token '${tokenLabel(first)}'`,
+        message: `There's an extra \`${tokenLabel(first)}\` here. ` +
+          "Did you forget a math symbol like `+`, `-`, `*` or `/`?",
         start,
         length,
       };
@@ -457,7 +476,7 @@ class ExpressionParser {
         return this.invalid(
           tok.start,
           (last.start + last.length) - tok.start,
-          "Missing closing ')'",
+          "You opened `(` but never closed it. Add a matching `)`.",
         );
       }
       return expr;
@@ -487,7 +506,9 @@ class ExpressionParser {
           tok.start,
           (this.tokens[this.idx - 1].start + this.tokens[this.idx - 1].length) -
             tok.start,
-          "Expected property name after '.'",
+          "After a `.` you need to say which part you want — " +
+            "either `.amount` (just the number) or `.name` " +
+            "(the ingredient's name).",
         );
       }
       if (next?.type === "(") {
@@ -516,7 +537,7 @@ class ExpressionParser {
         return this.invalid(
           tok.start,
           (last.start + last.length) - tok.start,
-          `Missing closing ')' in call to ${name}(...)`,
+          `\`${name}(\` is missing its closing \`)\`.`,
         );
       }
       return { kind: "variable", name, start: tok.start, length: tok.length };
@@ -527,7 +548,7 @@ class ExpressionParser {
     return this.invalid(
       tok.start,
       tok.length,
-      `Unexpected token '${tokenLabel(tok)}'`,
+      `\`${tokenLabel(tok)}\` doesn't belong here.`,
     );
   }
 
@@ -536,7 +557,8 @@ class ExpressionParser {
     return {
       kind: "invalid_expr",
       raw: "",
-      message: "Unexpected end of expression",
+      message:
+        "This calculation stops too soon — there should be something here.",
       start: lastEnd,
       length: 0,
     };
@@ -641,7 +663,7 @@ function tokenize(src: string, offset: number): Token[] {
     // can recover.
     out.push({
       type: "error",
-      message: `Unexpected character '${ch}'`,
+      message: `\`${ch}\` isn't allowed inside \`{{ ... }}\`.`,
       start,
       length: 1,
     });
