@@ -10,10 +10,8 @@ import type {
   RecipeTool,
   RecipeWithCover,
 } from "../../../db/types.ts";
-import { renderRecipeSteps } from "../../../lib/markdown.ts";
 import { computeStepAfters } from "../../../lib/step-graph.ts";
 import { formatDuration } from "../../../lib/duration.ts";
-import { scaleIngredients } from "../../../lib/template.ts";
 import { computeIngredientCost } from "../../../lib/unit-convert.ts";
 import { formatAmount } from "../../../lib/format.ts";
 import { formatQuantity } from "../../../lib/quantity.ts";
@@ -221,15 +219,6 @@ export const handler = define.handlers({
         };
       });
 
-    const scaledIngredients = scaleIngredients(
-      ingredientsForTemplate,
-      1,
-    );
-
-    const hasSubRecipes = stepsRes.rows.some((s) =>
-      /@recipe\([a-z0-9_-]+\)/.test(s.body)
-    );
-
     const stepsData = stepsRes.rows.map((s) => ({
       title: s.title,
       body: s.body,
@@ -256,23 +245,25 @@ export const handler = define.handlers({
       after: sectionAfters[i],
     }));
 
-    const renderedHtml = await renderRecipeSteps(
-      stepsData,
-      { ratio: 1 },
-      scaledIngredients,
-      async (refSlug) => {
-        const res = await ctx.state.db.query<{ title: string; slug: string }>(
-          "SELECT title, slug FROM recipes WHERE slug = $1",
-          [refSlug],
-        );
-        if (res.rows.length === 0) return null;
-        return {
-          title: res.rows[0].title,
-          slug: res.rows[0].slug,
-        };
-      },
-      sectionsData,
-    );
+    // Resolve every `@recipe(slug)` directive referenced in any step body so
+    // the island can render sub-recipe links without a follow-up fetch.
+    const recipeRefSlugs = new Set<string>();
+    for (const s of stepsData) {
+      const re = /@recipe\(([a-z0-9_-]+)\)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(s.body)) !== null) recipeRefSlugs.add(m[1]);
+    }
+    const recipeRefs: { slug: string; title: string }[] = [];
+    if (recipeRefSlugs.size > 0) {
+      const slugs = [...recipeRefSlugs];
+      const res = await ctx.state.db.query<{ slug: string; title: string }>(
+        "SELECT slug, title FROM recipes WHERE slug = ANY($1)",
+        [slugs],
+      );
+      for (const r of res.rows) {
+        recipeRefs.push({ slug: r.slug, title: r.title });
+      }
+    }
 
     const isOwner = ctx.state.householdId != null &&
       recipe.household_id === ctx.state.householdId;
@@ -414,10 +405,9 @@ export const handler = define.handlers({
       steps: stepsData,
       sections: sectionsData,
       refs: refsRes.rows,
+      recipeRefs,
       mealTypes,
       dietaryTags,
-      renderedHtml,
-      hasSubRecipes,
       baseQuantity,
       isOwner,
       isFavorited,
@@ -476,10 +466,9 @@ export default define.page<typeof handler>(function RecipeViewPage({
     steps,
     sections,
     refs,
+    recipeRefs,
     mealTypes,
     dietaryTags,
-    renderedHtml,
-    hasSubRecipes,
     isOwner,
     isFavorited,
     loggedIn,
@@ -692,10 +681,9 @@ export default define.page<typeof handler>(function RecipeViewPage({
             slug: r.ref_slug,
             title: r.ref_title,
           }))}
+          recipeRefs={recipeRefs}
           baseQuantity={baseQuantity}
           slug={recipe.slug}
-          hasSubRecipes={hasSubRecipes}
-          initialHtml={renderedHtml}
           recipeId={recipe.id}
           recipeTitle={recipe.title}
           loggedIn={loggedIn}

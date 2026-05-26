@@ -20,6 +20,7 @@ import {
   SOURCE_TYPE_LABELS,
   SOURCE_TYPES,
 } from "../lib/recipe-tags.ts";
+import { recipeErrorCount } from "../lib/recipe-errors.ts";
 
 interface CoverMedia {
   id: string;
@@ -415,17 +416,34 @@ export default function DraftEditor({
           </Select>
         </div>
 
-        <div class="flex gap-3 flex-wrap">
-          <Button type="submit">Create Recipe</Button>
+        <div class="flex gap-3 flex-wrap items-center">
+          <Button
+            type="submit"
+            disabled={recipeErrorCount.value > 0}
+            title={recipeErrorCount.value > 0
+              ? "Fix the errors in the step bodies first."
+              : undefined}
+          >
+            Create Recipe
+          </Button>
           <Button
             type="button"
             variant="outline"
-            disabled={saving.value}
+            disabled={saving.value || recipeErrorCount.value > 0}
+            title={recipeErrorCount.value > 0
+              ? "Fix the errors in the step bodies first."
+              : undefined}
             onClick={saveDraft}
           >
             {saving.value ? "Saving..." : "Save Draft"}
           </Button>
           <RecipePreview />
+          {recipeErrorCount.value > 0 && (
+            <span class="text-xs text-red-600 dark:text-red-400">
+              {recipeErrorCount.value}{" "}
+              error{recipeErrorCount.value === 1 ? "" : "s"} in step bodies
+            </span>
+          )}
           <ConfirmButton
             message="Discard this draft?"
             variant="danger-outline"

@@ -22,11 +22,11 @@ import StepForm from "../../../islands/StepForm.tsx";
 import SegmentToggle from "../../../islands/SegmentToggle.tsx";
 import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePreview from "../../../islands/RecipePreview.tsx";
+import RecipeSubmitButton from "../../../islands/RecipeSubmitButton.tsx";
 import MultiSearchSelect from "../../../islands/MultiSearchSelect.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
-import { Button } from "../../../components/Button.tsx";
 import { Input, InputMultiline } from "../../../components/Input.tsx";
 import { Select } from "../../../components/Select.tsx";
 import { DurationInput } from "../../../components/DurationInput.tsx";
@@ -649,9 +649,7 @@ export default define.page<typeof handler>(function RecipeEdit({
         </div>
 
         <div class="flex gap-3">
-          <Button type="submit">
-            Save Recipe
-          </Button>
+          <RecipeSubmitButton label="Save Recipe" />
           <RecipePreview />
         </div>
       </form>

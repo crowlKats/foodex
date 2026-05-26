@@ -47,6 +47,15 @@
     font-semibold border-2 cursor-pointer transition-all duration-75
     select-none;
 }
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  @apply opacity-50 cursor-not-allowed;
+  filter: grayscale(0.6);
+  /* Prevents hover styles from kicking in on a disabled button. The `title`
+     attribute won't surface in this state — we surface the reason inline
+     near the button (see DraftEditor's "N errors" indicator). */
+  pointer-events: none;
+}
 
 .btn-primary {
   @apply bg-orange-600 text-white border-orange-600 hover:bg-orange-700
@@ -95,6 +104,225 @@
 
   textarea {
     height: auto;
+  }
+
+  /* ── Step body editor (HighlightableTextarea) ── */
+  [data-highlightable-textarea].step-body-editor {
+    @apply rounded-none;
+    /* Match the textarea baseline; visible caret + selection still work
+       on a contenteditable plain-text div. */
+  }
+  [data-highlightable-textarea].step-body-editor:empty::before {
+    content: attr(aria-placeholder);
+    @apply text-stone-400;
+    pointer-events: none;
+  }
+
+  /* ── Error badge in the editor's bottom-right corner ── */
+  .step-body-error-badge {
+    @apply absolute bottom-1.5 right-1.5 flex items-center gap-1
+      px-1.5 py-0.5 text-xs font-semibold cursor-pointer select-none
+      transition-colors;
+    color: oklch(0.55 0.22 25);
+    background-color: oklch(0.97 0.04 25);
+    border: 1px solid oklch(0.65 0.22 25);
+    z-index: 5;
+  }
+  .step-body-error-badge:hover {
+    background-color: oklch(0.94 0.06 25);
+    color: oklch(0.45 0.22 25);
+  }
+  .dark .step-body-error-badge {
+    background-color: oklch(0.28 0.06 25);
+    color: oklch(0.78 0.18 25);
+    border-color: oklch(0.55 0.2 25);
+  }
+  .dark .step-body-error-badge:hover {
+    background-color: oklch(0.34 0.08 25);
+    color: oklch(0.85 0.2 25);
+  }
+  .step-body-error-badge-count {
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  /* ── Error list popup ──
+     Full-screen modal on mobile, centred card on desktop. Backdrop dims
+     the page and absorbs outside clicks to dismiss. */
+  .step-body-error-popup-backdrop {
+    @apply fixed inset-0 z-50 flex bg-black/50;
+    /* Bottom-anchored on mobile so the popup acts like a sheet; centred
+       on `sm` and up. */
+    @apply items-end sm:items-center justify-center;
+  }
+  .step-body-error-popup {
+    @apply flex flex-col w-full sm:w-auto sm:max-w-md sm:min-w-[28rem]
+      max-h-[100dvh] sm:max-h-[80vh] overflow-hidden border-2 shadow-xl;
+    background-color: oklch(0.18 0.005 240);
+    color: oklch(0.92 0.005 240);
+    border-color: oklch(0.32 0.01 240);
+    /* Bottom sheet on mobile: no top border, fills width. */
+    @apply rounded-none;
+  }
+  .step-body-error-popup-header {
+    @apply px-3 py-2 text-[11px] font-semibold uppercase tracking-wider
+      flex items-center justify-between gap-2 shrink-0;
+    color: oklch(0.65 0.2 25);
+    background-color: oklch(0.22 0.01 240);
+    border-bottom: 1px solid oklch(0.32 0.01 240);
+  }
+  .step-body-error-popup-title {
+    @apply truncate;
+  }
+  .step-body-error-popup-close {
+    @apply p-1 cursor-pointer flex items-center justify-center
+      transition-colors;
+    color: oklch(0.75 0.005 240);
+    background: transparent;
+    border: none;
+  }
+  .step-body-error-popup-close:hover {
+    color: oklch(0.92 0.005 240);
+    background-color: oklch(0.26 0.01 240);
+  }
+  .step-body-error-popup-list {
+    @apply m-0 p-0 list-none overflow-y-auto flex-1;
+  }
+  .step-body-error-popup-item {
+    @apply px-3 py-2 flex flex-col gap-1.5;
+    border-bottom: 1px solid oklch(0.26 0.01 240);
+  }
+  .step-body-error-popup-item:last-child {
+    border-bottom: none;
+  }
+  .step-body-error-popup-snippet {
+    @apply px-2 py-1 text-[11px] whitespace-pre-wrap break-words block;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background-color: oklch(0.13 0.005 240);
+    border: 1px solid oklch(0.26 0.01 240);
+    color: oklch(0.75 0.01 240);
+  }
+  .step-body-error-popup-mark {
+    background-color: oklch(0.4 0.18 25);
+    color: oklch(0.97 0.04 25);
+    text-decoration: underline wavy oklch(0.7 0.22 25);
+    text-underline-offset: 2px;
+    padding: 0 0.05em;
+  }
+  .step-body-error-popup-message {
+    @apply text-xs leading-snug;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .step-body-error-popup-message code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background-color: oklch(0.28 0.005 240);
+    color: oklch(0.95 0.02 80);
+    padding: 0 0.25rem;
+    border-radius: 2px;
+    font-size: 0.92em;
+  }
+
+  /* Code-editor-style hover popover. Dark in both themes — matches the
+     "diagnostic" look users expect from editor tooltips. */
+  .step-body-tooltip {
+    @apply z-50 max-w-md text-xs leading-snug font-sans;
+    background-color: oklch(0.18 0.005 240);
+    color: oklch(0.92 0.005 240);
+    border: 1px solid oklch(0.32 0.01 240);
+    border-left: 3px solid oklch(0.65 0.2 25);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 0.2), 0 8px 24px rgb(0 0 0 / 0.25);
+    padding: 0.5rem 0.625rem 0.5rem 0.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    pointer-events: none;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .step-body-tooltip-icon {
+    color: oklch(0.65 0.2 25);
+    font-size: 0.7em;
+    line-height: 1.4;
+    flex-shrink: 0;
+    transform: translateY(0.05em);
+  }
+  .step-body-tooltip-msg {
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.78rem;
+  }
+  .step-body-tooltip-msg code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background-color: oklch(0.28 0.005 240);
+    color: oklch(0.95 0.02 80);
+    padding: 0 0.25rem;
+    border-radius: 2px;
+    font-size: 0.92em;
+  }
+
+  /* CSS Custom Highlight rules for parsed template tokens.
+     Labels are emitted by `components/StepBodyEditor.tsx`. */
+  ::highlight(tpl-syntax) {
+    color: oklch(0.55 0.08 240);
+  }
+  ::highlight(tpl-interp) {
+    background-color: oklch(0.95 0.04 230);
+    color: oklch(0.4 0.12 240);
+  }
+  /* Numbers and operators get color only — no background. Variables and
+     property accesses keep the subtle background so the eye still anchors
+     on the "main subject" of an interpolation. */
+  ::highlight(tpl-number) {
+    color: oklch(0.55 0.18 30);
+  }
+  ::highlight(tpl-operator) {
+    color: oklch(0.55 0.15 320);
+  }
+  ::highlight(tpl-step-ref) {
+    background-color: oklch(0.94 0.05 150);
+    color: oklch(0.4 0.12 150);
+  }
+  ::highlight(tpl-timer) {
+    background-color: oklch(0.94 0.06 70);
+    color: oklch(0.45 0.15 60);
+  }
+  ::highlight(tpl-recipe) {
+    background-color: oklch(0.94 0.05 300);
+    color: oklch(0.4 0.15 300);
+  }
+  ::highlight(tpl-invalid) {
+    background-color: oklch(0.92 0.08 25);
+    color: oklch(0.45 0.2 25);
+    text-decoration: underline wavy oklch(0.55 0.22 25);
+  }
+  .dark ::highlight(tpl-syntax) {
+    color: oklch(0.75 0.1 240);
+  }
+  .dark ::highlight(tpl-interp) {
+    background-color: oklch(0.32 0.05 240);
+    color: oklch(0.85 0.08 240);
+  }
+  .dark ::highlight(tpl-number) {
+    color: oklch(0.78 0.15 50);
+  }
+  .dark ::highlight(tpl-operator) {
+    color: oklch(0.78 0.12 320);
+  }
+  .dark ::highlight(tpl-step-ref) {
+    background-color: oklch(0.32 0.05 150);
+    color: oklch(0.85 0.08 150);
+  }
+  .dark ::highlight(tpl-timer) {
+    background-color: oklch(0.32 0.06 70);
+    color: oklch(0.85 0.1 70);
+  }
+  .dark ::highlight(tpl-recipe) {
+    background-color: oklch(0.32 0.06 300);
+    color: oklch(0.85 0.08 300);
+  }
+  .dark ::highlight(tpl-invalid) {
+    background-color: oklch(0.32 0.08 25);
+    color: oklch(0.85 0.12 25);
+    text-decoration: underline wavy oklch(0.7 0.22 25);
   }
 
   input[type="search"],
