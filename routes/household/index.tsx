@@ -6,7 +6,7 @@ import { Button, ButtonLink } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import { Select } from "../../components/Select.tsx";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
-import CopyButton from "../../islands/CopyButton.tsx";
+import ShareButton from "../../islands/ShareButton.tsx";
 import TbTrash from "tb-icons/TbTrash";
 import TbClock from "tb-icons/TbClock";
 import TbFlame from "tb-icons/TbFlame";
@@ -645,7 +645,7 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                               class="flex-1 bg-transparent border-none p-0 h-auto"
                               size="xs"
                             />
-                            <CopyButton text={inviteUrl} />
+                            <ShareButton url={inviteUrl} />
                             <form method="POST" class="inline">
                               <input
                                 type="hidden"
