@@ -50,13 +50,13 @@ export const handler = define.handlers({
     try {
       const client = new Anthropic({ apiKey });
       const response = await client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 16000,
-        temperature: 1,
         thinking: {
-          type: "enabled",
-          budget_tokens: 10000,
+          type: "adaptive",
+          display: "summarized",
         },
+        output_config: { effort: "medium" },
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content,

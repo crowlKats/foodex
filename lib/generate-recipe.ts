@@ -61,13 +61,13 @@ export async function generateRecipeFromPantry(
   }
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 16000,
-    temperature: 1, // required for extended thinking
     thinking: {
-      type: "enabled",
-      budget_tokens: 10000,
+      type: "adaptive",
+      display: "summarized",
     },
+    output_config: { effort: "medium" },
     messages: [
       {
         role: "user",
