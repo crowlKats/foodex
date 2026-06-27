@@ -1,6 +1,6 @@
 import { page } from "fresh";
 import { define } from "../../utils.ts";
-import { generateSessionId } from "../../lib/auth.ts";
+import { generateSessionId, verifyHCaptcha } from "../../lib/auth.ts";
 import { sendMagicLinkEmail } from "../../lib/email.ts";
 import { ButtonLink } from "../../components/Button.tsx";
 
@@ -13,6 +13,20 @@ export const handler = define.handlers({
       return new Response(null, {
         status: 303,
         headers: { Location: "/auth/login" },
+      });
+    }
+
+    const captchaToken = form.get("h-captcha-response");
+    const remoteIp = ctx.req.headers.get("x-forwarded-for")?.split(",")[0]
+      .trim();
+    const captchaOk = await verifyHCaptcha(
+      typeof captchaToken === "string" ? captchaToken : null,
+      remoteIp,
+    );
+    if (!captchaOk) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login?error=captcha" },
       });
     }
 

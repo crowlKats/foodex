@@ -6,6 +6,8 @@ const AUTHENTIK_CLIENT_ID = Deno.env.get("AUTHENTIK_CLIENT_ID") ?? "";
 const AUTHENTIK_CLIENT_SECRET = Deno.env.get("AUTHENTIK_CLIENT_SECRET") ?? "";
 const AUTHENTIK_ISSUER = Deno.env.get("AUTHENTIK_ISSUER") ?? "";
 const ALWAYS_HTTPS = Deno.env.get("ALWAYS_HTTPS") === "true";
+export const HCAPTCHA_SITEKEY = Deno.env.get("HCAPTCHA_SITEKEY") ?? "";
+const HCAPTCHA_SECRET = Deno.env.get("HCAPTCHA_SECRET") ?? "";
 
 export const providers = {
   github: !!(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET),
@@ -13,6 +15,34 @@ export const providers = {
   authentik: !!(AUTHENTIK_CLIENT_ID && AUTHENTIK_CLIENT_SECRET &&
     AUTHENTIK_ISSUER),
 };
+
+
+export async function verifyHCaptcha(
+  token: string | null | undefined,
+  remoteIp?: string | null,
+): Promise<boolean> {
+  if (!token) return false;
+
+  const body = new URLSearchParams({
+    secret: HCAPTCHA_SECRET,
+    response: token,
+  });
+  if (remoteIp) body.set("remoteip", remoteIp);
+
+  try {
+    const res = await fetch("https://api.hcaptcha.com/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+      signal: AbortSignal.timeout(10_000),
+    });
+    const data = await res.json();
+    return data.success === true;
+  } catch (err) {
+    console.error("hCaptcha verification failed:", err);
+    return false;
+  }
+}
 
 function getBaseUrl(req: Request): string {
   const url = new URL(req.url);

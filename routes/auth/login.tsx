@@ -5,6 +5,7 @@ import {
   getAuthentikAuthUrl,
   getGitHubAuthUrl,
   getGoogleAuthUrl,
+  HCAPTCHA_SITEKEY,
   providers,
 } from "../../lib/auth.ts";
 import { Button, ButtonLink } from "../../components/Button.tsx";
@@ -33,6 +34,8 @@ export const handler = define.handlers({
         authentikUrl: providers.authentik
           ? getAuthentikAuthUrl(req, state)
           : null,
+        hcaptchaSitekey: HCAPTCHA_SITEKEY,
+        error: ctx.url.searchParams.get("error"),
       },
       headers: {
         "Set-Cookie": createOAuthStateCookie(state),
@@ -47,6 +50,11 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
   return (
     <div class="max-w-sm mx-auto mt-16">
       <h1 class="text-2xl font-bold text-center mb-8">Sign in to Foodex</h1>
+      {data.error === "captcha" && (
+        <div class="mb-4 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+          Captcha verification failed. Please try again.
+        </div>
+      )}
       <div class="card space-y-3">
         {data.githubUrl && (
           <ButtonLink
@@ -93,6 +101,34 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
             required
             class="w-full"
           />
+
+          {data.hcaptchaSitekey && (
+            <>
+              <div
+                class="h-captcha flex justify-center"
+                data-sitekey={data.hcaptchaSitekey}
+              >
+              </div>
+              {/* Match the widget to the active light/dark theme before
+                  hCaptcha auto-renders it. Runs during parse, before the
+                  async+defer api.js executes. */}
+              <script
+                // deno-lint-ignore react-no-danger
+                dangerouslySetInnerHTML={{
+                  __html:
+                    `document.currentScript.previousElementSibling.dataset.theme=document.documentElement.classList.contains("dark")?"dark":"light";`,
+                }}
+              >
+              </script>
+              <script
+                src="https://js.hcaptcha.com/1/api.js"
+                async
+                defer
+              >
+              </script>
+            </>
+          )}
+
           <Button type="submit" variant="outline" class="w-full">
             <TbMail class="size-5" />
             Continue with email
