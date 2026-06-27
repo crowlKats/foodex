@@ -88,7 +88,7 @@ jobs:
         id: token
         run: |
           TOKEN=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=k8s.routing.cafe" | jq -r .value)
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=k0s.routing.cafe" | jq -r .value)
           echo "::add-mask::$TOKEN"
           echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
 
