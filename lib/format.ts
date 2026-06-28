@@ -12,11 +12,16 @@ const WHOLE_UNITS = new Set([
 
 /**
  * Format a numeric amount for display — never shows unnecessary trailing zeros.
- * Rounds to 2 decimal places max. Fine-grained metric units (g, ml…) round to integer.
+ * Rounds to 2 decimal places max. Fine-grained metric units (g, ml…) round by
+ * magnitude: integer at 10+, 1 decimal under 10, 2 decimals under 1 — so small
+ * amounts like 0.7 g or 0.25 ml keep their precision instead of collapsing to 0/1.
  */
 export function formatAmount(n: number, unit?: string): string {
   if (unit && WHOLE_UNITS.has(unit)) {
-    return Math.round(n).toString();
+    const abs = Math.abs(n);
+    const decimals = abs < 1 ? 2 : abs < 10 ? 1 : 0;
+    const factor = 10 ** decimals;
+    return String(Math.round(n * factor) / factor);
   }
   const rounded = Math.round(n * 100) / 100;
   return String(rounded);
