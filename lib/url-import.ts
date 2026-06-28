@@ -21,6 +21,67 @@ interface SchemaRecipe {
   image?: string | string[] | { url?: string };
 }
 
+/** Browser-like headers — many sites reject obvious bot User-Agents. */
+const BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
+/**
+ * HTTP statuses that typically indicate a bot-protection block (e.g.
+ * Cloudflare) rather than a genuine "page not found / broken" error. These
+ * are worth retrying through the reader proxy.
+ */
+const BOT_BLOCK_STATUSES = new Set([401, 402, 403, 406, 429, 503]);
+
+/**
+ * Fetch a URL, falling back to the Jina reader proxy when the site blocks
+ * direct server-side requests (bot protection). The reader is asked to return
+ * the original HTML so embedded schema.org JSON-LD survives for extraction.
+ */
+async function fetchPage(url: string): Promise<Response> {
+  try {
+    const res = await fetch(url, {
+      headers: BROWSER_HEADERS,
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (res.ok) return res;
+    // Genuine errors (404, unexpected 5xx) are not recoverable via the reader.
+    if (!BOT_BLOCK_STATUSES.has(res.status)) {
+      throw new Error(`Failed to fetch URL: ${res.status} ${res.statusText}`);
+    }
+  } catch (err) {
+    // Re-throw real HTTP errors; fall through to the reader on a network
+    // failure, timeout, or a bot-block status handled above.
+    if (
+      err instanceof Error && err.message.startsWith("Failed to fetch URL:")
+    ) {
+      throw err;
+    }
+  }
+
+  // Fallback: route through the Jina reader, which renders the page and
+  // bypasses bot protection. `X-Return-Format: html` keeps JSON-LD intact.
+  const jinaKey = Deno.env.get("JINA_API_KEY");
+  const readerRes = await fetch(`https://r.jina.ai/${url}`, {
+    headers: {
+      "X-Return-Format": "html",
+      ...(jinaKey ? { Authorization: `Bearer ${jinaKey}` } : {}),
+    },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!readerRes.ok) {
+    throw new Error(
+      `Failed to fetch URL: the site blocked the request and the reader ` +
+        `fallback also failed (${readerRes.status} ${readerRes.statusText})`,
+    );
+  }
+  return readerRes;
+}
+
 /**
  * Fetch a URL and extract structured recipe data.
  * Handles both schema.org/Recipe JSON-LD on any website and
@@ -29,17 +90,7 @@ interface SchemaRecipe {
 export async function importRecipeFromUrl(
   url: string,
 ): Promise<OcrRecipeData> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; Foodex/1.0; +https://github.com/foodex)",
-      Accept: "text/html, application/json",
-    },
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch URL: ${res.status} ${res.statusText}`);
-  }
+  const res = await fetchPage(url);
 
   const contentType = res.headers.get("content-type") || "";
 
