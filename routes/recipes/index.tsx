@@ -89,8 +89,8 @@ function buildRecipeQuery(opts: {
     joins.push("LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id");
     wheres.push(
       `(r.search_vector @@ plainto_tsquery('english', $${p})` +
-        ` OR rs.body ILIKE '%' || $${p + 1} || '%' ESCAPE '\\\\'` +
-        ` OR ri.name ILIKE '%' || $${p + 1} || '%' ESCAPE '\\\\')`,
+        ` OR rs.body ILIKE '%' || $${p + 1} || '%' ESCAPE '\\'` +
+        ` OR ri.name ILIKE '%' || $${p + 1} || '%' ESCAPE '\\')`,
     );
     params.push(opts.q, escapeLike(opts.q));
     p += 2;

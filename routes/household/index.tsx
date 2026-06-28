@@ -99,7 +99,7 @@ export const handler = define.handlers({
            WHERE r.household_id = $1
            ${
           q
-            ? `AND (r.search_vector @@ plainto_tsquery('english', $2) OR r.title ILIKE '%' || $3 || '%' ESCAPE '\\\\')`
+            ? `AND (r.search_vector @@ plainto_tsquery('english', $2) OR r.title ILIKE '%' || $3 || '%' ESCAPE '\\')`
             : ""
         }
            ORDER BY r.updated_at DESC`,
