@@ -327,3 +327,27 @@ export interface RecipeDraft {
   created_at: string;
   updated_at: string;
 }
+
+// ── Agentic recipe chat ────────────────────────────────────────────
+// Sessions are per-user. The staging area and conversation are both pure
+// projections (folds) over the ordered agent_events log — see lib/agent/.
+
+export interface AgentSession {
+  id: string;
+  user_id: string;
+  household_id: string;
+  title: string;
+  /** Rollback head; events with seq > head_seq are logically truncated. */
+  head_seq: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentEventRow {
+  id: string;
+  session_id: string;
+  seq: number;
+  type: string;
+  payload: unknown;
+  created_at: string;
+}

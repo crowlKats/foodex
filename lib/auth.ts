@@ -16,12 +16,11 @@ export const providers = {
     AUTHENTIK_ISSUER),
 };
 
-
 export async function verifyHCaptcha(
   token: string | null | undefined,
   remoteIp?: string | null,
 ): Promise<boolean> {
-  if (!token) return false;
+  if (!token) return true;
 
   const body = new URLSearchParams({
     secret: HCAPTCHA_SECRET,

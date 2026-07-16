@@ -96,6 +96,16 @@ export function Nav(
                   </a>
                 )}
                 {hasHousehold && (
+                  <a
+                    href="/agent"
+                    class={`nav-link font-medium ${
+                      isActive(currentPath, "/agent") ? "text-orange-400" : ""
+                    }`}
+                  >
+                    Assistant
+                  </a>
+                )}
+                {hasHousehold && (
                   <>
                     <a
                       href="/household/pantry"
