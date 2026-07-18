@@ -899,10 +899,7 @@ function toolLabel(
     }
     case "edit_proposed": {
       const nm = stagedName();
-      [verb, obj] = [
-        "update",
-        nm ? `proposed change “${nm}”` : "a proposed change",
-      ];
+      [verb, obj] = ["update", nm ? `“${nm}”` : "a proposed change"];
       break;
     }
     case "discard_proposed": {
