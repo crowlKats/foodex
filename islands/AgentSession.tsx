@@ -73,6 +73,15 @@ interface ConflictInfo {
 // deno-lint-ignore no-explicit-any
 type Any = any;
 
+// Starter prompts shown on an empty chat.
+const EXAMPLE_PROMPTS = [
+  "Add an authentic Neapolitan pizza recipe",
+  "Find and add a traditional pad thai",
+  "Import the recipe at this URL: ",
+  "Make my pancakes recipe vegan",
+  "Scale my bolognese to 6 servings",
+];
+
 export default function AgentSession(props: Props) {
   const [timeline, setTimeline] = useState<TimelineEntry[]>(
     props.initialTimeline,
@@ -250,12 +259,15 @@ export default function AgentSession(props: Props) {
     });
   }
 
-  function send() {
-    const text = input.trim();
+  function sendText(raw: string) {
+    const text = raw.trim();
     if (!text || turnActive) return;
     setTimeline((t) => [...t, { kind: "user", text }]);
     setInput("");
     runStream({ text });
+  }
+  function send() {
+    sendText(input);
   }
 
   // ── staging mutations ────────────────────────────────────────────
@@ -425,11 +437,27 @@ export default function AgentSession(props: Props) {
             ))}
             {live && <LiveTurnView live={live} names={names} />}
             {timeline.length === 0 && !live && (
-              <p class="text-stone-400 text-sm">
-                Ask me to find, create, or improve recipes and ingredients. I'll
-                propose changes here for you to review before anything is
-                applied.
-              </p>
+              <div class="space-y-3">
+                <p class="text-stone-400 text-sm">
+                  Ask me to find, create, or improve recipes and ingredients.
+                  I'll propose changes here for you to review before anything is
+                  applied. Try:
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  {EXAMPLE_PROMPTS.map((ex) => (
+                    <button
+                      key={ex}
+                      type="button"
+                      disabled={turnActive}
+                      class="border-2 border-stone-200 dark:border-stone-700 hover:border-orange-400 px-2.5 py-1 text-sm text-left disabled:opacity-50"
+                      onClick={() =>
+                        ex.endsWith(": ") ? setInput(ex) : sendText(ex)}
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
