@@ -2,19 +2,27 @@ import { useSignal } from "@preact/signals";
 import TbX from "tb-icons/TbX";
 
 interface Props {
-  name: string;
+  /** Form mode: emits hidden inputs under this name. Omit in controlled mode. */
+  name?: string;
   options: string[];
   initialSelected?: string[];
   placeholder?: string;
+  /** Controlled mode: called with the full selection whenever it changes. */
+  onValueChange?: (values: string[]) => void;
 }
 
 export default function MultiSearchSelect(
-  { name, options, initialSelected, placeholder }: Props,
+  { name, options, initialSelected, placeholder, onValueChange }: Props,
 ) {
   const selected = useSignal<string[]>(initialSelected ?? []);
   const query = useSignal("");
   const open = useSignal(false);
   const highlightIndex = useSignal(-1);
+
+  function commit(next: string[]) {
+    selected.value = next;
+    onValueChange?.(next);
+  }
 
   function getFiltered(): string[] {
     const q = query.value.toLowerCase().trim();
@@ -25,14 +33,14 @@ export default function MultiSearchSelect(
 
   function add(value: string) {
     if (!selected.value.includes(value)) {
-      selected.value = [...selected.value, value];
+      commit([...selected.value, value]);
     }
     query.value = "";
     highlightIndex.value = -1;
   }
 
   function remove(value: string) {
-    selected.value = selected.value.filter((v) => v !== value);
+    commit(selected.value.filter((v) => v !== value));
   }
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -58,7 +66,7 @@ export default function MultiSearchSelect(
       e.key === "Backspace" && query.value === "" &&
       selected.value.length > 0
     ) {
-      selected.value = selected.value.slice(0, -1);
+      commit(selected.value.slice(0, -1));
     }
   }
 
@@ -66,9 +74,10 @@ export default function MultiSearchSelect(
 
   return (
     <div class="relative">
-      {selected.value.map((v) => (
-        <input key={v} type="hidden" name={name} value={v} />
-      ))}
+      {name &&
+        selected.value.map((v) => (
+          <input key={v} type="hidden" name={name} value={v} />
+        ))}
       {selected.value.length > 0 && (
         <div class="flex flex-wrap gap-1.5 mb-1.5">
           {selected.value.map((v) => (

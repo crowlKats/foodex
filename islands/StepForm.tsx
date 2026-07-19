@@ -77,6 +77,8 @@ interface InitialStep {
   media: MediaItem[];
   after: number[];
   section?: number | null;
+  /** Stable id (e.g. an existing DB step id) preserved through edits/reorders. */
+  id?: string;
 }
 
 interface StepFormProps {
@@ -771,7 +773,7 @@ export default function StepForm(
           after: (s.after ?? []).filter(
             (d) => sectionByIdx[d] === sectionByIdx[i],
           ),
-          _uid: crypto.randomUUID(),
+          _uid: s.id ?? crypto.randomUUID(),
         }));
       })()
       : [newStep()],
@@ -2144,6 +2146,11 @@ export default function StepForm(
                 : null;
               return (
                 <div key={`hidden-${i}`}>
+                  <input
+                    type="hidden"
+                    name={`steps[${i}][id]`}
+                    value={step._uid ?? ""}
+                  />
                   <input
                     type="hidden"
                     name={`steps[${i}][title]`}

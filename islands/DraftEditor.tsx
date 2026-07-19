@@ -342,9 +342,10 @@ export default function DraftEditor({
         <div class="card">
           <h2 class="font-semibold mb-2">Steps</h2>
           <p class="text-xs text-stone-500 mb-2">
-            Use <code class="code-hint">{"{{ key }}"}</code> for scaled
-            ingredients, <code class="code-hint">{"{{ key.amount }}"}</code> for
-            just the number.{" "}
+            Use <code class="code-hint">{"{{ key }}"}</code>{" "}
+            for scaled ingredients,{" "}
+            <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
+            for just the number.{" "}
             <a href="/docs/templates" class="link text-xs">
               Full reference
             </a>
@@ -353,10 +354,9 @@ export default function DraftEditor({
             key={`steps-${v}`}
             initialSteps={(r.steps ?? []).map((s, i) => {
               const secKey = s.section ?? null;
-              const secIdx =
-                secKey != null
-                  ? (r.sections ?? []).findIndex((sec) => sec.key === secKey)
-                  : -1;
+              const secIdx = secKey != null
+                ? (r.sections ?? []).findIndex((sec) => sec.key === secKey)
+                : -1;
               return {
                 title: s.title ?? "",
                 body: s.body ?? "",
@@ -385,21 +385,18 @@ export default function DraftEditor({
           <h2 class="font-semibold mb-2">Output Ingredient</h2>
           <RecipeOutputForm
             ingredients={ingredients}
-            initialIngredientId={
-              (r.output_ingredient_id as string) ?? undefined
-            }
-            initialIngredientName={
-              r.output_ingredient_id
-                ? ingredients.find((g) => g.id === r.output_ingredient_id)?.name
-                : undefined
-            }
-            initialAmount={
-              r.output_amount != null ? String(r.output_amount) : undefined
-            }
+            initialIngredientId={(r.output_ingredient_id as string) ??
+              undefined}
+            initialIngredientName={r.output_ingredient_id
+              ? ingredients.find((g) => g.id === r.output_ingredient_id)?.name
+              : undefined}
+            initialAmount={r.output_amount != null
+              ? String(r.output_amount)
+              : undefined}
             initialUnit={(r.output_unit as string) ?? undefined}
-            initialExpiresDays={
-              r.output_expires_days != null ? r.output_expires_days : undefined
-            }
+            initialExpiresDays={r.output_expires_days != null
+              ? r.output_expires_days
+              : undefined}
           />
         </div>
 
@@ -483,9 +480,9 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     const afterStr = String(fd.get(`sections[${secIdx}][after]`) ?? "");
     const afterIdx = afterStr
       ? afterStr
-          .split(",")
-          .map(Number)
-          .filter((n) => !isNaN(n))
+        .split(",")
+        .map(Number)
+        .filter((n) => !isNaN(n))
       : [];
     sectionsRaw.push({
       title: String(fd.get(`sections[${secIdx}][title]`) ?? ""),
@@ -507,12 +504,12 @@ function formDataToRecipeData(fd: FormData): Record<string, unknown> {
   let s = 0;
   while (fd.has(`steps[${s}][title]`) || fd.has(`steps[${s}][body]`)) {
     const secIdxRaw = fd.get(`steps[${s}][section]`);
-    const sIdx =
-      secIdxRaw && secIdxRaw !== "" ? parseInt(secIdxRaw as string) : null;
-    const sectionKey =
-      sIdx != null && !isNaN(sIdx) && sections[sIdx]
-        ? sections[sIdx].key
-        : null;
+    const sIdx = secIdxRaw && secIdxRaw !== ""
+      ? parseInt(secIdxRaw as string)
+      : null;
+    const sectionKey = sIdx != null && !isNaN(sIdx) && sections[sIdx]
+      ? sections[sIdx].key
+      : null;
     steps.push({
       title: fd.get(`steps[${s}][title]`) ?? "",
       body: fd.get(`steps[${s}][body]`) ?? "",

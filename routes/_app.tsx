@@ -28,6 +28,10 @@ function PrefetchScript() {
 }
 
 export default define.page(function App({ Component, state, url }) {
+  // Full-bleed (no max-width wrapper, no page scroll) for the scanner and the
+  // agent chat session — they manage their own full-height layout.
+  const fullBleed = url.pathname === "/scan" ||
+    /^\/agent\/[^/]+$/.test(url.pathname);
   return (
     <html class="overscroll-none">
       <head>
@@ -82,18 +86,16 @@ export default define.page(function App({ Component, state, url }) {
         />
         <main
           class={`flex-1 overscroll-none ${
-            url.pathname === "/scan"
+            fullBleed
               ? "overflow-hidden"
               : "overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0"
           }`}
         >
-          {url.pathname === "/scan"
-            ? <Component />
-            : (
-              <div class="max-w-6xl mx-auto px-4 py-6">
-                <Component />
-              </div>
-            )}
+          {fullBleed ? <Component /> : (
+            <div class="max-w-6xl mx-auto px-4 py-6">
+              <Component />
+            </div>
+          )}
         </main>
         <PwaInstallPrompt />
       </body>

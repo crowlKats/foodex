@@ -214,7 +214,7 @@ export const handler = define.handlers({
       });
     }
     await ctx.state.db.query(
-      "UPDATE ingredients SET name = $1, unit = $2, density = $3 WHERE id = $4",
+      "UPDATE ingredients SET name = $1, unit = $2, density = $3, updated_at = now() WHERE id = $4",
       [name.trim(), unit?.trim() || null, density, id],
     );
     return new Response(null, {
