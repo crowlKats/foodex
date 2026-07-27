@@ -1,11 +1,11 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$push-subscription.ts";
 import {
   parseJsonBody,
   PushSubscriptionBody,
   PushSubscriptionDeleteBody,
 } from "../../lib/validation.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     const user = ctx.state.user;
     const householdId = ctx.state.householdId;

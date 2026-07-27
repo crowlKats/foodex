@@ -1,4 +1,5 @@
-import { define } from "../../../../utils.ts";
+import { handler } from "./$staging.ts";
+import type { HandlerContext } from "fresh/types";
 import {
   appendEvent,
   getSession,
@@ -18,7 +19,6 @@ import {
 } from "../../../../lib/agent/merge.ts";
 import type { AgentSession } from "../../../../db/types.ts";
 import type { State } from "../../../../utils.ts";
-import type { FreshContext } from "fresh";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,7 +31,7 @@ function json(data: unknown, status = 200): Response {
 }
 
 async function authSession(
-  ctx: FreshContext<State>,
+  ctx: HandlerContext<{ id: string }, State>,
 ): Promise<{ session: AgentSession } | { error: Response }> {
   if (!ctx.state.user) {
     return { error: json({ error: "Not authenticated" }, 401) };
@@ -43,12 +43,15 @@ async function authSession(
   return { session };
 }
 
-async function serializeStaging(ctx: FreshContext<State>, s: AgentSession) {
+async function serializeStaging(
+  ctx: HandlerContext<{ id: string }, State>,
+  s: AgentSession,
+) {
   const events = await loadEvents(ctx.state.db.query, s.id, s.head_seq);
   return serializePending(foldStaging(events));
 }
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const auth = await authSession(ctx);
     if ("error" in auth) return auth.error;

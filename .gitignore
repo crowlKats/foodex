@@ -7,6 +7,9 @@
 
 # Fresh build directory
 _fresh/
+.fresh/
+.output/
+.nitro/
 # npm + other dependencies
 node_modules/
 vendor/

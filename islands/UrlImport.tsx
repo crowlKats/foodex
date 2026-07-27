@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
-import TbLink from "tb-icons/TbLink";
-import TbLoader2 from "tb-icons/TbLoader2";
+import { IconLink } from "@tabler/icons-preact";
+import { IconLoader2 } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 
@@ -45,7 +45,7 @@ export default function UrlImport() {
     return (
       <div class="card">
         <div class="flex flex-col items-center justify-center py-12 gap-4">
-          <TbLoader2 class="size-12 text-orange-600 animate-spin" />
+          <IconLoader2 class="size-12 text-orange-600 animate-spin" />
           <p class="text-sm font-medium">Importing recipe from URL...</p>
         </div>
       </div>
@@ -60,7 +60,7 @@ export default function UrlImport() {
         <Input
           type="url"
           placeholder="https://example.com/recipe/..."
-          icon={TbLink}
+          icon={IconLink}
           class="flex-1"
           value={url.value}
           onValueChange={(v) => {

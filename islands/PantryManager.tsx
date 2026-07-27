@@ -1,15 +1,14 @@
 import { useComputed, useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
-import { IS_BROWSER } from "fresh/runtime";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import ScanView from "./ScanView.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import { formatInputValue } from "../lib/format.ts";
-import TbTrash from "tb-icons/TbTrash";
-import TbAlertTriangle from "tb-icons/TbAlertTriangle";
-import TbScan from "tb-icons/TbScan";
-import TbArrowMerge from "tb-icons/TbArrowMerge";
+import { IconTrash } from "@tabler/icons-preact";
+import { IconAlertTriangle } from "@tabler/icons-preact";
+import { IconScan } from "@tabler/icons-preact";
+import { IconArrowMerge } from "@tabler/icons-preact";
 import GenerateRecipe from "./GenerateRecipe.tsx";
 import { Button } from "../components/Button.tsx";
 import { Input, InputBar } from "../components/Input.tsx";
@@ -73,7 +72,7 @@ export default function PantryManager(
 
   // Auto-open scanner when ?scan=1 is in the URL
   useEffect(() => {
-    if (IS_BROWSER) {
+    if (typeof document !== "undefined") {
       const params = new URLSearchParams(globalThis.location.search);
       if (params.get("scan") === "1") {
         scanning.value = true;
@@ -273,7 +272,7 @@ export default function PantryManager(
             <Button
               type="button"
               size="sm"
-              icon={TbScan}
+              icon={IconScan}
               onClick={() => {
                 scanning.value = true;
               }}
@@ -380,7 +379,7 @@ export default function PantryManager(
         </div>
         {expiringSoonCount.value > 0 && (
           <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm mb-3">
-            <TbAlertTriangle class="size-4 shrink-0" />
+            <IconAlertTriangle class="size-4 shrink-0" />
             <span>
               {expiringSoonCount.value}{" "}
               {expiringSoonCount.value === 1 ? "item needs" : "items need"}{" "}
@@ -454,7 +453,7 @@ export default function PantryManager(
                             mergingItemId.value = isMerging ? null : item.id;
                           }}
                         >
-                          <TbArrowMerge class="size-4" />
+                          <IconArrowMerge class="size-4" />
                         </button>
                       )}
                       <InputBar>
@@ -511,7 +510,7 @@ export default function PantryManager(
                       <Button
                         type="button"
                         variant="danger-ghost"
-                        icon={TbTrash}
+                        icon={IconTrash}
                         title="Remove"
                         onClick={() => removeItem(item.id)}
                       />

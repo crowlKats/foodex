@@ -1,4 +1,4 @@
-import { define } from "../../../utils.ts";
+import { handler } from "./$authentik.ts";
 import {
   clearOAuthStateCookie,
   createSessionCookie,
@@ -7,7 +7,7 @@ import {
   getOAuthStateFromRequest,
 } from "../../../lib/auth.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const code = ctx.url.searchParams.get("code");
     const state = ctx.url.searchParams.get("state");

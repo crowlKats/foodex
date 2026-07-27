@@ -1,12 +1,11 @@
-import { page } from "fresh";
-import { define } from "../../../utils.ts";
+import { handler, page } from "./$index.ts";
 import type { RecipeDraft } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import OcrUpload from "../../../islands/OcrUpload.tsx";
 import UrlImport from "../../../islands/UrlImport.tsx";
 import TextImport from "../../../islands/TextImport.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -24,11 +23,11 @@ export const handler = define.handlers({
     );
 
     ctx.state.pageTitle = "Import Recipe";
-    return page({ drafts: draftsRes.rows });
+    return { data: { drafts: draftsRes.rows } };
   },
 });
 
-export default define.page<typeof handler>(function ImportIndexPage({ data }) {
+export default page(function ImportIndexPage({ data }) {
   const sourceLabel = (source: string) => {
     switch (source) {
       case "ocr":

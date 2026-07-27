@@ -1,4 +1,3 @@
-import { createDefine } from "fresh";
 import type { QueryFn } from "./db/mod.ts";
 import type { UnitSystem } from "./lib/unit-display.ts";
 
@@ -10,6 +9,10 @@ export interface User {
   unit_system: UnitSystem;
 }
 
+/**
+ * Application request state, produced by the root `routes/_middleware.tsx` and
+ * threaded to every route through the generated `$<file>.ts` helpers.
+ */
 export interface State {
   db: {
     query: QueryFn;
@@ -21,8 +24,6 @@ export interface State {
   householdId: string | null;
   pageTitle: string;
 }
-
-export const define = createDefine<State>();
 
 /** Escape special LIKE/ILIKE characters so user input is treated literally. */
 export function escapeLike(s: string): string {

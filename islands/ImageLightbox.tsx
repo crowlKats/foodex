@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import TbX from "tb-icons/TbX";
+import { IconX } from "@tabler/icons-preact";
 
 interface ImageLightboxProps {
   src: string;
@@ -36,7 +36,7 @@ export default function ImageLightbox(
               open.value = false;
             }}
           >
-            <TbX class="size-6" />
+            <IconX class="size-6" />
           </button>
           <img
             src={src}

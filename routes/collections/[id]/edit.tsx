@@ -1,5 +1,5 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../../utils.ts";
+import { handler, page } from "./$edit.ts";
+import { HttpError } from "fresh/errors";
 import type { Collection, Recipe } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormField } from "../../../components/FormField.tsx";
@@ -9,7 +9,7 @@ import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePicker from "../../../islands/RecipePicker.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const id = ctx.params.id;
     if (!ctx.state.user || !ctx.state.householdId) {
@@ -55,11 +55,13 @@ export const handler = define.handlers({
     );
 
     ctx.state.pageTitle = `Edit ${collRes.rows[0].name}`;
-    return page({
-      collection: collRes.rows[0],
-      currentRecipes: currentRecipesRes.rows,
-      allRecipes: allRecipesRes.rows,
-    });
+    return {
+      data: {
+        collection: collRes.rows[0],
+        currentRecipes: currentRecipesRes.rows,
+        allRecipes: allRecipesRes.rows,
+      },
+    };
   },
   async POST(ctx) {
     const id = ctx.params.id;
@@ -133,7 +135,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function EditCollectionPage(
     { data: { collection, currentRecipes, allRecipes } },
   ) {

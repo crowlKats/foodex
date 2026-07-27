@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import TbTrash from "tb-icons/TbTrash";
+import { IconTrash } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 
 interface Props {
@@ -28,7 +28,7 @@ export default function DeleteChatButton({ sessionId, redirect }: Props) {
     <Button
       type="button"
       variant="danger-ghost"
-      icon={TbTrash}
+      icon={IconTrash}
       title="Delete conversation"
       disabled={busy}
       onClick={del}

@@ -1,9 +1,9 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../../utils.ts";
+import { handler, page } from "./$[token].ts";
+import { HttpError } from "fresh/errors";
 import type { ShoppingList, ShoppingListItem } from "../../../db/types.ts";
 import SharedShoppingList from "../../../islands/SharedShoppingList.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const token = ctx.params.token;
 
@@ -36,11 +36,11 @@ export const handler = define.handlers({
     }));
 
     ctx.state.pageTitle = list.name;
-    return page({ items, token, listName: list.name });
+    return { data: { items, token, listName: list.name } };
   },
 });
 
-export default define.page<typeof handler>(function SharedShoppingListPage({
+export default page(function SharedShoppingListPage({
   data,
 }) {
   return (

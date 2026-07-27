@@ -1,5 +1,4 @@
-import { page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$new.ts";
 import type { Recipe } from "../../db/types.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
@@ -8,7 +7,7 @@ import { Input, InputMultiline } from "../../components/Input.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import RecipePicker from "../../islands/RecipePicker.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -25,10 +24,12 @@ export const handler = define.handlers({
     );
 
     ctx.state.pageTitle = "New Collection";
-    return page({
-      allRecipes: recipesRes.rows,
-      error: undefined as string | undefined,
-    });
+    return {
+      data: {
+        allRecipes: recipesRes.rows,
+        error: undefined as string | undefined,
+      },
+    };
   },
   async POST(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
@@ -53,7 +54,9 @@ export const handler = define.handlers({
          ORDER BY title`,
         [ctx.state.householdId],
       );
-      return page({ allRecipes: recipesRes.rows, error: "Name is required" });
+      return {
+        data: { allRecipes: recipesRes.rows, error: "Name is required" },
+      };
     }
 
     let collectionId: string;
@@ -87,7 +90,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function NewCollectionPage({ data: { allRecipes, error } }) {
     return (
       <div>

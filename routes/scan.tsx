@@ -1,9 +1,8 @@
-import { page } from "fresh";
-import { define } from "../utils.ts";
+import { handler, page } from "./$scan.ts";
 import type { Ingredient, Store } from "../db/types.ts";
 import ScanView from "../islands/ScanView.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -22,15 +21,17 @@ export const handler = define.handlers({
     ]);
 
     ctx.state.pageTitle = "Scan";
-    return page({
-      householdId: ctx.state.householdId,
-      ingredients: ingredientsRes.rows,
-      stores: storesRes.rows,
-    });
+    return {
+      data: {
+        householdId: ctx.state.householdId,
+        ingredients: ingredientsRes.rows,
+        stores: storesRes.rows,
+      },
+    };
   },
 });
 
-export default define.page<typeof handler>(function ScanPage({ data }) {
+export default page(function ScanPage({ data }) {
   return (
     <ScanView
       mode="page"

@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
-import TbLoader2 from "tb-icons/TbLoader2";
-import TbSparkles from "tb-icons/TbSparkles";
+import { IconLoader2 } from "@tabler/icons-preact";
+import { IconSparkles } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { Input, InputBar, InputMultiline } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
@@ -63,7 +63,7 @@ export default function GenerateRecipe() {
     return (
       <div class="card">
         <div class="flex flex-col items-center justify-center py-8 gap-3">
-          <TbLoader2 class="size-10 text-orange-600 animate-spin" />
+          <IconLoader2 class="size-10 text-orange-600 animate-spin" />
           <p class="text-sm font-medium">
             Generating recipe from your pantry...
           </p>
@@ -76,7 +76,7 @@ export default function GenerateRecipe() {
   return (
     <div class="card space-y-3">
       <h2 class="font-semibold flex items-center gap-2">
-        <TbSparkles class="size-5 text-orange-600" />
+        <IconSparkles class="size-5 text-orange-600" />
         Generate Recipe from Pantry
       </h2>
       <p class="text-sm text-stone-500">
@@ -126,7 +126,7 @@ export default function GenerateRecipe() {
       <Button
         type="button"
         onClick={generate}
-        icon={TbSparkles}
+        icon={IconSparkles}
       >
         Generate
       </Button>

@@ -1,10 +1,10 @@
-import { define } from "../../../utils.ts";
+import { handler } from "./$recipes.ts";
 import {
   CollectionRecipesBody,
   parseJsonBody,
 } from "../../../lib/validation.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, { status: 401 });

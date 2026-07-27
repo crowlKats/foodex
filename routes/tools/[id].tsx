@@ -1,5 +1,5 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$[id].ts";
+import { HttpError } from "fresh/errors";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
@@ -7,7 +7,7 @@ import { Button } from "../../components/Button.tsx";
 import { Input, InputMultiline } from "../../components/Input.tsx";
 import type { Tool, ToolUsage } from "../../db/types.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const id = ctx.params.id;
     const toolRes = await ctx.state.db.query<Tool>(
@@ -35,12 +35,14 @@ export const handler = define.handlers({
     }
 
     ctx.state.pageTitle = toolRes.rows[0].name;
-    return page({
-      tool: toolRes.rows[0],
-      usage: usageRes.rows,
-      householdHasTool,
-      loggedIn: ctx.state.user != null,
-    });
+    return {
+      data: {
+        tool: toolRes.rows[0],
+        usage: usageRes.rows,
+        householdHasTool,
+        loggedIn: ctx.state.user != null,
+      },
+    };
   },
   async POST(ctx) {
     const id = ctx.params.id;
@@ -96,7 +98,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function ToolDetail({ data: { tool, usage, householdHasTool, loggedIn } }) {
     return (
       <div>

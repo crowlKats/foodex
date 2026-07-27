@@ -1,8 +1,8 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$import-url.ts";
 import { importRecipeFromUrl } from "../../lib/url-import.ts";
 import { ImportUrlBody, parseJsonBody } from "../../lib/validation.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {

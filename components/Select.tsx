@@ -29,10 +29,14 @@ export function Select(props: SelectProps) {
     ...rest
   } = props;
 
-  const handleChange: JSX.GenericEventHandler<HTMLSelectElement> = (e) => {
-    if (onValueChange) onValueChange(e.currentTarget.value);
-    if (onChange) onChange(e);
-  };
+  // See Input.tsx: emit no handler for a static (non-island) `<Select>`.
+  const handleChange: JSX.GenericEventHandler<HTMLSelectElement> | undefined =
+    onValueChange || onChange
+      ? (e) => {
+        if (onValueChange) onValueChange(e.currentTarget.value);
+        if (onChange) onChange(e);
+      }
+      : undefined;
 
   const className = [extra, SIZE_CLASS[size]].filter((c) => c).join(" ") ||
     undefined;

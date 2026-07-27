@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "preact/hooks";
 import { useSignal } from "@preact/signals";
-import TbCrop from "tb-icons/TbCrop";
-import TbCheck from "tb-icons/TbCheck";
-import TbX from "tb-icons/TbX";
+import { IconCrop } from "@tabler/icons-preact";
+import { IconCheck } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 
 interface ImageCropProps {
@@ -165,7 +165,7 @@ export default function ImageCrop(
           open.value = true;
         }}
       >
-        <TbCrop class="size-3 inline mr-0.5" />Crop
+        <IconCrop class="size-3 inline mr-0.5" />Crop
       </button>
     );
   }
@@ -180,7 +180,7 @@ export default function ImageCrop(
           <Button
             type="button"
             variant="ghost"
-            icon={TbX}
+            icon={IconX}
             title="Close"
             onClick={() => {
               open.value = false;
@@ -240,7 +240,7 @@ export default function ImageCrop(
         <div class="flex gap-2 p-3 border-t-2 border-stone-300 dark:border-stone-700">
           <Button
             type="button"
-            icon={TbCheck}
+            icon={IconCheck}
             disabled={saving.value}
             onClick={applyCrop}
           >

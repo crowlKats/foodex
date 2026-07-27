@@ -1,8 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
-import { IS_BROWSER } from "fresh/runtime";
-import TbBell from "tb-icons/TbBell";
-import TbBellOff from "tb-icons/TbBellOff";
+import { IconBell } from "@tabler/icons-preact";
+import { IconBellOff } from "@tabler/icons-preact";
 
 interface NotificationToggleProps {
   vapidPublicKey: string;
@@ -16,7 +15,7 @@ export default function NotificationToggle(
   const supported = useSignal(false);
 
   useEffect(() => {
-    if (!IS_BROWSER) return;
+    if (typeof document === "undefined") return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     supported.value = true;
 
@@ -86,7 +85,9 @@ export default function NotificationToggle(
         ? "Disable expiry notifications"
         : "Enable expiry notifications"}
     >
-      {enabled.value ? <TbBell class="size-5" /> : <TbBellOff class="size-5" />}
+      {enabled.value
+        ? <IconBell class="size-5" />
+        : <IconBellOff class="size-5" />}
       <span class="hidden sm:inline">
         {enabled.value ? "Notifications on" : "Notify me"}
       </span>

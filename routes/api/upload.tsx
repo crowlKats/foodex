@@ -1,7 +1,7 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$upload.ts";
 import { uploadFile } from "../../lib/s3.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.householdId) {
       return new Response(null, { status: 401 });

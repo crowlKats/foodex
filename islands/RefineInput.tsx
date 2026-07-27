@@ -1,8 +1,8 @@
 import { useSignal } from "@preact/signals";
-import TbLoader2 from "tb-icons/TbLoader2";
-import TbSend from "tb-icons/TbSend";
-import TbBrain from "tb-icons/TbBrain";
-import TbX from "tb-icons/TbX";
+import { IconLoader2 } from "@tabler/icons-preact";
+import { IconSend } from "@tabler/icons-preact";
+import { IconBrain } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import type { OcrRecipeData } from "../lib/ocr.ts";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
@@ -117,7 +117,7 @@ export default function RefineInput(
                 }}
                 title="View AI thinking"
               >
-                <TbBrain class="size-3" />
+                <IconBrain class="size-3" />
               </button>
               <span class="italic">Initial generation</span>
             </div>
@@ -133,7 +133,7 @@ export default function RefineInput(
                   }}
                   title="View AI thinking"
                 >
-                  <TbBrain class="size-3" />
+                  <IconBrain class="size-3" />
                 </button>
               )}
               {!ex.thinking && <span class="w-3 shrink-0" />}
@@ -169,8 +169,8 @@ export default function RefineInput(
           onClick={refine}
         >
           {refining.value
-            ? <TbLoader2 class="size-4 animate-spin" />
-            : <TbSend class="size-4" />}
+            ? <IconLoader2 class="size-4 animate-spin" />
+            : <IconSend class="size-4" />}
         </Button>
       </div>
 
@@ -187,13 +187,13 @@ export default function RefineInput(
           >
             <div class="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-stone-700">
               <h3 class="font-semibold flex items-center gap-2">
-                <TbBrain class="size-5" />
+                <IconBrain class="size-5" />
                 AI Thinking
               </h3>
               <Button
                 type="button"
                 variant="ghost"
-                icon={TbX}
+                icon={IconX}
                 title="Close"
                 onClick={() => {
                   viewingThinking.value = null;

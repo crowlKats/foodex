@@ -1,5 +1,5 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$[id].ts";
+import { HttpError } from "fresh/errors";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { CURRENCIES, getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
@@ -9,7 +9,7 @@ import { Input } from "../../components/Input.tsx";
 import { Select } from "../../components/Select.tsx";
 import type { IngredientPrice, Store, StoreLocation } from "../../db/types.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const id = ctx.params.id;
     const storeRes = await ctx.state.db.query<Store>(
@@ -42,13 +42,15 @@ export const handler = define.handlers({
     }
 
     ctx.state.pageTitle = storeRes.rows[0].name;
-    return page({
-      store: storeRes.rows[0],
-      locations: locationsRes.rows,
-      prices: pricesRes.rows,
-      householdHasStore,
-      loggedIn: ctx.state.user != null,
-    });
+    return {
+      data: {
+        store: storeRes.rows[0],
+        locations: locationsRes.rows,
+        prices: pricesRes.rows,
+        householdHasStore,
+        loggedIn: ctx.state.user != null,
+      },
+    };
   },
   async POST(ctx) {
     const id = ctx.params.id;
@@ -130,7 +132,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function StoreDetail(
     { data: { store, locations, prices, householdHasStore, loggedIn } },
   ) {

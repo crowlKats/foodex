@@ -1,7 +1,7 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$barcode.ts";
 import { BarcodeQuery } from "../../lib/validation.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) {
       return new Response(null, { status: 401 });

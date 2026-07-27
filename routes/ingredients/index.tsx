@@ -1,5 +1,4 @@
-import { page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$index.ts";
 import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
@@ -23,7 +22,7 @@ const INGREDIENT_SELECT = `SELECT g.*,
    WHERE gp.ingredient_id = g.id ORDER BY gp.price ASC LIMIT 1) as cheapest_currency
 FROM ingredients g`;
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const q = ctx.url.searchParams.get("q")?.trim() || "";
     const currentPage = getPage(ctx.url);
@@ -61,19 +60,21 @@ export const handler = define.handlers({
     ]);
     const error = ctx.url.searchParams.get("error") || undefined;
     ctx.state.pageTitle = "Ingredients";
-    return page({
-      ingredients: result.rows,
-      stores: storesRes.rows,
-      existingNames: allNamesRes.rows.map((r) => ({
-        id: String(r.id),
-        name: String(r.name),
-      })),
-      q,
-      currentPage,
-      totalCount,
-      error,
-      loggedIn: ctx.state.user != null,
-    });
+    return {
+      data: {
+        ingredients: result.rows,
+        stores: storesRes.rows,
+        existingNames: allNamesRes.rows.map((r) => ({
+          id: String(r.id),
+          name: String(r.name),
+        })),
+        q,
+        currentPage,
+        totalCount,
+        error,
+        loggedIn: ctx.state.user != null,
+      },
+    };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -130,7 +131,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function IngredientsPage(
     {
       data: {

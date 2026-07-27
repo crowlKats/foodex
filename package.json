@@ -1,0 +1,43 @@
+{
+  "name": "foodex",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "deno run -A --env-file=.env .output/server/index.mjs",
+    "test": "deno test -A --no-check",
+    "check": "deno fmt --check routes islands components lib db examples *.ts && deno lint routes islands components lib db examples *.ts && vite build",
+    "migrate": "deno run -A --env-file=.env db/migrate.ts",
+    "examples": "deno run -A --env-file=.env examples/import.ts"
+  },
+  "dependencies": {
+    "fresh": "npm:@frsh/fresh@latest",
+    "@tabler/icons-preact": "^3.45.0",
+    "@luca/highlightable-textarea": "jsr:^0.1.1",
+    "@std/assert": "jsr:^1.0.19",
+    "preact": "^10.29.0",
+    "@preact/signals": "^2.8.2",
+    "vite": "^8",
+    "tailwindcss": "^4.2.2",
+    "@tailwindcss/vite": "^4.2.2",
+    "pg": "^8.20.0",
+    "marked": "^15.0.12",
+    "@aws-sdk/client-s3": "^3.1014.0",
+    "@aws-sdk/s3-request-presigner": "^3.1014.0",
+    "@anthropic-ai/sdk": "^0.105.0",
+    "nodemailer": "^6.9.16",
+    "barcode-detector": "^3.0.3",
+    "zxing-wasm": "^3.0.1",
+    "zod": "^3.24.0",
+    "preact-render-to-string": "^6.6.6"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "@types/nodemailer": "^6.4.17",
+    "@prefresh/core": "^1.5.10",
+    "@prefresh/utils": "^1.2.1"
+  }
+}

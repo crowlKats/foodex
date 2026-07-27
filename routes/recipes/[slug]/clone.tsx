@@ -1,7 +1,8 @@
-import { HttpError } from "fresh";
-import { define, slugify } from "../../../utils.ts";
+import { handler } from "./$clone.ts";
+import { HttpError } from "fresh/errors";
+import { slugify } from "../../../utils.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {

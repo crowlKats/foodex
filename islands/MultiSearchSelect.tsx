@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import TbX from "tb-icons/TbX";
+import { IconX } from "@tabler/icons-preact";
 
 interface Props {
   /** Form mode: emits hidden inputs under this name. Omit in controlled mode. */
@@ -91,7 +91,7 @@ export default function MultiSearchSelect(
                 class="text-orange-400 hover:text-orange-700 dark:hover:text-orange-200 cursor-pointer"
                 onClick={() => remove(v)}
               >
-                <TbX class="size-3" />
+                <IconX class="size-3" />
               </button>
             </span>
           ))}

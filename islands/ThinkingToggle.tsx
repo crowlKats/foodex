@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
-import TbBrain from "tb-icons/TbBrain";
-import TbX from "tb-icons/TbX";
+import { IconBrain } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 
 interface Props {
@@ -19,7 +19,7 @@ export default function ThinkingToggle({ thinking }: Props) {
           open.value = !open.value;
         }}
       >
-        <TbBrain class="size-3.5" />
+        <IconBrain class="size-3.5" />
         {open.value ? "Hide" : "Show"} AI thinking
       </button>
       {open.value && (
@@ -35,13 +35,13 @@ export default function ThinkingToggle({ thinking }: Props) {
           >
             <div class="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-stone-700">
               <h3 class="font-semibold flex items-center gap-2">
-                <TbBrain class="size-5" />
+                <IconBrain class="size-5" />
                 AI Thinking
               </h3>
               <Button
                 type="button"
                 variant="ghost"
-                icon={TbX}
+                icon={IconX}
                 title="Close"
                 onClick={() => {
                   open.value = false;

@@ -3,8 +3,8 @@ import { RecipeSteps } from "../lib/recipe-template/render-steps.tsx";
 import { scaleIngredients } from "../lib/recipe-template/render.tsx";
 import type { SectionInfo } from "../lib/step-sections.ts";
 import { recipeErrorCount } from "../lib/recipe-errors.ts";
-import TbEye from "tb-icons/TbEye";
-import TbX from "tb-icons/TbX";
+import { IconEye } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 
 interface RenderStep {
@@ -102,7 +102,7 @@ export default function RecipePreview() {
         type="button"
         onClick={show}
         variant="outline"
-        icon={TbEye}
+        icon={IconEye}
         disabled={recipeErrorCount.value > 0}
         title={recipeErrorCount.value > 0
           ? "Fix the errors in the step bodies first."
@@ -127,7 +127,7 @@ export default function RecipePreview() {
               <Button
                 type="button"
                 variant="ghost"
-                icon={TbX}
+                icon={IconX}
                 title="Close"
                 onClick={() => {
                   open.value = false;

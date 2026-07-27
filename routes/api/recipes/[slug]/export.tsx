@@ -1,5 +1,5 @@
-import { HttpError } from "fresh";
-import { define } from "../../../../utils.ts";
+import { handler } from "./$export.ts";
+import { HttpError } from "fresh/errors";
 import type {
   RecipeIngredient,
   RecipeStep,
@@ -8,7 +8,7 @@ import type {
 } from "../../../../db/types.ts";
 import { computeStepAfters } from "../../../../lib/step-graph.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
 

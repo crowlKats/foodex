@@ -36,10 +36,16 @@ export function Input(props: InputProps) {
     ...rest
   } = props;
 
-  const handleInput: JSX.GenericEventHandler<HTMLInputElement> = (e) => {
-    if (onValueChange) onValueChange(e.currentTarget.value);
-    if (onInput) onInput(e);
-  };
+  // Only attach a handler when there's actually something to call. A bare
+  // function handler on a page-level element (outside an island) can't be
+  // server-rendered in Fresh, so a static `<Input>` must emit no `onInput`.
+  const handleInput: JSX.GenericEventHandler<HTMLInputElement> | undefined =
+    onValueChange || onInput
+      ? (e) => {
+        if (onValueChange) onValueChange(e.currentTarget.value);
+        if (onInput) onInput(e);
+      }
+      : undefined;
 
   const sizeClass = SIZE_CLASS[size];
   const monoClass = monospace ? "font-mono" : "";
@@ -99,10 +105,13 @@ export function InputMultiline(props: InputMultilineProps) {
     ...rest
   } = props;
 
-  const handleInput: JSX.GenericEventHandler<HTMLTextAreaElement> = (e) => {
-    if (onValueChange) onValueChange(e.currentTarget.value);
-    if (onInput) onInput(e);
-  };
+  const handleInput: JSX.GenericEventHandler<HTMLTextAreaElement> | undefined =
+    onValueChange || onInput
+      ? (e) => {
+        if (onValueChange) onValueChange(e.currentTarget.value);
+        if (onInput) onInput(e);
+      }
+      : undefined;
 
   const className = [extra, SIZE_CLASS[size], monospace ? "font-mono" : null]
     .filter((c) => c).join(" ") || undefined;

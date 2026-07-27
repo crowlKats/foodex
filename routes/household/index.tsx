@@ -1,5 +1,5 @@
-import { page } from "fresh";
-import { define, escapeLike } from "../../utils.ts";
+import { handler, page } from "./$index.ts";
+import { escapeLike } from "../../utils.ts";
 import { FormField } from "../../components/FormField.tsx";
 import { SearchBar } from "../../components/SearchBar.tsx";
 import { Button, ButtonLink } from "../../components/Button.tsx";
@@ -7,11 +7,11 @@ import { Input } from "../../components/Input.tsx";
 import { Select } from "../../components/Select.tsx";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import ShareButton from "../../islands/ShareButton.tsx";
-import TbTrash from "tb-icons/TbTrash";
-import TbClock from "tb-icons/TbClock";
-import TbFlame from "tb-icons/TbFlame";
-import TbZzz from "tb-icons/TbZzz";
-import TbUsers from "tb-icons/TbUsers";
+import { IconTrash } from "@tabler/icons-preact";
+import { IconClock } from "@tabler/icons-preact";
+import { IconFlame } from "@tabler/icons-preact";
+import { IconZzz } from "@tabler/icons-preact";
+import { IconUsers } from "@tabler/icons-preact";
 import { formatDuration } from "../../lib/duration.ts";
 import { formatQuantity } from "../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../lib/quantity.ts";
@@ -32,7 +32,7 @@ function generateInviteCode(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -140,18 +140,20 @@ export const handler = define.handlers({
     }));
 
     ctx.state.pageTitle = householdRes.rows[0].name as string;
-    return page({
-      household: householdRes.rows[0],
-      members: membersRes.rows,
-      invites: invitesRes.rows,
-      tools,
-      availableTools,
-      stores,
-      availableStores,
-      recipes,
-      myRole,
-      q,
-    });
+    return {
+      data: {
+        household: householdRes.rows[0],
+        members: membersRes.rows,
+        invites: invitesRes.rows,
+        tools,
+        availableTools,
+        stores,
+        availableStores,
+        recipes,
+        myRole,
+        q,
+      },
+    };
   },
   async POST(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
@@ -263,7 +265,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function HouseholdDetailPage(
+export default page(function HouseholdDetailPage(
   {
     data: {
       household,
@@ -374,7 +376,7 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                           <span class="capitalize">{r.difficulty}</span>
                         )}
                         <span>
-                          <TbUsers class="size-3.5 inline mr-0.5" />
+                          <IconUsers class="size-3.5 inline mr-0.5" />
                           {formatQuantity({
                             type:
                               (r.quantity_type || "servings") as RecipeQuantity[
@@ -393,19 +395,21 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                         </span>
                         {r.prep_time != null && (
                           <span>
-                            <TbClock class="size-3.5 inline mr-0.5" />Prep:{" "}
+                            <IconClock class="size-3.5 inline mr-0.5" />Prep:
+                            {" "}
                             {formatDuration(r.prep_time)}
                           </span>
                         )}
                         {r.cook_time != null && (
                           <span>
-                            <TbFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
+                            <IconFlame class="size-3.5 inline mr-0.5" />Cook:
+                            {" "}
                             {formatDuration(r.cook_time)}
                           </span>
                         )}
                         {r.rest_time != null && (
                           <span>
-                            <TbZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
+                            <IconZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
                             {formatDuration(r.rest_time)}
                           </span>
                         )}
@@ -447,7 +451,7 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                           <Button
                             type="submit"
                             variant="danger-ghost"
-                            icon={TbTrash}
+                            icon={IconTrash}
                             title="Remove"
                           />
                         </form>
@@ -506,7 +510,7 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                           <Button
                             type="submit"
                             variant="danger-ghost"
-                            icon={TbTrash}
+                            icon={IconTrash}
                             title="Remove"
                           />
                         </form>
@@ -596,7 +600,7 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                         <Button
                           type="submit"
                           variant="danger-ghost"
-                          icon={TbTrash}
+                          icon={IconTrash}
                           title="Remove member"
                         />
                       </form>
@@ -660,7 +664,7 @@ export default define.page<typeof handler>(function HouseholdDetailPage(
                               <Button
                                 type="submit"
                                 variant="danger-ghost"
-                                icon={TbTrash}
+                                icon={IconTrash}
                                 title="Revoke"
                               />
                             </form>

@@ -1,9 +1,9 @@
+import { handler } from "./$substitutions.ts";
 import Anthropic from "@anthropic-ai/sdk";
-import { define } from "../../utils.ts";
 import { rateLimit } from "../../lib/rate-limit.ts";
 import { parseJsonBody, SubstitutionsBody } from "../../lib/validation.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.user) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {

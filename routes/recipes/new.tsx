@@ -1,6 +1,6 @@
-import { page } from "fresh";
+import { handler, page } from "./$new.ts";
 import { signal } from "@preact/signals";
-import { define, slugify } from "../../utils.ts";
+import { slugify } from "../../utils.ts";
 import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
 import { saveRecipeChildren } from "../../lib/recipe-save.ts";
 import QuantityInput from "../../islands/QuantityInput.tsx";
@@ -27,7 +27,7 @@ import {
   SOURCE_TYPES,
 } from "../../lib/recipe-tags.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -128,12 +128,14 @@ export const handler = define.handlers({
       const allRecipesRes = await ctx.state.db.query<Recipe>(
         "SELECT id, title, slug FROM recipes ORDER BY title",
       );
-      return page({
-        ingredients: ingredientsRes.rows,
-        allTools: allToolsRes.rows,
-        allRecipes: allRecipesRes.rows,
-        error: "Title is required",
-      });
+      return {
+        data: {
+          ingredients: ingredientsRes.rows,
+          allTools: allToolsRes.rows,
+          allRecipes: allRecipesRes.rows,
+          error: "Title is required",
+        },
+      };
     }
 
     try {
@@ -190,12 +192,14 @@ export const handler = define.handlers({
             "SELECT id, title, slug FROM recipes ORDER BY title",
           ),
         ]);
-        return page({
-          ingredients: ingredientsRes.rows,
-          allTools: allToolsRes.rows,
-          allRecipes: allRecipesRes.rows,
-          error: `Slug "${slug}" already exists`,
-        });
+        return {
+          data: {
+            ingredients: ingredientsRes.rows,
+            allTools: allToolsRes.rows,
+            allRecipes: allRecipesRes.rows,
+            error: `Slug "${slug}" already exists`,
+          },
+        };
       }
       throw err;
     }
@@ -207,7 +211,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function NewRecipePage(
     { data: { ingredients, allTools, allRecipes } },
   ) {
