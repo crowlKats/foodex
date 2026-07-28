@@ -1,5 +1,5 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$[id].ts";
+import { HttpError } from "fresh/errors";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
@@ -17,7 +17,7 @@ import type {
   Store,
 } from "../../db/types.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const id = ctx.params.id;
     const [
@@ -61,14 +61,16 @@ export const handler = define.handlers({
     );
 
     ctx.state.pageTitle = ingredientRes.rows[0].name;
-    return page({
-      ingredient: ingredientRes.rows[0],
-      brands: brandsRes.rows,
-      prices: pricesRes.rows,
-      stores: storesRes.rows,
-      otherIngredients: otherIngredientsRes.rows,
-      sourceRecipes: sourceRecipesRes.rows,
-    });
+    return {
+      data: {
+        ingredient: ingredientRes.rows[0],
+        brands: brandsRes.rows,
+        prices: pricesRes.rows,
+        stores: storesRes.rows,
+        otherIngredients: otherIngredientsRes.rows,
+        sourceRecipes: sourceRecipesRes.rows,
+      },
+    };
   },
   async POST(ctx) {
     const id = ctx.params.id;
@@ -224,7 +226,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function IngredientDetail(
     {
       data: {

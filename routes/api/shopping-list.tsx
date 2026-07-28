@@ -1,4 +1,4 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$shopping-list.ts";
 import type { QueryFn } from "../../db/mod.ts";
 import type {
   PantryItem,
@@ -24,7 +24,7 @@ async function getOrCreateList(
   return create.rows[0].id;
 }
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, { status: 401 });

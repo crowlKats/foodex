@@ -1,5 +1,5 @@
-import TbShare from "tb-icons/TbShare";
-import TbCheck from "tb-icons/TbCheck";
+import { IconShare } from "@tabler/icons-preact";
+import { IconCheck } from "@tabler/icons-preact";
 import { useSignal } from "@preact/signals";
 import { Button } from "../components/Button.tsx";
 
@@ -29,7 +29,7 @@ export default function ShareButton({ url, title }: ShareButtonProps) {
     <Button
       type="button"
       variant="outline"
-      icon={copied.value ? TbCheck : TbShare}
+      icon={copied.value ? IconCheck : IconShare}
       onClick={handleClick}
     >
       {copied.value ? "Copied!" : "Share"}

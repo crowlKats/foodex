@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
-import TbBookmark from "tb-icons/TbBookmark";
-import TbCheck from "tb-icons/TbCheck";
+import { IconBookmark } from "@tabler/icons-preact";
+import { IconCheck } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 
@@ -52,7 +52,7 @@ export default function AddToCollectionButton(
       <Button
         type="button"
         variant="outline"
-        icon={TbBookmark}
+        icon={IconBookmark}
         title="Add to collection"
         onClick={() => {
           open.value = !open.value;
@@ -98,7 +98,7 @@ export default function AddToCollectionButton(
                 >
                   <span class="flex-1">{c.name}</span>
                   {c.hasRecipe && (
-                    <TbCheck class="size-4 text-green-600 dark:text-green-400" />
+                    <IconCheck class="size-4 text-green-600 dark:text-green-400" />
                   )}
                 </button>
               ))}

@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import SearchSelect from "./SearchSelect.tsx";
-import TbPlus from "tb-icons/TbPlus";
-import TbTrash from "tb-icons/TbTrash";
+import { IconPlus } from "@tabler/icons-preact";
+import { IconTrash } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 
@@ -76,7 +76,7 @@ export default function ToolForm(
             <Button
               type="button"
               variant="danger-ghost"
-              icon={TbTrash}
+              icon={IconTrash}
               title="Remove tool"
               class="shrink-0"
               onClick={() => remove(i)}
@@ -120,7 +120,7 @@ export default function ToolForm(
         onClick={add}
         class="link text-sm font-medium"
       >
-        <TbPlus class="size-3.5 inline mr-1" />Add Tool
+        <IconPlus class="size-3.5 inline mr-1" />Add Tool
       </button>
     </div>
   );

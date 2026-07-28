@@ -1,6 +1,4 @@
-import { define } from "../utils.ts";
-import { Nav } from "../components/Nav.tsx";
-import PwaInstallPrompt from "../islands/PwaInstallPrompt.tsx";
+import { app } from "./$_app.ts";
 
 function DarkModeScript() {
   return (
@@ -27,11 +25,7 @@ function PrefetchScript() {
   );
 }
 
-export default define.page(function App({ Component, state, url }) {
-  // Full-bleed (no max-width wrapper, no page scroll) for the scanner and the
-  // agent chat session — they manage their own full-height layout.
-  const fullBleed = url.pathname === "/scan" ||
-    /^\/agent\/[^/]+$/.test(url.pathname);
+export default app(function App({ children }) {
   return (
     <html class="overscroll-none">
       <head>
@@ -51,11 +45,7 @@ export default define.page(function App({ Component, state, url }) {
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <title>
-          {state.pageTitle === "Foodex"
-            ? "Foodex"
-            : `${state.pageTitle} - Foodex`}
-        </title>
+        <title>Foodex</title>
         <DarkModeScript />
         <PrefetchScript />
         <script
@@ -78,26 +68,7 @@ export default define.page(function App({ Component, state, url }) {
         />
       </head>
       <body class="h-screen flex flex-col overflow-hidden bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
-        <Nav
-          user={state.user}
-          shoppingListCount={state.shoppingListCount}
-          hasHousehold={state.householdId != null}
-          currentPath={url.pathname}
-        />
-        <main
-          class={`flex-1 overscroll-none ${
-            fullBleed
-              ? "overflow-hidden"
-              : "overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0"
-          }`}
-        >
-          {fullBleed ? <Component /> : (
-            <div class="max-w-6xl mx-auto px-4 py-6">
-              <Component />
-            </div>
-          )}
-        </main>
-        <PwaInstallPrompt />
+        {children}
       </body>
     </html>
   );

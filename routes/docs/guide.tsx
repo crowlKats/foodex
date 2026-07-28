@@ -1,7 +1,7 @@
-import { define } from "../../utils.ts";
+import { page } from "./$guide.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 
-export default define.page(function GuideDocs() {
+export default page(function GuideDocs() {
   const sectionClass =
     "text-xl font-bold mb-3 pb-1 border-b-2 border-stone-300 dark:border-stone-700";
   const subSectionClass = "text-lg font-bold mb-2";

@@ -1,7 +1,7 @@
-import { define } from "../../../../utils.ts";
+import { handler } from "./$[key].ts";
 import { getFile } from "../../../../lib/s3.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const key = decodeURIComponent(ctx.params.key);
 

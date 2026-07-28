@@ -1,5 +1,4 @@
-import { page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$index.ts";
 import ShoppingListView from "../../islands/ShoppingListView.tsx";
 import type {
   Ingredient,
@@ -8,7 +7,7 @@ import type {
   Store,
 } from "../../db/types.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -141,22 +140,24 @@ export const handler = define.handlers({
     const viewMode = (vmMatch?.[1] ?? "store") as "recipe" | "store";
 
     ctx.state.pageTitle = "Shopping List";
-    return page({
-      items,
-      stores,
-      pricesMap,
-      viewMode,
-      shareToken,
-      ingredients: ingredientsRes.rows.map((i) => ({
-        id: String(i.id),
-        name: i.name,
-        unit: i.unit ?? undefined,
-      })),
-    });
+    return {
+      data: {
+        items,
+        stores,
+        pricesMap,
+        viewMode,
+        shareToken,
+        ingredients: ingredientsRes.rows.map((i) => ({
+          id: String(i.id),
+          name: i.name,
+          unit: i.unit ?? undefined,
+        })),
+      },
+    };
   },
 });
 
-export default define.page<typeof handler>(function ShoppingListPage({ data }) {
+export default page(function ShoppingListPage({ data }) {
   return (
     <div>
       <h1 class="text-2xl font-bold mb-6">Shopping List</h1>

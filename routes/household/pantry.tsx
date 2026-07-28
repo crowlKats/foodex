@@ -1,5 +1,4 @@
-import { page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$pantry.ts";
 import PantryManager from "../../islands/PantryManager.tsx";
 import NotificationToggle from "../../islands/NotificationToggle.tsx";
 import { getVapidPublicKey } from "../../lib/web-push.ts";
@@ -10,7 +9,7 @@ import type {
   Store,
 } from "../../db/types.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -38,17 +37,19 @@ export const handler = define.handlers({
       ]);
 
     ctx.state.pageTitle = "Pantry";
-    return page({
-      household: householdRes.rows[0],
-      pantryItems: pantryRes.rows,
-      ingredients: ingredientsRes.rows,
-      stores: storesRes.rows,
-      vapidPublicKey: getVapidPublicKey(),
-    });
+    return {
+      data: {
+        household: householdRes.rows[0],
+        pantryItems: pantryRes.rows,
+        ingredients: ingredientsRes.rows,
+        stores: storesRes.rows,
+        vapidPublicKey: getVapidPublicKey(),
+      },
+    };
   },
 });
 
-export default define.page<typeof handler>(function PantryPage({ data }) {
+export default page(function PantryPage({ data }) {
   return (
     <div>
       <div class="flex items-center justify-between mb-6">

@@ -1,10 +1,10 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { readBarcodes, type ReadInputBarcodeFormat } from "zxing-wasm/reader";
-import TbX from "tb-icons/TbX";
-import TbBulb from "tb-icons/TbBulb";
-import TbBulbOff from "tb-icons/TbBulbOff";
-import TbCameraRotate from "tb-icons/TbCameraRotate";
+import { IconX } from "@tabler/icons-preact";
+import { IconBulb } from "@tabler/icons-preact";
+import { IconBulbOff } from "@tabler/icons-preact";
+import { IconCameraRotate } from "@tabler/icons-preact";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
@@ -408,8 +408,8 @@ export default function ScanView(props: Props) {
             title={torchOn.value ? "Turn off flashlight" : "Turn on flashlight"}
           >
             {torchOn.value
-              ? <TbBulb class="size-6" />
-              : <TbBulbOff class="size-6" />}
+              ? <IconBulb class="size-6" />
+              : <IconBulbOff class="size-6" />}
           </button>
         )}
         <button
@@ -418,7 +418,7 @@ export default function ScanView(props: Props) {
           onClick={switchCamera}
           title="Switch camera"
         >
-          <TbCameraRotate class="size-6" />
+          <IconCameraRotate class="size-6" />
         </button>
       </div>
       <div class="absolute bottom-4 left-4 right-4 space-y-2">
@@ -650,7 +650,7 @@ export default function ScanView(props: Props) {
             class="p-1 cursor-pointer text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
             onClick={handleClose}
           >
-            <TbX class="size-5" />
+            <IconX class="size-5" />
           </button>
         </div>
         <div class="p-4">
@@ -680,8 +680,8 @@ export default function ScanView(props: Props) {
                           : "Turn on flashlight"}
                       >
                         {torchOn.value
-                          ? <TbBulb class="size-5" />
-                          : <TbBulbOff class="size-5" />}
+                          ? <IconBulb class="size-5" />
+                          : <IconBulbOff class="size-5" />}
                       </button>
                     )}
                     <button
@@ -690,7 +690,7 @@ export default function ScanView(props: Props) {
                       onClick={switchCamera}
                       title="Switch camera"
                     >
-                      <TbCameraRotate class="size-5" />
+                      <IconCameraRotate class="size-5" />
                     </button>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
-import TbUpload from "tb-icons/TbUpload";
-import TbX from "tb-icons/TbX";
+import { IconUpload } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import ImageCrop from "./ImageCrop.tsx";
 
 interface MediaItem {
@@ -93,7 +93,7 @@ export default function MediaUpload(
                 onClick={() => remove(i)}
                 class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
               >
-                <TbX class="size-3" />
+                <IconX class="size-3" />
               </button>
               {isImage(item.content_type) && (
                 <div class="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -146,7 +146,7 @@ export default function MediaUpload(
       >
         {uploading.value ? <span>Uploading...</span> : (
           <span>
-            <TbUpload class="size-5 mx-auto mb-1" />
+            <IconUpload class="size-5 mx-auto mb-1" />
             Drop files here or click to upload
           </span>
         )}

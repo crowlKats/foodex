@@ -1,4 +1,4 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$templates.md.ts";
 
 export const DOCS = `# Foodex Template Syntax Reference
 
@@ -102,7 +102,7 @@ Amounts are formatted based on unit type:
 - Decimal units (kg, l, tsp, tbsp, cup, oz, lb, fl oz, cm, inch): up to 2 decimal places
 `;
 
-export const handler = define.handlers({
+export const handlers = handler({
   GET() {
     return new Response(DOCS, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },

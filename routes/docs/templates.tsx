@@ -1,7 +1,7 @@
-import { define } from "../../utils.ts";
+import { page } from "./$templates.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 
-export default define.page(function TemplateDocs() {
+export default page(function TemplateDocs() {
   return (
     <div class="max-w-3xl">
       <BackLink href="/recipes" label="Back to Recipes" />

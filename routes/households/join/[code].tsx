@@ -1,9 +1,8 @@
-import { page } from "fresh";
-import { define } from "../../../utils.ts";
+import { handler, page } from "./$[code].ts";
 import type { HouseholdInvite, HouseholdMember } from "../../../db/types.ts";
 import { Button, ButtonLink } from "../../../components/Button.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) {
       return new Response(null, {
@@ -23,7 +22,7 @@ export const handler = define.handlers({
     );
 
     if (inviteRes.rows.length === 0) {
-      return page({ error: "This invite link is invalid or has expired." });
+      return { data: { error: "This invite link is invalid or has expired." } };
     }
 
     const invite = inviteRes.rows[0];
@@ -50,13 +49,15 @@ export const handler = define.handlers({
     );
 
     if (membershipRes.rows.length > 0) {
-      return page({
-        error:
-          "You already belong to a household. Leave your current household before joining a new one.",
-      });
+      return {
+        data: {
+          error:
+            "You already belong to a household. Leave your current household before joining a new one.",
+        },
+      };
     }
 
-    return page({ invite });
+    return { data: { invite } };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -74,7 +75,7 @@ export const handler = define.handlers({
     );
 
     if (inviteRes.rows.length === 0) {
-      return page({ error: "This invite link is invalid or has expired." });
+      return { data: { error: "This invite link is invalid or has expired." } };
     }
 
     const invite = inviteRes.rows[0];
@@ -101,10 +102,12 @@ export const handler = define.handlers({
     );
 
     if (membershipRes.rows.length > 0) {
-      return page({
-        error:
-          "You already belong to a household. Leave your current household before joining a new one.",
-      });
+      return {
+        data: {
+          error:
+            "You already belong to a household. Leave your current household before joining a new one.",
+        },
+      };
     }
 
     await ctx.state.db.query(
@@ -119,7 +122,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function JoinHouseholdPage(
+export default page(function JoinHouseholdPage(
   { data },
 ) {
   const { invite, error } = data as {

@@ -1,5 +1,5 @@
-import TbSun from "tb-icons/TbSun";
-import TbMoon from "tb-icons/TbMoon";
+import { IconSun } from "@tabler/icons-preact";
+import { IconMoon } from "@tabler/icons-preact";
 
 export default function DarkModeToggle() {
   function toggle() {
@@ -15,8 +15,8 @@ export default function DarkModeToggle() {
       class="nav-link text-sm"
       aria-label="Toggle dark mode"
     >
-      <TbMoon class="size-[18px] dark:hidden" />
-      <TbSun class="size-[18px] hidden dark:block" />
+      <IconMoon class="size-[18px] dark:hidden" />
+      <IconSun class="size-[18px] hidden dark:block" />
     </button>
   );
 }

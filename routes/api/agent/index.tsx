@@ -1,4 +1,4 @@
-import { define } from "../../../utils.ts";
+import { handler } from "./$index.ts";
 import { createSession, listSessions } from "../../../lib/agent/session.ts";
 
 function json(data: unknown, status = 200): Response {
@@ -8,7 +8,7 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) return json({ error: "Not authenticated" }, 401);
     const sessions = await listSessions(ctx.state.db.query, ctx.state.user.id);

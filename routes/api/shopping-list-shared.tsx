@@ -1,8 +1,8 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$shopping-list-shared.ts";
 import type { ShoppingList } from "../../db/types.ts";
 import { parseJsonBody, ShoppingListSharedBody } from "../../lib/validation.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     const result = await parseJsonBody(ctx.req, ShoppingListSharedBody);
     if (!result.success) return result.response;

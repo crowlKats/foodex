@@ -1,7 +1,7 @@
-import { define } from "../../../utils.ts";
+import { handler } from "./$[id].ts";
 import { deleteFile } from "../../../lib/s3.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async DELETE(ctx) {
     if (!ctx.state.householdId) {
       return new Response(null, { status: 401 });

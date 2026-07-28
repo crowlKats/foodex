@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
-import TbChevronDown from "tb-icons/TbChevronDown";
-import TbSortAscending from "tb-icons/TbSortAscending";
-import TbSortDescending from "tb-icons/TbSortDescending";
+import { IconChevronDown } from "@tabler/icons-preact";
+import { IconSortAscending } from "@tabler/icons-preact";
+import { IconSortDescending } from "@tabler/icons-preact";
 
 interface SortOption {
   value: string;
@@ -60,7 +60,7 @@ export default function SortSelect(
     }
   }
 
-  const Icon = desc ? TbSortDescending : TbSortAscending;
+  const Icon = desc ? IconSortDescending : IconSortAscending;
 
   return (
     <div class="flex items-center">
@@ -81,7 +81,7 @@ export default function SortSelect(
           onKeyDown={handleKeyDown}
         >
           {currentOption.label}
-          <TbChevronDown class="size-4 text-stone-400" />
+          <IconChevronDown class="size-4 text-stone-400" />
         </button>
         {open.value && (
           <div class="absolute z-10 left-0 right-0 mt-0.5 bg-white dark:bg-stone-800 border-2 border-stone-300 dark:border-stone-600 max-h-48 overflow-y-auto shadow-lg">

@@ -1,5 +1,5 @@
+import { handler } from "./$refine-recipe.ts";
 import Anthropic from "@anthropic-ai/sdk";
-import { define } from "../../utils.ts";
 import { rateLimit } from "../../lib/rate-limit.ts";
 import {
   RECIPE_FIELD_RULES,
@@ -19,7 +19,7 @@ ${RECIPE_FIELD_RULES}
 - Preserve all fields from the original recipe unless the user specifically asks to change them
 - Apply the user's requested changes accurately`;
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.user) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {

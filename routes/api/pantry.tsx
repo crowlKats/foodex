@@ -1,8 +1,8 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$pantry.ts";
 import { convertAmount } from "../../lib/unit-convert.ts";
 import { PantryAction, parseJsonBody } from "../../lib/validation.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.householdId) {
       return new Response(null, { status: 401 });

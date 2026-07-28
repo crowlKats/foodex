@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
-import TbDots from "tb-icons/TbDots";
-import TbX from "tb-icons/TbX";
+import { IconDots } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 
 const DISMISSED_KEY = "pwa-install-dismissed";
@@ -35,14 +35,15 @@ export default function PwaInstallPrompt() {
       <Button
         type="button"
         variant="ghost"
-        icon={TbX}
+        icon={IconX}
         title="Dismiss"
         class="absolute top-2 right-2"
         onClick={dismiss}
       />
       <p class="font-bold mb-1">Install Foodex</p>
       <p class="text-sm text-stone-600 dark:text-stone-400">
-        Tap <TbDots class="size-4 inline -mt-0.5" /> in your browser, then{" "}
+        Tap <IconDots class="size-4 inline -mt-0.5" /> in your browser, then
+        {" "}
         <span class="font-semibold text-stone-900 dark:text-stone-200">
           Share
         </span>

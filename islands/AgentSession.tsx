@@ -5,19 +5,19 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import TbSend from "tb-icons/TbSend";
-import TbLoader2 from "tb-icons/TbLoader2";
-import TbTrash from "tb-icons/TbTrash";
-import TbArrowBackUp from "tb-icons/TbArrowBackUp";
-import TbAlertTriangle from "tb-icons/TbAlertTriangle";
-import TbDeviceFloppy from "tb-icons/TbDeviceFloppy";
-import TbX from "tb-icons/TbX";
-import TbPencil from "tb-icons/TbPencil";
-import TbPlus from "tb-icons/TbPlus";
-import TbSearch from "tb-icons/TbSearch";
-import TbEye from "tb-icons/TbEye";
-import TbWorld from "tb-icons/TbWorld";
-import TbTool from "tb-icons/TbTool";
+import { IconSend } from "@tabler/icons-preact";
+import { IconLoader2 } from "@tabler/icons-preact";
+import { IconTrash } from "@tabler/icons-preact";
+import { IconArrowBackUp } from "@tabler/icons-preact";
+import { IconAlertTriangle } from "@tabler/icons-preact";
+import { IconDeviceFloppy } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
+import { IconPencil } from "@tabler/icons-preact";
+import { IconPlus } from "@tabler/icons-preact";
+import { IconSearch } from "@tabler/icons-preact";
+import { IconEye } from "@tabler/icons-preact";
+import { IconWorld } from "@tabler/icons-preact";
+import { IconTool } from "@tabler/icons-preact";
 import type { StagedDiff, TimelineEntry } from "../lib/agent/conversation.ts";
 import type { SerializedStagedItem } from "../lib/agent/staging.ts";
 import { Button, type IconComponent } from "../components/Button.tsx";
@@ -470,8 +470,8 @@ export default function AgentSession(props: Props) {
               <div class="flex flex-wrap items-center gap-1.5">
                 {staging.map((it) => {
                   const PillIcon = it.kind.startsWith("create")
-                    ? TbPlus
-                    : TbPencil;
+                    ? IconPlus
+                    : IconPencil;
                   const conflict = conflicts[it.id];
                   return (
                     <button
@@ -491,7 +491,7 @@ export default function AgentSession(props: Props) {
                       <PillIcon class="size-3.5 shrink-0 text-stone-400" />
                       <span class="truncate">{stagedName(it)}</span>
                       {conflict && (
-                        <TbAlertTriangle class="size-3.5 shrink-0 text-red-500" />
+                        <IconAlertTriangle class="size-3.5 shrink-0 text-red-500" />
                       )}
                     </button>
                   );
@@ -530,8 +530,8 @@ export default function AgentSession(props: Props) {
                 disabled={turnActive || !input.trim()}
               >
                 {turnActive
-                  ? <TbLoader2 class="size-4 animate-spin" />
-                  : <TbSend class="size-4" />}
+                  ? <IconLoader2 class="size-4 animate-spin" />
+                  : <IconSend class="size-4" />}
               </Button>
             </div>
           </div>
@@ -604,22 +604,22 @@ const USER_ACTION_META: Record<
 > = {
   applied: {
     verb: "Applied",
-    icon: TbDeviceFloppy,
+    icon: IconDeviceFloppy,
     color: "text-green-600 dark:text-green-500",
   },
   discarded: {
     verb: "Discarded",
-    icon: TbTrash,
+    icon: IconTrash,
     color: "text-red-500",
   },
   edited: {
     verb: "Edited",
-    icon: TbPencil,
+    icon: IconPencil,
     color: "text-orange-500",
   },
   reverted: {
     verb: "Reverted",
-    icon: TbArrowBackUp,
+    icon: IconArrowBackUp,
     color: "text-stone-400",
   },
 };
@@ -705,7 +705,7 @@ function TimelineItem(
                         <Button
                           type="button"
                           variant="ghost"
-                          icon={TbPencil}
+                          icon={IconPencil}
                           title="Edit"
                           class="ml-auto shrink-0"
                           onClick={() => onEdit(diff.item_id)}
@@ -766,16 +766,16 @@ function LiveTurnView(
 
 /** Icon reflecting what a tool does (create/edit/search/read/…). */
 function toolIcon(name: string): IconComponent {
-  if (name === "create_recipe" || name === "create_ingredient") return TbPlus;
+  if (name === "create_recipe" || name === "create_ingredient") return IconPlus;
   if (
     name === "edit_recipe" || name === "edit_ingredient" ||
     name === "edit_proposed"
-  ) return TbPencil;
-  if (name === "discard_proposed") return TbTrash;
-  if (name.startsWith("list_") || name === "web_search") return TbSearch;
-  if (name.startsWith("get_")) return TbEye;
-  if (name === "fetch_url" || name === "fetch_page_summary") return TbWorld;
-  return TbTool;
+  ) return IconPencil;
+  if (name === "discard_proposed") return IconTrash;
+  if (name.startsWith("list_") || name === "web_search") return IconSearch;
+  if (name.startsWith("get_")) return IconEye;
+  if (name === "fetch_url" || name === "fetch_page_summary") return IconWorld;
+  return IconTool;
 }
 
 function ToolChip(
@@ -790,9 +790,9 @@ function ToolChip(
   return (
     <div class="flex items-center gap-2 text-xs text-stone-500">
       {status === "pending"
-        ? <TbLoader2 class="size-3.5 animate-spin text-stone-400 shrink-0" />
+        ? <IconLoader2 class="size-3.5 animate-spin text-stone-400 shrink-0" />
         : status === "error"
-        ? <TbX class="size-3.5 text-red-500 shrink-0" />
+        ? <IconX class="size-3.5 text-red-500 shrink-0" />
         : <Icon class="size-3.5 text-stone-400 shrink-0" />}
       <span class={status === "error" ? "text-red-600" : ""}>
         {toolLabel(name, input, status, names)}
@@ -956,7 +956,7 @@ function Drawer(
         <Button
           type="button"
           variant="ghost"
-          icon={TbX}
+          icon={IconX}
           title="Close"
           onClick={onClose}
         />
@@ -1046,7 +1046,7 @@ function ApplyDrawer(p: PreviewModalProps) {
                       <Button
                         type="button"
                         variant="ghost"
-                        icon={TbPencil}
+                        icon={IconPencil}
                         title="Edit"
                         disabled={p.turnActive}
                         onClick={() => p.onEdit(it.id)}
@@ -1057,7 +1057,7 @@ function ApplyDrawer(p: PreviewModalProps) {
                         type="button"
                         variant="outline"
                         size="sm"
-                        icon={TbPencil}
+                        icon={IconPencil}
                         disabled={p.turnActive}
                         onClick={() => p.onEdit(it.id)}
                       >
@@ -1068,7 +1068,7 @@ function ApplyDrawer(p: PreviewModalProps) {
                   <Button
                     type="button"
                     variant="ghost"
-                    icon={TbArrowBackUp}
+                    icon={IconArrowBackUp}
                     title="Revert to the assistant's proposal"
                     disabled={p.turnActive}
                     onClick={() => p.onRevert(it.id)}
@@ -1077,7 +1077,7 @@ function ApplyDrawer(p: PreviewModalProps) {
                 <Button
                   type="button"
                   variant="danger-ghost"
-                  icon={TbTrash}
+                  icon={IconTrash}
                   title="Discard"
                   disabled={p.turnActive}
                   onClick={() => p.onDiscard(it.id)}
@@ -1087,7 +1087,7 @@ function ApplyDrawer(p: PreviewModalProps) {
             const conflictBlock = conflict && (
               <div class="text-sm space-y-2">
                 <p class="flex items-center gap-1 text-red-600">
-                  <TbAlertTriangle class="size-4" />{" "}
+                  <IconAlertTriangle class="size-4" />{" "}
                   Merge conflict — the underlying item changed since this was
                   proposed.
                 </p>

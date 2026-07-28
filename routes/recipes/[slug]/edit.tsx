@@ -1,6 +1,7 @@
-import { HttpError, page } from "fresh";
+import { handler, page } from "./$edit.ts";
+import { HttpError } from "fresh/errors";
 import { signal } from "@preact/signals";
-import { define, slugify } from "../../../utils.ts";
+import { slugify } from "../../../utils.ts";
 import type {
   Ingredient,
   Recipe,
@@ -40,7 +41,7 @@ import {
   SOURCE_TYPES,
 } from "../../../lib/recipe-tags.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query<RecipeWithCoverMedia>(
@@ -209,24 +210,26 @@ export const handler = define.handlers({
     }
     sectionAfters.forEach((arr) => arr.sort((a, b) => a - b));
 
-    return page({
-      recipe,
-      ingredients: ingredientsRes.rows,
-      tools: toolsRes.rows,
-      steps: stepsWithMedia,
-      sections: sectionsRes.rows.map((s, i) => ({
-        title: s.title,
-        key: s.key,
-        after: sectionAfters[i],
-      })),
-      refs: refsRes.rows,
-      mealTypes,
-      dietaryTags,
-      allIngredients: ingredientsListRes.rows,
-      allTools: allToolsRes.rows,
-      allRecipes: allRecipesRes.rows,
-      outputIngredientName,
-    });
+    return {
+      data: {
+        recipe,
+        ingredients: ingredientsRes.rows,
+        tools: toolsRes.rows,
+        steps: stepsWithMedia,
+        sections: sectionsRes.rows.map((s, i) => ({
+          title: s.title,
+          key: s.key,
+          after: sectionAfters[i],
+        })),
+        refs: refsRes.rows,
+        mealTypes,
+        dietaryTags,
+        allIngredients: ingredientsListRes.rows,
+        allTools: allToolsRes.rows,
+        allRecipes: allRecipesRes.rows,
+        outputIngredientName,
+      },
+    };
   },
   async POST(ctx) {
     const slug = ctx.params.slug;
@@ -374,7 +377,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function RecipeEdit({
+export default page(function RecipeEdit({
   data: {
     recipe,
     ingredients,
@@ -632,7 +635,7 @@ export default define.page<typeof handler>(function RecipeEdit({
               : undefined}
             initialUnit={recipe.output_unit ?? undefined}
             initialExpiresDays={recipe.output_expires_days != null
-              ? String(recipe.output_expires_days)
+              ? Number(recipe.output_expires_days)
               : undefined}
           />
         </div>

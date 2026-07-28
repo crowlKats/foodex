@@ -1,9 +1,9 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../../utils.ts";
+import { handler, page } from "./$[token].ts";
+import { HttpError } from "fresh/errors";
 import type { Collection } from "../../../db/types.ts";
 import { Button, ButtonLink } from "../../../components/Button.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const token = ctx.params.token;
     const collRes = await ctx.state.db.query<
@@ -36,7 +36,7 @@ export const handler = define.handlers({
     }
 
     ctx.state.pageTitle = `Join Collection: ${collection.name}`;
-    return page({ collection, loggedIn, hasHousehold, alreadyHasAccess });
+    return { data: { collection, loggedIn, hasHousehold, alreadyHasAccess } };
   },
   async POST(ctx) {
     const token = ctx.params.token;
@@ -75,7 +75,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function ShareJoinPage(
     { data: { collection, loggedIn, hasHousehold, alreadyHasAccess } },
   ) {

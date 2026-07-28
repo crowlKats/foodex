@@ -1,11 +1,10 @@
-import { define } from "../../utils.ts";
-import { page } from "fresh";
+import { handler, page } from "./$index.ts";
 import { createSession, listSessions } from "../../lib/agent/session.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { Button } from "../../components/Button.tsx";
 import DeleteChatButton from "../../islands/DeleteChatButton.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) {
       return new Response(null, {
@@ -15,7 +14,7 @@ export const handler = define.handlers({
     }
     const sessions = await listSessions(ctx.state.db.query, ctx.state.user.id);
     ctx.state.pageTitle = "Assistant";
-    return page({ sessions });
+    return { data: { sessions } };
   },
 
   async POST(ctx) {
@@ -37,7 +36,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function AgentIndex({ data }) {
+export default page(function AgentIndex({ data }) {
   const { sessions } = data;
   return (
     <div>

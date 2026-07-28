@@ -1,5 +1,5 @@
-import { page } from "fresh";
-import { define, escapeLike } from "../../utils.ts";
+import { handler, page } from "./$index.ts";
+import { escapeLike } from "../../utils.ts";
 import type { CollectionWithCover } from "../../db/types.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { ButtonLink } from "../../components/Button.tsx";
@@ -9,7 +9,7 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -64,17 +64,19 @@ export const handler = define.handlers({
     const totalCount = Number(countRes.rows[0].cnt);
 
     ctx.state.pageTitle = "Collections";
-    return page({
-      collections: result.rows,
-      q,
-      currentPage,
-      totalCount,
-      householdId,
-    });
+    return {
+      data: {
+        collections: result.rows,
+        q,
+        currentPage,
+        totalCount,
+        householdId,
+      },
+    };
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function CollectionsPage(
     { data: { collections, q, currentPage, totalCount, householdId }, url },
   ) {

@@ -1,10 +1,9 @@
-import { page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$index.ts";
 import type { Household } from "../../db/types.ts";
 import { Button } from "../../components/Button.tsx";
 import { Select } from "../../components/Select.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) {
       return new Response(null, {
@@ -25,7 +24,7 @@ export const handler = define.handlers({
     }
 
     ctx.state.pageTitle = "Profile";
-    return page({ householdName });
+    return { data: { householdName } };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -52,7 +51,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function ProfilePage({ data, state }) {
     const user = state.user!;
 

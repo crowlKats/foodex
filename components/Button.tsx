@@ -1,4 +1,4 @@
-import type { ComponentChildren, JSX, VNode } from "preact";
+import type { ComponentChildren, JSX } from "preact";
 
 export type ButtonVariant =
   | "primary"
@@ -8,7 +8,7 @@ export type ButtonVariant =
   | "ghost"
   | "danger-ghost";
 export type ButtonSize = "xs" | "sm" | "md";
-export type IconComponent = (props: { class: string }) => VNode | null;
+export type IconComponent = (props: { class: string }) => ComponentChildren;
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
   primary: "btn-primary",

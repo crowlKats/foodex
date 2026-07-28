@@ -1,5 +1,5 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../../utils.ts";
+import { handler, page } from "./$index.ts";
+import { HttpError } from "fresh/errors";
 import type {
   Collection,
   CollectionShare,
@@ -13,15 +13,15 @@ import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { formatDuration } from "../../../lib/duration.ts";
 import { formatQuantity } from "../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../lib/quantity.ts";
-import TbClock from "tb-icons/TbClock";
-import TbFlame from "tb-icons/TbFlame";
-import TbZzz from "tb-icons/TbZzz";
-import TbUsers from "tb-icons/TbUsers";
-import TbEdit from "tb-icons/TbEdit";
-import TbShare from "tb-icons/TbShare";
-import TbX from "tb-icons/TbX";
+import { IconClock } from "@tabler/icons-preact";
+import { IconFlame } from "@tabler/icons-preact";
+import { IconZzz } from "@tabler/icons-preact";
+import { IconUsers } from "@tabler/icons-preact";
+import { IconEdit } from "@tabler/icons-preact";
+import { IconShare } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const id = ctx.params.id;
     if (!ctx.state.user || !ctx.state.householdId) {
@@ -102,7 +102,7 @@ export const handler = define.handlers({
     }
 
     ctx.state.pageTitle = collection.name;
-    return page({ collection, recipes, isOwner, shares });
+    return { data: { collection, recipes, isOwner, shares } };
   },
   async POST(ctx) {
     const id = ctx.params.id;
@@ -195,7 +195,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function CollectionDetail(
     { data: { collection, recipes, isOwner, shares }, url },
   ) {
@@ -226,7 +226,7 @@ export default define.page<typeof handler>(
                       name="_method"
                       value="REVOKE_SHARE_TOKEN"
                     />
-                    <Button type="submit" variant="outline" icon={TbShare}>
+                    <Button type="submit" variant="outline" icon={IconShare}>
                       Unshare
                     </Button>
                   </form>
@@ -239,7 +239,7 @@ export default define.page<typeof handler>(
                     name="_method"
                     value="GENERATE_SHARE_TOKEN"
                   />
-                  <Button type="submit" variant="outline" icon={TbShare}>
+                  <Button type="submit" variant="outline" icon={IconShare}>
                     Share
                   </Button>
                 </form>
@@ -249,7 +249,7 @@ export default define.page<typeof handler>(
             <ButtonLink
               href={`/collections/${collection.id}/edit`}
               variant="outline"
-              icon={TbEdit}
+              icon={IconEdit}
             >
               Edit
             </ButtonLink>
@@ -285,7 +285,7 @@ export default define.page<typeof handler>(
                   <Button
                     type="submit"
                     variant="danger-ghost"
-                    icon={TbX}
+                    icon={IconX}
                     title="Remove"
                   />
                 </form>
@@ -368,7 +368,7 @@ export default define.page<typeof handler>(
                         <span class="capitalize">{r.difficulty}</span>
                       )}
                       <span>
-                        <TbUsers class="size-3.5 inline mr-0.5" />
+                        <IconUsers class="size-3.5 inline mr-0.5" />
                         {formatQuantity({
                           type:
                             (r.quantity_type || "servings") as RecipeQuantity[
@@ -387,19 +387,19 @@ export default define.page<typeof handler>(
                       </span>
                       {r.prep_time != null && (
                         <span>
-                          <TbClock class="size-3.5 inline mr-0.5" />Prep:{" "}
+                          <IconClock class="size-3.5 inline mr-0.5" />Prep:{" "}
                           {formatDuration(r.prep_time)}
                         </span>
                       )}
                       {r.cook_time != null && (
                         <span>
-                          <TbFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
+                          <IconFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
                           {formatDuration(r.cook_time)}
                         </span>
                       )}
                       {r.rest_time != null && (
                         <span>
-                          <TbZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
+                          <IconZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
                           {formatDuration(r.rest_time)}
                         </span>
                       )}
@@ -420,7 +420,7 @@ export default define.page<typeof handler>(
                       <Button
                         type="submit"
                         variant="danger-ghost"
-                        icon={TbX}
+                        icon={IconX}
                         title="Remove from collection"
                       />
                     </form>

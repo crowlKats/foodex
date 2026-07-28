@@ -1,5 +1,5 @@
-import { page } from "fresh";
-import { define, escapeLike } from "../../utils.ts";
+import { handler, page } from "./$index.ts";
+import { escapeLike } from "../../utils.ts";
 import type {
   RecipeDraft,
   RecipeListItem,
@@ -21,12 +21,12 @@ import {
   DIFFICULTY_LEVELS,
   MEAL_TYPES,
 } from "../../lib/recipe-tags.ts";
-import TbClock from "tb-icons/TbClock";
-import TbFlame from "tb-icons/TbFlame";
-import TbZzz from "tb-icons/TbZzz";
-import TbUsers from "tb-icons/TbUsers";
-import TbFilter from "tb-icons/TbFilter";
-import TbX from "tb-icons/TbX";
+import { IconClock } from "@tabler/icons-preact";
+import { IconFlame } from "@tabler/icons-preact";
+import { IconZzz } from "@tabler/icons-preact";
+import { IconUsers } from "@tabler/icons-preact";
+import { IconFilter } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import SortSelect from "../../islands/SortSelect.tsx";
 
 const SORT_OPTIONS = [
@@ -184,7 +184,7 @@ function parseMultiParam(
   return vals.filter((v) => set.has(v));
 }
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const q = ctx.url.searchParams.get("q")?.trim() || "";
     const currentPage = getPage(ctx.url);
@@ -275,22 +275,24 @@ export const handler = define.handlers({
     }));
 
     ctx.state.pageTitle = "Recipes";
-    return page({
-      recipes,
-      q,
-      loggedIn: ctx.state.user != null,
-      currentPage,
-      totalCount,
-      favoritesOnly,
-      cookableOnly,
-      hasHousehold: !!householdId,
-      drafts,
-      difficulty,
-      mealTypes,
-      dietary,
-      sort,
-      desc,
-    });
+    return {
+      data: {
+        recipes,
+        q,
+        loggedIn: ctx.state.user != null,
+        currentPage,
+        totalCount,
+        favoritesOnly,
+        cookableOnly,
+        hasHousehold: !!householdId,
+        drafts,
+        difficulty,
+        mealTypes,
+        dietary,
+        sort,
+        desc,
+      },
+    };
   },
 });
 
@@ -355,7 +357,7 @@ function FilterChip(
   );
 }
 
-export default define.page<typeof handler>(function RecipesPage({
+export default page(function RecipesPage({
   data: {
     recipes,
     q,
@@ -419,7 +421,7 @@ export default define.page<typeof handler>(function RecipesPage({
         open={hasFilters || undefined}
       >
         <summary class="cursor-pointer select-none flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
-          <TbFilter class="size-4" />
+          <IconFilter class="size-4" />
           <span>Filters</span>
           {hasFilters && (
             <span class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-full">
@@ -522,7 +524,7 @@ export default define.page<typeof handler>(function RecipesPage({
               })}
               class="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
             >
-              <TbX class="size-3.5" />
+              <IconX class="size-3.5" />
               Clear all filters
             </a>
           )}
@@ -636,7 +638,7 @@ export default define.page<typeof handler>(function RecipesPage({
                       <span class="capitalize">{r.difficulty}</span>
                     )}
                     <span>
-                      <TbUsers class="size-3.5 inline mr-0.5" />
+                      <IconUsers class="size-3.5 inline mr-0.5" />
                       {formatQuantity({
                         type: (r.quantity_type || "servings") as RecipeQuantity[
                           "type"
@@ -654,19 +656,19 @@ export default define.page<typeof handler>(function RecipesPage({
                     </span>
                     {r.prep_time != null && (
                       <span>
-                        <TbClock class="size-3.5 inline mr-0.5" />Prep:{" "}
+                        <IconClock class="size-3.5 inline mr-0.5" />Prep:{" "}
                         {formatDuration(r.prep_time)}
                       </span>
                     )}
                     {r.cook_time != null && (
                       <span>
-                        <TbFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
+                        <IconFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
                         {formatDuration(r.cook_time)}
                       </span>
                     )}
                     {r.rest_time != null && (
                       <span>
-                        <TbZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
+                        <IconZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
                         {formatDuration(r.rest_time)}
                       </span>
                     )}

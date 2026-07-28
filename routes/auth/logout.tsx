@@ -1,7 +1,7 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$logout.ts";
 import { clearSessionCookie, getSessionIdFromRequest } from "../../lib/auth.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     const sessionId = getSessionIdFromRequest(ctx.req);
     if (sessionId) {

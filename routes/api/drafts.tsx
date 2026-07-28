@@ -1,8 +1,8 @@
-import { define } from "../../utils.ts";
+import { handler } from "./$drafts.ts";
 import type { RecipeDraft } from "../../db/types.ts";
 import { DraftCreateBody, parseJsonBody } from "../../lib/validation.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {

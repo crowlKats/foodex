@@ -1,9 +1,8 @@
-import { page } from "fresh";
-import { define } from "../../../utils.ts";
+import { handler, page } from "./$email.ts";
 import { createSessionCookie, generateSessionId } from "../../../lib/auth.ts";
 import { ButtonLink } from "../../../components/Button.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const token = ctx.url.searchParams.get("token");
     if (!token) {
@@ -25,7 +24,7 @@ export const handler = define.handlers({
 
     if (result.rows.length === 0) {
       ctx.state.pageTitle = "Invalid Link";
-      return page();
+      return { data: {} };
     }
 
     const { email } = result.rows[0];
@@ -57,7 +56,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page(function InvalidTokenPage() {
+export default page(function InvalidTokenPage() {
   return (
     <div class="max-w-sm mx-auto mt-16">
       <h1 class="text-2xl font-bold text-center mb-4">

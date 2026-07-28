@@ -1,12 +1,13 @@
+import { ComponentChildren } from "preact";
 import DarkModeToggle from "../islands/DarkModeToggle.tsx";
-import TbChefHat from "tb-icons/TbChefHat";
-import TbShoppingCart from "tb-icons/TbShoppingCart";
-import TbBook from "tb-icons/TbBook";
-import TbToolsKitchen2 from "tb-icons/TbToolsKitchen2";
-import TbFridge from "tb-icons/TbFridge";
-import TbHome from "tb-icons/TbHome";
-import TbBooks from "tb-icons/TbBooks";
-import TbScan from "tb-icons/TbScan";
+import { IconChefHat } from "@tabler/icons-preact";
+import { IconShoppingCart } from "@tabler/icons-preact";
+import { IconBook } from "@tabler/icons-preact";
+import { IconToolsKitchen2 } from "@tabler/icons-preact";
+import { IconFridge } from "@tabler/icons-preact";
+import { IconHome } from "@tabler/icons-preact";
+import { IconBooks } from "@tabler/icons-preact";
+import { IconScan } from "@tabler/icons-preact";
 import type { User } from "../utils.ts";
 
 function isActive(currentPath: string, href: string): boolean {
@@ -27,7 +28,7 @@ function MobileTab(
   { href, label, icon, currentPath, badge }: {
     href: string;
     label: string;
-    icon: preact.ComponentType<{ class?: string }>;
+    icon: (props: { class: string }) => ComponentChildren;
     currentPath: string;
     badge?: number;
   },
@@ -68,7 +69,7 @@ export function Nav(
           <div class="flex items-center gap-6">
             {/* Brand */}
             <a href="/" class="flex items-center text-lg font-bold nav-link">
-              <TbChefHat class="size-5 inline mr-1" />Foodex
+              <IconChefHat class="size-5 inline mr-1" />Foodex
             </a>
 
             {/* Desktop nav */}
@@ -188,7 +189,7 @@ export function Nav(
                   }`}
                   title="Collections"
                 >
-                  <TbBooks class="size-5" />
+                  <IconBooks class="size-5" />
                 </a>
               )}
               <a
@@ -198,7 +199,7 @@ export function Nav(
                 }`}
                 title="User Guide"
               >
-                <TbBook class="size-5" />
+                <IconBook class="size-5" />
               </a>
               <DarkModeToggle />
               <a
@@ -211,7 +212,7 @@ export function Nav(
                 }`}
                 title="Household"
               >
-                <TbHome class="size-5" />
+                <IconHome class="size-5" />
               </a>
               {user
                 ? (
@@ -265,14 +266,14 @@ export function Nav(
           <MobileTab
             href="/recipes"
             label="Recipes"
-            icon={TbToolsKitchen2}
+            icon={IconToolsKitchen2}
             currentPath={currentPath}
           />
           {hasHousehold && (
             <MobileTab
               href="/household/pantry"
               label="Pantry"
-              icon={TbFridge}
+              icon={IconFridge}
               currentPath={currentPath}
             />
           )}
@@ -280,7 +281,7 @@ export function Nav(
             <MobileTab
               href="/scan"
               label="Scan"
-              icon={TbScan}
+              icon={IconScan}
               currentPath={currentPath}
             />
           )}
@@ -288,7 +289,7 @@ export function Nav(
             <MobileTab
               href="/shopping-list"
               label="Shop"
-              icon={TbShoppingCart}
+              icon={IconShoppingCart}
               currentPath={currentPath}
               badge={shoppingListCount}
             />
@@ -296,7 +297,7 @@ export function Nav(
           <MobileTab
             href={hasHousehold ? "/household" : "/households"}
             label="Household"
-            icon={TbHome}
+            icon={IconHome}
             currentPath={currentPath}
           />
         </div>

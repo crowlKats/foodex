@@ -1,7 +1,7 @@
 import { useSignal } from "@preact/signals";
-import TbFileImport from "tb-icons/TbFileImport";
-import TbLoader2 from "tb-icons/TbLoader2";
-import TbX from "tb-icons/TbX";
+import { IconFileImport } from "@tabler/icons-preact";
+import { IconLoader2 } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { InputMultiline } from "../components/Input.tsx";
 
@@ -119,7 +119,7 @@ export default function OcrUpload() {
     return (
       <div class="card">
         <div class="flex flex-col items-center justify-center py-12 gap-4">
-          <TbLoader2 class="size-12 text-orange-600 animate-spin" />
+          <IconLoader2 class="size-12 text-orange-600 animate-spin" />
           <p class="text-sm font-medium">
             Extracting recipe from {files.value.length}{" "}
             image{files.value.length > 1 ? "s" : ""}...
@@ -164,7 +164,7 @@ export default function OcrUpload() {
         }}
       >
         <div class="flex flex-col items-center justify-center py-8 gap-4">
-          <TbFileImport
+          <IconFileImport
             class={`size-12 ${
               dragging.value ? "text-orange-600" : "text-stone-400"
             }`}
@@ -186,7 +186,7 @@ export default function OcrUpload() {
               <Button
                 type="button"
                 variant="danger-ghost"
-                icon={TbX}
+                icon={IconX}
                 title="Remove file"
                 onClick={(e) => {
                   e.stopPropagation();

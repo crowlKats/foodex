@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
-import TbX from "tb-icons/TbX";
-import TbGripVertical from "tb-icons/TbGripVertical";
+import { IconX } from "@tabler/icons-preact";
+import { IconGripVertical } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 
@@ -107,12 +107,12 @@ export default function RecipePicker({ options, initialSelected }: Props) {
                 dragIndex.value === idx ? "opacity-50" : ""
               }`}
             >
-              <TbGripVertical class="size-4 text-stone-400 cursor-grab shrink-0" />
+              <IconGripVertical class="size-4 text-stone-400 cursor-grab shrink-0" />
               <span class="flex-1">{r.title}</span>
               <Button
                 type="button"
                 variant="danger-ghost"
-                icon={TbX}
+                icon={IconX}
                 title="Remove"
                 class="shrink-0"
                 onClick={() => remove(r.id)}

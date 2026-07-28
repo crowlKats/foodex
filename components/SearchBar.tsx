@@ -1,4 +1,4 @@
-import TbSearch from "tb-icons/TbSearch";
+import { IconSearch } from "@tabler/icons-preact";
 import { Input } from "./Input.tsx";
 
 interface SearchBarProps {
@@ -16,7 +16,7 @@ export function SearchBar(
         name="q"
         value={query ?? ""}
         placeholder={placeholder}
-        icon={TbSearch}
+        icon={IconSearch}
         autocomplete="off"
       />
     </form>

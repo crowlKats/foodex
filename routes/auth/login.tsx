@@ -1,4 +1,4 @@
-import { define } from "../../utils.ts";
+import { handler, page } from "./$login.ts";
 import {
   createOAuthStateCookie,
   generateOAuthState,
@@ -10,12 +10,12 @@ import {
 } from "../../lib/auth.ts";
 import { Button, ButtonLink } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
-import TbBrandGithub from "tb-icons/TbBrandGithub";
-import TbBrandGoogle from "tb-icons/TbBrandGoogle";
-import TbKey from "tb-icons/TbKey";
-import TbMail from "tb-icons/TbMail";
+import { IconBrandGithub } from "@tabler/icons-preact";
+import { IconBrandGoogle } from "@tabler/icons-preact";
+import { IconKey } from "@tabler/icons-preact";
+import { IconMail } from "@tabler/icons-preact";
 
-export const handler = define.handlers({
+export const handlers = handler({
   GET(ctx) {
     if (ctx.state.user) {
       return new Response(null, {
@@ -44,7 +44,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function LoginPage({ data }) {
+export default page(function LoginPage({ data }) {
   const hasOAuthProvider = data.githubUrl || data.googleUrl ||
     data.authentikUrl;
   return (
@@ -62,7 +62,7 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
             variant="outline"
             class="w-full"
           >
-            <TbBrandGithub class="size-5" />
+            <IconBrandGithub class="size-5" />
             Continue with GitHub
           </ButtonLink>
         )}
@@ -72,7 +72,7 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
             variant="outline"
             class="w-full"
           >
-            <TbBrandGoogle class="size-5" />
+            <IconBrandGoogle class="size-5" />
             Continue with Google
           </ButtonLink>
         )}
@@ -82,7 +82,7 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
             variant="outline"
             class="w-full"
           >
-            <TbKey class="size-5" />
+            <IconKey class="size-5" />
             Continue with Authentik
           </ButtonLink>
         )}
@@ -109,9 +109,11 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
                 data-sitekey={data.hcaptchaSitekey}
               >
               </div>
-              {/* Match the widget to the active light/dark theme before
+              {
+                /* Match the widget to the active light/dark theme before
                   hCaptcha auto-renders it. Runs during parse, before the
-                  async+defer api.js executes. */}
+                  async+defer api.js executes. */
+              }
               <script
                 // deno-lint-ignore react-no-danger
                 dangerouslySetInnerHTML={{
@@ -130,7 +132,7 @@ export default define.page<typeof handler>(function LoginPage({ data }) {
           )}
 
           <Button type="submit" variant="outline" class="w-full">
-            <TbMail class="size-5" />
+            <IconMail class="size-5" />
             Continue with email
           </Button>
         </form>

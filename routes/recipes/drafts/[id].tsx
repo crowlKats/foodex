@@ -1,5 +1,6 @@
-import { HttpError, page } from "fresh";
-import { define, slugify } from "../../../utils.ts";
+import { handler, page } from "./$[id].ts";
+import { HttpError } from "fresh/errors";
+import { slugify } from "../../../utils.ts";
 import type {
   Ingredient,
   Media,
@@ -12,7 +13,7 @@ import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
 import DraftEditor from "../../../islands/DraftEditor.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user || !ctx.state.householdId) {
       return new Response(null, {
@@ -66,14 +67,16 @@ export const handler = define.handlers({
     const title = recipeData?.title;
     ctx.state.pageTitle = title ? `Draft: ${title}` : "Draft";
 
-    return page({
-      draft,
-      recipeData,
-      coverImage,
-      ingredients: ingredientsRes.rows,
-      allTools: allToolsRes.rows,
-      allRecipes: allRecipesRes.rows,
-    });
+    return {
+      data: {
+        draft,
+        recipeData,
+        coverImage,
+        ingredients: ingredientsRes.rows,
+        allTools: allToolsRes.rows,
+        allRecipes: allRecipesRes.rows,
+      },
+    };
   },
 
   async POST(ctx) {
@@ -204,7 +207,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function DraftPage(
     {
       data: {

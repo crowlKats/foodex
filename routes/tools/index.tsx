@@ -1,5 +1,5 @@
-import { page } from "fresh";
-import { define, escapeLike } from "../../utils.ts";
+import { handler, page } from "./$index.ts";
+import { escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
@@ -11,7 +11,7 @@ import {
 } from "../../components/Pagination.tsx";
 import type { Tool } from "../../db/types.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const q = ctx.url.searchParams.get("q")?.trim() || "";
     const currentPage = getPage(ctx.url);
@@ -59,15 +59,17 @@ export const handler = define.handlers({
 
     const error = ctx.url.searchParams.get("error") || undefined;
     ctx.state.pageTitle = "Tools";
-    return page({
-      tools: result.rows,
-      q,
-      ownedToolIds: [...ownedToolIds],
-      currentPage,
-      totalCount,
-      error,
-      loggedIn: ctx.state.user != null,
-    });
+    return {
+      data: {
+        tools: result.rows,
+        q,
+        ownedToolIds: [...ownedToolIds],
+        currentPage,
+        totalCount,
+        error,
+        loggedIn: ctx.state.user != null,
+      },
+    };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -106,7 +108,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(
+export default page(
   function ToolsPage(
     {
       data: {

@@ -1,5 +1,5 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$[id].ts";
+import { HttpError } from "fresh/errors";
 import { getSession, loadEvents } from "../../lib/agent/session.ts";
 import { foldConversation } from "../../lib/agent/conversation.ts";
 import { foldStaging, serializePending } from "../../lib/agent/staging.ts";
@@ -8,7 +8,7 @@ import { BackLink } from "../../components/BackLink.tsx";
 import AgentSession from "../../islands/AgentSession.tsx";
 import DeleteChatButton from "../../islands/DeleteChatButton.tsx";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) {
       return new Response(null, {
@@ -38,24 +38,26 @@ export const handler = define.handlers({
       ),
     ]);
     ctx.state.pageTitle = session.title;
-    return page({
-      sessionId: session.id,
-      title: session.title,
-      timeline: foldConversation(events).timeline,
-      staging: serializePending(foldStaging(events)),
-      turnActive: isTurnActive(session.id),
-      ingredients: ingredientsRes.rows.map((g) => ({
-        id: g.id,
-        name: g.name,
-        unit: g.unit ?? "",
-      })),
-      allTools: toolsRes.rows,
-      allRecipes: recipesRes.rows,
-    });
+    return {
+      data: {
+        sessionId: session.id,
+        title: session.title,
+        timeline: foldConversation(events).timeline,
+        staging: serializePending(foldStaging(events)),
+        turnActive: isTurnActive(session.id),
+        ingredients: ingredientsRes.rows.map((g) => ({
+          id: g.id,
+          name: g.name,
+          unit: g.unit ?? "",
+        })),
+        allTools: toolsRes.rows,
+        allRecipes: recipesRes.rows,
+      },
+    };
   },
 });
 
-export default define.page<typeof handler>(function AgentSessionPage({ data }) {
+export default page(function AgentSessionPage({ data }) {
   return (
     <div class="h-full flex flex-col">
       <div class="shrink-0 flex items-center gap-3 px-4 py-2 border-b-2 border-stone-200 dark:border-stone-700">

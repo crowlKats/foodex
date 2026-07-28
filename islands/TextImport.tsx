@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import TbLoader2 from "tb-icons/TbLoader2";
+import { IconLoader2 } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { InputMultiline } from "../components/Input.tsx";
 
@@ -49,7 +49,7 @@ export default function TextImport() {
     return (
       <div class="card">
         <div class="flex flex-col items-center justify-center py-12 gap-4">
-          <TbLoader2 class="size-12 text-orange-600 animate-spin" />
+          <IconLoader2 class="size-12 text-orange-600 animate-spin" />
           <p class="text-sm font-medium">Extracting recipe from text...</p>
           <p class="text-xs text-stone-500">This may take a few seconds.</p>
         </div>

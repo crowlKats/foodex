@@ -1,5 +1,5 @@
-import { HttpError, page } from "fresh";
-import { define } from "../../../utils.ts";
+import { handler, page } from "./$index.ts";
+import { HttpError } from "fresh/errors";
 import type {
   RecipeIngredient,
   RecipeReference,
@@ -22,11 +22,11 @@ import { BackLink } from "../../../components/BackLink.tsx";
 import { Button, ButtonLink } from "../../../components/Button.tsx";
 import FavoriteButton from "../../../islands/FavoriteButton.tsx";
 import AddToCollectionButton from "../../../islands/AddToCollectionButton.tsx";
-import TbEdit from "tb-icons/TbEdit";
+import { IconEdit } from "@tabler/icons-preact";
 import ShareButton from "../../../islands/ShareButton.tsx";
 import { SOURCE_TYPE_LABELS } from "../../../lib/recipe-tags.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
     const recipeRes = await ctx.state.db.query<RecipeWithCover>(
@@ -397,32 +397,34 @@ export const handler = define.handlers({
     const origin = new URL(ctx.req.url).origin;
 
     ctx.state.pageTitle = recipe.title;
-    return page({
-      recipe,
-      shareUrl: `${origin}/recipes/${recipe.slug}`,
-      ingredientsForTemplate,
-      tools: toolsRes.rows,
-      steps: stepsData,
-      sections: sectionsData,
-      refs: refsRes.rows,
-      recipeRefs,
-      mealTypes,
-      dietaryTags,
-      baseQuantity,
-      isOwner,
-      isFavorited,
-      loggedIn: ctx.state.user != null,
-      pantryIngredientIds,
-      pantryIngredientNames,
-      pantryItems,
-      householdId: ctx.state.householdId,
-      unitSystem: ctx.state.unitSystem,
-      forkedFrom,
-      forkCount,
-      collections,
-      outputIngredient,
-      sourceRecipes: Object.fromEntries(sourceRecipes),
-    });
+    return {
+      data: {
+        recipe,
+        shareUrl: `${origin}/recipes/${recipe.slug}`,
+        ingredientsForTemplate,
+        tools: toolsRes.rows,
+        steps: stepsData,
+        sections: sectionsData,
+        refs: refsRes.rows,
+        recipeRefs,
+        mealTypes,
+        dietaryTags,
+        baseQuantity,
+        isOwner,
+        isFavorited,
+        loggedIn: ctx.state.user != null,
+        pantryIngredientIds,
+        pantryIngredientNames,
+        pantryItems,
+        householdId: ctx.state.householdId,
+        unitSystem: ctx.state.unitSystem,
+        forkedFrom,
+        forkCount,
+        collections,
+        outputIngredient,
+        sourceRecipes: Object.fromEntries(sourceRecipes),
+      },
+    };
   },
   async POST(ctx) {
     const slug = ctx.params.slug;
@@ -457,7 +459,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function RecipeViewPage({
+export default page(function RecipeViewPage({
   data: {
     recipe,
     shareUrl,
@@ -537,7 +539,7 @@ export default define.page<typeof handler>(function RecipeViewPage({
             <ButtonLink
               href={`/recipes/${recipe.slug}/edit`}
               variant="outline"
-              icon={TbEdit}
+              icon={IconEdit}
             >
               Edit
             </ButtonLink>

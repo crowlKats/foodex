@@ -1,12 +1,11 @@
-import { page } from "fresh";
-import { define } from "../../utils.ts";
+import { handler, page } from "./$index.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import type { Household, HouseholdInvite } from "../../db/types.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) {
       return new Response(null, {
@@ -30,7 +29,7 @@ export const handler = define.handlers({
     }
 
     ctx.state.pageTitle = "Join or Create Household";
-    return page({});
+    return { data: {} };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -59,7 +58,7 @@ export const handler = define.handlers({
     if (method === "JOIN") {
       const code = (form.get("code") as string)?.trim();
       if (!code) {
-        return page({ error: "Invite code is required" });
+        return { data: { error: "Invite code is required" } };
       }
 
       const inviteRes = await ctx.state.db.query<
@@ -70,7 +69,7 @@ export const handler = define.handlers({
         [code],
       );
       if (inviteRes.rows.length === 0) {
-        return page({ error: "Invalid or expired invite code" });
+        return { data: { error: "Invalid or expired invite code" } };
       }
 
       const householdId = inviteRes.rows[0].household_id;
@@ -88,7 +87,7 @@ export const handler = define.handlers({
     const name = form.get("name") as string;
 
     if (!name?.trim()) {
-      return page({ error: "Name is required" });
+      return { data: { error: "Name is required" } };
     }
 
     const houseRes = await ctx.state.db.query<Pick<Household, "id">>(
@@ -109,7 +108,7 @@ export const handler = define.handlers({
   },
 });
 
-export default define.page<typeof handler>(function HouseholdsPage({ data }) {
+export default page(function HouseholdsPage({ data }) {
   const { error } = data as { error?: string };
 
   return (

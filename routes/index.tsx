@@ -1,6 +1,6 @@
-import { define } from "../utils.ts";
+import { handler } from "./$index.ts";
 
-export const handler = define.handlers({
+export const handlers = handler({
   GET() {
     return new Response(null, {
       status: 302,

@@ -1,11 +1,11 @@
 import { useSignal } from "@preact/signals";
 import { useCallback } from "preact/hooks";
-import TbArrowUp from "tb-icons/TbArrowUp";
-import TbArrowDown from "tb-icons/TbArrowDown";
-import TbPlus from "tb-icons/TbPlus";
-import TbTrash from "tb-icons/TbTrash";
-import TbUpload from "tb-icons/TbUpload";
-import TbX from "tb-icons/TbX";
+import { IconArrowUp } from "@tabler/icons-preact";
+import { IconArrowDown } from "@tabler/icons-preact";
+import { IconPlus } from "@tabler/icons-preact";
+import { IconTrash } from "@tabler/icons-preact";
+import { IconUpload } from "@tabler/icons-preact";
+import { IconX } from "@tabler/icons-preact";
 import { slugify } from "../utils.ts";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
@@ -557,7 +557,7 @@ function StepCardEl(
               onInsert();
             }}
           >
-            <TbPlus class="size-3.5" />
+            <IconPlus class="size-3.5" />
           </button>
           <button
             type="button"
@@ -568,7 +568,7 @@ function StepCardEl(
               onBranch();
             }}
           >
-            <TbPlus
+            <IconPlus
               class="size-3.5"
               style={{ transform: "rotate(45deg)" }}
             />
@@ -581,7 +581,7 @@ function StepCardEl(
               onRemove();
             }}
           >
-            <TbTrash class="size-3.5" />
+            <IconTrash class="size-3.5" />
           </button>
         </div>
       </div>
@@ -617,7 +617,7 @@ function AddStepEl(
         onClick();
       }}
     >
-      <TbPlus class="size-3.5 mr-1" />Add starting step
+      <IconPlus class="size-3.5 mr-1" />Add starting step
     </div>
   );
 }
@@ -739,7 +739,7 @@ function StepEditor(
                 onClick={() => onRemoveMedia(mi)}
                 class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
               >
-                <TbX class="size-3" />
+                <IconX class="size-3" />
               </button>
             </div>
           ))}
@@ -748,7 +748,7 @@ function StepEditor(
       <button type="button" class="link text-xs" onClick={onUploadMedia}>
         {uploading ? "Uploading..." : (
           <span>
-            <TbUpload class="size-3 inline mr-0.5" />Add images
+            <IconUpload class="size-3 inline mr-0.5" />Add images
           </span>
         )}
       </button>
@@ -1447,7 +1447,7 @@ export default function StepForm(
                       }
                     }}
                   >
-                    <TbArrowUp class="size-4" />
+                    <IconArrowUp class="size-4" />
                   </button>
                   <button
                     type="button"
@@ -1463,7 +1463,7 @@ export default function StepForm(
                       }
                     }}
                   >
-                    <TbArrowDown class="size-4" />
+                    <IconArrowDown class="size-4" />
                   </button>
                   <button
                     type="button"
@@ -1474,7 +1474,7 @@ export default function StepForm(
                       );
                     }}
                   >
-                    <TbTrash class="size-4" />
+                    <IconTrash class="size-4" />
                   </button>
                 </div>
               </div>
@@ -1501,7 +1501,7 @@ export default function StepForm(
                           removeMedia(i, mi)}
                         class="absolute top-0 right-0 bg-red-600 text-white w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                       >
-                        <TbX class="size-3" />
+                        <IconX class="size-3" />
                       </button>
                     </div>
                   ))}
@@ -1514,7 +1514,7 @@ export default function StepForm(
               >
                 {uploading.value === i ? "Uploading..." : (
                   <span>
-                    <TbUpload class="size-3 inline mr-0.5" />Add images
+                    <IconUpload class="size-3 inline mr-0.5" />Add images
                   </span>
                 )}
               </button>
@@ -1536,7 +1536,7 @@ export default function StepForm(
                     onClick={() => listAddStep(null)}
                     class="link text-sm font-medium"
                   >
-                    <TbPlus class="size-3.5 inline mr-1" />Add step
+                    <IconPlus class="size-3.5 inline mr-1" />Add step
                   </button>
                 )}
               </div>
@@ -1574,7 +1574,7 @@ export default function StepForm(
                       class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"
                       onClick={() => moveSection(sIdx, -1)}
                     >
-                      <TbArrowUp class="size-4" />
+                      <IconArrowUp class="size-4" />
                     </button>
                     <button
                       type="button"
@@ -1582,14 +1582,14 @@ export default function StepForm(
                       class="text-stone-400 hover:text-stone-600 disabled:opacity-30 p-1 cursor-pointer disabled:cursor-default"
                       onClick={() => moveSection(sIdx, 1)}
                     >
-                      <TbArrowDown class="size-4" />
+                      <IconArrowDown class="size-4" />
                     </button>
                     <button
                       type="button"
                       class="text-red-600 hover:text-red-700 p-1 cursor-pointer"
                       onClick={() => removeSection(sIdx)}
                     >
-                      <TbTrash class="size-4" />
+                      <IconTrash class="size-4" />
                     </button>
                   </div>
                   {group.length > 0 && (
@@ -1610,7 +1610,7 @@ export default function StepForm(
                     onClick={() => listAddStep(sIdx)}
                     class="link text-sm font-medium"
                   >
-                    <TbPlus class="size-3.5 inline mr-1" />Add step
+                    <IconPlus class="size-3.5 inline mr-1" />Add step
                   </button>
                 </div>
               );
@@ -1622,7 +1622,7 @@ export default function StepForm(
               onClick={addSection}
               class="link text-sm font-medium"
             >
-              <TbPlus class="size-3.5 inline mr-1" />Add section
+              <IconPlus class="size-3.5 inline mr-1" />Add section
             </button>
           </div>
         );
@@ -1713,7 +1713,7 @@ export default function StepForm(
                             graphInsertSectionAfter(sIdx);
                           }}
                         >
-                          <TbPlus class="size-3.5" />
+                          <IconPlus class="size-3.5" />
                         </button>
                         <button
                           type="button"
@@ -1724,7 +1724,7 @@ export default function StepForm(
                             graphBranchSectionAfter(sIdx);
                           }}
                         >
-                          <TbPlus
+                          <IconPlus
                             class="size-3.5"
                             style={{ transform: "rotate(45deg)" }}
                           />
@@ -1738,7 +1738,7 @@ export default function StepForm(
                             removeSection(sIdx);
                           }}
                         >
-                          <TbTrash class="size-3.5" />
+                          <IconTrash class="size-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1786,7 +1786,7 @@ export default function StepForm(
                     class="border-2 border-dashed border-stone-300 dark:border-stone-600 hover:border-orange-400 dark:hover:border-orange-500 cursor-pointer transition-colors flex items-center justify-center text-stone-500 hover:text-orange-600 text-xs font-medium"
                     onClick={addSection}
                   >
-                    <TbPlus class="size-4 mr-1" />Add starting section
+                    <IconPlus class="size-4 mr-1" />Add starting section
                   </div>
                 );
               })()}
@@ -1934,7 +1934,7 @@ export default function StepForm(
               onClick={addSection}
               title="Group steps into sections"
             >
-              <TbPlus class="size-3 inline mr-0.5" />Add section
+              <IconPlus class="size-3 inline mr-0.5" />Add section
             </button>
           </div>
           <div class="overflow-x-auto pb-2">
@@ -2084,7 +2084,7 @@ export default function StepForm(
               }}
               class="text-stone-400 hover:text-stone-600 ml-auto cursor-pointer"
             >
-              <TbX class="size-4" />
+              <IconX class="size-4" />
             </button>
           </div>
           <StepEditor

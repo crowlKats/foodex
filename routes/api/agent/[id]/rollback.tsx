@@ -1,4 +1,4 @@
-import { define } from "../../../../utils.ts";
+import { handler } from "./$rollback.ts";
 import {
   getSession,
   lastApplySeq,
@@ -14,7 +14,7 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-export const handler = define.handlers({
+export const handlers = handler({
   async POST(ctx) {
     if (!ctx.state.user) return json({ error: "Not authenticated" }, 401);
     const session = await getSession(ctx.state.db.query, ctx.params.id);

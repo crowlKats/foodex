@@ -1,8 +1,8 @@
 import { useSignal } from "@preact/signals";
 import { ALL_UNITS, UNIT_GROUPS } from "../lib/units.ts";
 import SearchSelect from "./SearchSelect.tsx";
-import TbPlus from "tb-icons/TbPlus";
-import TbTrash from "tb-icons/TbTrash";
+import { IconPlus } from "@tabler/icons-preact";
+import { IconTrash } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { Input, InputBar } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
@@ -122,7 +122,7 @@ export default function IngredientForm(
             <Button
               type="button"
               variant="danger-ghost"
-              icon={TbTrash}
+              icon={IconTrash}
               title="Remove ingredient"
               class="shrink-0"
               onClick={() => remove(i)}
@@ -211,7 +211,7 @@ export default function IngredientForm(
         onClick={add}
         class="link text-sm font-medium my-14"
       >
-        <TbPlus class="size-3.5 inline mr-1" />Add Ingredient
+        <IconPlus class="size-3.5 inline mr-1" />Add Ingredient
       </button>
     </div>
   );
