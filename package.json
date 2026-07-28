@@ -19,26 +19,29 @@
     "@tabler/icons-preact": "^3.45.0",
     "@luca/highlightable-textarea": "jsr:^0.1.1",
     "@std/assert": "jsr:^1.0.19",
-    "preact": "^10.29.0",
-    "@preact/signals": "^2.8.2",
-    "vite": "^8",
-    "tailwindcss": "^4.2.2",
-    "@tailwindcss/vite": "^4.2.2",
-    "pg": "^8.20.0",
+    "preact": "^10.29.7",
+    "@preact/signals": "^2.10.0",
+    "vite": "^8.1.5",
+    "tailwindcss": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "pg": "^8.22.0",
     "marked": "^15.0.12",
-    "@aws-sdk/client-s3": "^3.1014.0",
-    "@aws-sdk/s3-request-presigner": "^3.1014.0",
+    "@aws-sdk/client-s3": "^3.1096.0",
+    "@aws-sdk/s3-request-presigner": "^3.1096.0",
     "@anthropic-ai/sdk": "^0.105.0",
-    "nodemailer": "^6.9.16",
-    "barcode-detector": "^3.0.3",
-    "zxing-wasm": "^3.0.1",
-    "zod": "^3.24.0",
-    "preact-render-to-string": "^6.6.6"
+    "nodemailer": "^6.10.1",
+    "barcode-detector": "^3.2.1",
+    "zxing-wasm": "^3.1.2",
+    "zod": "^3.25.76",
+    "preact-render-to-string": "^6.7.0"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",
-    "@types/nodemailer": "^6.4.17",
+    "@types/nodemailer": "^6.4.24",
     "@prefresh/core": "^1.5.10",
     "@prefresh/utils": "^1.2.1"
+  },
+  "overrides": {
+    "lightningcss": "^1.33.0"
   }
 }
