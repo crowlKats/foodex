@@ -4,7 +4,7 @@
     "npm:@anthropic-ai/sdk@0.105": "0.105.0_zod@3.25.76",
     "npm:@aws-sdk/client-s3@^3.1096.0": "3.1096.0",
     "npm:@aws-sdk/s3-request-presigner@^3.1096.0": "3.1096.0",
-    "npm:@frsh/fresh@^3.0.0-alpha.202606211459": "3.0.0-alpha.202606211459_@preact+signals@2.10.0__preact@10.29.7___preact-render-to-string@6.7.0__preact-render-to-string@6.7.0___preact@10.29.7_preact@10.29.7__preact-render-to-string@6.7.0_vite@8.1.5",
+    "npm:@frsh/fresh@latest": "3.0.0-alpha.202606211459_@preact+signals@2.10.0__preact@10.29.7___preact-render-to-string@6.7.0__preact-render-to-string@6.7.0___preact@10.29.7_preact@10.29.7__preact-render-to-string@6.7.0_vite@8.1.5",
     "npm:@jsr/luca__highlightable-textarea@~0.1.1": "0.1.1_preact-render-to-string@6.7.0__preact@10.29.7",
     "npm:@jsr/std__assert@^1.0.19": "1.0.19",
     "npm:@preact/signals@^2.10.0": "2.10.0_preact@10.29.7__preact-render-to-string@6.7.0_preact-render-to-string@6.7.0__preact@10.29.7",
@@ -501,7 +501,7 @@
     "@prefresh/utils@1.2.1": {
       "integrity": "sha512-vq/sIuN5nYfYzvyayXI4C2QkprfNaHUQ9ZX+3xLD8nL3rWyzpxOm1+K7RtMbhd+66QcaISViK7amjnheQ/4WZw=="
     },
-    "@prefresh/vite@3.0.1_preact@10.29.7__preact-render-to-string@6.7.0_vite@8.1.5_preact-render-to-string@6.7.0__preact@10.29.7": {
+    "@prefresh/vite@3.0.1_preact@10.29.7__preact-render-to-string@6.7.0_vite@8.1.5": {
       "integrity": "sha512-U9zXjpmyMgR9IIXVVDAoPGzQigioY5mzu2hb/KWykpEIohcKPCrqvzjNsD1aQvsMFvcOI0dEcmdt3KVV/5mbmQ==",
       "dependencies": [
         "@babel/core",
@@ -1364,7 +1364,7 @@
         "npm:@anthropic-ai/sdk@0.105",
         "npm:@aws-sdk/client-s3@^3.1096.0",
         "npm:@aws-sdk/s3-request-presigner@^3.1096.0",
-        "npm:@frsh/fresh@^3.0.0-alpha.202606211459",
+        "npm:@frsh/fresh@latest",
         "npm:@jsr/luca__highlightable-textarea@~0.1.1",
         "npm:@jsr/std__assert@^1.0.19",
         "npm:@preact/signals@^2.10.0",
