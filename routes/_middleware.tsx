@@ -1,21 +1,36 @@
 import { middleware, type ParentState } from "./$_middleware.ts";
-import type { State as AppState } from "../utils.ts";
+import type { User } from "../utils.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
-import { cleanupOrphanedMedia, query, transaction } from "../db/mod.ts";
+import {
+  cleanupOrphanedMedia,
+  query,
+  QueryFn,
+  transaction,
+} from "../db/mod.ts";
 import { getSessionIdFromRequest } from "../lib/auth.ts";
 import { deleteFile } from "../lib/s3.ts";
 
-export interface State extends ParentState, AppState {}
+export interface State extends ParentState {
+  db: {
+    query: QueryFn;
+    transaction: <T>(fn: (query: QueryFn) => Promise<T>) => Promise<T>;
+  };
+  user: User | null;
+  unitSystem: UnitSystem;
+  shoppingListCount: number;
+  householdId: string | null;
+  pageTitle: string;
+}
 
 export default middleware(async function (ctx) {
-  const state: AppState = {
+  const state = {
     db: { query, transaction },
     user: null,
     unitSystem: "metric",
     shoppingListCount: 0,
     householdId: null,
     pageTitle: "Foodex",
-  };
+  } satisfies State as State;
 
   const sessionId = getSessionIdFromRequest(ctx.req);
   if (sessionId) {

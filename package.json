@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "start": "deno run -A --env-file=.env .output/server/index.mjs",
     "test": "deno test -A --no-check",
-    "check": "deno fmt --check routes islands components lib db examples *.ts && deno lint routes islands components lib db examples *.ts && vite build",
+    "typecheck": "deno check routes islands components lib db entry.server.ts entry.client.ts utils.ts",
+    "check": "deno fmt --check routes islands components lib db examples *.ts && deno lint routes islands components lib db examples *.ts && vite build && deno task typecheck",
     "migrate": "deno run -A --env-file=.env db/migrate.ts",
     "examples": "deno run -A --env-file=.env examples/import.ts"
   },

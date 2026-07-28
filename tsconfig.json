@@ -1,3 +1,7 @@
 {
-  "extends": "./.fresh/tsconfig.json"
+  "extends": "./.fresh/tsconfig.json",
+  "compilerOptions": {
+    "lib": ["esnext", "dom", "dom.iterable", "dom.asynciterable", "deno.ns"],
+    "types": ["vite/client"]
+  }
 }

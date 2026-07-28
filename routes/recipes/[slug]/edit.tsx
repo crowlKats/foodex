@@ -635,7 +635,7 @@ export default page(function RecipeEdit({
               : undefined}
             initialUnit={recipe.output_unit ?? undefined}
             initialExpiresDays={recipe.output_expires_days != null
-              ? String(recipe.output_expires_days)
+              ? Number(recipe.output_expires_days)
               : undefined}
           />
         </div>

@@ -12,7 +12,7 @@ function denoSpecifiers(): Plugin {
   return {
     name: "deno-specifiers",
     enforce: "pre",
-    async resolveId(source, importer, options) {
+    resolveId(source, importer, options) {
       const npm = source.match(
         /^npm:\/?(@[^/]+\/[^@/]+|[^@/]+)(?:@[^/]+)?(\/.*)?$/,
       );

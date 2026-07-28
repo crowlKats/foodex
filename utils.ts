@@ -1,4 +1,3 @@
-import type { QueryFn } from "./db/mod.ts";
 import type { UnitSystem } from "./lib/unit-display.ts";
 
 export interface User {
@@ -7,22 +6,6 @@ export interface User {
   email: string | null;
   avatar_url: string | null;
   unit_system: UnitSystem;
-}
-
-/**
- * Application request state, produced by the root `routes/_middleware.tsx` and
- * threaded to every route through the generated `$<file>.ts` helpers.
- */
-export interface State {
-  db: {
-    query: QueryFn;
-    transaction: <T>(fn: (query: QueryFn) => Promise<T>) => Promise<T>;
-  };
-  user: User | null;
-  unitSystem: UnitSystem;
-  shoppingListCount: number;
-  householdId: string | null;
-  pageTitle: string;
 }
 
 /** Escape special LIKE/ILIKE characters so user input is treated literally. */

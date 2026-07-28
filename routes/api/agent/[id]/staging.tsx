@@ -18,7 +18,7 @@ import {
   RECIPE_SCHEMA,
 } from "../../../../lib/agent/merge.ts";
 import type { AgentSession } from "../../../../db/types.ts";
-import type { State } from "../../../../utils.ts";
+import type { State } from "../../../_middleware.tsx";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -1,3 +1,4 @@
+import { ComponentChildren } from "preact";
 import DarkModeToggle from "../islands/DarkModeToggle.tsx";
 import { IconChefHat } from "@tabler/icons-preact";
 import { IconShoppingCart } from "@tabler/icons-preact";
@@ -27,7 +28,7 @@ function MobileTab(
   { href, label, icon, currentPath, badge }: {
     href: string;
     label: string;
-    icon: preact.ComponentType<{ class?: string }>;
+    icon: (props: { class: string }) => ComponentChildren;
     currentPath: string;
     badge?: number;
   },
