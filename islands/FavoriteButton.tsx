@@ -8,8 +8,8 @@ interface Props {
   initialFavorited: boolean;
 }
 
-const HeartFilledRed: IconComponent = ({ class: c }) => (
-  <IconHeartFilled class={`${c} text-red-500`} />
+const HeartFilledRed: IconComponent = ({ class: c, ...rest }) => (
+  <IconHeartFilled class={`${c} text-red-500`} {...rest} />
 );
 
 export default function FavoriteButton({ recipeId, initialFavorited }: Props) {

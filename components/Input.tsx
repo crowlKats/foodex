@@ -1,126 +1,97 @@
 import type { ComponentChildren, JSX } from "preact";
 import type { IconComponent } from "./Button.tsx";
+import { onInputFactory } from "../islands/components/input.ts";
+import { cva, cx, type VariantProps } from "class-variance-authority";
 
-export type InputSize = "xs" | "sm" | "md";
+const input = cva("", {
+  defaultVariants: {
+    size: "md",
+    monospace: false,
+  },
+  variants: {
+    size: {
+      md: "",
+      sm: "text-sm",
+      xs: "text-xs",
+    },
+    monospace: {
+      true: "font-mono",
+      false: "",
+    },
+  },
+});
 
-const SIZE_CLASS: Record<InputSize, string> = {
-  md: "",
-  sm: "text-sm",
-  xs: "text-xs",
-};
+type InputAttrs = Omit<JSX.IntrinsicElements["input"], "class" | "size">;
 
-type InputAttrs = Omit<
-  JSX.IntrinsicElements["input"],
-  "class" | "size" | "onInput" | "onChange"
->;
-
-export interface InputProps extends InputAttrs {
+export interface InputProps extends InputAttrs, VariantProps<typeof input> {
   class?: string;
-  size?: InputSize;
   icon?: IconComponent;
-  monospace?: boolean;
   onValueChange?: (value: string) => void;
-  onInput?: JSX.GenericEventHandler<HTMLInputElement>;
-  onChange?: JSX.GenericEventHandler<HTMLInputElement>;
 }
 
 export function Input(props: InputProps) {
   const {
-    class: extra,
-    size = "md",
-    icon: Icon,
+    size,
     monospace,
+    class: class_,
+    icon: Icon,
     onValueChange,
     onInput,
-    onChange,
     ...rest
   } = props;
+  const inputClass = input({
+    size,
+    monospace,
+    class: Icon ? undefined : class_,
+  });
 
-  // Only attach a handler when there's actually something to call. A bare
-  // function handler on a page-level element (outside an island) can't be
-  // server-rendered in Fresh, so a static `<Input>` must emit no `onInput`.
-  const handleInput: JSX.GenericEventHandler<HTMLInputElement> | undefined =
-    onValueChange || onInput
-      ? (e) => {
-        if (onValueChange) onValueChange(e.currentTarget.value);
-        if (onInput) onInput(e);
-      }
-      : undefined;
-
-  const sizeClass = SIZE_CLASS[size];
-  const monoClass = monospace ? "font-mono" : "";
+  const handleInput = onInputFactory(onInput, onValueChange);
 
   if (Icon) {
-    const wrapperClass = ["relative", extra].filter((c) => c).join(" ");
-    const inputClass = ["w-full pl-9", sizeClass, monoClass]
-      .filter((c) => c).join(" ");
     return (
-      <div class={wrapperClass}>
-        <Icon class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-stone-400 pointer-events-none" />
+      <div class={cx("relative", class_)}>
+        <Icon
+          class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-stone-400 pointer-events-none"
+          aria-hidden
+        />
         <input
-          class={inputClass}
+          class={cx(inputClass, "w-full pl-9")}
           onInput={handleInput}
-          onChange={onChange}
+          onChange={handleInput}
           {...rest}
         />
       </div>
     );
   }
-  const inputClass = [extra, sizeClass, monoClass]
-    .filter((c) => c).join(" ") || undefined;
-  return (
-    <input
-      class={inputClass}
-      onInput={handleInput}
-      onChange={onChange}
-      {...rest}
-    />
-  );
+  return <input class={inputClass} onInput={handleInput} {...rest} />;
 }
 
-type TextareaAttrs = Omit<
-  JSX.IntrinsicElements["textarea"],
-  "class" | "rows" | "onInput" | "onChange"
->;
+type TextareaAttrs = Omit<JSX.IntrinsicElements["textarea"], "class" | "rows">;
 
-export interface InputMultilineProps extends TextareaAttrs {
+export interface InputMultilineProps
+  extends TextareaAttrs, VariantProps<typeof input> {
   class?: string;
-  size?: InputSize;
-  rows?: number;
-  monospace?: boolean;
   onValueChange?: (value: string) => void;
-  onInput?: JSX.GenericEventHandler<HTMLTextAreaElement>;
-  onChange?: JSX.GenericEventHandler<HTMLTextAreaElement>;
 }
 
 export function InputMultiline(props: InputMultilineProps) {
   const {
-    class: extra,
-    size = "md",
-    rows = 2,
+    class: class_,
+    size,
     monospace,
     onValueChange,
     onInput,
-    onChange,
     ...rest
   } = props;
+  const textareaClass = input({ size, monospace, class: class_ });
 
-  const handleInput: JSX.GenericEventHandler<HTMLTextAreaElement> | undefined =
-    onValueChange || onInput
-      ? (e) => {
-        if (onValueChange) onValueChange(e.currentTarget.value);
-        if (onInput) onInput(e);
-      }
-      : undefined;
+  const handleInput = onInputFactory(onInput, onValueChange);
 
-  const className = [extra, SIZE_CLASS[size], monospace ? "font-mono" : null]
-    .filter((c) => c).join(" ") || undefined;
   return (
     <textarea
-      rows={rows}
-      class={className}
+      class={textareaClass}
       onInput={handleInput}
-      onChange={onChange}
+      onChange={handleInput}
       {...rest}
     />
   );
@@ -137,11 +108,11 @@ export interface InputBarProps {
  * with a 0.5px overlap so the borders share an edge.
  */
 export function InputBar({ class: extra, children }: InputBarProps) {
-  const cls = [
+  const cls = cx(
     "flex min-w-0",
     "[&>:first-child]:flex-1 [&>:first-child]:min-w-0",
     "[&>:not(:first-child)]:shrink-0 [&>:not(:first-child)]:-ml-0.5",
     extra,
-  ].filter((c) => c).join(" ");
+  );
   return <div class={cls}>{children}</div>;
 }

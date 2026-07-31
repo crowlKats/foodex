@@ -1492,7 +1492,7 @@ export default function RecipeView(
                             </button>
                             <button
                               type="button"
-                              class="cooking-mode-nav-btn btn-primary flex-1"
+                              class="cooking-mode-nav-btn text-white flex-1"
                               onClick={() => markStepDone(idx)}
                             >
                               Next
