@@ -24,6 +24,7 @@ import type { UnitSystem } from "../lib/unit-display.ts";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
+import { IconCalendar } from "@tabler/icons-preact";
 
 interface ActiveTimer {
   id: number;
@@ -847,11 +848,10 @@ export default function RecipeView(
                 <Button
                   type="button"
                   variant="outline"
+                  icon={IconCalendar}
                   title="Plan it for a day"
                   onClick={() => planOpen.value = !planOpen.value}
-                >
-                  📅
-                </Button>
+                />
               </div>
               {planOpen.value && (
                 <div class="flex gap-2 mt-2">
@@ -892,12 +892,6 @@ export default function RecipeView(
                   Pantry was short on: {cookedShort.value.join(", ")}
                 </div>
               )}
-              <a
-                href="/plan"
-                class="link text-xs block mt-2 text-center"
-              >
-                Meal plan
-              </a>
             </>
           )}
         </div>
