@@ -35,6 +35,11 @@
 │   ├── format.ts              # CENTRALIZED number formatting: formatAmount, formatCurrency, formatInputValue
 │   ├── form.ts                # Form parsing utilities
 │   ├── generate-recipe.ts     # AI recipe generation orchestration
+│   ├── inventory.ts           # CANONICAL "do we have it?" — matching, availability,
+│   │                          #   consumption planning. Every surface uses this
+│   ├── pantry.ts              # The only writer of stock: ledger + balance
+│   ├── plan.ts                # Meal plan, cooking, suggestions
+│   ├── shopping-list.ts       # Demand → line projection, buying
 │   ├── markdown.ts            # Server-side step rendering (marked + template eval + @step/@recipe/@timer)
 │   ├── ocr.ts                 # OCR extraction via Claude (OcrRecipeData interface)
 │   ├── quantity.ts            # RecipeQuantity types, computeScaleRatio, formatQuantity
@@ -85,6 +90,7 @@
 │   └── ToolForm.tsx
 │
 ├── routes/
+│   ├── plan/index.tsx         # Meal plan: planned meals, cooking, suggestions
 │   ├── _app.tsx               # Root layout (Nav, dark mode, page title)
 │   ├── index.tsx              # Redirects to /recipes
 │   │
@@ -173,13 +179,57 @@
 - **household_members** — household_id, user_id, role (owner|member)
 - **household_invites** — household_id, code, expires_at
 - **pantry_items** — household_id, ingredient_id (nullable), name, amount, unit,
-  expires_at
-- **shopping_lists** — household_id, name
-- **shopping_list_items** — shopping_list_id, ingredient_id, name, amount, unit,
-  store_id, checked, recipe_id, sort_order
+  expires_at, staple. Current *balance*; derived from pantry_transactions and
+  only ever written through `lib/pantry.ts`
+- **pantry_transactions** — household_id, pantry_item_id, ingredient_id, name,
+  signed amount, unit, kind (bought|cooked|wasted|adjusted|produced),
+  source_type/source_id/source_seq (unique — the idempotency key), store_id,
+  unit_price, expires_at. Why stock moved
+- **plan_entries** — household_id, recipe_id, scale, planned_for, status
+  (planned|cooked|skipped), include_in_list, cooked_at. What the household
+  intends to cook; the source of recipe demand
+- **shopping_lists** — household_id (unique — one list per household),
+  share_token
+- **shopping_list_demands** — shopping_list_id, ingredient_id, name, amount,
+  unit. Hand-added items only; recipe demand comes from plan_entries
+- **shopping_list_purchases** — shopping_list_id, match_key, name, amount, unit,
+  store_id, price. A ticked-off line; its existence *is* "checked"
+- **household_ingredient_stores** — household_id, ingredient_id, store_id. Where
+  this household actually buys a thing
 - **media** — key, url, content_type, filename, size_bytes
 - **users** — name, email, avatar_url, github_id, google_id, unit_system
 - **sessions** — user_id, token, expires_at
+
+## Kitchen Data Flow
+
+The pantry, the meal plan and the shopping list are one system with a single
+direction of travel:
+
+```
+recipe ──plan──▶ plan_entries ──┐
+                                ├──▶ shopping list  = demand − stock − bought
+manual item ──▶ demands ────────┘          │
+                                           │ tick off = buy
+                                           ▼
+                          pantry_transactions ──▶ pantry_items (balance)
+                                           ▲
+                                           │ cook a plan entry
+                                           └── deducts ingredients,
+                                               books the recipe's output
+```
+
+Consequences worth knowing before changing any of it:
+
+- **The shopping list has no rows.** Lines are projected on every read, so they
+  cannot go stale, and mutations return the recomputed projection rather than
+  letting the client patch its own copy.
+- **Stock only moves through the ledger.** Each cause writes one transaction set
+  keyed by `(source_type, source_id, source_seq)`, which makes buying idempotent
+  and cooking reversible. `reverseSource()` undoes any cause exactly.
+- **Availability is one function.** `computeAvailability()` in `lib/inventory.ts`
+  answers every "do we have it" question; `db/migrations/056_inventory_units.sql`
+  mirrors its unit maths in SQL (`fx_convert`, `fx_match_key`) for the filters
+  that must run in the database. Change one, change the other.
 
 ## Template Syntax (in recipe step bodies)
 
@@ -223,5 +273,10 @@ Adding a new recipe-level field requires changes in:
 - **Migrations:** Never modify existing migration files. Always create new ones.
 - **UI style:** No rounded corners, `border-2` borders, sharp-cornered `.card`
   class. Orange accent color.
-- **Pantry API actions:** `add`, `update`, `remove`, `deduct_recipe` (POST to
-  `/api/pantry`)
+- **Pantry API actions:** `add`, `update`, `remove`, `merge`, `set_staple` (POST
+  to `/api/pantry`). Deducting is not a pantry action — it happens by cooking a
+  plan entry (`/api/plan`)
+- **Never write `pantry_items` directly.** Go through `lib/pantry.ts` so the
+  transaction that explains the change is recorded alongside it
+- **Never answer "do we have this?" inline.** `lib/inventory.ts` owns that
+  question; six divergent implementations of it is what this replaced

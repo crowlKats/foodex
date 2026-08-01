@@ -26,8 +26,14 @@ export const handlers = handler({
     const maxMinutes = body.max_minutes;
     const instructions = body.instructions;
 
-    const pantryRes = await ctx.state.db.query<PantryItem>(
-      "SELECT name, amount, unit FROM pantry_items WHERE household_id = $1",
+    const pantryRes = await ctx.state.db.query<
+      PantryItem & { expires_in_days: number | null }
+    >(
+      `SELECT name, amount, unit,
+              (expires_at - CURRENT_DATE) as expires_in_days
+       FROM pantry_items
+       WHERE household_id = $1
+       ORDER BY expires_at NULLS LAST`,
       [ctx.state.householdId],
     );
 
@@ -38,10 +44,13 @@ export const handlers = handler({
       );
     }
 
+    // Expiry is passed through so generation answers the question the expiry
+    // warning raises — what do I cook with the things about to go off?
     const ingredients = pantryRes.rows.map((r) => ({
       name: r.name,
       amount: r.amount ?? undefined,
       unit: r.unit ?? undefined,
+      expiresInDays: r.expires_in_days ?? undefined,
     }));
 
     try {

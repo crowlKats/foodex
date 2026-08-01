@@ -101,11 +101,39 @@ export const handlers = handler({
           [targetId, id],
         ),
         ctx.state.db.query(
-          "UPDATE shopping_list_items SET ingredient_id = $1 WHERE ingredient_id = $2",
+          "UPDATE shopping_list_demands SET ingredient_id = $1 WHERE ingredient_id = $2",
           [targetId, id],
         ),
         ctx.state.db.query(
           "UPDATE pantry_items SET ingredient_id = $1 WHERE ingredient_id = $2",
+          [targetId, id],
+        ),
+        // History follows the ingredient too, or the ledger stops reconciling.
+        ctx.state.db.query(
+          "UPDATE pantry_transactions SET ingredient_id = $1 WHERE ingredient_id = $2",
+          [targetId, id],
+        ),
+        // Purchases carry the projected line's identity, so the key moves with
+        // them — otherwise a ticked-off line would reappear as unbought.
+        ctx.state.db.query(
+          `UPDATE shopping_list_purchases
+           SET ingredient_id = $1, match_key = 'id:' || $1::text
+           WHERE ingredient_id = $2
+             AND NOT EXISTS (
+               SELECT 1 FROM shopping_list_purchases other
+               WHERE other.shopping_list_id = shopping_list_purchases.shopping_list_id
+                 AND other.match_key = 'id:' || $1::text
+             )`,
+          [targetId, id],
+        ),
+        ctx.state.db.query(
+          `UPDATE household_ingredient_stores SET ingredient_id = $1
+           WHERE ingredient_id = $2
+             AND NOT EXISTS (
+               SELECT 1 FROM household_ingredient_stores other
+               WHERE other.household_id = household_ingredient_stores.household_id
+                 AND other.ingredient_id = $1
+             )`,
           [targetId, id],
         ),
         // Move brands that don't conflict

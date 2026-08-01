@@ -11,6 +11,7 @@ import type {
   RecipeWithCover,
 } from "../../../db/types.ts";
 import { computeStepAfters } from "../../../lib/step-graph.ts";
+import { loadStock, type StockItem } from "../../../lib/pantry.ts";
 import { formatDuration } from "../../../lib/duration.ts";
 import { computeIngredientCost } from "../../../lib/unit-convert.ts";
 import { formatAmount } from "../../../lib/format.ts";
@@ -268,36 +269,11 @@ export const handlers = handler({
     const isOwner = ctx.state.householdId != null &&
       recipe.household_id === ctx.state.householdId;
 
-    // Load pantry items from user's household
-    let pantryItems: {
-      ingredient_id?: string;
-      name: string;
-      amount?: number;
-      unit?: string;
-    }[] = [];
-    if (ctx.state.householdId) {
-      const pantryRes = await ctx.state.db.query<{
-        ingredient_id: string | null;
-        name: string;
-        amount: number | null;
-        unit: string | null;
-      }>(
-        `SELECT pi.ingredient_id, lower(pi.name) as name, pi.amount, pi.unit
-         FROM pantry_items pi
-         WHERE pi.household_id = $1`,
-        [ctx.state.householdId],
-      );
-      pantryItems = pantryRes.rows.map((r) => ({
-        ingredient_id: r.ingredient_id ?? undefined,
-        name: r.name,
-        amount: r.amount ?? undefined,
-        unit: r.unit ?? undefined,
-      }));
-    }
-    const pantryIngredientIds = pantryItems
-      .filter((r) => r.ingredient_id != null)
-      .map((r) => r.ingredient_id!);
-    const pantryIngredientNames = pantryItems.map((r) => r.name);
+    // Household stock, passed to the view as-is: matching and the amount
+    // arithmetic both happen in lib/inventory.ts, on both sides of the wire.
+    const pantryItems: StockItem[] = ctx.state.householdId
+      ? await loadStock(ctx.state.db, ctx.state.householdId)
+      : [];
 
     let isFavorited = false;
     if (ctx.state.user) {
@@ -413,8 +389,6 @@ export const handlers = handler({
         isOwner,
         isFavorited,
         loggedIn: ctx.state.user != null,
-        pantryIngredientIds,
-        pantryIngredientNames,
         pantryItems,
         householdId: ctx.state.householdId,
         unitSystem: ctx.state.unitSystem,
@@ -475,8 +449,6 @@ export default page(function RecipeViewPage({
     isFavorited,
     loggedIn,
     baseQuantity,
-    pantryIngredientIds,
-    pantryIngredientNames,
     pantryItems,
     householdId,
     unitSystem,
@@ -689,13 +661,10 @@ export default page(function RecipeViewPage({
           recipeId={recipe.id}
           recipeTitle={recipe.title}
           loggedIn={loggedIn}
-          pantryIngredientIds={pantryIngredientIds}
-          pantryIngredientNames={pantryIngredientNames}
           pantryItems={pantryItems}
           householdId={householdId}
           unitSystem={unitSystem}
           sourceRecipes={sourceRecipes}
-          outputIngredient={outputIngredient}
         />
       </div>
     </div>

@@ -73,8 +73,10 @@ export async function sendExpiryNotifications(queryFn: QueryFn) {
       },
       {
         title: "Pantry Expiry Reminder",
-        body: `You have ${parts.join(" and ")} in your pantry.`,
-        url: "/household/pantry",
+        // The plan page opens on "use these up" plus recipes ranked by what
+        // they'd rescue — a reminder that ends in an answer, not a list.
+        body: `You have ${parts.join(" and ")}. Here's what you could cook.`,
+        url: "/plan",
       },
     );
 

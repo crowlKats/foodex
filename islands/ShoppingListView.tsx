@@ -4,22 +4,11 @@ import { getCurrencySymbol } from "../lib/currencies.ts";
 import { formatAmount, formatCurrency } from "../lib/format.ts";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
+import type { ShoppingLine } from "../lib/shopping-list.ts";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
-
-interface ShoppingItem {
-  id: string;
-  ingredient_id: string | null;
-  name: string;
-  amount: number | null;
-  unit: string | null;
-  store_id: string | null;
-  checked: boolean;
-  recipe_title: string | null;
-  recipe_slug: string | null;
-}
 
 interface Store {
   id: string;
@@ -43,7 +32,7 @@ interface IngredientOption {
 }
 
 interface Props {
-  initialItems: ShoppingItem[];
+  initialLines: ShoppingLine[];
   stores: Store[];
   pricesMap: Record<string, PriceInfo[]>;
   initialViewMode: ViewMode;
@@ -51,16 +40,7 @@ interface Props {
   initialShareToken?: string | null;
 }
 
-type ViewMode = "recipe" | "store";
-
-async function apiCall(body: Record<string, unknown>) {
-  const res = await fetch("/api/shopping-list", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-}
+type ViewMode = "source" | "store";
 
 const STORE_COL = "w-28 shrink-0";
 const PRICE_COL = "w-16 shrink-0 text-right";
@@ -69,7 +49,7 @@ const CHECK_COL = "w-5 shrink-0";
 
 export default function ShoppingListView(
   {
-    initialItems,
+    initialLines,
     stores,
     pricesMap,
     initialViewMode,
@@ -77,7 +57,7 @@ export default function ShoppingListView(
     initialShareToken,
   }: Props,
 ) {
-  const items = useSignal<ShoppingItem[]>(initialItems);
+  const lines = useSignal<ShoppingLine[]>(initialLines);
   const viewMode = useSignal<ViewMode>(initialViewMode);
   const shareToken = useSignal<string | null>(initialShareToken ?? null);
   const shareCopied = useSignal(false);
@@ -89,6 +69,23 @@ export default function ShoppingListView(
   const addAmount = useSignal("");
   const addUnit = useSignal("");
   const adding = useSignal(false);
+  const busy = useSignal<string | null>(null);
+
+  /**
+   * Every mutation returns the recomputed projection, so the client never
+   * recalculates "what's left to buy" itself — buying one thing can change
+   * several lines at once.
+   */
+  async function apiCall(body: Record<string, unknown>) {
+    const res = await fetch("/api/shopping-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (Array.isArray(data.lines)) lines.value = data.lines as ShoppingLine[];
+    return data;
+  }
 
   function setViewMode(mode: ViewMode) {
     viewMode.value = mode;
@@ -96,23 +93,21 @@ export default function ShoppingListView(
   }
 
   function getCost(
-    ingredientId: string | null,
-    amount: number | null,
-    unit: string | null,
-    storeId: string | null,
+    line: ShoppingLine,
   ): { cost: number; currency: string } | null {
-    if (ingredientId == null || amount == null) return null;
-    const prices = pricesMap[String(ingredientId)];
+    const amount = line.purchase ? line.purchase.amount : line.needed;
+    if (line.ingredient_id == null || amount == null) return null;
+    const prices = pricesMap[String(line.ingredient_id)];
     if (!prices || prices.length === 0) return null;
 
-    const price = storeId
-      ? prices.find((p) => p.store_id === storeId)
+    const price = line.store_id
+      ? prices.find((p) => p.store_id === line.store_id)
       : prices[0];
     if (!price) return null;
 
     const cost = computeIngredientCost(
       amount,
-      unit ?? "",
+      (line.purchase ? line.purchase.unit : line.unit) ?? "",
       price.price,
       price.amount,
       price.unit,
@@ -122,7 +117,7 @@ export default function ShoppingListView(
     return { cost, currency: price.currency };
   }
 
-  function getStoresForItem(ingredientId: string | null): Store[] {
+  function getStoresForLine(ingredientId: string | null): Store[] {
     if (ingredientId == null) return [];
     const prices = pricesMap[String(ingredientId)];
     if (!prices || prices.length === 0) return [];
@@ -130,66 +125,56 @@ export default function ShoppingListView(
     return stores.filter((s) => withPrice.has(s.id));
   }
 
-  async function toggleChecked(item: ShoppingItem) {
-    const newChecked = !item.checked;
-    items.value = items.value.map((i) =>
-      i.id === item.id ? { ...i, checked: newChecked } : i
-    );
-    await apiCall({
-      action: "update_item",
-      item_id: item.id,
-      checked: newChecked,
-    });
+  async function toggleBought(line: ShoppingLine) {
+    busy.value = line.key;
+    if (line.purchase) {
+      await apiCall({ action: "unbuy_line", match_key: line.key });
+    } else {
+      await apiCall({
+        action: "buy_line",
+        match_key: line.key,
+        ingredient_id: line.ingredient_id,
+        name: line.name,
+        amount: line.needed,
+        unit: line.unit,
+        store_id: line.store_id,
+      });
+    }
+    busy.value = null;
   }
 
-  async function updateStore(item: ShoppingItem, storeId: string | null) {
-    items.value = items.value.map((i) =>
-      i.id === item.id ? { ...i, store_id: storeId } : i
-    );
+  async function updateStore(line: ShoppingLine, storeId: string | null) {
     await apiCall({
-      action: "update_item",
-      item_id: item.id,
+      action: "set_store",
+      match_key: line.key,
+      ingredient_id: line.ingredient_id,
       store_id: storeId,
     });
   }
 
-  async function removeItem(item: ShoppingItem) {
-    items.value = items.value.filter((i) => i.id !== item.id);
-    await apiCall({ action: "remove_item", item_id: item.id });
+  async function removeLine(line: ShoppingLine) {
+    await apiCall({ action: "remove_line", match_key: line.key });
   }
 
-  async function clearChecked() {
-    items.value = items.value.filter((i) => !i.checked);
-    await apiCall({ action: "clear_checked" });
-  }
+  async function addDemand() {
+    const name = addSelected.value.id
+      ? addSelected.value.name
+      : addName.value.trim();
+    if (!name) return;
 
-  async function clearAll() {
-    items.value = [];
-    await apiCall({ action: "clear_all" });
-  }
-
-  async function generateShareLink() {
-    const res = await apiCall({ action: "generate_share_link" });
-    if (res.share_token) {
-      shareToken.value = res.share_token;
-    }
-  }
-
-  async function revokeShareLink() {
-    await apiCall({ action: "revoke_share_link" });
-    shareToken.value = null;
-  }
-
-  function copyShareLink() {
-    if (!shareToken.value) return;
-    const url =
-      `${globalThis.location.origin}/shopping-list/shared/${shareToken.value}`;
-    navigator.clipboard.writeText(url).then(() => {
-      shareCopied.value = true;
-      setTimeout(() => {
-        shareCopied.value = false;
-      }, 2000);
+    adding.value = true;
+    await apiCall({
+      action: "add_demand",
+      ingredient_id: addSelected.value.id || undefined,
+      name,
+      amount: addAmount.value ? parseFloat(addAmount.value) : null,
+      unit: addUnit.value || null,
     });
+    addSelected.value = { id: "", name: "" };
+    addName.value = "";
+    addAmount.value = "";
+    addUnit.value = "";
+    adding.value = false;
   }
 
   const addOptions: SearchSelectOption[] = ingredients.map((i) => ({
@@ -198,234 +183,69 @@ export default function ShoppingListView(
     detail: i.unit,
   }));
 
-  async function addItem() {
-    const name = addSelected.value.id
-      ? addSelected.value.name
-      : addName.value.trim();
-    if (!name) return;
+  function renderLine(line: ShoppingLine, showSources: boolean) {
+    const costInfo = getCost(line);
+    const lineStores = getStoresForLine(line.ingredient_id);
+    const bought = line.purchase != null;
+    const amount = bought ? line.purchase?.amount : line.needed;
+    const unit = (bought ? line.purchase?.unit : line.unit) ?? "";
 
-    adding.value = true;
-    const ingredientId = addSelected.value.id ? addSelected.value.id : null;
-    const amount = addAmount.value ? parseFloat(addAmount.value) : null;
-    const unit = addUnit.value || null;
-
-    const res = await apiCall({
-      action: "add_ingredient",
-      ingredient_id: ingredientId,
-      name,
-      amount,
-      unit,
-      recipe_id: null,
-    });
-
-    if (res.ok) {
-      items.value = [
-        ...items.value,
-        {
-          id: res.item_id as string,
-          ingredient_id: ingredientId,
-          name,
-          amount,
-          unit,
-          store_id: null,
-          checked: false,
-          recipe_title: null,
-          recipe_slug: null,
-        },
-      ];
-      addSelected.value = { id: "", name: "" };
-      addName.value = "";
-      addAmount.value = "";
-      addUnit.value = "";
-    }
-    adding.value = false;
-  }
-
-  function renderItemRow(item: ShoppingItem, showRecipe: boolean) {
-    const costInfo = getCost(
-      item.ingredient_id,
-      item.amount,
-      item.unit,
-      item.store_id,
-    );
-    const itemStores = getStoresForItem(item.ingredient_id);
     return (
       <div
-        key={item.id}
-        class="card flex items-center gap-2 py-2 px-3"
+        key={line.key}
+        class={`card flex items-center gap-2 py-2 px-3 ${
+          bought ? "opacity-50" : ""
+        }`}
       >
         <div class={CHECK_COL}>
           <input
             type="checkbox"
-            checked={item.checked}
+            checked={bought}
+            disabled={busy.value === line.key}
             class="size-4 cursor-pointer accent-orange-600"
-            onChange={() => toggleChecked(item)}
+            onChange={() => toggleBought(line)}
           />
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium">
-            {item.amount != null && (
-              <span class="text-orange-600 mr-1">
-                {formatAmount(item.amount)}
-                {item.unit ? ` ${item.unit}` : ""}
+          <div class={`text-sm font-medium ${bought ? "line-through" : ""}`}>
+            {amount != null && (
+              <span class={bought ? "mr-1" : "text-orange-600 mr-1"}>
+                {formatAmount(amount)}
+                {unit ? ` ${unit}` : ""}
               </span>
             )}
-            {item.ingredient_id
+            {line.ingredient_id
               ? (
-                <a href={`/ingredients/${item.ingredient_id}`} class="link">
-                  {item.name}
+                <a href={`/ingredients/${line.ingredient_id}`} class="link">
+                  {line.name}
                 </a>
               )
-              : item.name}
+              : line.name}
           </div>
-          {showRecipe && item.recipe_title && (
+          {!bought && line.have > 0 && (
             <div class="text-xs text-stone-400">
-              <a href={`/recipes/${item.recipe_slug}`} class="link">
-                {item.recipe_title}
-              </a>
+              {formatAmount(line.have)}
+              {line.unit ? ` ${line.unit}` : ""} already in the pantry
             </div>
           )}
-        </div>
-        <div class={STORE_COL}>
-          <Select
-            class="py-1 px-1 w-full"
-            size="xs"
-            value={item.store_id ?? ""}
-            onValueChange={(v) => updateStore(item, v || null)}
-          >
-            <option value="">Store...</option>
-            {itemStores.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </Select>
-        </div>
-        <div class={PRICE_COL}>
-          {costInfo && (
-            <span class="text-xs text-stone-500 whitespace-nowrap">
-              {getCurrencySymbol(costInfo.currency)}
-              {formatCurrency(costInfo.cost)}
-            </span>
+          {!bought && line.quantityUnknown && line.have === 0 && (
+            <div class="text-xs text-amber-600 dark:text-amber-400">
+              In the pantry, amount not tracked
+            </div>
           )}
-        </div>
-        <div class={REMOVE_COL}>
-          <button
-            type="button"
-            class="text-stone-400 hover:text-red-500 text-sm cursor-pointer"
-            onClick={() => removeItem(item)}
-            title="Remove"
-          >
-            &times;
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  interface MergedItem {
-    ids: string[];
-    ingredient_id: string | null;
-    name: string;
-    amount: number | null;
-    unit: string | null;
-    store_id: string | null;
-    recipes: { title: string; slug: string }[];
-  }
-
-  function mergeItems(groupItems: ShoppingItem[]): MergedItem[] {
-    const merged = new Map<string, MergedItem>();
-    const standalone: MergedItem[] = [];
-
-    for (const item of groupItems) {
-      const mergeKey = item.ingredient_id != null
-        ? `ing:${item.ingredient_id}:${item.unit ?? ""}`
-        : null;
-
-      if (mergeKey && merged.has(mergeKey)) {
-        const existing = merged.get(mergeKey)!;
-        existing.ids.push(item.id);
-        if (item.amount != null) {
-          existing.amount = (existing.amount ?? 0) + item.amount;
-        }
-        if (
-          item.recipe_title &&
-          !existing.recipes.some((r) => r.slug === item.recipe_slug)
-        ) {
-          existing.recipes.push({
-            title: item.recipe_title,
-            slug: item.recipe_slug!,
-          });
-        }
-      } else {
-        const entry: MergedItem = {
-          ids: [item.id],
-          ingredient_id: item.ingredient_id,
-          name: item.name,
-          amount: item.amount,
-          unit: item.unit,
-          store_id: item.store_id,
-          recipes: item.recipe_title
-            ? [{ title: item.recipe_title, slug: item.recipe_slug! }]
-            : [],
-        };
-        if (mergeKey) {
-          merged.set(mergeKey, entry);
-        } else {
-          standalone.push(entry);
-        }
-      }
-    }
-
-    return [...merged.values(), ...standalone];
-  }
-
-  function renderMergedItemRow(item: MergedItem) {
-    const costInfo = getCost(
-      item.ingredient_id,
-      item.amount,
-      item.unit,
-      item.store_id,
-    );
-    const itemStores = getStoresForItem(item.ingredient_id);
-
-    return (
-      <div
-        key={item.ids.join(",")}
-        class="card flex items-center gap-2 py-2 px-3"
-      >
-        <div class={CHECK_COL}>
-          <input
-            type="checkbox"
-            class="size-4 cursor-pointer accent-orange-600"
-            onChange={() => {
-              for (const id of item.ids) {
-                const found = items.value.find((i) => i.id === id);
-                if (found) toggleChecked(found);
-              }
-            }}
-          />
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium">
-            {item.amount != null && (
-              <span class="text-orange-600 mr-1">
-                {formatAmount(item.amount)}
-                {item.unit ? ` ${item.unit}` : ""}
-              </span>
-            )}
-            {item.ingredient_id
-              ? (
-                <a href={`/ingredients/${item.ingredient_id}`} class="link">
-                  {item.name}
-                </a>
-              )
-              : item.name}
-          </div>
-          {item.recipes.length > 0 && (
+          {!bought && line.unconvertible && (
+            <div class="text-xs text-amber-600 dark:text-amber-400">
+              Units don't match — check this one yourself
+            </div>
+          )}
+          {showSources && line.sources.length > 0 && (
             <div class="text-xs text-stone-400">
-              {item.recipes.map((r, i) => (
-                <span key={r.slug}>
+              {line.sources.map((s, i) => (
+                <span key={`${s.kind}-${s.id}`}>
                   {i > 0 && ", "}
-                  <a href={`/recipes/${r.slug}`} class="link">{r.title}</a>
+                  {s.kind === "plan" && s.slug
+                    ? <a href={`/recipes/${s.slug}`} class="link">{s.label}</a>
+                    : s.label}
                 </span>
               ))}
             </div>
@@ -435,17 +255,11 @@ export default function ShoppingListView(
           <Select
             class="py-1 px-1 w-full"
             size="xs"
-            value={item.store_id ?? ""}
-            onValueChange={(v) => {
-              const storeId = v || null;
-              for (const id of item.ids) {
-                const found = items.value.find((i) => i.id === id);
-                if (found) updateStore(found, storeId);
-              }
-            }}
+            value={line.store_id ?? ""}
+            onValueChange={(v) => updateStore(line, v || null)}
           >
             <option value="">Store...</option>
-            {itemStores.map((s) => (
+            {lineStores.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </Select>
@@ -462,12 +276,7 @@ export default function ShoppingListView(
           <button
             type="button"
             class="text-stone-400 hover:text-red-500 text-sm cursor-pointer"
-            onClick={() => {
-              for (const id of item.ids) {
-                const found = items.value.find((i) => i.id === id);
-                if (found) removeItem(found);
-              }
-            }}
+            onClick={() => removeLine(line)}
             title="Remove"
           >
             &times;
@@ -477,39 +286,50 @@ export default function ShoppingListView(
     );
   }
 
-  function renderGroupedByRecipe(unchecked: ShoppingItem[]) {
-    const byRecipe = new Map<string, ShoppingItem[]>();
-    for (const item of unchecked) {
-      const key = item.recipe_slug ?? "__none__";
-      if (!byRecipe.has(key)) byRecipe.set(key, []);
-      byRecipe.get(key)!.push(item);
+  function renderGroupedBySource(outstanding: ShoppingLine[]) {
+    // A line can serve several meals; it is filed under the first one that
+    // asked for it and lists the rest inline.
+    const groups = new Map<
+      string,
+      { label: string; slug: string | null; lines: ShoppingLine[] }
+    >();
+    for (const line of outstanding) {
+      const primary = line.sources[0];
+      const key = primary?.kind === "plan"
+        ? `plan:${primary.id}`
+        : "__manual__";
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          label: primary?.kind === "plan" ? primary.label : "Added by hand",
+          slug: primary?.kind === "plan" ? primary.slug ?? null : null,
+          lines: [],
+        };
+        groups.set(key, group);
+      }
+      group.lines.push(line);
     }
 
-    return [...byRecipe.entries()].map(([key, groupItems]) => (
+    return [...groups.entries()].map(([key, group]) => (
       <div key={key}>
-        {key !== "__none__" && groupItems[0].recipe_title && (
-          <h3 class="text-sm font-semibold text-stone-500 mb-1">
-            <a
-              href={`/recipes/${groupItems[0].recipe_slug}`}
-              class="link"
-            >
-              {groupItems[0].recipe_title}
-            </a>
-          </h3>
-        )}
+        <h3 class="text-sm font-semibold text-stone-500 mb-1">
+          {group.slug
+            ? <a href={`/recipes/${group.slug}`} class="link">{group.label}</a>
+            : group.label}
+        </h3>
         <div class="space-y-1">
-          {groupItems.map((item) => renderItemRow(item, false))}
+          {group.lines.map((line) => renderLine(line, false))}
         </div>
       </div>
     ));
   }
 
-  function renderGroupedByStore(unchecked: ShoppingItem[]) {
-    const storeMap = new Map<string | null, ShoppingItem[]>();
-    for (const item of unchecked) {
-      const key = item.store_id;
+  function renderGroupedByStore(outstanding: ShoppingLine[]) {
+    const storeMap = new Map<string | null, ShoppingLine[]>();
+    for (const line of outstanding) {
+      const key = line.store_id;
       if (!storeMap.has(key)) storeMap.set(key, []);
-      storeMap.get(key)!.push(item);
+      storeMap.get(key)!.push(line);
     }
 
     const storeIndex = new Map(stores.map((s) => [s.id, s]));
@@ -517,20 +337,19 @@ export default function ShoppingListView(
       if (a[0] == null && b[0] == null) return 0;
       if (a[0] == null) return 1;
       if (b[0] == null) return -1;
-      const nameA = storeIndex.get(a[0])?.name ?? "";
-      const nameB = storeIndex.get(b[0])?.name ?? "";
-      return nameA.localeCompare(nameB);
+      return (storeIndex.get(a[0])?.name ?? "").localeCompare(
+        storeIndex.get(b[0])?.name ?? "",
+      );
     });
 
-    return entries.map(([storeId, groupItems]) => {
+    return entries.map(([storeId, groupLines]) => {
       const store = storeId != null ? storeIndex.get(storeId) : null;
-      const mergedItems = mergeItems(groupItems);
 
       let groupCost = 0;
       let groupCurrency = "EUR";
       let hasGroupPrice = false;
-      for (const mi of mergedItems) {
-        const info = getCost(mi.ingredient_id, mi.amount, mi.unit, mi.store_id);
+      for (const line of groupLines) {
+        const info = getCost(line);
         if (info) {
           groupCost += info.cost;
           groupCurrency = info.currency;
@@ -538,7 +357,6 @@ export default function ShoppingListView(
         }
       }
 
-      const allIds = mergedItems.flatMap((m) => m.ids);
       return (
         <div key={storeId ?? "__none__"}>
           <div class="flex items-center gap-2 mb-1 px-3">
@@ -546,11 +364,10 @@ export default function ShoppingListView(
               <input
                 type="checkbox"
                 class="size-3.5 cursor-pointer accent-orange-600"
-                title="Check all in this store"
-                onChange={() => {
-                  for (const id of allIds) {
-                    const found = items.value.find((i) => i.id === id);
-                    if (found && !found.checked) toggleChecked(found);
+                title="Check everything from this store"
+                onChange={async () => {
+                  for (const line of groupLines) {
+                    if (!line.purchase) await toggleBought(line);
                   }
                 }}
               />
@@ -570,26 +387,21 @@ export default function ShoppingListView(
             <div class={REMOVE_COL} />
           </div>
           <div class="space-y-1">
-            {mergedItems.map((mi) => renderMergedItemRow(mi))}
+            {groupLines.map((line) => renderLine(line, true))}
           </div>
         </div>
       );
     });
   }
 
-  const unchecked = items.value.filter((i) => !i.checked);
-  const checked = items.value.filter((i) => i.checked);
+  const outstanding = lines.value.filter((l) => !l.purchase);
+  const bought = lines.value.filter((l) => l.purchase);
 
   let totalCost = 0;
   let totalCurrency = "EUR";
   let hasAnyPrice = false;
-  for (const item of unchecked) {
-    const info = getCost(
-      item.ingredient_id,
-      item.amount,
-      item.unit,
-      item.store_id,
-    );
+  for (const line of outstanding) {
+    const info = getCost(line);
     if (info) {
       totalCost += info.cost;
       totalCurrency = info.currency;
@@ -656,17 +468,21 @@ export default function ShoppingListView(
             type="button"
             disabled={adding.value ||
               (!addSelected.value.id && !addName.value.trim())}
-            onClick={addItem}
+            onClick={addDemand}
           >
             Add
           </Button>
         </div>
       </div>
 
-      {items.value.length === 0
+      {lines.value.length === 0
         ? (
           <div class="card text-center py-8">
-            <p class="text-stone-500">Your shopping list is empty.</p>
+            <p class="text-stone-500">
+              Nothing to buy. Plan a meal and whatever the pantry can't cover
+              shows up here.
+            </p>
+            <a href="/plan" class="link text-sm">Open the meal plan</a>
           </div>
         )
         : (
@@ -676,13 +492,13 @@ export default function ShoppingListView(
                 <button
                   type="button"
                   class={`text-xs px-3 py-1 border-2 cursor-pointer ${
-                    viewMode.value === "recipe"
+                    viewMode.value === "source"
                       ? "border-orange-600 bg-orange-600 text-white"
                       : "border-stone-300 dark:border-stone-700 text-stone-500"
                   }`}
-                  onClick={() => setViewMode("recipe")}
+                  onClick={() => setViewMode("source")}
                 >
-                  By recipe
+                  By meal
                 </button>
                 <button
                   type="button"
@@ -712,14 +528,24 @@ export default function ShoppingListView(
                       <button
                         type="button"
                         class="text-xs px-2 py-1 border-2 border-stone-300 dark:border-stone-700 text-stone-500 cursor-pointer hover:border-orange-600"
-                        onClick={copyShareLink}
+                        onClick={() => {
+                          const url =
+                            `${globalThis.location.origin}/shopping-list/shared/${shareToken.value}`;
+                          navigator.clipboard.writeText(url).then(() => {
+                            shareCopied.value = true;
+                            setTimeout(() => shareCopied.value = false, 2000);
+                          });
+                        }}
                       >
                         {shareCopied.value ? "Copied!" : "Copy link"}
                       </button>
                       <button
                         type="button"
                         class="text-xs px-2 py-1 border-2 border-stone-300 dark:border-stone-700 text-red-500 cursor-pointer hover:border-red-500"
-                        onClick={revokeShareLink}
+                        onClick={async () => {
+                          await apiCall({ action: "revoke_share_link" });
+                          shareToken.value = null;
+                        }}
                         title="Revoke shared link"
                       >
                         Unshare
@@ -730,7 +556,12 @@ export default function ShoppingListView(
                     <button
                       type="button"
                       class="text-xs px-2 py-1 border-2 border-stone-300 dark:border-stone-700 text-stone-500 cursor-pointer hover:border-orange-600"
-                      onClick={generateShareLink}
+                      onClick={async () => {
+                        const res = await apiCall({
+                          action: "generate_share_link",
+                        });
+                        if (res.share_token) shareToken.value = res.share_token;
+                      }}
                     >
                       Share
                     </button>
@@ -738,75 +569,41 @@ export default function ShoppingListView(
               </div>
             </div>
 
-            {viewMode.value === "recipe"
-              ? renderGroupedByRecipe(unchecked)
-              : renderGroupedByStore(unchecked)}
+            {viewMode.value === "source"
+              ? renderGroupedBySource(outstanding)
+              : renderGroupedByStore(outstanding)}
 
-            {checked.length > 0 && (
+            {bought.length > 0 && (
               <div>
                 <div class="flex items-center gap-2 mb-1">
                   <h3 class="text-sm font-semibold text-stone-400">
-                    Checked ({checked.length})
+                    Bought ({bought.length})
                   </h3>
                   <button
                     type="button"
                     class="text-xs text-red-500 hover:underline cursor-pointer"
-                    onClick={clearChecked}
+                    onClick={() => apiCall({ action: "clear_bought" })}
+                    title="Clear the ticked-off lines. The stock stays in your pantry."
                   >
-                    Clear checked
+                    Clear bought
                   </button>
                 </div>
-                <div class="space-y-1 opacity-50">
-                  {checked.map((item) => (
-                    <div
-                      key={item.id}
-                      class="card flex items-center gap-2 py-2 px-3"
-                    >
-                      <div class={CHECK_COL}>
-                        <input
-                          type="checkbox"
-                          checked
-                          class="size-4 cursor-pointer accent-orange-600"
-                          onChange={() => toggleChecked(item)}
-                        />
-                      </div>
-                      <span class="flex-1 text-sm line-through">
-                        {item.amount != null && (
-                          <span class="mr-1">
-                            {formatAmount(item.amount)}
-                            {item.unit ? ` ${item.unit}` : ""}
-                          </span>
-                        )}
-                        {item.name}
-                      </span>
-                      <div class={STORE_COL} />
-                      <div class={PRICE_COL} />
-                      <div class={REMOVE_COL}>
-                        <button
-                          type="button"
-                          class="text-stone-400 hover:text-red-500 text-sm cursor-pointer"
-                          onClick={() => removeItem(item)}
-                        >
-                          &times;
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <div class="space-y-1">
+                  {bought.map((line) => renderLine(line, false))}
                 </div>
               </div>
             )}
 
-            {items.value.length > 0 && (
-              <div class="text-right">
-                <button
-                  type="button"
-                  class="text-xs text-stone-400 hover:text-red-500 cursor-pointer"
-                  onClick={clearAll}
-                >
-                  Clear entire list
-                </button>
-              </div>
-            )}
+            <div class="text-right">
+              <button
+                type="button"
+                class="text-xs text-stone-400 hover:text-red-500 cursor-pointer"
+                onClick={() => apiCall({ action: "clear_all" })}
+                title="Drops manual items and stops planned meals feeding the list"
+              >
+                Clear entire list
+              </button>
+            </div>
           </div>
         )}
     </div>

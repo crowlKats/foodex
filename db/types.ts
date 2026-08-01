@@ -206,6 +206,7 @@ export interface HouseholdInvite {
   household_name?: string;
 }
 
+/** Current balance of one thing in the pantry. Derived from pantry_transactions. */
 export interface PantryItem {
   id: string;
   household_id: string;
@@ -214,32 +215,84 @@ export interface PantryItem {
   amount: number | null;
   unit: string | null;
   expires_at: string | null;
+  /** Always on hand — counts as available in any amount, never deducted. */
+  staple: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** Why stock moved. Amounts are signed; see lib/pantry.ts. */
+export interface PantryTransaction {
+  id: string;
+  household_id: string;
+  pantry_item_id: string | null;
+  ingredient_id: string | null;
+  name: string;
+  amount: number | null;
+  unit: string | null;
+  kind: "bought" | "cooked" | "wasted" | "adjusted" | "produced";
+  source_type: string | null;
+  source_id: string | null;
+  source_seq: number;
+  store_id: string | null;
+  unit_price: number | null;
+  expires_at: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
 }
 
 export interface ShoppingList {
   id: string;
   household_id: string;
-  name: string;
+  share_token: string | null;
+  share_token_expires_at: string | null;
   created_at: string;
 }
 
-export interface ShoppingListItem {
+/** A hand-added "we need this". Recipe demand comes from plan_entries. */
+export interface ShoppingListDemand {
   id: string;
   shopping_list_id: string;
   ingredient_id: string | null;
   name: string;
   amount: number | null;
   unit: string | null;
-  store_id: string | null;
-  checked: boolean;
-  recipe_id: string | null;
-  sort_order: number;
+  note: string | null;
+  created_by: string | null;
   created_at: string;
-  // JOIN fields
-  recipe_title?: string;
-  recipe_slug?: string;
+}
+
+/** A ticked-off line. Its presence is what "checked" means. */
+export interface ShoppingListPurchase {
+  id: string;
+  shopping_list_id: string;
+  match_key: string;
+  ingredient_id: string | null;
+  name: string;
+  amount: number | null;
+  unit: string | null;
+  store_id: string | null;
+  price: number | null;
+  expires_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** A meal the household intends to cook. */
+export interface PlanEntryRow {
+  id: string;
+  household_id: string;
+  recipe_id: string;
+  scale: number;
+  planned_for: string | null;
+  status: "planned" | "cooked" | "skipped";
+  include_in_list: boolean;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  cooked_at: string | null;
 }
 
 export interface Media {

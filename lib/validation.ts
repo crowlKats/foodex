@@ -6,13 +6,6 @@ export const uuid = z.string().uuid();
 const optionalUuid = uuid.nullable().optional();
 const nonEmptyString = z.string().min(1);
 
-const ingredientItem = z.object({
-  ingredient_id: uuid.nullable(),
-  name: z.string(),
-  amount: z.number().nullable(),
-  unit: z.string().nullable(),
-});
-
 // ── Parse helper ───────────────────────────────────────────────────
 
 type ParseSuccess<T> = { success: true; data: T };
@@ -77,45 +70,61 @@ export const PantryAction = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("remove"),
     item_id: uuid,
-  }),
-  z.object({
-    action: z.literal("deduct_recipe"),
-    items: z.array(ingredientItem),
+    /** Record where it went: thrown out, or consumed off-recipe. */
+    reason: z.enum(["wasted", "adjusted"]).optional(),
   }),
   z.object({
     action: z.literal("merge"),
     target_id: uuid,
     source_ids: z.array(uuid).min(1),
   }),
+  z.object({
+    action: z.literal("set_staple"),
+    item_id: uuid,
+    staple: z.boolean(),
+  }),
 ]);
 
 // ── Shopping List ──────────────────────────────────────────────────
+//
+// Lines are projected from demand, so the API talks about demands and
+// purchases. `match_key` identifies a projected line (see lib/inventory.ts).
 
 export const ShoppingListAction = z.discriminatedUnion("action", [
   z.object({
-    action: z.literal("add_recipe"),
-    recipe_id: uuid,
-    items: z.array(ingredientItem),
-  }),
-  z.object({
-    action: z.literal("add_ingredient"),
+    action: z.literal("add_demand"),
     ingredient_id: uuid.optional(),
     name: nonEmptyString,
     amount: z.number().nullable().optional(),
     unit: z.string().nullable().optional(),
-    recipe_id: uuid.optional(),
+    note: z.string().nullable().optional(),
   }),
   z.object({
-    action: z.literal("update_item"),
-    item_id: uuid,
+    action: z.literal("remove_line"),
+    match_key: nonEmptyString,
+  }),
+  z.object({
+    action: z.literal("buy_line"),
+    match_key: nonEmptyString,
+    ingredient_id: uuid.nullable().optional(),
+    name: nonEmptyString,
+    amount: z.number().nullable().optional(),
+    unit: z.string().nullable().optional(),
     store_id: uuid.nullable().optional(),
-    checked: z.boolean().optional(),
+    price: z.number().nullable().optional(),
+    expires_at: z.string().nullable().optional(),
   }),
   z.object({
-    action: z.literal("remove_item"),
-    item_id: uuid,
+    action: z.literal("unbuy_line"),
+    match_key: nonEmptyString,
   }),
-  z.object({ action: z.literal("clear_checked") }),
+  z.object({
+    action: z.literal("set_store"),
+    match_key: nonEmptyString,
+    ingredient_id: uuid.nullable().optional(),
+    store_id: uuid.nullable(),
+  }),
+  z.object({ action: z.literal("clear_bought") }),
   z.object({ action: z.literal("clear_all") }),
   z.object({ action: z.literal("generate_share_link") }),
   z.object({ action: z.literal("revoke_share_link") }),
@@ -125,10 +134,52 @@ export const ShoppingListAction = z.discriminatedUnion("action", [
 
 export const ShoppingListSharedBody = z.object({
   token: nonEmptyString,
-  action: z.literal("toggle_checked"),
-  item_id: uuid,
-  checked: z.boolean(),
+  action: z.enum(["buy_line", "unbuy_line"]),
+  match_key: nonEmptyString,
+  ingredient_id: uuid.nullable().optional(),
+  name: nonEmptyString.optional(),
+  amount: z.number().nullable().optional(),
+  unit: z.string().nullable().optional(),
 });
+
+// ── Meal Plan ──────────────────────────────────────────────────────
+
+export const PlanAction = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("add"),
+    recipe_id: uuid,
+    scale: z.number().positive().optional(),
+    planned_for: z.string().nullable().optional(),
+    include_in_list: z.boolean().optional(),
+    note: z.string().nullable().optional(),
+  }),
+  z.object({
+    action: z.literal("update"),
+    entry_id: uuid,
+    scale: z.number().positive().optional(),
+    planned_for: z.string().nullable().optional(),
+    include_in_list: z.boolean().optional(),
+    status: z.enum(["planned", "skipped"]).optional(),
+  }),
+  z.object({
+    action: z.literal("remove"),
+    entry_id: uuid,
+  }),
+  z.object({
+    action: z.literal("cook"),
+    entry_id: uuid,
+  }),
+  z.object({
+    action: z.literal("uncook"),
+    entry_id: uuid,
+  }),
+  z.object({
+    /** Cook something that was never planned; recorded as history either way. */
+    action: z.literal("cook_now"),
+    recipe_id: uuid,
+    scale: z.number().positive().optional(),
+  }),
+]);
 
 // ── Import URL ─────────────────────────────────────────────────────
 

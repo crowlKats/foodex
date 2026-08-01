@@ -20,6 +20,9 @@ import {
 } from "./staging.ts";
 import { loadAgentRecipe } from "./recipe.ts";
 import { loadAgentIngredient } from "./ingredient.ts";
+import { addStock, expiringSoon, loadStock } from "../pantry.ts";
+import { addPlanEntry, loadPlan, suggestRecipes } from "../plan.ts";
+import { getOrCreateList, projectShoppingList } from "../shopping-list.ts";
 import { isoVersion } from "./version.ts";
 import { fetchRaw, jinaSearch, jinaSummary } from "./fetch.ts";
 
@@ -144,6 +147,113 @@ export const TOOLS: Anthropic.Tool[] = [
       type: "object",
       properties: { id: { type: "string" } },
       required: ["id"],
+    },
+  },
+  {
+    name: "get_pantry",
+    description:
+      "What the household has in stock right now: name, amount, unit, best-before " +
+      "date and whether it is a staple. Read this before answering anything about " +
+      "what they have, what is running out, or what they could cook tonight.",
+    input_schema: {
+      type: "object",
+      properties: {
+        expiring_within_days: {
+          type: "number",
+          description: "Only return stock going off within this many days.",
+        },
+      },
+    },
+  },
+  {
+    name: "get_shopping_list",
+    description:
+      "The current shopping list. Lines are computed from planned meals plus " +
+      "manual entries, minus what the pantry already covers, so they change as " +
+      "the plan and the pantry change.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_plan",
+    description:
+      "Meals the household has planned, each with the batch scale and which " +
+      "ingredients the pantry cannot currently cover.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "suggest_recipes",
+    description:
+      "Recipes worth cooking next, ranked by what the pantry already covers and " +
+      "what is about to expire. Use for 'what can I cook' and 'what should I use up'.",
+    input_schema: {
+      type: "object",
+      properties: { limit: { type: "number" } },
+    },
+  },
+  {
+    name: "plan_meal",
+    description:
+      "Put a recipe on the meal plan. This is a direct action, not a proposal: it " +
+      "is trivially undone in the app. Whatever the pantry cannot cover appears on " +
+      "the shopping list automatically — never add a recipe's ingredients by hand.",
+    input_schema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        scale: {
+          type: "number",
+          description:
+            "Batch multiplier relative to the recipe's own quantity.",
+        },
+        planned_for: { type: "string", description: "YYYY-MM-DD, optional." },
+      },
+      required: ["slug"],
+    },
+  },
+  {
+    name: "unplan_meal",
+    description:
+      "Remove a planned meal by its entry id (from get_plan). Direct action.",
+    input_schema: {
+      type: "object",
+      properties: { entry_id: { type: "string" } },
+      required: ["entry_id"],
+    },
+  },
+  {
+    name: "add_to_shopping_list",
+    description:
+      "Add a one-off item to the shopping list — something not tied to a recipe. " +
+      "For a recipe's ingredients use plan_meal instead. Direct action.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        ingredient_id: {
+          type: "string",
+          description: "Link it when the ingredient already exists.",
+        },
+        amount: { type: "number" },
+        unit: { type: "string" },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "add_pantry_item",
+    description:
+      "Record stock the household now has. Direct action, recorded in the pantry " +
+      "ledger so it can be undone.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        ingredient_id: { type: "string" },
+        amount: { type: "number" },
+        unit: { type: "string" },
+        expires_at: { type: "string", description: "YYYY-MM-DD, optional." },
+      },
+      required: ["name"],
     },
   },
   {
@@ -399,6 +509,165 @@ export async function executeTool(
             target: `ingredient:${id}`,
             version: loaded.version,
           }],
+        };
+      }
+
+      // ── kitchen state ────────────────────────────────────────────
+      //
+      // These are direct actions rather than proposals. The review flow exists
+      // to protect shared recipe content from a bad edit; putting a meal on the
+      // plan or milk on the list is reversible with one click, and making the
+      // user approve it would just be friction.
+
+      case "get_pantry": {
+        const stock = await loadStock({ query: q }, householdId);
+        const withinDays = Number(input.expiring_within_days);
+        const rows = Number.isFinite(withinDays)
+          ? expiringSoon(stock, withinDays)
+          : stock;
+        return {
+          content: {
+            items: rows.map((r) => ({
+              ingredient_id: r.ingredient_id,
+              name: r.name,
+              amount: r.amount,
+              unit: r.unit,
+              expires_at: r.expires_at,
+              staple: r.staple,
+            })),
+          },
+          is_error: false,
+        };
+      }
+
+      case "get_shopping_list": {
+        const projected = await projectShoppingList({ query: q }, householdId);
+        return {
+          content: {
+            lines: projected.lines.map((l) => ({
+              name: l.name,
+              ingredient_id: l.ingredient_id,
+              to_buy: l.needed,
+              unit: l.unit,
+              already_in_pantry: l.have,
+              bought: l.purchase != null,
+              wanted_for: l.sources.map((s) => s.label),
+            })),
+          },
+          is_error: false,
+        };
+      }
+
+      case "get_plan": {
+        const entries = await loadPlan({ query: q }, householdId);
+        return {
+          content: {
+            entries: entries.map((e) => ({
+              entry_id: e.id,
+              recipe: e.recipe_title,
+              slug: e.recipe_slug,
+              scale: e.scale,
+              planned_for: e.planned_for,
+              on_shopping_list: e.include_in_list,
+              ready: e.ready,
+              missing: e.missing,
+            })),
+          },
+          is_error: false,
+        };
+      }
+
+      case "suggest_recipes": {
+        const stock = await loadStock({ query: q }, householdId);
+        const suggestions = await suggestRecipes(
+          { query: q },
+          householdId,
+          stock,
+          expiringSoon(stock, 3),
+          Math.min(Number(input.limit) || 6, 20),
+        );
+        return { content: { suggestions }, is_error: false };
+      }
+
+      case "plan_meal": {
+        const slug = String(input.slug ?? "");
+        const recipeRes = await q<{ id: string; title: string }>(
+          "SELECT id, title FROM recipes WHERE slug = $1 AND (household_id = $2 OR private = false)",
+          [slug, householdId],
+        );
+        if (recipeRes.rows.length === 0) return err(`No recipe "${slug}"`);
+        const scale = Number(input.scale);
+        const entryId = await addPlanEntry({ query: q }, {
+          householdId,
+          recipeId: recipeRes.rows[0].id,
+          scale: Number.isFinite(scale) && scale > 0 ? scale : 1,
+          plannedFor: typeof input.planned_for === "string"
+            ? input.planned_for
+            : null,
+        });
+        return {
+          content: {
+            ok: true,
+            entry_id: entryId,
+            planned: recipeRes.rows[0].title,
+          },
+          is_error: false,
+        };
+      }
+
+      case "unplan_meal": {
+        const entryId = String(input.entry_id ?? "");
+        await q(
+          "DELETE FROM plan_entries WHERE id = $1 AND household_id = $2 AND status <> 'cooked'",
+          [entryId, householdId],
+        );
+        return { content: { ok: true }, is_error: false };
+      }
+
+      case "add_to_shopping_list": {
+        const name = String(input.name ?? "").trim();
+        if (!name) return err("name is required");
+        const list = await getOrCreateList({ query: q }, householdId);
+        const amount = Number(input.amount);
+        await q(
+          `INSERT INTO shopping_list_demands (
+             shopping_list_id, ingredient_id, name, amount, unit, note
+           )
+           VALUES ($1, $2, $3, $4, $5, 'Added by the assistant')`,
+          [
+            list.id,
+            typeof input.ingredient_id === "string"
+              ? input.ingredient_id
+              : null,
+            name,
+            Number.isFinite(amount) ? amount : null,
+            typeof input.unit === "string" ? input.unit : null,
+          ],
+        );
+        return { content: { ok: true, added: name }, is_error: false };
+      }
+
+      case "add_pantry_item": {
+        const name = String(input.name ?? "").trim();
+        if (!name) return err("name is required");
+        const amount = Number(input.amount);
+        const added = await addStock({ query: q }, {
+          householdId,
+          ingredientId: typeof input.ingredient_id === "string"
+            ? input.ingredient_id
+            : null,
+          name,
+          amount: Number.isFinite(amount) ? amount : null,
+          unit: typeof input.unit === "string" ? input.unit : null,
+          kind: "bought",
+          expiresAt: typeof input.expires_at === "string"
+            ? input.expires_at
+            : null,
+          note: "Added by the assistant",
+        });
+        return {
+          content: { ok: true, pantry_item_id: added.pantryItemId },
+          is_error: false,
         };
       }
 

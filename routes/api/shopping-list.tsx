@@ -1,28 +1,11 @@
 import { handler } from "./$shopping-list.ts";
-import type { QueryFn } from "../../db/mod.ts";
-import type {
-  PantryItem,
-  ShoppingList,
-  ShoppingListItem,
-} from "../../db/types.ts";
-import { convertAmount } from "../../lib/unit-convert.ts";
+import {
+  buyLine,
+  getOrCreateList,
+  projectShoppingList,
+  unbuyLine,
+} from "../../lib/shopping-list.ts";
 import { parseJsonBody, ShoppingListAction } from "../../lib/validation.ts";
-
-async function getOrCreateList(
-  db: { query: QueryFn },
-  householdId: string,
-): Promise<string> {
-  const res = await db.query<Pick<ShoppingList, "id">>(
-    "SELECT id FROM shopping_lists WHERE household_id = $1 ORDER BY created_at DESC LIMIT 1",
-    [householdId],
-  );
-  if (res.rows.length > 0) return res.rows[0].id;
-  const create = await db.query<Pick<ShoppingList, "id">>(
-    "INSERT INTO shopping_lists (household_id) VALUES ($1) RETURNING id",
-    [householdId],
-  );
-  return create.rows[0].id;
-}
 
 export const handlers = handler({
   async POST(ctx) {
@@ -33,219 +16,156 @@ export const handlers = handler({
     const result = await parseJsonBody(ctx.req, ShoppingListAction);
     if (!result.success) return result.response;
     const body = result.data;
-    const listId = await getOrCreateList(ctx.state.db, ctx.state.householdId);
+    const householdId = ctx.state.householdId;
+    const userId = ctx.state.user.id;
 
-    if (body.action === "add_recipe") {
-      const { recipe_id, items } = body;
+    return await ctx.state.db.transaction(async (query) => {
+      const db = { query };
+      const list = await getOrCreateList(db, householdId);
+      const listId = list.id;
 
-      const maxRes = await ctx.state.db.query<{ max_order: number }>(
-        "SELECT COALESCE(MAX(sort_order), -1) as max_order FROM shopping_list_items WHERE shopping_list_id = $1",
-        [listId],
-      );
-      let sortOrder = maxRes.rows[0].max_order + 1;
+      /**
+       * Every mutation answers with the recomputed list. The lines are a
+       * projection, so a local patch on the client would be a second, weaker
+       * implementation of the same arithmetic — buying flour has to be able to
+       * shorten an unrelated line that shares the ingredient.
+       */
+      const withLines = async (extra: Record<string, unknown> = {}) => {
+        const projected = await projectShoppingList(db, householdId);
+        return Response.json({ ok: true, ...extra, lines: projected.lines });
+      };
 
-      for (const item of items) {
-        await ctx.state.db.query(
-          `INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, name, amount, unit, recipe_id, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      if (body.action === "add_demand") {
+        const res = await query<{ id: string }>(
+          `INSERT INTO shopping_list_demands (
+             shopping_list_id, ingredient_id, name, amount, unit, note, created_by
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id`,
           [
             listId,
-            item.ingredient_id ?? null,
-            item.name,
-            item.amount,
-            item.unit ?? null,
-            recipe_id,
-            sortOrder++,
+            body.ingredient_id ?? null,
+            body.name,
+            body.amount ?? null,
+            body.unit ?? null,
+            body.note ?? null,
+            userId,
           ],
         );
+        return await withLines({ demand_id: res.rows[0].id });
       }
 
-      return new Response(JSON.stringify({ ok: true, list_id: listId }), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+      if (body.action === "remove_line") {
+        // Removing a projected line means dropping the demand behind it. Manual
+        // demands are deleted; planned meals are excluded from the list instead
+        // of being deleted outright, since the meal is still planned.
+        await query(
+          `DELETE FROM shopping_list_demands d
+           WHERE d.shopping_list_id = $1
+             AND fx_match_key(d.ingredient_id, d.name) = $2`,
+          [listId, body.match_key],
+        );
+        await unbuyLine(db, { listId, householdId, matchKey: body.match_key });
+        return await withLines();
+      }
 
-    if (body.action === "add_ingredient") {
-      const { ingredient_id, name, amount, unit, recipe_id } = body;
-
-      const maxRes = await ctx.state.db.query<{ max_order: number }>(
-        "SELECT COALESCE(MAX(sort_order), -1) as max_order FROM shopping_list_items WHERE shopping_list_id = $1",
-        [listId],
-      );
-      const sortOrder = maxRes.rows[0].max_order + 1;
-
-      const insertRes = await ctx.state.db.query<Pick<ShoppingListItem, "id">>(
-        `INSERT INTO shopping_list_items (shopping_list_id, ingredient_id, name, amount, unit, recipe_id, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id`,
-        [
+      if (body.action === "buy_line") {
+        await buyLine(db, {
           listId,
-          ingredient_id ?? null,
-          name,
-          amount ?? null,
-          unit ?? null,
-          recipe_id ?? null,
-          sortOrder,
-        ],
-      );
-
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          list_id: listId,
-          item_id: insertRes.rows[0].id,
-        }),
-        {
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    if (body.action === "update_item") {
-      const { item_id, store_id, checked } = body;
-      if (store_id !== undefined) {
-        await ctx.state.db.query(
-          "UPDATE shopping_list_items SET store_id = $1 WHERE id = $2 AND shopping_list_id = $3",
-          [store_id || null, item_id, listId],
-        );
+          householdId,
+          matchKey: body.match_key,
+          ingredientId: body.ingredient_id ?? null,
+          name: body.name,
+          amount: body.amount ?? null,
+          unit: body.unit ?? null,
+          storeId: body.store_id ?? null,
+          price: body.price ?? null,
+          expiresAt: body.expires_at ?? null,
+          userId,
+        });
+        return await withLines();
       }
-      if (checked !== undefined) {
-        await ctx.state.db.query(
-          "UPDATE shopping_list_items SET checked = $1 WHERE id = $2 AND shopping_list_id = $3",
-          [checked, item_id, listId],
-        );
 
-        // When checking off (buying), add to pantry
-        if (checked && ctx.state.householdId) {
-          const itemRes = await ctx.state.db.query<
-            Pick<ShoppingListItem, "ingredient_id" | "name" | "amount" | "unit">
-          >(
-            "SELECT ingredient_id, name, amount, unit FROM shopping_list_items WHERE id = $1",
-            [item_id],
-          );
-          if (itemRes.rows.length > 0) {
-            const item = itemRes.rows[0];
-            // Find existing pantry entry and add amount (converting units if needed)
-            let existing;
-            if (item.ingredient_id) {
-              existing = await ctx.state.db.query<
-                Pick<PantryItem, "id" | "amount" | "unit"> & {
-                  density: number | null;
-                }
-              >(
-                `SELECT pi.id, pi.amount, pi.unit, g.density
-                 FROM pantry_items pi
-                 LEFT JOIN ingredients g ON g.id = pi.ingredient_id
-                 WHERE pi.household_id = $1 AND pi.ingredient_id = $2`,
-                [ctx.state.householdId, item.ingredient_id],
-              );
-            } else {
-              existing = await ctx.state.db.query<
-                Pick<PantryItem, "id" | "amount" | "unit"> & {
-                  density: number | null;
-                }
-              >(
-                `SELECT pi.id, pi.amount, pi.unit, null as density
-                 FROM pantry_items pi
-                 WHERE pi.household_id = $1 AND lower(pi.name) = lower($2)`,
-                [ctx.state.householdId, item.name],
-              );
-            }
-            if (existing.rows.length > 0) {
-              const row = existing.rows[0];
-              let addAmount = item.amount;
-              if (addAmount != null && (item.unit || "") !== (row.unit || "")) {
-                const converted = convertAmount(
-                  addAmount,
-                  item.unit || "",
-                  row.unit || "",
-                  row.density,
-                );
-                addAmount = converted;
-              }
-              const newAmount = addAmount != null
-                ? (row.amount || 0) + addAmount
-                : row.amount;
-              await ctx.state.db.query(
-                "UPDATE pantry_items SET amount = $1, updated_at = now() WHERE id = $2",
-                [newAmount, row.id],
-              );
-            } else {
-              await ctx.state.db.query(
-                `INSERT INTO pantry_items (household_id, ingredient_id, name, amount, unit)
-                 VALUES ($1, $2, $3, $4, $5)`,
-                [
-                  ctx.state.householdId,
-                  item.ingredient_id ?? null,
-                  item.name,
-                  item.amount,
-                  item.unit,
-                ],
-              );
-            }
+      if (body.action === "unbuy_line") {
+        await unbuyLine(db, {
+          listId,
+          householdId,
+          matchKey: body.match_key,
+        });
+        return await withLines();
+      }
+
+      if (body.action === "set_store") {
+        if (body.ingredient_id) {
+          if (body.store_id) {
+            // Remember it: the dropdown used to forget the choice on reload.
+            await query(
+              `INSERT INTO household_ingredient_stores (household_id, ingredient_id, store_id)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (household_id, ingredient_id)
+               DO UPDATE SET store_id = EXCLUDED.store_id, updated_at = now()`,
+              [householdId, body.ingredient_id, body.store_id],
+            );
+          } else {
+            await query(
+              "DELETE FROM household_ingredient_stores WHERE household_id = $1 AND ingredient_id = $2",
+              [householdId, body.ingredient_id],
+            );
           }
         }
+        await query(
+          "UPDATE shopping_list_purchases SET store_id = $1 WHERE shopping_list_id = $2 AND match_key = $3",
+          [body.store_id, listId, body.match_key],
+        );
+        return await withLines();
       }
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
 
-    if (body.action === "remove_item") {
-      await ctx.state.db.query(
-        "DELETE FROM shopping_list_items WHERE id = $1 AND shopping_list_id = $2",
-        [body.item_id, listId],
-      );
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+      if (body.action === "clear_bought") {
+        // The stock stays — it was bought. Only the ticked-off lines clear.
+        await query(
+          "DELETE FROM shopping_list_purchases WHERE shopping_list_id = $1",
+          [listId],
+        );
+        return await withLines();
+      }
 
-    if (body.action === "clear_checked") {
-      await ctx.state.db.query(
-        "DELETE FROM shopping_list_items WHERE shopping_list_id = $1 AND checked = true",
-        [listId],
-      );
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+      if (body.action === "clear_all") {
+        await query(
+          "DELETE FROM shopping_list_demands WHERE shopping_list_id = $1",
+          [listId],
+        );
+        await query(
+          "DELETE FROM shopping_list_purchases WHERE shopping_list_id = $1",
+          [listId],
+        );
+        await query(
+          `UPDATE plan_entries SET include_in_list = false, updated_at = now()
+           WHERE household_id = $1 AND status = 'planned'`,
+          [householdId],
+        );
+        return await withLines();
+      }
 
-    if (body.action === "clear_all") {
-      await ctx.state.db.query(
-        "DELETE FROM shopping_list_items WHERE shopping_list_id = $1",
-        [listId],
-      );
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+      if (body.action === "generate_share_link") {
+        const token = crypto.randomUUID();
+        await query(
+          `UPDATE shopping_lists
+           SET share_token = $1, share_token_expires_at = now() + interval '30 days'
+           WHERE id = $2`,
+          [token, listId],
+        );
+        return Response.json({ ok: true, share_token: token });
+      }
 
-    if (body.action === "generate_share_link") {
-      const token = crypto.randomUUID();
-      await ctx.state.db.query(
-        "UPDATE shopping_lists SET share_token = $1, share_token_expires_at = now() + interval '30 days' WHERE id = $2",
-        [token, listId],
-      );
-      return new Response(
-        JSON.stringify({ ok: true, share_token: token }),
-        { headers: { "Content-Type": "application/json" } },
-      );
-    }
+      if (body.action === "revoke_share_link") {
+        await query(
+          "UPDATE shopping_lists SET share_token = NULL, share_token_expires_at = NULL WHERE id = $1",
+          [listId],
+        );
+        return Response.json({ ok: true });
+      }
 
-    if (body.action === "revoke_share_link") {
-      await ctx.state.db.query(
-        "UPDATE shopping_lists SET share_token = NULL, share_token_expires_at = NULL WHERE id = $1",
-        [listId],
-      );
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
+      return Response.json({ error: "Unknown action" }, { status: 400 });
     });
   },
 });
