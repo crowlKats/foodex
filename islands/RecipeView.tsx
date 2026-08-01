@@ -33,6 +33,8 @@ interface ActiveTimer {
   totalSeconds: number;
   remaining: number;
   done: boolean;
+  /** Cooking timers get paused constantly — something boils over, the phone rings. */
+  paused: boolean;
 }
 
 interface RecipeStep {
@@ -543,7 +545,14 @@ export default function RecipeView(
     const id = ++timerIdCounter.current;
     timers.value = [
       ...timers.value,
-      { id, label, totalSeconds: seconds, remaining: seconds, done: false },
+      {
+        id,
+        label,
+        totalSeconds: seconds,
+        remaining: seconds,
+        done: false,
+        paused: false,
+      },
     ];
     if (Notification.permission === "default") {
       Notification.requestPermission();
@@ -555,13 +564,19 @@ export default function RecipeView(
     timers.value = timers.value.filter((t) => t.id !== id);
   }
 
+  function toggleTimerPaused(id: number) {
+    timers.value = timers.value.map((t) =>
+      t.id === id && !t.done ? { ...t, paused: !t.paused } : t
+    );
+  }
+
   // Tick active timers every second — stable interval that survives re-renders
   useEffect(() => {
     const interval = setInterval(() => {
       if (timers.value.length === 0) return;
       let changed = false;
       const next = timers.value.map((t) => {
-        if (t.done || t.remaining <= 0) return t;
+        if (t.done || t.paused || t.remaining <= 0) return t;
         changed = true;
         const remaining = t.remaining - 1;
         if (remaining <= 0) {
@@ -735,13 +750,46 @@ export default function RecipeView(
   function cookingNext() {
     if (cookingStep.value < steps.length - 1) {
       cookingStep.value = cookingStep.value + 1;
+      peekReturn.value = null;
     }
   }
 
   function cookingPrev() {
     if (cookingStep.value > 0) {
       cookingStep.value = cookingStep.value - 1;
+      peekReturn.value = null;
     }
+  }
+
+  /**
+   * Step the user was on before following a cross-reference link, so a peek at
+   * "the bolognese from step 5" can be undone. Null when not peeking.
+   */
+  const peekReturn = useSignal<number | null>(null);
+
+  /** `#step-3` → the index of that step, from the same map that renders them. */
+  const anchorToIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    layout.anchors.forEach((anchor, idx) => map.set(anchor, idx));
+    return map;
+  }, [layout]);
+
+  /**
+   * Cross-reference links are plain anchors into the recipe page underneath the
+   * overlay, so in cooking mode they changed the URL and did nothing visible.
+   * Here they move the carousel instead — which matters more in cooking mode
+   * than on the page, since you can't just glance up at the referenced step.
+   */
+  function handleCookingClick(e: MouseEvent) {
+    const anchor = (e.target as HTMLElement | null)?.closest?.("a");
+    const href = anchor?.getAttribute("href");
+    if (!href || !href.startsWith("#")) return;
+    const targetIdx = anchorToIndex.get(href.slice(1));
+    if (targetIdx == null) return;
+    e.preventDefault();
+    if (targetIdx === cookingStep.value) return;
+    peekReturn.value = cookingStep.value;
+    cookingStep.value = targetIdx;
   }
 
   // Keyboard navigation for cooking mode
@@ -841,6 +889,54 @@ export default function RecipeView(
     setTimeout(() => {
       cookedStatus.value = "idle";
     }, 3000);
+  }
+
+  /**
+   * The last step used to dead-end on a greyed-out Next. Finishing the final
+   * step is the single best moment to offer "I cooked this" — the action that
+   * deducts from the pantry — and it was the one moment it wasn't offered.
+   */
+  function renderCookingFinish() {
+    if (!loggedIn || !householdId) {
+      return (
+        <button
+          type="button"
+          class="cooking-mode-nav-btn btn-primary"
+          onClick={exitCookingMode}
+        >
+          Done
+        </button>
+      );
+    }
+    if (cookedStatus.value === "done") {
+      // The shortfall list can run to a dozen ingredients, so it goes on its
+      // own line above the bar rather than into this label.
+      return (
+        <button
+          type="button"
+          class="cooking-mode-nav-btn btn-primary"
+          onClick={exitCookingMode}
+        >
+          Deducted from your pantry — close
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        class="cooking-mode-nav-btn btn-primary"
+        disabled={cookedStatus.value === "loading"}
+        onClick={async () => {
+          await markCooked();
+          // Leave the overlay up briefly so the shortfall summary is readable.
+          setTimeout(exitCookingMode, 2500);
+        }}
+      >
+        {cookedStatus.value === "loading"
+          ? "Updating…"
+          : "Done — I cooked this"}
+      </button>
+    );
   }
 
   return (
@@ -1208,8 +1304,10 @@ export default function RecipeView(
       </div>
       {timers.value.length > 0 && (
         <div
-          class={`fixed bottom-4 right-4 flex flex-col gap-2 max-w-xs ${
-            cookingMode.value ? "z-[110]" : "z-50"
+          // In cooking mode the nav bar owns the bottom of the screen, and the
+          // panel used to sit on top of the Next button.
+          class={`fixed right-4 flex flex-col gap-2 max-w-xs ${
+            cookingMode.value ? "bottom-28 z-[110]" : "bottom-4 z-50"
           }`}
         >
           {timers.value.map((t) => (
@@ -1230,13 +1328,29 @@ export default function RecipeView(
                       : "text-stone-900 dark:text-stone-100"
                   }`}
                 >
-                  {t.done ? "Done!" : formatTimer(t.remaining)}
+                  {t.done
+                    ? "Done!"
+                    : t.paused
+                    ? `${formatTimer(t.remaining)} — paused`
+                    : formatTimer(t.remaining)}
                 </div>
               </div>
+              {!t.done && (
+                <button
+                  type="button"
+                  class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer text-lg leading-none"
+                  title={t.paused ? "Resume timer" : "Pause timer"}
+                  aria-label={t.paused ? "Resume timer" : "Pause timer"}
+                  onClick={() => toggleTimerPaused(t.id)}
+                >
+                  {t.paused ? "▶" : "⏸"}
+                </button>
+              )}
               <button
                 type="button"
                 class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer text-lg leading-none"
-                title="Dismiss"
+                title="Dismiss timer"
+                aria-label="Dismiss timer"
                 onClick={() => dismissTimer(t.id)}
               >
                 &times;
@@ -1246,7 +1360,11 @@ export default function RecipeView(
         </div>
       )}
       {cookingMode.value && isLinearRecipe && (
-        <div class="cooking-mode" ref={cookingRef}>
+        <div
+          class="cooking-mode cooking-mode-focus"
+          ref={cookingRef}
+          onClick={handleCookingClick}
+        >
           <div class="cooking-mode-header">
             <button
               type="button"
@@ -1261,11 +1379,13 @@ export default function RecipeView(
                 <button
                   key={i}
                   type="button"
+                  aria-label={`Go to step ${layout.displayNum[i]}`}
                   class={`cooking-mode-dot ${
                     i === cookingStep.value ? "active" : ""
                   } ${i < cookingStep.value ? "done" : ""}`}
                   onClick={() => {
                     cookingStep.value = i;
+                    peekReturn.value = null;
                   }}
                 />
               ))}
@@ -1275,58 +1395,81 @@ export default function RecipeView(
             </div>
           </div>
           <div class="cooking-mode-body recipe-body">
-            {(() => {
-              const { section, num } = getCookingStepLabel(cookingStep.value);
-              const titleText = steps[cookingStep.value].title.trim();
-              return (
-                <>
-                  {section && (
-                    <div class="text-xs font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
-                      {section}
-                    </div>
-                  )}
-                  {titleText
-                    ? (
-                      <div class="cooking-mode-step-title">
-                        <span class="text-stone-400 mr-2">{num}.</span>
-                        {titleText}
-                      </div>
-                    )
-                    : (
-                      <div class="text-sm font-semibold text-stone-400 mb-3">
-                        {num}.
+            <div class="cooking-mode-body-inner">
+              {peekReturn.value != null && (
+                <button
+                  type="button"
+                  class="mb-4 text-sm font-medium text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                  onClick={() => {
+                    cookingStep.value = peekReturn.value!;
+                    peekReturn.value = null;
+                  }}
+                >
+                  ← Back to step {layout.displayNum[peekReturn.value]}
+                </button>
+              )}
+              {(() => {
+                const { section, num } = getCookingStepLabel(cookingStep.value);
+                const titleText = steps[cookingStep.value].title.trim();
+                return (
+                  <>
+                    {section && (
+                      <div class="text-xs font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
+                        {section}
                       </div>
                     )}
-                </>
-              );
-            })()}
-            <div class="cooking-mode-step-content">
-              {cookingStepBody(cookingStep.value)}
+                    {titleText
+                      ? (
+                        <div class="cooking-mode-step-title">
+                          <span class="text-stone-400 mr-2">{num}.</span>
+                          {titleText}
+                        </div>
+                      )
+                      : (
+                        <div class="text-sm font-semibold text-stone-400 mb-3">
+                          {num}.
+                        </div>
+                      )}
+                  </>
+                );
+              })()}
+              <div class="cooking-mode-step-content">
+                {cookingStepBody(cookingStep.value)}
+              </div>
+              {ingredients.length > 0 && (
+                <details class="cooking-mode-ingredients">
+                  <summary>Ingredients</summary>
+                  <ul>
+                    {ingredients.map((ing) => {
+                      const ratio = getCurrentRatio();
+                      const scaled = ing.amount * ratio;
+                      return (
+                        <li key={ing.key || ing.name}>
+                          {(() => {
+                            const d = displayUnit(
+                              scaled,
+                              ing.unit,
+                              ing.density,
+                            );
+                            return (
+                              <span class="font-semibold">
+                                {d.text} {d.unit}
+                              </span>
+                            );
+                          })()} {ing.name}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </details>
+              )}
             </div>
-            {ingredients.length > 0 && (
-              <details class="cooking-mode-ingredients">
-                <summary>Ingredients</summary>
-                <ul>
-                  {ingredients.map((ing) => {
-                    const ratio = getCurrentRatio();
-                    const scaled = ing.amount * ratio;
-                    return (
-                      <li key={ing.key || ing.name}>
-                        {(() => {
-                          const d = displayUnit(scaled, ing.unit, ing.density);
-                          return (
-                            <span class="font-semibold">
-                              {d.text} {d.unit}
-                            </span>
-                          );
-                        })()} {ing.name}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </details>
-            )}
           </div>
+          {cookedStatus.value === "done" && cookedShort.value.length > 0 && (
+            <div class="shrink-0 px-4 py-2 text-sm text-amber-600 dark:text-amber-400 border-t-2 border-stone-200 dark:border-stone-700">
+              Pantry was short on: {cookedShort.value.join(", ")}
+            </div>
+          )}
           <div class="cooking-mode-nav">
             <button
               type="button"
@@ -1336,14 +1479,17 @@ export default function RecipeView(
             >
               Prev
             </button>
-            <button
-              type="button"
-              class="cooking-mode-nav-btn"
-              disabled={cookingStep.value === steps.length - 1}
-              onClick={cookingNext}
-            >
-              Next
-            </button>
+            {cookingStep.value === steps.length - 1
+              ? renderCookingFinish()
+              : (
+                <button
+                  type="button"
+                  class="cooking-mode-nav-btn"
+                  onClick={cookingNext}
+                >
+                  Next
+                </button>
+              )}
           </div>
         </div>
       )}
@@ -1428,9 +1574,12 @@ export default function RecipeView(
             {allDone
               ? (
                 <div class="cooking-mode-body">
-                  <div class="text-center py-12">
-                    <div class="text-3xl font-bold mb-2">Done!</div>
-                    <div class="text-stone-500">All steps completed.</div>
+                  <div class="cooking-mode-body-inner text-center">
+                    <div class="text-4xl font-bold mb-2">Done!</div>
+                    <div class="text-stone-500 mb-6">All steps completed.</div>
+                    <div class="max-w-sm mx-auto flex">
+                      {renderCookingFinish()}
+                    </div>
                   </div>
                 </div>
               )

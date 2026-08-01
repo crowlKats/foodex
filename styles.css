@@ -479,9 +479,17 @@
   @apply text-sm text-stone-500 dark:text-stone-400 font-mono whitespace-nowrap;
 }
 
+/*
+ * A flex column with an `my-auto` child centres short steps in the viewport
+ * while still scrolling long ones — plain `justify-center` would clip the top
+ * of anything taller than the screen.
+ */
 .cooking-mode-body {
-  @apply flex-1 overflow-y-auto px-6 py-6 sm:px-12 sm:py-8 max-w-3xl mx-auto
-    w-full;
+  @apply flex-1 overflow-y-auto flex flex-col w-full;
+}
+
+.cooking-mode-body-inner {
+  @apply my-auto px-6 py-6 sm:px-12 sm:py-8 max-w-3xl mx-auto w-full;
 }
 
 .cooking-mode-step-title {
@@ -491,6 +499,25 @@
 
 .cooking-mode-step-content {
   @apply text-lg sm:text-xl leading-relaxed;
+}
+
+/*
+ * Cooking mode is read from across the kitchen, at arm's length, hands wet or
+ * full. The one-step-at-a-time view sets its text at a size that earns the
+ * screen it occupies, scaling with the viewport rather than a fixed step.
+ */
+.cooking-mode-focus .cooking-mode-step-title {
+  font-size: clamp(1.75rem, 1rem + 3vw, 3rem);
+  @apply mb-6 pb-3;
+}
+
+.cooking-mode-focus .cooking-mode-step-content {
+  font-size: clamp(1.25rem, 0.8rem + 1.9vw, 2.125rem);
+  @apply leading-snug;
+}
+
+.cooking-mode-focus .cooking-mode-ingredients {
+  @apply mt-10;
 }
 
 .cooking-mode-step-content p {
