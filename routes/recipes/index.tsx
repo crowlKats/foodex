@@ -106,19 +106,43 @@ function buildRecipeQuery(opts: {
     p++;
   }
 
-  // Cookable: every ingredient must be in pantry
+  // Cookable: the pantry must cover every ingredient, and the household must
+  // own every tool. This mirrors isAvailable() in lib/inventory.ts — stock with
+  // an untracked amount counts, a staple always counts, and a tracked amount
+  // that falls short does not. It used to ignore amounts entirely, so "cookable"
+  // included recipes you had a single gram of flour for.
   if (opts.cookableOnly && opts.householdId) {
     wheres.push(
       `NOT EXISTS (
         SELECT 1 FROM recipe_ingredients ri_ck
         WHERE ri_ck.recipe_id = r.id
-          AND NOT EXISTS (
-            SELECT 1 FROM pantry_items pi
+          AND COALESCE((
+            SELECT
+              -- Staples and untracked amounts cover any requirement; otherwise
+              -- the stock has to add up across every matching row.
+              BOOL_OR(pi.staple OR pi.amount IS NULL)
+              OR SUM(
+                   COALESCE(
+                     fx_convert(pi.amount, pi.unit, ri_ck.unit, gi.density),
+                     0
+                   )
+                 ) >= COALESCE(ri_ck.amount, 0)
+            FROM pantry_items pi
+            LEFT JOIN ingredients gi ON gi.id = pi.ingredient_id
             WHERE pi.household_id = $${p}
               AND (
-                (ri_ck.ingredient_id IS NOT NULL AND pi.ingredient_id = ri_ck.ingredient_id)
-                OR lower(pi.name) = lower(ri_ck.name)
+                (ri_ck.ingredient_id IS NOT NULL
+                  AND pi.ingredient_id = ri_ck.ingredient_id)
+                OR fx_norm_name(pi.name) = fx_norm_name(ri_ck.name)
               )
+          ), false) = false
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM recipe_tools rt_ck
+        WHERE rt_ck.recipe_id = r.id
+          AND NOT EXISTS (
+            SELECT 1 FROM household_tools ht
+            WHERE ht.household_id = $${p} AND ht.tool_id = rt_ck.tool_id
           )
       )`,
     );

@@ -8,7 +8,7 @@ import {
 import { computeScaleRatio } from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
-import { convertAmount } from "../lib/unit-convert.ts";
+import { computeAvailability, isAvailable } from "../lib/inventory.ts";
 import { formatTimer } from "../lib/timer.ts";
 import {
   computeSectionLayout,
@@ -65,10 +65,12 @@ interface RecipeRef {
 }
 
 interface PantryItem {
-  ingredient_id?: string;
+  ingredient_id?: string | null;
   name: string;
-  amount?: number;
-  unit?: string;
+  amount?: number | null;
+  unit?: string | null;
+  staple?: boolean;
+  density?: number | null;
 }
 
 interface Substitution {
@@ -90,19 +92,10 @@ interface RecipeViewProps {
   recipeId: string;
   recipeTitle: string;
   loggedIn: boolean;
-  pantryIngredientIds?: string[];
-  pantryIngredientNames?: string[];
   pantryItems?: PantryItem[];
   householdId?: string | null;
   unitSystem?: UnitSystem;
   sourceRecipes?: Record<string, { title: string; slug: string }>;
-  outputIngredient?: {
-    ingredient_id: string;
-    name: string;
-    amount: number | null;
-    unit: string | null;
-    expires_days: number | null;
-  } | null;
 }
 
 export default function RecipeView(
@@ -118,21 +111,14 @@ export default function RecipeView(
     recipeId,
     recipeTitle,
     loggedIn,
-    pantryIngredientIds,
-    pantryIngredientNames,
     pantryItems: pantryItemsProp,
     householdId,
     unitSystem: unitSystemProp,
     sourceRecipes,
-    outputIngredient,
   }: RecipeViewProps,
 ) {
   const layout = computeSectionLayout(steps, sections);
   const unitSystem = unitSystemProp ?? "metric";
-  const pantryIdSet = new Set(pantryIngredientIds ?? []);
-  const pantryNameSet = new Set(
-    (pantryIngredientNames ?? []).map((n) => n.toLowerCase()),
-  );
   const pantryItems = pantryItemsProp ?? [];
 
   /** Format a scaled ingredient amount + unit for the user's preferred unit system. */
@@ -145,50 +131,23 @@ export default function RecipeView(
     return { text: formatAmount(d.amount, d.unit), unit: d.unit };
   }
 
-  function isInPantry(ing: RecipeIngredient): boolean {
-    if (ing.ingredient_id && pantryIdSet.has(ing.ingredient_id)) return true;
-    if (pantryNameSet.has(ing.name.toLowerCase())) return true;
-    return false;
+  /**
+   * Both the "in pantry" dot and the shopping button read the same answer from
+   * lib/inventory.ts. They used to disagree — the dot ignored amounts, so a
+   * recipe could claim every ingredient was in the pantry while the button
+   * below it worked out you were 400 g short.
+   */
+  function availabilityOf(ing: RecipeIngredient, ratio: number) {
+    return computeAvailability(ing, pantryItems, { scale: ratio });
   }
 
-  function findMatchingPantryItems(ing: RecipeIngredient): PantryItem[] {
-    if (ing.ingredient_id) {
-      const byId = pantryItems.filter((p) =>
-        p.ingredient_id === ing.ingredient_id
-      );
-      if (byId.length > 0) return byId;
-    }
-    return pantryItems.filter((p) => p.name === ing.name.toLowerCase());
+  function isInPantry(ing: RecipeIngredient, ratio: number): boolean {
+    return isAvailable(availabilityOf(ing, ratio));
   }
 
-  /** Returns the amount still needed after subtracting pantry stock. null = no amount tracking. */
+  /** Amount still needed after pantry stock. Null when the recipe tracks none. */
   function neededAmount(ing: RecipeIngredient, ratio: number): number | null {
-    if (ing.amount == null) return null;
-    const scaled = ing.amount * ratio;
-    const matches = findMatchingPantryItems(ing);
-    if (matches.length === 0) return scaled;
-
-    const ingUnit = ing.unit || "";
-    let totalPantryInIngUnit = 0;
-    for (const pantry of matches) {
-      if (pantry.amount == null) continue;
-      const pantryUnit = pantry.unit || "";
-      if (ingUnit !== pantryUnit) {
-        const converted = convertAmount(
-          pantry.amount,
-          pantryUnit,
-          ingUnit,
-          ing.density,
-        );
-        if (converted != null) totalPantryInIngUnit += converted;
-      } else {
-        totalPantryInIngUnit += pantry.amount;
-      }
-    }
-
-    if (totalPantryInIngUnit === 0) return scaled;
-    const needed = scaled - totalPantryInIngUnit;
-    return needed > 0 ? needed : 0;
+    return availabilityOf(ing, ratio).needed;
   }
   const addedToList = useSignal<string | null>(null);
   const subsOpen = useSignal<string | null>(null);
@@ -414,44 +373,30 @@ export default function RecipeView(
     return computeScaleRatio(baseQuantity, getTarget());
   }
 
-  async function addAllToShoppingList() {
-    const ratio = getCurrentRatio();
-    // Build list of items with pantry-adjusted amounts
-    const items = ingredients
-      .map((ing) => {
-        const needed = neededAmount(ing, ratio);
-        if (needed === 0) return null; // fully covered by pantry
-        return {
-          ingredient_id: ing.ingredient_id ?? null,
-          name: ing.name,
-          amount: needed,
-          unit: ing.unit || null,
-        };
-      })
-      .filter((x) => x != null);
-
-    if (items.length === 0) {
-      addedToList.value = "all";
-      setTimeout(() => {
-        addedToList.value = null;
-      }, 2000);
-      return;
-    }
-
-    const res = await fetch("/api/shopping-list", {
+  /**
+   * Planning the meal is what puts it on the shopping list.
+   *
+   * The entry stores the scale rather than a snapshot of missing amounts, so
+   * the list stays correct when the pantry changes or the servings are edited —
+   * the old version froze pantry-adjusted numbers that nothing could recompute.
+   */
+  async function addToPlan(plannedFor: string | null) {
+    const res = await fetch("/api/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "add_recipe",
+        action: "add",
         recipe_id: recipeId,
-        items,
+        scale: getCurrentRatio(),
+        planned_for: plannedFor,
       }),
     });
     if (res.ok) {
       addedToList.value = "all";
+      planDate.value = "";
       setTimeout(() => {
         addedToList.value = null;
-      }, 2000);
+      }, 2500);
     }
   }
 
@@ -469,12 +414,12 @@ export default function RecipeView(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "add_ingredient",
-        ingredient_id: ing.ingredient_id ?? null,
+        action: "add_demand",
+        ingredient_id: ing.ingredient_id ?? undefined,
         name: ing.name,
         amount: needed,
         unit: ing.unit || null,
-        recipe_id: recipeId,
+        note: `For ${recipeTitle}`,
       }),
     });
     addedToList.value = ing.key;
@@ -819,58 +764,49 @@ export default function RecipeView(
   });
 
   const cookedStatus = useSignal<"idle" | "loading" | "done">("idle");
+  const cookedShort = useSignal<string[]>([]);
+  const planDate = useSignal("");
+  const planOpen = useSignal(false);
 
+  /**
+   * Cooking is a plan entry reaching its end state, not a one-off deduction:
+   * the server records it, draws the ingredients through the ledger, books
+   * whatever the recipe produces, and can undo the whole thing.
+   */
   async function markCooked() {
     if (!householdId) return;
     cookedStatus.value = "loading";
-    const ratio = getCurrentRatio();
-    const items = ingredients
-      .filter((ing) => ing.amount != null)
-      .map((ing) => ({
-        ingredient_id: ing.ingredient_id ?? null,
-        name: ing.name,
-        amount: ing.amount * ratio,
-        unit: ing.unit || null,
-      }));
+    cookedShort.value = [];
 
-    await fetch("/api/pantry", {
+    const res = await fetch("/api/plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "deduct_recipe",
-        household_id: householdId,
-        items,
+        action: "cook_now",
+        recipe_id: recipeId,
+        scale: getCurrentRatio(),
       }),
     });
 
-    // Add output ingredient to pantry if recipe produces one
-    if (outputIngredient?.ingredient_id) {
-      const outputAmount = outputIngredient.amount != null
-        ? outputIngredient.amount * ratio
-        : null;
-      const expiresAt = outputIngredient.expires_days != null
-        ? new Date(
-          Date.now() + outputIngredient.expires_days * 24 * 60 * 60 * 1000,
-        ).toISOString()
-        : null;
-      await fetch("/api/pantry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "add",
-          ingredient_id: outputIngredient.ingredient_id,
-          name: outputIngredient.name,
-          amount: outputAmount,
-          unit: outputIngredient.unit,
-          expires_at: expiresAt,
-        }),
-      });
+    if (res.ok) {
+      const data = await res.json();
+      // Say so when the pantry couldn't cover it, instead of quietly
+      // under-deducting and leaving the stock looking healthier than it is.
+      cookedShort.value = (data.shortfalls ?? []).map((s: {
+        name: string;
+        missing: number;
+        unit: string | null;
+      }) =>
+        `${s.name} (short ${formatAmount(s.missing)}${
+          s.unit ? ` ${s.unit}` : ""
+        })`
+      );
     }
 
     cookedStatus.value = "done";
     setTimeout(() => {
       cookedStatus.value = "idle";
-    }, 2000);
+    }, 3000);
   }
 
   return (
@@ -898,25 +834,82 @@ export default function RecipeView(
             </div>
           )}
           {loggedIn && householdId && (
-            <Button
-              type="button"
-              variant="outline"
-              class="w-full mt-2"
-              disabled={cookedStatus.value === "loading"}
-              onClick={markCooked}
-            >
-              {cookedStatus.value === "done"
-                ? "Deducted from pantry!"
-                : cookedStatus.value === "loading"
-                ? "Updating..."
-                : "I cooked this"}
-            </Button>
+            <>
+              <div class="flex gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  class="flex-1"
+                  onClick={() => addToPlan(null)}
+                >
+                  {addedToList.value === "all" ? "Added to plan!" : "Plan this"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  title="Plan it for a day"
+                  onClick={() => planOpen.value = !planOpen.value}
+                >
+                  📅
+                </Button>
+              </div>
+              {planOpen.value && (
+                <div class="flex gap-2 mt-2">
+                  <Input
+                    type="date"
+                    value={planDate}
+                    class="flex-1"
+                    onValueChange={(v) => planDate.value = v}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!planDate.value}
+                    onClick={() => {
+                      addToPlan(planDate.value);
+                      planOpen.value = false;
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                class="w-full mt-2"
+                disabled={cookedStatus.value === "loading"}
+                onClick={markCooked}
+              >
+                {cookedStatus.value === "done"
+                  ? "Deducted from pantry!"
+                  : cookedStatus.value === "loading"
+                  ? "Updating..."
+                  : "I cooked this"}
+              </Button>
+              {cookedShort.value.length > 0 && (
+                <div class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                  Pantry was short on: {cookedShort.value.join(", ")}
+                </div>
+              )}
+              <a
+                href="/plan"
+                class="link text-xs block mt-2 text-center"
+              >
+                Meal plan
+              </a>
+            </>
           )}
         </div>
         {ingredients.length > 0 && (
           <div class="card">
-            {pantryIdSet.size + pantryNameSet.size > 0 && (() => {
-              const inPantry = ingredients.filter(isInPantry).length;
+            {pantryItems.length > 0 && (() => {
+              // Counted at the current scale, with the same rule the shopping
+              // button uses — double the servings and the badge reacts.
+              const ratio = getCurrentRatio();
+              const inPantry = ingredients.filter((ing) =>
+                isInPantry(ing, ratio)
+              ).length;
               const total = ingredients.length;
               const allAvailable = inPantry === total;
               return (
@@ -928,7 +921,7 @@ export default function RecipeView(
                   }`}
                 >
                   {allAvailable
-                    ? "All ingredients in pantry!"
+                    ? "You have everything for this"
                     : `${inPantry}/${total} ingredients in pantry`}
                 </div>
               );
@@ -961,14 +954,29 @@ export default function RecipeView(
                             {addedToList.value === ing.key ? "\u2713" : "+"}
                           </button>
                         )}
-                        {isInPantry(ing) && (
-                          <span
-                            class="text-green-600 dark:text-green-400 text-xs leading-none"
-                            title="In pantry"
-                          >
-                            &#x25cf;
-                          </span>
-                        )}
+                        {(() => {
+                          const availability = availabilityOf(ing, ratio);
+                          if (!availability.present) return null;
+                          const covered = isAvailable(availability);
+                          return (
+                            <span
+                              class={`text-xs leading-none ${
+                                covered
+                                  ? "text-green-600 dark:text-green-400"
+                                  : "text-amber-600 dark:text-amber-400"
+                              }`}
+                              title={covered
+                                ? availability.staple
+                                  ? "Staple — always on hand"
+                                  : "In pantry"
+                                : `In pantry, but ${
+                                  formatAmount(availability.needed ?? 0)
+                                }${ing.unit ? ` ${ing.unit}` : ""} short`}
+                            >
+                              &#x25cf;
+                            </span>
+                          );
+                        })()}
                         <span>
                           {(() => {
                             const d = displayUnit(
@@ -1083,15 +1091,18 @@ export default function RecipeView(
                 </div>
               );
             })()}
-            {loggedIn && (
+            {loggedIn && householdId && (
               <Button
                 type="button"
                 variant="outline"
                 size="xs"
                 class="w-full mt-3"
-                onClick={addAllToShoppingList}
+                title="Plans this meal at the current scale. Whatever the pantry can't cover shows up on the shopping list."
+                onClick={() => addToPlan(null)}
               >
-                {addedToList.value === "all" ? "Added!" : "Shop missing"}
+                {addedToList.value === "all"
+                  ? "On the plan!"
+                  : "Add missing to shopping list"}
               </Button>
             )}
           </div>

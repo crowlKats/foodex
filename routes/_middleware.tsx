@@ -8,6 +8,7 @@ import {
   transaction,
 } from "../db/mod.ts";
 import { getSessionIdFromRequest } from "../lib/auth.ts";
+import { countOutstandingLines } from "../lib/shopping-list.ts";
 import { deleteFile } from "../lib/s3.ts";
 
 export interface State extends ParentState {
@@ -40,7 +41,7 @@ export default middleware(async function (ctx) {
       cleanupOrphanedMedia(deleteFile).catch(() => {});
     }
 
-    // Single query: user + household + shopping list count.
+    // Single query: user + household.
     const result = await query<{
       id: string;
       name: string;
@@ -48,16 +49,9 @@ export default middleware(async function (ctx) {
       avatar_url: string | null;
       unit_system: string | null;
       household_id: string | null;
-      shopping_count: number;
     }>(
       `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system,
-              h.id as household_id,
-              COALESCE(
-                (SELECT COUNT(*)::int FROM shopping_list_items sli
-                 JOIN shopping_lists sl ON sl.id = sli.shopping_list_id
-                 WHERE sl.household_id = h.id AND sli.checked = false),
-                0
-              ) as shopping_count
+              h.id as household_id
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        LEFT JOIN household_members hm ON hm.user_id = u.id
@@ -78,7 +72,14 @@ export default middleware(async function (ctx) {
       };
       state.unitSystem = unitSystem;
       state.householdId = row.household_id;
-      state.shoppingListCount = row.shopping_count;
+      // The list is a projection now, so the badge is derived rather than a
+      // row count. Kept to one query — this runs on every request.
+      if (row.household_id) {
+        state.shoppingListCount = await countOutstandingLines(
+          { query },
+          row.household_id,
+        );
+      }
     }
   }
 

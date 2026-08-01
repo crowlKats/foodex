@@ -1,11 +1,7 @@
 import { handler, page } from "./$index.ts";
 import ShoppingListView from "../../islands/ShoppingListView.tsx";
-import type {
-  Ingredient,
-  ShoppingList,
-  ShoppingListItem,
-  Store,
-} from "../../db/types.ts";
+import { projectShoppingList } from "../../lib/shopping-list.ts";
+import type { Ingredient, Store } from "../../db/types.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -16,53 +12,30 @@ export const handlers = handler({
       });
     }
 
-    let listRes = await ctx.state.db.query<
-      Pick<ShoppingList, "id"> & { share_token: string | null }
-    >(
-      "SELECT id, share_token FROM shopping_lists WHERE household_id = $1 ORDER BY created_at DESC LIMIT 1",
-      [ctx.state.householdId],
+    // The list is derived on every load: planned meals + manual demands, minus
+    // what's in the pantry, minus what's already been bought.
+    const projected = await projectShoppingList(
+      ctx.state.db,
+      ctx.state.householdId,
     );
-    if (listRes.rows.length === 0) {
-      listRes = await ctx.state.db.query<
-        Pick<ShoppingList, "id"> & { share_token: string | null }
-      >(
-        "INSERT INTO shopping_lists (household_id) VALUES ($1) RETURNING id, share_token",
-        [ctx.state.householdId],
-      );
-    }
-    const listId = listRes.rows[0].id;
-    const shareToken = listRes.rows[0].share_token;
 
-    const [itemsRes, storesRes, ingredientsRes] = await Promise.all([
-      ctx.state.db.query<ShoppingListItem>(
-        `SELECT sli.*,
-                r.title as recipe_title, r.slug as recipe_slug
-         FROM shopping_list_items sli
-         LEFT JOIN recipes r ON r.id = sli.recipe_id
-         WHERE sli.shopping_list_id = $1
-         ORDER BY sli.checked ASC, sli.sort_order ASC, sli.id ASC`,
-        [listId],
+    const [storesRes, ingredientsRes] = await Promise.all([
+      ctx.state.db.query<Pick<Store, "id" | "name" | "currency">>(
+        `SELECT s.id, s.name, s.currency FROM stores s
+         JOIN household_stores hs ON hs.store_id = s.id
+         WHERE hs.household_id = $1
+         ORDER BY s.name`,
+        [ctx.state.householdId],
       ),
-      ctx.state.householdId
-        ? ctx.state.db.query<Pick<Store, "id" | "name" | "currency">>(
-          `SELECT s.id, s.name, s.currency FROM stores s
-           JOIN household_stores hs ON hs.store_id = s.id
-           WHERE hs.household_id = $1
-           ORDER BY s.name`,
-          [ctx.state.householdId],
-        )
-        : ctx.state.db.query<Pick<Store, "id" | "name" | "currency">>(
-          "SELECT id, name, currency FROM stores ORDER BY name",
-        ),
       ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
         "SELECT id, name, unit FROM ingredients ORDER BY name",
       ),
     ]);
 
     const storeIds = storesRes.rows.map((r) => r.id);
-    const ingredientIds = itemsRes.rows
-      .filter((i) => i.ingredient_id != null)
-      .map((i) => i.ingredient_id as string);
+    const ingredientIds = projected.lines
+      .map((l) => l.ingredient_id)
+      .filter((id): id is string => id != null);
 
     const pricesMap: Record<
       string,
@@ -108,45 +81,22 @@ export const handlers = handler({
       }
     }
 
-    const items = itemsRes.rows.map((i) => {
-      let storeId = i.store_id;
-      if (storeId == null && i.ingredient_id != null) {
-        const prices = pricesMap[String(i.ingredient_id)];
-        if (prices && prices.length > 0) {
-          storeId = prices[0].store_id;
-        }
-      }
-      return {
-        id: i.id,
-        ingredient_id: i.ingredient_id,
-        name: i.name,
-        amount: i.amount,
-        unit: i.unit,
-        store_id: storeId,
-        checked: i.checked,
-        recipe_title: i.recipe_title ?? null,
-        recipe_slug: i.recipe_slug ?? null,
-      };
-    });
-
-    const stores = storesRes.rows.map((s) => ({
-      id: s.id,
-      name: s.name,
-      currency: s.currency ?? "EUR",
-    }));
-
     const cookie = ctx.req.headers.get("cookie") ?? "";
-    const vmMatch = cookie.match(/(?:^|;\s*)sl_view=(recipe|store)/);
-    const viewMode = (vmMatch?.[1] ?? "store") as "recipe" | "store";
+    const vmMatch = cookie.match(/(?:^|;\s*)sl_view=(source|store)/);
+    const viewMode = (vmMatch?.[1] ?? "store") as "source" | "store";
 
     ctx.state.pageTitle = "Shopping List";
     return {
       data: {
-        items,
-        stores,
+        lines: projected.lines,
+        stores: storesRes.rows.map((s) => ({
+          id: s.id,
+          name: s.name,
+          currency: s.currency ?? "EUR",
+        })),
         pricesMap,
         viewMode,
-        shareToken,
+        shareToken: projected.shareToken,
         ingredients: ingredientsRes.rows.map((i) => ({
           id: String(i.id),
           name: i.name,
@@ -160,9 +110,12 @@ export const handlers = handler({
 export default page(function ShoppingListPage({ data }) {
   return (
     <div>
-      <h1 class="text-2xl font-bold mb-6">Shopping List</h1>
+      <div class="flex items-baseline justify-between mb-6">
+        <h1 class="text-2xl font-bold">Shopping List</h1>
+        <a href="/plan" class="link text-sm">Meal plan →</a>
+      </div>
       <ShoppingListView
-        initialItems={data.items}
+        initialLines={data.lines}
         stores={data.stores}
         pricesMap={data.pricesMap}
         initialViewMode={data.viewMode}

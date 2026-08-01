@@ -4,6 +4,7 @@ import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import ScanView from "./ScanView.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
+import { findDuplicates } from "../lib/inventory.ts";
 import { formatInputValue } from "../lib/format.ts";
 import { IconTrash } from "@tabler/icons-preact";
 import { IconAlertTriangle } from "@tabler/icons-preact";
@@ -21,6 +22,8 @@ interface PantryItem {
   amount?: number;
   unit?: string;
   expires_at?: string;
+  /** Always on hand — never counted as missing, never deducted. */
+  staple?: boolean;
 }
 
 const WARN_DAYS = 3;
@@ -185,14 +188,26 @@ export default function PantryManager(
     );
   }
 
-  /** Find other pantry items that represent the same ingredient. */
+  /**
+   * Duplicates of an item, by the same identity rule the recipe view and the
+   * shopping list use — a linked ingredient first, the normalized name second.
+   */
   function getSiblings(item: PantryItem): PantryItem[] {
-    return items.value.filter((other) => {
-      if (other.id === item.id) return false;
-      if (item.ingredient_id && other.ingredient_id) {
-        return item.ingredient_id === other.ingredient_id;
-      }
-      return other.name.toLowerCase() === item.name.toLowerCase();
+    return findDuplicates(item, items.value);
+  }
+
+  async function setStaple(item: PantryItem, staple: boolean) {
+    items.value = items.value.map((i) =>
+      i.id === item.id ? { ...i, staple } : i
+    );
+    await fetch(`/api/pantry`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "set_staple",
+        item_id: item.id,
+        staple,
+      }),
     });
   }
 
@@ -439,7 +454,26 @@ export default function PantryManager(
                             Use soon
                           </span>
                         )}
+                        {item.staple && (
+                          <span class="ml-2 text-xs text-stone-400">
+                            Staple
+                          </span>
+                        )}
                       </div>
+                      <button
+                        type="button"
+                        class={`p-1 cursor-pointer text-xs ${
+                          item.staple
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-stone-300 dark:text-stone-600 hover:text-stone-500"
+                        }`}
+                        title={item.staple
+                          ? "Staple: always counted as available. Click to track its amount instead."
+                          : "Mark as a staple — salt, oil, water and the like, so recipes stop reporting them as missing."}
+                        onClick={() => setStaple(item, !item.staple)}
+                      >
+                        &#x2605;
+                      </button>
                       {siblings.length > 0 && (
                         <button
                           type="button"

@@ -107,6 +107,28 @@ export const handlers = handler({
       ),
     ]);
 
+    // At-a-glance kitchen state, so the dashboard says something about today
+    // rather than only listing what the household owns.
+    const kitchenRes = await ctx.state.db.query<{
+      pantry_count: number;
+      expiring_count: number;
+      planned_count: number;
+      cooked_this_month: number;
+    }>(
+      `SELECT
+         (SELECT COUNT(*)::int FROM pantry_items WHERE household_id = $1) AS pantry_count,
+         (SELECT COUNT(*)::int FROM pantry_items
+           WHERE household_id = $1 AND NOT staple
+             AND expires_at IS NOT NULL AND expires_at <= CURRENT_DATE + 3) AS expiring_count,
+         (SELECT COUNT(*)::int FROM plan_entries
+           WHERE household_id = $1 AND status = 'planned') AS planned_count,
+         (SELECT COUNT(*)::int FROM plan_entries
+           WHERE household_id = $1 AND status = 'cooked'
+             AND cooked_at > now() - interval '30 days') AS cooked_this_month`,
+      [id],
+    );
+    const kitchen = kitchenRes.rows[0];
+
     const allTools = toolsRes.rows;
     const tools = allTools.filter((t) => t.owned);
     const availableTools = allTools.filter((t) => !t.owned);
@@ -142,6 +164,7 @@ export const handlers = handler({
     ctx.state.pageTitle = householdRes.rows[0].name as string;
     return {
       data: {
+        kitchen,
         household: householdRes.rows[0],
         members: membersRes.rows,
         invites: invitesRes.rows,
@@ -278,6 +301,7 @@ export default page(function HouseholdDetailPage(
       recipes,
       myRole,
       q,
+      kitchen,
     },
     state,
     url,
@@ -287,11 +311,34 @@ export default page(function HouseholdDetailPage(
 
   return (
     <div>
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold">{household.name}</h1>
-        <ButtonLink href="/household/pantry">
-          Pantry
-        </ButtonLink>
+        <div class="flex gap-2">
+          <ButtonLink href="/plan">Plan</ButtonLink>
+          <ButtonLink href="/household/pantry">Pantry</ButtonLink>
+        </div>
+      </div>
+
+      <div class="card mb-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        <a href="/household/pantry" class="link">
+          {kitchen.pantry_count} in the pantry
+        </a>
+        {kitchen.expiring_count > 0 && (
+          <a
+            href="/plan"
+            class="text-amber-600 dark:text-amber-400 hover:underline"
+          >
+            {kitchen.expiring_count} going off soon
+          </a>
+        )}
+        <a href="/plan" class="link">
+          {kitchen.planned_count} meal{kitchen.planned_count === 1 ? "" : "s"}
+          {" "}
+          planned
+        </a>
+        <span class="text-stone-500">
+          {kitchen.cooked_this_month} cooked in the last 30 days
+        </span>
       </div>
 
       <div class="grid gap-6 lg:grid-cols-3">

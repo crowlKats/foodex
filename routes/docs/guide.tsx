@@ -40,7 +40,15 @@ export default page(function GuideDocs() {
               Your Pantry
             </a>
             <span class="text-stone-400">
-              {" "}— tracking ingredients, barcode scanning
+              {" "}— tracking ingredients, staples, barcode scanning
+            </span>
+          </li>
+          <li>
+            <a href="#plan" class="link">
+              Meal Plan
+            </a>
+            <span class="text-stone-400">
+              {" "}— planning what to cook, cooking it, what to use up
             </span>
           </li>
           <li>
@@ -48,7 +56,7 @@ export default page(function GuideDocs() {
               Shopping Lists
             </a>
             <span class="text-stone-400">
-              — building, sharing, checking off
+              — how it's worked out, sharing, checking off
             </span>
           </li>
           <li>
@@ -159,11 +167,12 @@ export default page(function GuideDocs() {
               — Show only the recipes you've marked as favorites.
             </li>
             <li class={listItem}>
-              <strong>Ready to make</strong>{" "}
-              — Shows only recipes where you already have <strong>all</strong>
-              {" "}
-              the required ingredients in your pantry. Perfect for answering
-              "what can I make right now?"
+              <strong>Ready to make</strong> — Shows only recipes you have{" "}
+              <strong>enough</strong>{" "}
+              of everything for, and own the tools for. It checks amounts, not
+              just names, so having a spoonful of flour doesn't count as having
+              flour. Staples always count. Perfect for answering "what can I
+              make right now?"
             </li>
           </ul>
 
@@ -182,8 +191,10 @@ export default page(function GuideDocs() {
             </li>
             <li class={listItem}>
               <strong>Ingredients</strong>{" "}
-              — Everything you need, with exact amounts. Ingredients already in
-              your pantry are marked with a green checkmark.
+              — Everything you need, with exact amounts. A green dot means your
+              pantry covers it at the servings you've picked; an amber one means
+              you have some but not enough. Change the servings and the dots
+              react.
             </li>
             <li class={listItem}>
               <strong>Steps</strong>{" "}
@@ -451,19 +462,98 @@ export default page(function GuideDocs() {
             Fastest on a phone since you can scan items as you unpack groceries.
           </p>
 
+          <h3 class={subSectionClass}>Staples</h3>
+          <p class={`${prose} mb-4`}>
+            Nobody weighs their salt. Mark the things you always have — salt,
+            oil, water, pepper — as <strong>staples</strong>{" "}
+            with the star button. Staples always count as available, never get
+            deducted when you cook, and never appear on your shopping list, so
+            recipes stop telling you you're missing a pinch of salt.
+          </p>
+
           <h3 class={subSectionClass}>Expiration Tracking</h3>
           <p class={`${prose} mb-4`}>
-            If you set expiration dates on pantry items, Foodex will warn you
-            when something is about to expire or has already expired. This helps
-            reduce food waste — plan meals around ingredients that need to be
-            used up soon.
+            If you set best-before dates, Foodex warns you as things approach
+            them — and the warning comes with an answer. The{" "}
+            <strong>Plan</strong>{" "}
+            page lists what's going off and ranks recipes by what they'd use up,
+            so a reminder turns into dinner instead of a guilty glance at the
+            fridge.
+          </p>
+
+          <h3 class={subSectionClass}>Where Stock Comes From and Goes</h3>
+          <p class={`${prose} mb-4`}>
+            Every change to your pantry is recorded with a reason: bought,
+            cooked, produced by a recipe, thrown out, or corrected by hand.
+            That's what lets Foodex undo things properly — unticking a shopping
+            line takes back exactly what it added, and undoing a cooked meal
+            puts the ingredients back where they were.
           </p>
 
           <h3 class={subSectionClass}>Merging Duplicates</h3>
           <p class={prose}>
-            Sometimes you might end up with two entries for the same ingredient
-            (maybe one was scanned and another typed in). You can merge
-            duplicate pantry entries to combine their amounts into one item.
+            Sometimes you end up with two entries for the same ingredient (one
+            scanned, one typed). You can merge them to combine their amounts.
+            The merged item keeps the <em>earliest</em>{" "}
+            best-before date, since the combined stock is only as good as its
+            oldest part.
+          </p>
+        </section>
+
+        {/* ── Meal Plan ── */}
+        <section id="plan">
+          <h2 class={sectionClass}>Meal Plan</h2>
+          <p class={`${prose} mb-4`}>
+            The plan is what ties everything together: it's the record of what
+            you intend to cook. Your shopping list is worked out from it, and
+            cooking a planned meal is what moves stock out of your pantry.
+          </p>
+
+          <h3 class={subSectionClass}>Planning a Meal</h3>
+          <p class={`${prose} mb-3`}>
+            On any recipe, set the servings you actually want, then hit{" "}
+            <strong>Plan this</strong>. Optionally give it a day. The plan
+            remembers the{" "}
+            <em>scale</em>, not a frozen list of amounts — so if you change your
+            mind and cook for eight instead of four, everything downstream
+            follows.
+          </p>
+          <p class={`${prose} mb-4`}>
+            Each planned meal shows whether your pantry can cover it, and
+            exactly what's missing if it can't.
+          </p>
+
+          <h3 class={subSectionClass}>Cooking It</h3>
+          <p class={`${prose} mb-3`}>
+            When you've cooked something, hit{" "}
+            <strong>Cooked it</strong>. Foodex:
+          </p>
+          <ul class="list-disc pl-6 space-y-1 mb-3">
+            <li class={listItem}>
+              takes the ingredients out of your pantry, oldest stock first, so
+              the things closest to their date get used
+            </li>
+            <li class={listItem}>
+              tells you if the pantry came up short, rather than quietly
+              pretending it had enough
+            </li>
+            <li class={listItem}>
+              puts whatever the recipe <em>makes</em>{" "}
+              back in, if it's set up to produce an ingredient (stock, dough,
+              sauce)
+            </li>
+            <li class={listItem}>keeps it in your cooking history</li>
+          </ul>
+          <p class={`${prose} text-sm text-stone-500 mb-4`}>
+            Got it wrong? <strong>Undo</strong>{" "}
+            on a cooked meal puts every ingredient back exactly as it was.
+          </p>
+
+          <h3 class={subSectionClass}>What to Cook Next</h3>
+          <p class={prose}>
+            The plan page suggests recipes based on what you already have,
+            putting the ones that use up soon-to-expire ingredients first. It's
+            also where the expiry reminder sends you.
           </p>
         </section>
 
@@ -471,52 +561,66 @@ export default page(function GuideDocs() {
         <section id="shopping-lists">
           <h2 class={sectionClass}>Shopping Lists</h2>
 
-          <h3 class={subSectionClass}>How Items Get Added</h3>
-          <p class={`${prose} mb-3`}>
-            There are two ways items end up on your shopping list:
+          <p class={`${prose} mb-4`}>
+            Your shopping list isn't a list you fill in — it's worked out for
+            you. Foodex takes everything on your meal plan, adds anything you've
+            asked for by hand, subtracts what's already in the pantry, and shows
+            you what's left:
           </p>
+          <div class="card mb-4 text-center font-medium">
+            planned meals + one-off items − pantry − already bought
+          </div>
+          <p class={`${prose} mb-4`}>
+            Because it's recomputed every time you open it, it can't go stale.
+            Change a meal from four servings to eight and the amounts grow. Buy
+            half the flour and the line shrinks. Plan the same recipe twice and
+            it asks for twice as much, instead of quietly assuming one jar of
+            stock can cover both.
+          </p>
+
+          <h3 class={subSectionClass}>How Things Get On It</h3>
           <ol class="list-decimal pl-6 space-y-1 mb-4">
             <li class={listItem}>
-              <strong>From a recipe</strong>{" "}
-              — When you view a recipe and see that you're missing some
-              ingredients, add the missing ones to your shopping list with one
-              click. The list remembers which recipe they're for.
+              <strong>Plan a meal</strong>{" "}
+              — On any recipe, set the servings and hit{" "}
+              <strong>Plan this</strong>. Whatever your pantry can't cover shows
+              up on the list, tagged with the meal that wants it.
             </li>
             <li class={listItem}>
-              <strong>Manually</strong>{" "}
-              — Add items directly for things that aren't tied to a specific
-              recipe.
+              <strong>Add a one-off</strong>{" "}
+              — For anything not tied to a recipe: washing-up liquid, more
+              coffee, a bag of onions.
             </li>
           </ol>
 
           <h3 class={subSectionClass}>Using Your Shopping List</h3>
-          <p class={`${prose} mb-3`}>
-            Your shopping list can be viewed in two ways:
-          </p>
+          <p class={`${prose} mb-3`}>You can group the list two ways:</p>
           <ul class="list-disc pl-6 space-y-1 mb-3">
             <li class={listItem}>
-              <strong>Grouped by store</strong>{" "}
-              — Items organized by which store has the best price. Helpful if
-              you shop at multiple stores.
+              <strong>By store</strong>{" "}
+              — organised by where you buy each thing. Foodex remembers the shop
+              you picked for an ingredient and suggests the cheapest one
+              otherwise.
             </li>
             <li class={listItem}>
-              <strong>Grouped by recipe</strong>{" "}
-              — Items organized by which recipe needs them. Helpful for
-              planning.
+              <strong>By meal</strong>{" "}
+              — organised by which planned meal needs them.
             </li>
           </ul>
           <p class={`${prose} mb-4`}>
-            As you shop, check off items by tapping them. Checked items move to
-            the bottom so you can focus on what's left. If prices have been
-            entered, you'll see a running total of your estimated shopping cost.
+            Ticking something off means you bought it, so it goes straight into
+            your pantry — and every line that needed it gets shorter. Untick it
+            and the pantry goes back exactly as it was. If prices have been
+            entered you'll see a running total as you go.
           </p>
 
           <h3 class={subSectionClass}>Sharing Your Shopping List</h3>
           <p class={prose}>
             Need someone else to pick things up? Generate a{" "}
-            <strong>share link</strong>. Anyone with the link can view the list
-            (but not edit it) — they don't even need a Foodex account. Perfect
-            for texting to a partner or roommate.
+            <strong>share link</strong>. Anyone with the link can see the list
+            and tick things off as they shop — no Foodex account needed — and
+            what they buy lands in your pantry just as if you'd done it
+            yourself.
           </p>
         </section>
 

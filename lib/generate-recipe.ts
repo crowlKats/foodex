@@ -9,6 +9,7 @@ ${recipeJsonSchema()}
 
 Rules:
 - You do NOT need to use every ingredient — pick a coherent subset that makes a good dish
+- Ingredients marked as expiring should be used if they can be made to work together; that is the point of the request
 - You MUST only use ingredients from the provided list. The ONLY exceptions are: salt, pepper, oil, water, and basic spices. Do NOT add other ingredients like pasta, rice, flour, bread, etc. unless they are explicitly listed.
 ${RECIPE_FIELD_RULES}
 - "cover_image" should always be null for generated recipes
@@ -19,6 +20,8 @@ interface PantryIngredient {
   name: string;
   amount?: number;
   unit?: string;
+  /** Days until this goes off. Present means "use me first". */
+  expiresInDays?: number;
 }
 
 export async function generateRecipeFromPantry(
@@ -43,6 +46,13 @@ export async function generateRecipeFromPantry(
       let s = i.name;
       if (i.amount != null) {
         s += ` (${i.amount}${i.unit ? ` ${i.unit}` : ""} available)`;
+      }
+      if (i.expiresInDays != null) {
+        s += i.expiresInDays <= 0
+          ? " — EXPIRED, use or discard"
+          : ` — expires in ${i.expiresInDays} day${
+            i.expiresInDays === 1 ? "" : "s"
+          }, prioritise this`;
       }
       return `- ${s}`;
     })

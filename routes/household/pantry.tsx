@@ -24,8 +24,11 @@ export const handlers = handler({
           "SELECT * FROM households WHERE id = $1",
           [ctx.state.householdId],
         ),
+        // expires_at as text: the date input wants YYYY-MM-DD, not a Date.
         ctx.state.db.query<PantryItem>(
-          "SELECT * FROM pantry_items WHERE household_id = $1 ORDER BY name",
+          `SELECT id, household_id, ingredient_id, name, amount, unit, staple,
+                  expires_at::text as expires_at
+           FROM pantry_items WHERE household_id = $1 ORDER BY name`,
           [ctx.state.householdId],
         ),
         ctx.state.db.query<Pick<Ingredient, "id" | "name" | "unit">>(
@@ -73,6 +76,7 @@ export default page(function PantryPage({ data }) {
           amount: p.amount ?? undefined,
           unit: p.unit ?? undefined,
           expires_at: p.expires_at ?? undefined,
+          staple: p.staple,
         }))}
         ingredients={data.ingredients.map((i) => ({
           id: String(i.id),

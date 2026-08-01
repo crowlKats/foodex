@@ -2,6 +2,7 @@ import { ComponentChildren } from "preact";
 import DarkModeToggle from "../islands/DarkModeToggle.tsx";
 import { IconChefHat } from "@tabler/icons-preact";
 import { IconShoppingCart } from "@tabler/icons-preact";
+import { IconCalendar } from "@tabler/icons-preact";
 import { IconBook } from "@tabler/icons-preact";
 import { IconToolsKitchen2 } from "@tabler/icons-preact";
 import { IconFridge } from "@tabler/icons-preact";
@@ -117,6 +118,14 @@ export function Nav(
                       }`}
                     >
                       Pantry
+                    </a>
+                    <a
+                      href="/plan"
+                      class={`nav-link font-medium ${
+                        isActive(currentPath, "/plan") ? "text-orange-400" : ""
+                      }`}
+                    >
+                      Plan
                     </a>
                   </>
                 )}
@@ -274,6 +283,14 @@ export function Nav(
               href="/household/pantry"
               label="Pantry"
               icon={IconFridge}
+              currentPath={currentPath}
+            />
+          )}
+          {hasHousehold && (
+            <MobileTab
+              href="/plan"
+              label="Plan"
+              icon={IconCalendar}
               currentPath={currentPath}
             />
           )}
