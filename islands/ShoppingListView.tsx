@@ -237,7 +237,7 @@ export default function ShoppingListView(
           <div class={`text-sm font-medium ${bought ? "line-through" : ""}`}>
             {amount != null && (
               <span class={bought ? "mr-1" : "text-orange-600 mr-1"}>
-                {formatAmount(amount)}
+                {formatAmount(amount, unit)}
                 {unit ? ` ${unit}` : ""}
               </span>
             )}
@@ -258,7 +258,7 @@ export default function ShoppingListView(
             if (!bought && line.have > 0) {
               notes.push(
                 <span class="text-stone-400">
-                  {formatAmount(line.have)}
+                  {formatAmount(line.have, line.unit ?? "")}
                   {line.unit ? ` ${line.unit}` : ""} in pantry
                 </span>,
               );

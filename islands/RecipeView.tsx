@@ -5,10 +5,11 @@ import {
   formatCurrency,
   formatInputValue,
 } from "../lib/format.ts";
-import { computeScaleRatio } from "../lib/quantity.ts";
+import { computeScaleRatio, formatQuantity } from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
 import { computeAvailability, isAvailable } from "../lib/inventory.ts";
+import { apiErrorMessage } from "../lib/api-error.ts";
 import { formatTimer } from "../lib/timer.ts";
 import {
   computeSectionLayout,
@@ -150,7 +151,21 @@ export default function RecipeView(
   function neededAmount(ing: RecipeIngredient, ratio: number): number | null {
     return availabilityOf(ing, ratio).needed;
   }
-  const addedToList = useSignal<string | null>(null);
+  /** Stable per-row identity; `key` is optional on an ingredient. */
+  function ingredientKey(ing: RecipeIngredient): string {
+    return ing.key || ing.name;
+  }
+
+  /**
+   * Transient per-row confirmation for the `+` button. Previously the only
+   * feedback was the glyph changing colour, so you had to leave the page to
+   * find out whether the click did anything.
+   */
+  const addedToList = useSignal<
+    { key: string; label: string; failed?: boolean } | null
+  >(null);
+  /** "Plan this" / "Add missing to shopping list" confirmation. */
+  const planAdded = useSignal(false);
   const subsOpen = useSignal<string | null>(null);
   const subsLoading = useSignal(false);
   const subsCache = useSignal<Record<string, Substitution[]>>({});
@@ -375,6 +390,17 @@ export default function RecipeView(
   }
 
   /**
+   * The metadata line under the title is server-rendered outside this island,
+   * so it kept showing the authored servings while the scaler showed another.
+   * No dependency array: it re-runs on every render, which is exactly when a
+   * target signal has changed.
+   */
+  useEffect(() => {
+    const el = document.querySelector("[data-recipe-quantity]");
+    if (el) el.textContent = formatQuantity(getTarget());
+  });
+
+  /**
    * Planning the meal is what puts it on the shopping list.
    *
    * The entry stores the scale rather than a snapshot of missing amounts, so
@@ -393,10 +419,10 @@ export default function RecipeView(
       }),
     });
     if (res.ok) {
-      addedToList.value = "all";
+      planAdded.value = true;
       planDate.value = "";
       setTimeout(() => {
-        addedToList.value = null;
+        planAdded.value = false;
       }, 2500);
     }
   }
@@ -404,14 +430,17 @@ export default function RecipeView(
   async function addOneToShoppingList(ing: RecipeIngredient) {
     const ratio = getCurrentRatio();
     const needed = neededAmount(ing, ratio);
+    const key = ingredientKey(ing);
     if (needed === 0) {
-      addedToList.value = ing.key;
+      // Already covered by the pantry — nothing to add, but say so rather than
+      // leaving the click looking like it did nothing.
+      addedToList.value = { key, label: "already in pantry" };
       setTimeout(() => {
         addedToList.value = null;
-      }, 1500);
+      }, 2500);
       return;
     }
-    await fetch("/api/shopping-list", {
+    const res = await fetch("/api/shopping-list", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -423,10 +452,14 @@ export default function RecipeView(
         note: `For ${recipeTitle}`,
       }),
     });
-    addedToList.value = ing.key;
+    addedToList.value = res.ok ? { key, label: "on your list" } : {
+      key,
+      label: await apiErrorMessage(res, "couldn't add"),
+      failed: true,
+    };
     setTimeout(() => {
       addedToList.value = null;
-    }, 1500);
+    }, 2500);
   }
 
   async function fetchSubstitutions(ing: RecipeIngredient) {
@@ -798,7 +831,7 @@ export default function RecipeView(
         missing: number;
         unit: string | null;
       }) =>
-        `${s.name} (short ${formatAmount(s.missing)}${
+        `${s.name} (short ${formatAmount(s.missing, s.unit ?? "")}${
           s.unit ? ` ${s.unit}` : ""
         })`
       );
@@ -843,7 +876,7 @@ export default function RecipeView(
                   class="flex-1"
                   onClick={() => addToPlan(null)}
                 >
-                  {addedToList.value === "all" ? "Added to plan!" : "Plan this"}
+                  {planAdded.value ? "Added to plan!" : "Plan this"}
                 </Button>
                 <Button
                   type="button"
@@ -928,9 +961,12 @@ export default function RecipeView(
                 const cost = ing.base_cost != null
                   ? ing.base_cost * ratio
                   : undefined;
-                const ingKey = ing.key || ing.name;
+                const ingKey = ingredientKey(ing);
                 const isSubsOpen = subsOpen.value === ingKey;
                 const subs = subsCache.value[ingKey];
+                const added = addedToList.value?.key === ingKey
+                  ? addedToList.value
+                  : null;
                 return (
                   <li
                     key={ingKey}
@@ -941,11 +977,18 @@ export default function RecipeView(
                         {loggedIn && (
                           <button
                             type="button"
-                            class="text-stone-400 hover:text-orange-600 cursor-pointer text-xs leading-none"
-                            title="Add to shopping list"
+                            class={`cursor-pointer text-xs leading-none ${
+                              added
+                                ? added.failed
+                                  ? "text-red-600 dark:text-red-400"
+                                  : "text-green-600 dark:text-green-400"
+                                : "text-stone-400 hover:text-orange-600"
+                            }`}
+                            title={`Add ${ing.name} to the shopping list`}
+                            aria-label={`Add ${ing.name} to the shopping list`}
                             onClick={() => addOneToShoppingList(ing)}
                           >
-                            {addedToList.value === ing.key ? "\u2713" : "+"}
+                            {added ? "\u2713" : "+"}
                           </button>
                         )}
                         {(() => {
@@ -964,7 +1007,10 @@ export default function RecipeView(
                                   ? "Staple — always on hand"
                                   : "In pantry"
                                 : `In pantry, but ${
-                                  formatAmount(availability.needed ?? 0)
+                                  formatAmount(
+                                    availability.needed ?? 0,
+                                    ing.unit,
+                                  )
                                 }${ing.unit ? ` ${ing.unit}` : ""} short`}
                             >
                               &#x25cf;
@@ -1010,6 +1056,17 @@ export default function RecipeView(
                         </span>
                       </span>
                       <span class="flex items-baseline gap-2">
+                        {added && (
+                          <span
+                            class={`text-xs whitespace-nowrap ${
+                              added.failed
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-green-600 dark:text-green-400"
+                            }`}
+                          >
+                            {added.label}
+                          </span>
+                        )}
                         {cost != null && (
                           <span class="text-stone-400 text-xs whitespace-nowrap">
                             {getCurrencySymbol(ing.currency ?? "EUR")}
@@ -1024,7 +1081,8 @@ export default function RecipeView(
                                 ? "text-orange-600"
                                 : "text-stone-400 hover:text-orange-600"
                             }`}
-                            title="Substitution suggestions"
+                            title={`Suggest substitutions for ${ing.name}`}
+                            aria-label={`Suggest substitutions for ${ing.name}`}
                             onClick={() => fetchSubstitutions(ing)}
                           >
                             &#x21c4;
@@ -1094,7 +1152,7 @@ export default function RecipeView(
                 title="Plans this meal at the current scale. Whatever the pantry can't cover shows up on the shopping list."
                 onClick={() => addToPlan(null)}
               >
-                {addedToList.value === "all"
+                {planAdded.value
                   ? "On the plan!"
                   : "Add missing to shopping list"}
               </Button>

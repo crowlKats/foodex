@@ -58,7 +58,7 @@ export default function PlanView(
               missing: number;
               unit: string | null;
             }) =>
-              `${s.name} (${formatAmount(s.missing)}${
+              `${s.name} (${formatAmount(s.missing, s.unit ?? "")}${
                 s.unit ? ` ${s.unit}` : ""
               })`
             ).join(", ")
@@ -163,9 +163,9 @@ export default function PlanView(
                               {entry.missing.slice(0, 3).map((m) =>
                                 `${m.name}${
                                   m.needed != null
-                                    ? ` (${formatAmount(m.needed)}${
-                                      m.unit ? ` ${m.unit}` : ""
-                                    })`
+                                    ? ` (${
+                                      formatAmount(m.needed, m.unit ?? "")
+                                    }${m.unit ? ` ${m.unit}` : ""})`
                                     : ""
                                 }`
                               ).join(", ")}

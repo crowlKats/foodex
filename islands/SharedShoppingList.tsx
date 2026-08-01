@@ -84,7 +84,7 @@ export default function SharedShoppingList({ initialLines, token }: Props) {
           >
             {line.amount != null && (
               <span class={line.bought ? "mr-1" : "text-orange-600 mr-1"}>
-                {formatAmount(line.amount)}
+                {formatAmount(line.amount, line.unit ?? "")}
                 {line.unit ? ` ${line.unit}` : ""}
               </span>
             )}
