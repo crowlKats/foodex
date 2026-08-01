@@ -66,7 +66,11 @@ function renderContent(
 ) {
   return (
     <>
-      {Icon && <Icon class="size-4" />}
+      {
+        /* shrink-0: without it the glyph squashes when the button is in a
+          tight flex row, which reads as the icon breaking out of its border. */
+      }
+      {Icon && <Icon class="size-4 shrink-0" />}
       {children}
     </>
   );
