@@ -1,6 +1,7 @@
 import { handler, page } from "./$index.ts";
 import { escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
+import { EmptyState } from "../../components/EmptyState.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
@@ -204,7 +205,22 @@ export default page(
               All Stores ({totalCount})
             </h2>
             {stores.length === 0
-              ? <p class="text-stone-500">No stores yet.</p>
+              ? q
+                ? (
+                  <EmptyState title={`No stores match "${q}"`}>
+                    Nothing here goes by that name.
+                  </EmptyState>
+                )
+                : (
+                  <EmptyState title="No stores yet">
+                    Stores are the shops you buy from. Recording one lets you
+                    attach prices to ingredients, which is what puts a running
+                    total on the shopping list and lets it group your list by
+                    where you're going. {loggedIn
+                      ? "Add your first with the form on this page."
+                      : "Sign in to add one."}
+                  </EmptyState>
+                )
               : (
                 <div class="space-y-2">
                   {stores.map((s) => (

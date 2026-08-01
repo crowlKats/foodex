@@ -44,6 +44,13 @@ import type {
   TemplateNode,
 } from "../lib/recipe-template/ast.ts";
 
+/** A declared ingredient, as the sibling ingredient form has it. */
+export interface StepBodyIngredient {
+  key: string;
+  name: string;
+  unit: string;
+}
+
 /** Information the highlighter needs to flag semantic errors. */
 export interface StepBodyContext {
   /** Ingredient keys defined elsewhere in the form (e.g. `flour`, `sugar`). */
@@ -52,6 +59,11 @@ export interface StepBodyContext {
   totalSteps: number;
   /** Map of section key → number of steps in that section. */
   sectionStepCounts: Map<string, number>;
+  /**
+   * Declared ingredients in full, for the literal-amount lint and the
+   * insert bar. Optional so existing callers keep compiling.
+   */
+  ingredients?: StepBodyIngredient[];
 }
 
 export interface StepBodyEditorProps {
@@ -72,6 +84,59 @@ export interface StepBodyDiagnostic {
   start: number;
   end: number;
   message: string;
+  /**
+   * A one-click repair. The panel already explains what's wrong; when the
+   * answer is unambiguous it should also be able to apply it.
+   */
+  fix?: { start: number; end: number; replacement: string; label: string };
+  /**
+   * Warnings don't block saving and don't turn the field red. A typed-out
+   * amount is valid template source — it just quietly stops scaling.
+   */
+  severity?: "error" | "warning";
+}
+
+/**
+ * Levenshtein distance, capped — we only care whether two keys are within a
+ * typo or two of each other, so there's no need to fill the whole matrix.
+ */
+function editDistance(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    let best = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + cost);
+      if (row[j] < best) best = row[j];
+    }
+    if (best > max) return max + 1;
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+/**
+ * The closest declared key to `name`, if one is near enough to be a typo.
+ *
+ * The panel used to say "check that the spelling matches" while holding the
+ * full list of valid keys — `buttr` is one edit from `butter`.
+ */
+function nearestKey(name: string, keys: Iterable<string>): string | null {
+  const lower = name.toLowerCase();
+  // Allow more slack for longer keys: `longrain_rice` → `long_grain_rice`.
+  const max = Math.max(2, Math.floor(lower.length / 3));
+  let best: string | null = null;
+  let bestDist = max + 1;
+  for (const key of keys) {
+    const dist = editDistance(lower, key.toLowerCase(), max);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = key;
+    }
+  }
+  return bestDist <= max ? best : null;
 }
 
 const BUILTINS = new Set(["round", "ceil", "floor", "min", "max", "abs"]);
@@ -91,7 +156,10 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
       const { tokens, diagnostics: d } = collect(text, getContext());
       diagnosticsRef.current = d;
       diagnostics.value = d;
-      trackerRef.current?.update(d.length);
+      // Only errors gate Save — a warning is about quality, not validity.
+      trackerRef.current?.update(
+        d.filter((x) => x.severity !== "warning").length,
+      );
       return tokens;
     },
     [getContext],
@@ -183,6 +251,42 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Where the caret was when the editor last lost focus, so the insert bar
+   * can drop a token where the author was typing rather than at the end.
+   */
+  const caretRef = useRef<number | null>(null);
+
+  function rememberCaret(e: Event) {
+    const root = e.currentTarget as HTMLElement;
+    const sel = globalThis.getSelection?.();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (!root.contains(range.startContainer)) return;
+    caretRef.current = nodeOffsetToTextOffset(
+      root,
+      range.startContainer,
+      range.startOffset,
+    );
+  }
+
+  /**
+   * Insert `{{ key }}` at the caret. Typing `50g butter` is faster and more
+   * natural than typing `{{ butter }}`, which made the broken path the easy
+   * one — this is the counterweight.
+   */
+  function insertToken(key: string) {
+    const at = caretRef.current ?? value.length;
+    const token = `{{ ${key} }}`;
+    const before = value.slice(0, at);
+    const after = value.slice(at);
+    // Don't glue the token onto an adjacent word.
+    const lead = before && !/\s$/.test(before) ? " " : "";
+    const trail = after && !/^[\s.,;:!?)]/.test(after) ? " " : "";
+    onValueChange(before + lead + token + trail + after);
+    caretRef.current = at + lead.length + token.length;
+  }
+
   // Close popup on Escape — the backdrop handles outside-click directly.
   useEffect(() => {
     if (!popupOpen.value) return;
@@ -193,14 +297,24 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
     return () => document.removeEventListener("keydown", onKey);
   }, [popupOpen.value]);
 
+  // `getContext` reads the sibling ingredient form out of the DOM, so it can
+  // only run on the client — everything else that calls it does so from the
+  // highlight pass, which never runs during SSR.
+  const insertable = typeof document === "undefined"
+    ? []
+    : (getContext().ingredients ?? []).filter((i) => i.key);
+  const errorCount =
+    diagnostics.value.filter((d) => d.severity !== "warning").length;
   const hasErrors = diagnostics.value.length > 0;
   const minHeight = `${rows * 1.5}rem`;
   const cls = [
     "step-body-editor",
     "block w-full font-mono whitespace-pre-wrap break-words",
     "border-2 bg-stone-100 dark:bg-stone-800",
-    hasErrors
+    errorCount > 0
       ? "border-red-600 dark:border-red-500 focus:border-red-600 dark:focus:border-red-500"
+      : hasErrors
+      ? "border-amber-500 dark:border-amber-500 focus:border-amber-500"
       : "border-stone-300 dark:border-stone-700 focus:border-orange-600 dark:focus:border-orange-500",
     "text-stone-900 dark:text-stone-100 text-sm leading-normal px-3 py-2",
     "transition-colors duration-75 focus:outline-none",
@@ -208,104 +322,156 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
   ].filter(Boolean).join(" ");
 
   return (
-    <div class="step-body-editor-wrapper relative" ref={wrapperRef}>
-      <HighlightableTextarea
-        value={value}
-        highlight={highlight}
-        onInput={(e: Event) => {
-          onValueChange((e.currentTarget as HTMLDivElement).textContent ?? "");
-        }}
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
-        aria-placeholder={props.placeholder}
-        style={{ minHeight, boxSizing: "border-box" }}
-        class={cls}
-      />
-      {hasErrors && (
-        <button
-          type="button"
-          data-step-body-error-badge
-          class="step-body-error-badge"
-          aria-label={`${diagnostics.value.length} error${
-            diagnostics.value.length === 1 ? "" : "s"
-          } — click to view`}
-          aria-expanded={popupOpen.value}
-          onMouseDown={(e) => {
-            // Prevent the contenteditable from stealing focus before our
-            // click handler runs (otherwise the focus-shift can race the
-            // popup toggle).
-            e.preventDefault();
+    <div>
+      {
+        /* The badge is positioned against this wrapper, so the insert bar has
+          to sit outside it or the two overlap. */
+      }
+      <div class="step-body-editor-wrapper relative" ref={wrapperRef}>
+        <HighlightableTextarea
+          value={value}
+          highlight={highlight}
+          onInput={(e: Event) => {
+            onValueChange(
+              (e.currentTarget as HTMLDivElement).textContent ?? "",
+            );
           }}
-          onClick={() => {
-            popupOpen.value = !popupOpen.value;
-          }}
-        >
-          <ErrorTriangleIcon />
-          <span class="step-body-error-badge-count">
-            {diagnostics.value.length}
-          </span>
-        </button>
-      )}
-      {hasErrors && popupOpen.value && (
-        <div
-          class="step-body-error-popup-backdrop"
-          data-step-body-error-popup
-          onClick={(e) => {
-            if (e.target === e.currentTarget) popupOpen.value = false;
-          }}
-        >
-          <div
-            class="step-body-error-popup"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Errors in this step"
-            onClick={(e) => e.stopPropagation()}
+          onMouseMove={onMouseMove}
+          onMouseLeave={onMouseLeave}
+          onKeyUp={rememberCaret}
+          onMouseUp={rememberCaret}
+          onBlur={rememberCaret}
+          aria-placeholder={props.placeholder}
+          style={{ minHeight, boxSizing: "border-box" }}
+          class={cls}
+        />
+        {hasErrors && (
+          <button
+            type="button"
+            data-step-body-error-badge
+            class={`step-body-error-badge${
+              errorCount === 0 ? " step-body-error-badge-warning" : ""
+            }`}
+            aria-label={`${diagnostics.value.length} problem${
+              diagnostics.value.length === 1 ? "" : "s"
+            } — click to view`}
+            aria-expanded={popupOpen.value}
+            onMouseDown={(e) => {
+              // Prevent the contenteditable from stealing focus before our
+              // click handler runs (otherwise the focus-shift can race the
+              // popup toggle).
+              e.preventDefault();
+            }}
+            onClick={() => {
+              popupOpen.value = !popupOpen.value;
+            }}
           >
-            <div class="step-body-error-popup-header">
-              <span class="step-body-error-popup-title">
-                {diagnostics.value.length}{" "}
-                problem{diagnostics.value.length === 1 ? "" : "s"} found
-              </span>
-              <button
-                type="button"
-                class="step-body-error-popup-close"
-                aria-label="Close"
-                onClick={() => {
-                  popupOpen.value = false;
-                }}
-              >
-                <CloseIcon />
-              </button>
+            <ErrorTriangleIcon />
+            <span class="step-body-error-badge-count">
+              {diagnostics.value.length}
+            </span>
+          </button>
+        )}
+        {hasErrors && popupOpen.value && (
+          <div
+            class="step-body-error-popup-backdrop"
+            data-step-body-error-popup
+            onClick={(e) => {
+              if (e.target === e.currentTarget) popupOpen.value = false;
+            }}
+          >
+            <div
+              class="step-body-error-popup"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Errors in this step"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div class="step-body-error-popup-header">
+                <span class="step-body-error-popup-title">
+                  {diagnostics.value.length}{" "}
+                  problem{diagnostics.value.length === 1 ? "" : "s"} found
+                </span>
+                <button
+                  type="button"
+                  class="step-body-error-popup-close"
+                  aria-label="Close"
+                  onClick={() => {
+                    popupOpen.value = false;
+                  }}
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+              <ul class="step-body-error-popup-list">
+                {diagnostics.value.map((d, i) => (
+                  <li
+                    key={`${d.start}-${i}`}
+                    class="step-body-error-popup-item"
+                  >
+                    <code class="step-body-error-popup-snippet">
+                      <ContextSnippet source={value} diagnostic={d} />
+                    </code>
+                    <div class="step-body-error-popup-message">
+                      {renderMessage(d.message)}
+                    </div>
+                    {d.fix && (
+                      <button
+                        type="button"
+                        class="step-body-error-popup-fix"
+                        onClick={() => {
+                          const fix = d.fix!;
+                          onValueChange(
+                            value.slice(0, fix.start) + fix.replacement +
+                              value.slice(fix.end),
+                          );
+                          // Offsets after this point have shifted, so the rest
+                          // of the list is stale — close rather than mislead.
+                          popupOpen.value = false;
+                        }}
+                      >
+                        {d.fix.label}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul class="step-body-error-popup-list">
-              {diagnostics.value.map((d, i) => (
-                <li key={`${d.start}-${i}`} class="step-body-error-popup-item">
-                  <code class="step-body-error-popup-snippet">
-                    <ContextSnippet source={value} diagnostic={d} />
-                  </code>
-                  <div class="step-body-error-popup-message">
-                    {renderMessage(d.message)}
-                  </div>
-                </li>
-              ))}
-            </ul>
           </div>
-        </div>
-      )}
-      {tooltip.value && (
-        <div
-          class="step-body-tooltip"
-          role="tooltip"
-          style={{
-            position: "fixed",
-            left: `${tooltip.value.left}px`,
-            top: `${tooltip.value.top}px`,
-          }}
-        >
-          <span class="step-body-tooltip-icon" aria-hidden="true">●</span>
-          <span class="step-body-tooltip-msg">
-            {renderMessage(tooltip.value.message)}
-          </span>
+        )}
+        {tooltip.value && (
+          <div
+            class="step-body-tooltip"
+            role="tooltip"
+            style={{
+              position: "fixed",
+              left: `${tooltip.value.left}px`,
+              top: `${tooltip.value.top}px`,
+            }}
+          >
+            <span class="step-body-tooltip-icon" aria-hidden="true">●</span>
+            <span class="step-body-tooltip-msg">
+              {renderMessage(tooltip.value.message)}
+            </span>
+          </div>
+        )}
+      </div>
+      {insertable.length > 0 && (
+        <div class="flex flex-wrap items-center gap-1 mt-1">
+          <span class="text-xs text-stone-500 mr-0.5">Insert:</span>
+          {insertable.map((ing) => (
+            <button
+              key={ing.key}
+              type="button"
+              class="step-body-insert-chip"
+              title={`Insert {{ ${ing.key} }} — scales with the recipe`}
+              // Keep the caret where it was; the chip must not steal focus.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => insertToken(ing.key)}
+            >
+              {ing.name.trim() || ing.key}
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -496,6 +662,37 @@ function measureAt(node: Text, offset: number): DOMRect {
 // ── Cursor → text offset ──────────────────────────────────────────────────
 
 /**
+ * Character offset of (`node`, `offsetInNode`) within `root.textContent`.
+ * Same traversal `caretOffsetFromPoint` uses, factored out so the insert bar
+ * can locate the caret from a Selection rather than a mouse position.
+ */
+function nodeOffsetToTextOffset(
+  root: HTMLElement,
+  node: Node,
+  offsetInNode: number,
+): number | null {
+  if (node === root) {
+    let acc = 0;
+    for (let i = 0; i < offsetInNode && i < root.childNodes.length; i++) {
+      acc += (root.childNodes[i].textContent ?? "").length;
+    }
+    return acc;
+  }
+  let total = 0;
+  for (const child of Array.from(root.childNodes)) {
+    if (child === node || child.contains(node)) return total + offsetInNode;
+    if (child.nodeType === Node.TEXT_NODE) {
+      total += (child as Text).data.length;
+    } else if ((child as Element).tagName === "BR") {
+      total += 1;
+    } else {
+      total += (child.textContent ?? "").length;
+    }
+  }
+  return null;
+}
+
+/**
  * Map a viewport (`clientX`, `clientY`) point to a character offset within
  * `root.textContent`. Returns null if the point isn't over text inside
  * `root`. Works on both Gecko (`caretPositionFromPoint`) and Blink/WebKit
@@ -568,8 +765,74 @@ function collect(source: string, ctx: StepBodyContext): CollectResult {
   const ast = parseTemplate(source);
   const tokens: HighlightToken[] = [];
   const diagnostics: StepBodyDiagnostic[] = [];
-  for (const node of ast.nodes) emitNode(node, ctx, tokens, diagnostics);
+  for (const node of ast.nodes) {
+    emitNode(node, ctx, tokens, diagnostics);
+    if (node.kind === "text") {
+      lintLiteralAmounts(node.value, node.start, ctx, tokens, diagnostics);
+    }
+  }
   return { tokens, diagnostics };
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Flag a typed-out amount that names a declared ingredient — `50g butter`
+ * where `butter` is declared as 50 g.
+ *
+ * The editor already catches misspelled keys beautifully, but a correctly
+ * spelled bare number got nothing at all, even though it's the failure that
+ * costs users: it silently doesn't scale, so at 8 servings the step says 50g
+ * while the ingredient list says 100 g and the recipe contradicts itself.
+ * Only reachable for a reader who scaled, which is why it needs flagging at
+ * author time.
+ *
+ * A warning, not an error: the text is valid, just not scalable.
+ */
+function lintLiteralAmounts(
+  text: string,
+  offset: number,
+  ctx: StepBodyContext,
+  tokens: HighlightToken[],
+  diagnostics: StepBodyDiagnostic[],
+): void {
+  const ingredients = ctx.ingredients;
+  if (!ingredients || ingredients.length === 0) return;
+
+  for (const ing of ingredients) {
+    const name = ing.name.trim();
+    if (!name || !ing.key) continue;
+    // `<number> [unit] <name>` — the unit is optional so bare countables
+    // ("2 onions") are caught too. Trailing "s" allows the plural.
+    const unitPart = ing.unit.trim()
+      ? `(?:\\s*${escapeRegExp(ing.unit.trim())}\\b)?`
+      : "";
+    const re = new RegExp(
+      `\\b\\d+(?:[.,]\\d+)?${unitPart}\\s+${escapeRegExp(name)}s?\\b`,
+      "gi",
+    );
+    for (const m of text.matchAll(re)) {
+      const start = offset + (m.index ?? 0);
+      const end = start + m[0].length;
+      tokens.push({ start, end, label: "tpl-warning", priority: 5 });
+      diagnostics.push({
+        start,
+        end,
+        severity: "warning",
+        message: `\`${m[0]}\` is typed out, so it won't scale with the ` +
+          `recipe — double the servings and this still says ` +
+          `\`${m[0]}\`. Use \`{{ ${ing.key} }}\` instead.`,
+        fix: {
+          start,
+          end,
+          replacement: `{{ ${ing.key} }}`,
+          label: `Replace with {{ ${ing.key} }}`,
+        },
+      });
+    }
+  }
 }
 
 function emitNode(
@@ -683,14 +946,13 @@ function emitExpr(
         ctx.ingredientKeys.has(lowerFirst(expr.name)) ||
         expr.name === "ratio";
       if (!known) {
-        pushInvalid(
+        pushUnknownKey(
           tokens,
           diagnostics,
-          expr.start,
-          expr.length,
-          `There's no ingredient called \`${expr.name}\`. ` +
-            "Add it to the ingredients list above, " +
-            "or check that the spelling matches.",
+          ctx,
+          expr.name,
+          { start: expr.start, length: expr.length },
+          { start: expr.start, end: expr.start + expr.length },
         );
         return;
       }
@@ -699,14 +961,14 @@ function emitExpr(
     }
     case "property": {
       if (!ctx.ingredientKeys.has(expr.object)) {
-        pushInvalid(
+        pushUnknownKey(
           tokens,
           diagnostics,
-          expr.start,
-          expr.length,
-          `There's no ingredient called \`${expr.object}\`. ` +
-            "Add it to the ingredients list above, " +
-            "or check that the spelling matches.",
+          ctx,
+          expr.object,
+          { start: expr.start, length: expr.length },
+          // Only the object part is wrong; `.amount` stays as written.
+          { start: expr.start, end: expr.start + expr.object.length },
         );
         return;
       }
@@ -875,6 +1137,7 @@ function pushInvalid(
   start: number,
   length: number,
   message: string,
+  fix?: StepBodyDiagnostic["fix"],
 ): void {
   if (length <= 0) return;
   tokens.push({
@@ -883,7 +1146,40 @@ function pushInvalid(
     label: "tpl-invalid",
     priority: 10,
   });
-  diagnostics.push({ start, end: start + length, message });
+  diagnostics.push({ start, end: start + length, message, fix });
+}
+
+/**
+ * "There's no ingredient called `buttr`" — with the near-match named, and
+ * offered as a one-click fix, since the list of valid keys is right there.
+ */
+function pushUnknownKey(
+  tokens: HighlightToken[],
+  diagnostics: StepBodyDiagnostic[],
+  ctx: StepBodyContext,
+  name: string,
+  range: { start: number; length: number },
+  fixRange: { start: number; end: number },
+): void {
+  const suggestion = nearestKey(name, ctx.ingredientKeys);
+  pushInvalid(
+    tokens,
+    diagnostics,
+    range.start,
+    range.length,
+    `There's no ingredient called \`${name}\`. ` +
+      (suggestion
+        ? `Did you mean \`${suggestion}\`?`
+        : "Add it to the ingredients list above, " +
+          "or check that the spelling matches."),
+    suggestion
+      ? {
+        ...fixRange,
+        replacement: suggestion,
+        label: `Change to ${suggestion}`,
+      }
+      : undefined,
+  );
 }
 
 function lowerFirst(s: string): string {

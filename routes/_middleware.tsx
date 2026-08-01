@@ -8,7 +8,7 @@ import {
   transaction,
 } from "../db/mod.ts";
 import { getSessionIdFromRequest } from "../lib/auth.ts";
-import { countOutstandingLines } from "../lib/shopping-list.ts";
+import { loadSessionState } from "../lib/session.ts";
 import { deleteFile } from "../lib/s3.ts";
 
 export interface State extends ParentState {
@@ -24,64 +24,17 @@ export interface State extends ParentState {
 }
 
 export default middleware(async function (ctx) {
+  if (getSessionIdFromRequest(ctx.req) && Math.random() < 0.01) {
+    // Opportunistic cleanup (~1% of authenticated requests)
+    query("DELETE FROM sessions WHERE expires_at < now()").catch(() => {});
+    cleanupOrphanedMedia(deleteFile).catch(() => {});
+  }
+
   const state = {
     db: { query, transaction },
-    user: null,
-    unitSystem: "metric",
-    shoppingListCount: 0,
-    householdId: null,
+    ...(await loadSessionState(ctx.req)),
     pageTitle: "Foodex",
   } satisfies State as State;
-
-  const sessionId = getSessionIdFromRequest(ctx.req);
-  if (sessionId) {
-    // Opportunistic cleanup (~1% of requests)
-    if (Math.random() < 0.01) {
-      query("DELETE FROM sessions WHERE expires_at < now()").catch(() => {});
-      cleanupOrphanedMedia(deleteFile).catch(() => {});
-    }
-
-    // Single query: user + household.
-    const result = await query<{
-      id: string;
-      name: string;
-      email: string | null;
-      avatar_url: string | null;
-      unit_system: string | null;
-      household_id: string | null;
-    }>(
-      `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system,
-              h.id as household_id
-       FROM sessions s
-       JOIN users u ON u.id = s.user_id
-       LEFT JOIN household_members hm ON hm.user_id = u.id
-       LEFT JOIN households h ON h.id = hm.household_id
-       WHERE s.id = $1 AND s.expires_at > now()
-       LIMIT 1`,
-      [sessionId],
-    );
-    if (result.rows.length > 0) {
-      const row = result.rows[0];
-      const unitSystem = (row.unit_system ?? "metric") as UnitSystem;
-      state.user = {
-        id: row.id,
-        name: row.name,
-        email: row.email,
-        avatar_url: row.avatar_url,
-        unit_system: unitSystem,
-      };
-      state.unitSystem = unitSystem;
-      state.householdId = row.household_id;
-      // The list is a projection now, so the badge is derived rather than a
-      // row count. Kept to one query — this runs on every request.
-      if (row.household_id) {
-        state.shoppingListCount = await countOutstandingLines(
-          { query },
-          row.household_id,
-        );
-      }
-    }
-  }
 
   // Require household for authenticated users (onboarding).
   if (state.user && !state.householdId) {

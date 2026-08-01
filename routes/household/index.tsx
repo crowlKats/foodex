@@ -689,15 +689,25 @@ export default page(function HouseholdDetailPage(
                             key={inv.id}
                             class="flex items-center gap-2 text-sm bg-stone-50 dark:bg-stone-800 p-2 border border-stone-200 dark:border-stone-700"
                           >
+                            {
+                              /*
+                              min-w-0: a flex item's default min-width is its
+                              content, so this read-only input refused to
+                              shrink and pushed the Share button and the
+                              revoke icon out past the row's border.
+                            */
+                            }
                             <Input
                               type="text"
                               readOnly
                               value={inviteUrl}
-                              class="flex-1 bg-transparent border-none p-0 h-auto"
+                              class="flex-1 min-w-0 bg-transparent border-none p-0 h-auto"
                               size="xs"
                             />
-                            <ShareButton url={inviteUrl} />
-                            <form method="POST" class="inline">
+                            <div class="shrink-0">
+                              <ShareButton url={inviteUrl} />
+                            </div>
+                            <form method="POST" class="inline shrink-0">
                               <input
                                 type="hidden"
                                 name="_method"

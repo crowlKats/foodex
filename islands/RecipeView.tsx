@@ -5,10 +5,11 @@ import {
   formatCurrency,
   formatInputValue,
 } from "../lib/format.ts";
-import { computeScaleRatio } from "../lib/quantity.ts";
+import { computeScaleRatio, formatQuantity } from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
 import { computeAvailability, isAvailable } from "../lib/inventory.ts";
+import { apiErrorMessage } from "../lib/api-error.ts";
 import { formatTimer } from "../lib/timer.ts";
 import {
   computeSectionLayout,
@@ -32,6 +33,8 @@ interface ActiveTimer {
   totalSeconds: number;
   remaining: number;
   done: boolean;
+  /** Cooking timers get paused constantly — something boils over, the phone rings. */
+  paused: boolean;
 }
 
 interface RecipeStep {
@@ -51,6 +54,8 @@ interface RecipeIngredient {
   base_cost?: number; // cost at the recipe's default quantity
   currency?: string;
   density?: number | null;
+  /** Water and the like — scales, but is never bought or counted missing. */
+  always_on_hand?: boolean;
 }
 
 interface RecipeTool {
@@ -143,6 +148,8 @@ export default function RecipeView(
   }
 
   function isInPantry(ing: RecipeIngredient, ratio: number): boolean {
+    // Water is measured, not shopped for — it never counts against you.
+    if (ing.always_on_hand) return true;
     return isAvailable(availabilityOf(ing, ratio));
   }
 
@@ -150,7 +157,21 @@ export default function RecipeView(
   function neededAmount(ing: RecipeIngredient, ratio: number): number | null {
     return availabilityOf(ing, ratio).needed;
   }
-  const addedToList = useSignal<string | null>(null);
+  /** Stable per-row identity; `key` is optional on an ingredient. */
+  function ingredientKey(ing: RecipeIngredient): string {
+    return ing.key || ing.name;
+  }
+
+  /**
+   * Transient per-row confirmation for the `+` button. Previously the only
+   * feedback was the glyph changing colour, so you had to leave the page to
+   * find out whether the click did anything.
+   */
+  const addedToList = useSignal<
+    { key: string; label: string; failed?: boolean } | null
+  >(null);
+  /** "Plan this" / "Add missing to shopping list" confirmation. */
+  const planAdded = useSignal(false);
   const subsOpen = useSignal<string | null>(null);
   const subsLoading = useSignal(false);
   const subsCache = useSignal<Record<string, Substitution[]>>({});
@@ -375,6 +396,17 @@ export default function RecipeView(
   }
 
   /**
+   * The metadata line under the title is server-rendered outside this island,
+   * so it kept showing the authored servings while the scaler showed another.
+   * No dependency array: it re-runs on every render, which is exactly when a
+   * target signal has changed.
+   */
+  useEffect(() => {
+    const el = document.querySelector("[data-recipe-quantity]");
+    if (el) el.textContent = formatQuantity(getTarget());
+  });
+
+  /**
    * Planning the meal is what puts it on the shopping list.
    *
    * The entry stores the scale rather than a snapshot of missing amounts, so
@@ -393,10 +425,10 @@ export default function RecipeView(
       }),
     });
     if (res.ok) {
-      addedToList.value = "all";
+      planAdded.value = true;
       planDate.value = "";
       setTimeout(() => {
-        addedToList.value = null;
+        planAdded.value = false;
       }, 2500);
     }
   }
@@ -404,14 +436,17 @@ export default function RecipeView(
   async function addOneToShoppingList(ing: RecipeIngredient) {
     const ratio = getCurrentRatio();
     const needed = neededAmount(ing, ratio);
+    const key = ingredientKey(ing);
     if (needed === 0) {
-      addedToList.value = ing.key;
+      // Already covered by the pantry — nothing to add, but say so rather than
+      // leaving the click looking like it did nothing.
+      addedToList.value = { key, label: "already in pantry" };
       setTimeout(() => {
         addedToList.value = null;
-      }, 1500);
+      }, 2500);
       return;
     }
-    await fetch("/api/shopping-list", {
+    const res = await fetch("/api/shopping-list", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -423,10 +458,14 @@ export default function RecipeView(
         note: `For ${recipeTitle}`,
       }),
     });
-    addedToList.value = ing.key;
+    addedToList.value = res.ok ? { key, label: "on your list" } : {
+      key,
+      label: await apiErrorMessage(res, "couldn't add"),
+      failed: true,
+    };
     setTimeout(() => {
       addedToList.value = null;
-    }, 1500);
+    }, 2500);
   }
 
   async function fetchSubstitutions(ing: RecipeIngredient) {
@@ -510,7 +549,14 @@ export default function RecipeView(
     const id = ++timerIdCounter.current;
     timers.value = [
       ...timers.value,
-      { id, label, totalSeconds: seconds, remaining: seconds, done: false },
+      {
+        id,
+        label,
+        totalSeconds: seconds,
+        remaining: seconds,
+        done: false,
+        paused: false,
+      },
     ];
     if (Notification.permission === "default") {
       Notification.requestPermission();
@@ -522,13 +568,19 @@ export default function RecipeView(
     timers.value = timers.value.filter((t) => t.id !== id);
   }
 
+  function toggleTimerPaused(id: number) {
+    timers.value = timers.value.map((t) =>
+      t.id === id && !t.done ? { ...t, paused: !t.paused } : t
+    );
+  }
+
   // Tick active timers every second — stable interval that survives re-renders
   useEffect(() => {
     const interval = setInterval(() => {
       if (timers.value.length === 0) return;
       let changed = false;
       const next = timers.value.map((t) => {
-        if (t.done || t.remaining <= 0) return t;
+        if (t.done || t.paused || t.remaining <= 0) return t;
         changed = true;
         const remaining = t.remaining - 1;
         if (remaining <= 0) {
@@ -702,13 +754,46 @@ export default function RecipeView(
   function cookingNext() {
     if (cookingStep.value < steps.length - 1) {
       cookingStep.value = cookingStep.value + 1;
+      peekReturn.value = null;
     }
   }
 
   function cookingPrev() {
     if (cookingStep.value > 0) {
       cookingStep.value = cookingStep.value - 1;
+      peekReturn.value = null;
     }
+  }
+
+  /**
+   * Step the user was on before following a cross-reference link, so a peek at
+   * "the bolognese from step 5" can be undone. Null when not peeking.
+   */
+  const peekReturn = useSignal<number | null>(null);
+
+  /** `#step-3` → the index of that step, from the same map that renders them. */
+  const anchorToIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    layout.anchors.forEach((anchor, idx) => map.set(anchor, idx));
+    return map;
+  }, [layout]);
+
+  /**
+   * Cross-reference links are plain anchors into the recipe page underneath the
+   * overlay, so in cooking mode they changed the URL and did nothing visible.
+   * Here they move the carousel instead — which matters more in cooking mode
+   * than on the page, since you can't just glance up at the referenced step.
+   */
+  function handleCookingClick(e: MouseEvent) {
+    const anchor = (e.target as HTMLElement | null)?.closest?.("a");
+    const href = anchor?.getAttribute("href");
+    if (!href || !href.startsWith("#")) return;
+    const targetIdx = anchorToIndex.get(href.slice(1));
+    if (targetIdx == null) return;
+    e.preventDefault();
+    if (targetIdx === cookingStep.value) return;
+    peekReturn.value = cookingStep.value;
+    cookingStep.value = targetIdx;
   }
 
   // Keyboard navigation for cooking mode
@@ -798,7 +883,7 @@ export default function RecipeView(
         missing: number;
         unit: string | null;
       }) =>
-        `${s.name} (short ${formatAmount(s.missing)}${
+        `${s.name} (short ${formatAmount(s.missing, s.unit ?? "")}${
           s.unit ? ` ${s.unit}` : ""
         })`
       );
@@ -808,6 +893,54 @@ export default function RecipeView(
     setTimeout(() => {
       cookedStatus.value = "idle";
     }, 3000);
+  }
+
+  /**
+   * The last step used to dead-end on a greyed-out Next. Finishing the final
+   * step is the single best moment to offer "I cooked this" — the action that
+   * deducts from the pantry — and it was the one moment it wasn't offered.
+   */
+  function renderCookingFinish() {
+    if (!loggedIn || !householdId) {
+      return (
+        <button
+          type="button"
+          class="cooking-mode-nav-btn btn-primary"
+          onClick={exitCookingMode}
+        >
+          Done
+        </button>
+      );
+    }
+    if (cookedStatus.value === "done") {
+      // The shortfall list can run to a dozen ingredients, so it goes on its
+      // own line above the bar rather than into this label.
+      return (
+        <button
+          type="button"
+          class="cooking-mode-nav-btn btn-primary"
+          onClick={exitCookingMode}
+        >
+          Deducted from your pantry — close
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        class="cooking-mode-nav-btn btn-primary"
+        disabled={cookedStatus.value === "loading"}
+        onClick={async () => {
+          await markCooked();
+          // Leave the overlay up briefly so the shortfall summary is readable.
+          setTimeout(exitCookingMode, 2500);
+        }}
+      >
+        {cookedStatus.value === "loading"
+          ? "Updating…"
+          : "Done — I cooked this"}
+      </button>
+    );
   }
 
   return (
@@ -843,7 +976,7 @@ export default function RecipeView(
                   class="flex-1"
                   onClick={() => addToPlan(null)}
                 >
-                  {addedToList.value === "all" ? "Added to plan!" : "Plan this"}
+                  {planAdded.value ? "Added to plan!" : "Plan this"}
                 </Button>
                 <Button
                   type="button"
@@ -928,9 +1061,12 @@ export default function RecipeView(
                 const cost = ing.base_cost != null
                   ? ing.base_cost * ratio
                   : undefined;
-                const ingKey = ing.key || ing.name;
+                const ingKey = ingredientKey(ing);
                 const isSubsOpen = subsOpen.value === ingKey;
                 const subs = subsCache.value[ingKey];
+                const added = addedToList.value?.key === ingKey
+                  ? addedToList.value
+                  : null;
                 return (
                   <li
                     key={ingKey}
@@ -938,17 +1074,34 @@ export default function RecipeView(
                   >
                     <div class="flex justify-between items-baseline gap-2">
                       <span class="flex items-baseline gap-1">
-                        {loggedIn && (
+                        {loggedIn && !ing.always_on_hand && (
                           <button
                             type="button"
-                            class="text-stone-400 hover:text-orange-600 cursor-pointer text-xs leading-none"
-                            title="Add to shopping list"
+                            class={`cursor-pointer text-xs leading-none ${
+                              added
+                                ? added.failed
+                                  ? "text-red-600 dark:text-red-400"
+                                  : "text-green-600 dark:text-green-400"
+                                : "text-stone-400 hover:text-orange-600"
+                            }`}
+                            title={`Add ${ing.name} to the shopping list`}
+                            aria-label={`Add ${ing.name} to the shopping list`}
                             onClick={() => addOneToShoppingList(ing)}
                           >
-                            {addedToList.value === ing.key ? "\u2713" : "+"}
+                            {added ? "\u2713" : "+"}
                           </button>
                         )}
                         {(() => {
+                          if (ing.always_on_hand) {
+                            return (
+                              <span
+                                class="text-xs leading-none text-stone-400"
+                                title="Always on hand \u2014 scales with the recipe, but never goes on the shopping list"
+                              >
+                                &#x25cb;
+                              </span>
+                            );
+                          }
                           const availability = availabilityOf(ing, ratio);
                           if (!availability.present) return null;
                           const covered = isAvailable(availability);
@@ -964,7 +1117,10 @@ export default function RecipeView(
                                   ? "Staple — always on hand"
                                   : "In pantry"
                                 : `In pantry, but ${
-                                  formatAmount(availability.needed ?? 0)
+                                  formatAmount(
+                                    availability.needed ?? 0,
+                                    ing.unit,
+                                  )
                                 }${ing.unit ? ` ${ing.unit}` : ""} short`}
                             >
                               &#x25cf;
@@ -1010,6 +1166,17 @@ export default function RecipeView(
                         </span>
                       </span>
                       <span class="flex items-baseline gap-2">
+                        {added && (
+                          <span
+                            class={`text-xs whitespace-nowrap ${
+                              added.failed
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-green-600 dark:text-green-400"
+                            }`}
+                          >
+                            {added.label}
+                          </span>
+                        )}
                         {cost != null && (
                           <span class="text-stone-400 text-xs whitespace-nowrap">
                             {getCurrencySymbol(ing.currency ?? "EUR")}
@@ -1024,7 +1191,8 @@ export default function RecipeView(
                                 ? "text-orange-600"
                                 : "text-stone-400 hover:text-orange-600"
                             }`}
-                            title="Substitution suggestions"
+                            title={`Suggest substitutions for ${ing.name}`}
+                            aria-label={`Suggest substitutions for ${ing.name}`}
                             onClick={() => fetchSubstitutions(ing)}
                           >
                             &#x21c4;
@@ -1094,7 +1262,7 @@ export default function RecipeView(
                 title="Plans this meal at the current scale. Whatever the pantry can't cover shows up on the shopping list."
                 onClick={() => addToPlan(null)}
               >
-                {addedToList.value === "all"
+                {planAdded.value
                   ? "On the plan!"
                   : "Add missing to shopping list"}
               </Button>
@@ -1150,8 +1318,10 @@ export default function RecipeView(
       </div>
       {timers.value.length > 0 && (
         <div
-          class={`fixed bottom-4 right-4 flex flex-col gap-2 max-w-xs ${
-            cookingMode.value ? "z-[110]" : "z-50"
+          // In cooking mode the nav bar owns the bottom of the screen, and the
+          // panel used to sit on top of the Next button.
+          class={`fixed right-4 flex flex-col gap-2 max-w-xs ${
+            cookingMode.value ? "bottom-28 z-[110]" : "bottom-4 z-50"
           }`}
         >
           {timers.value.map((t) => (
@@ -1172,13 +1342,29 @@ export default function RecipeView(
                       : "text-stone-900 dark:text-stone-100"
                   }`}
                 >
-                  {t.done ? "Done!" : formatTimer(t.remaining)}
+                  {t.done
+                    ? "Done!"
+                    : t.paused
+                    ? `${formatTimer(t.remaining)} — paused`
+                    : formatTimer(t.remaining)}
                 </div>
               </div>
+              {!t.done && (
+                <button
+                  type="button"
+                  class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer text-lg leading-none"
+                  title={t.paused ? "Resume timer" : "Pause timer"}
+                  aria-label={t.paused ? "Resume timer" : "Pause timer"}
+                  onClick={() => toggleTimerPaused(t.id)}
+                >
+                  {t.paused ? "▶" : "⏸"}
+                </button>
+              )}
               <button
                 type="button"
                 class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer text-lg leading-none"
-                title="Dismiss"
+                title="Dismiss timer"
+                aria-label="Dismiss timer"
                 onClick={() => dismissTimer(t.id)}
               >
                 &times;
@@ -1188,7 +1374,11 @@ export default function RecipeView(
         </div>
       )}
       {cookingMode.value && isLinearRecipe && (
-        <div class="cooking-mode" ref={cookingRef}>
+        <div
+          class="cooking-mode cooking-mode-focus"
+          ref={cookingRef}
+          onClick={handleCookingClick}
+        >
           <div class="cooking-mode-header">
             <button
               type="button"
@@ -1203,11 +1393,13 @@ export default function RecipeView(
                 <button
                   key={i}
                   type="button"
+                  aria-label={`Go to step ${layout.displayNum[i]}`}
                   class={`cooking-mode-dot ${
                     i === cookingStep.value ? "active" : ""
                   } ${i < cookingStep.value ? "done" : ""}`}
                   onClick={() => {
                     cookingStep.value = i;
+                    peekReturn.value = null;
                   }}
                 />
               ))}
@@ -1217,58 +1409,81 @@ export default function RecipeView(
             </div>
           </div>
           <div class="cooking-mode-body recipe-body">
-            {(() => {
-              const { section, num } = getCookingStepLabel(cookingStep.value);
-              const titleText = steps[cookingStep.value].title.trim();
-              return (
-                <>
-                  {section && (
-                    <div class="text-xs font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
-                      {section}
-                    </div>
-                  )}
-                  {titleText
-                    ? (
-                      <div class="cooking-mode-step-title">
-                        <span class="text-stone-400 mr-2">{num}.</span>
-                        {titleText}
-                      </div>
-                    )
-                    : (
-                      <div class="text-sm font-semibold text-stone-400 mb-3">
-                        {num}.
+            <div class="cooking-mode-body-inner">
+              {peekReturn.value != null && (
+                <button
+                  type="button"
+                  class="mb-4 text-sm font-medium text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                  onClick={() => {
+                    cookingStep.value = peekReturn.value!;
+                    peekReturn.value = null;
+                  }}
+                >
+                  ← Back to step {layout.displayNum[peekReturn.value]}
+                </button>
+              )}
+              {(() => {
+                const { section, num } = getCookingStepLabel(cookingStep.value);
+                const titleText = steps[cookingStep.value].title.trim();
+                return (
+                  <>
+                    {section && (
+                      <div class="text-xs font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
+                        {section}
                       </div>
                     )}
-                </>
-              );
-            })()}
-            <div class="cooking-mode-step-content">
-              {cookingStepBody(cookingStep.value)}
+                    {titleText
+                      ? (
+                        <div class="cooking-mode-step-title">
+                          <span class="text-stone-400 mr-2">{num}.</span>
+                          {titleText}
+                        </div>
+                      )
+                      : (
+                        <div class="text-sm font-semibold text-stone-400 mb-3">
+                          {num}.
+                        </div>
+                      )}
+                  </>
+                );
+              })()}
+              <div class="cooking-mode-step-content">
+                {cookingStepBody(cookingStep.value)}
+              </div>
+              {ingredients.length > 0 && (
+                <details class="cooking-mode-ingredients">
+                  <summary>Ingredients</summary>
+                  <ul>
+                    {ingredients.map((ing) => {
+                      const ratio = getCurrentRatio();
+                      const scaled = ing.amount * ratio;
+                      return (
+                        <li key={ing.key || ing.name}>
+                          {(() => {
+                            const d = displayUnit(
+                              scaled,
+                              ing.unit,
+                              ing.density,
+                            );
+                            return (
+                              <span class="font-semibold">
+                                {d.text} {d.unit}
+                              </span>
+                            );
+                          })()} {ing.name}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </details>
+              )}
             </div>
-            {ingredients.length > 0 && (
-              <details class="cooking-mode-ingredients">
-                <summary>Ingredients</summary>
-                <ul>
-                  {ingredients.map((ing) => {
-                    const ratio = getCurrentRatio();
-                    const scaled = ing.amount * ratio;
-                    return (
-                      <li key={ing.key || ing.name}>
-                        {(() => {
-                          const d = displayUnit(scaled, ing.unit, ing.density);
-                          return (
-                            <span class="font-semibold">
-                              {d.text} {d.unit}
-                            </span>
-                          );
-                        })()} {ing.name}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </details>
-            )}
           </div>
+          {cookedStatus.value === "done" && cookedShort.value.length > 0 && (
+            <div class="shrink-0 px-4 py-2 text-sm text-amber-600 dark:text-amber-400 border-t-2 border-stone-200 dark:border-stone-700">
+              Pantry was short on: {cookedShort.value.join(", ")}
+            </div>
+          )}
           <div class="cooking-mode-nav">
             <button
               type="button"
@@ -1278,14 +1493,17 @@ export default function RecipeView(
             >
               Prev
             </button>
-            <button
-              type="button"
-              class="cooking-mode-nav-btn"
-              disabled={cookingStep.value === steps.length - 1}
-              onClick={cookingNext}
-            >
-              Next
-            </button>
+            {cookingStep.value === steps.length - 1
+              ? renderCookingFinish()
+              : (
+                <button
+                  type="button"
+                  class="cooking-mode-nav-btn"
+                  onClick={cookingNext}
+                >
+                  Next
+                </button>
+              )}
           </div>
         </div>
       )}
@@ -1370,9 +1588,12 @@ export default function RecipeView(
             {allDone
               ? (
                 <div class="cooking-mode-body">
-                  <div class="text-center py-12">
-                    <div class="text-3xl font-bold mb-2">Done!</div>
-                    <div class="text-stone-500">All steps completed.</div>
+                  <div class="cooking-mode-body-inner text-center">
+                    <div class="text-4xl font-bold mb-2">Done!</div>
+                    <div class="text-stone-500 mb-6">All steps completed.</div>
+                    <div class="max-w-sm mx-auto flex">
+                      {renderCookingFinish()}
+                    </div>
                   </div>
                 </div>
               )

@@ -3,6 +3,20 @@ import type { Household } from "../../db/types.ts";
 import { Button } from "../../components/Button.tsx";
 import { Select } from "../../components/Select.tsx";
 
+/** Sections the mobile tab bar has no room for. */
+const MORE_LINKS = [
+  { href: "/agent", label: "Assistant", detail: "ask about your kitchen" },
+  { href: "/collections", label: "Collections", detail: "grouped recipes" },
+  {
+    href: "/ingredients",
+    label: "Ingredients",
+    detail: "the shared catalog",
+  },
+  { href: "/stores", label: "Stores", detail: "shops and prices" },
+  { href: "/tools", label: "Tools", detail: "your cookware" },
+  { href: "/docs/guide", label: "User guide", detail: "how Foodex works" },
+];
+
 export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) {
@@ -93,7 +107,7 @@ export default page(
         </div>
 
         {data.householdName && (
-          <div class="card">
+          <div class="card mb-4">
             <h2 class="text-lg font-semibold mb-2">Household</h2>
             <a
               href="/household"
@@ -103,6 +117,36 @@ export default page(
             </a>
           </div>
         )}
+
+        {
+          /*
+          The mobile tab bar only fits the six core destinations, and the top
+          bar has room for icons — so Assistant, Ingredients, Stores and Tools
+          had no route at all on a phone. The avatar leads here, so this is
+          where the rest of the app lives.
+        */
+        }
+        <div class="card mb-4 sm:hidden">
+          <h2 class="text-lg font-semibold mb-2">More</h2>
+          <ul class="space-y-1">
+            {MORE_LINKS.map((l) => (
+              <li key={l.href}>
+                <a href={l.href} class="link">{l.label}</a>
+                <span class="text-stone-500 text-sm">{` — ${l.detail}`}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {
+          /* Sign out lived only in the desktop header, so on a phone there was
+            no way to sign out at all. */
+        }
+        <form method="POST" action="/auth/logout">
+          <Button type="submit" variant="danger-outline" class="w-full">
+            Sign out
+          </Button>
+        </form>
       </div>
     );
   },

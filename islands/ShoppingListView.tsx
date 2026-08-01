@@ -1,4 +1,6 @@
 import { useSignal } from "@preact/signals";
+import type { ComponentChildren } from "preact";
+import ConfirmButton from "./ConfirmButton.tsx";
 import { computeIngredientCost } from "../lib/unit-convert.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
 import { formatAmount, formatCurrency } from "../lib/format.ts";
@@ -83,8 +85,25 @@ export default function ShoppingListView(
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (Array.isArray(data.lines)) lines.value = data.lines as ShoppingLine[];
+    if (Array.isArray(data.lines)) {
+      lines.value = data.lines as ShoppingLine[];
+      syncNavBadge(lines.value);
+    }
     return data;
+  }
+
+  /**
+   * The nav badge is server-rendered, so without this it kept the count the
+   * page loaded with until the next navigation — reading "12" beside eleven
+   * remaining rows.
+   */
+  function syncNavBadge(current: ShoppingLine[]) {
+    if (typeof document === "undefined") return;
+    const count = current.filter((l) => !l.purchase).length;
+    for (const el of document.querySelectorAll("[data-shopping-badge]")) {
+      el.textContent = String(count);
+      el.classList.toggle("hidden", count === 0);
+    }
   }
 
   function setViewMode(mode: ViewMode) {
@@ -193,7 +212,7 @@ export default function ShoppingListView(
     return (
       <div
         key={line.key}
-        class={`card flex items-center gap-2 py-2 px-3 ${
+        class={`flex items-center gap-2 py-1.5 px-2 border-b border-stone-200 dark:border-stone-800 last:border-b-0 ${
           bought ? "opacity-50" : ""
         }`}
       >
@@ -203,6 +222,14 @@ export default function ShoppingListView(
             checked={bought}
             disabled={busy.value === line.key}
             class="size-4 cursor-pointer accent-orange-600"
+            // Ticking a line is a purchase, not just a tick: it books the stock
+            // into the pantry, which later gets deducted when you cook. Say so.
+            aria-label={bought
+              ? `Un-buy ${line.name} — removes it from the pantry again`
+              : `Bought ${line.name} — adds it to your pantry`}
+            title={bought
+              ? "Bought. Un-ticking takes it back out of the pantry."
+              : "Tick when you've bought it — it goes into your pantry"}
             onChange={() => toggleBought(line)}
           />
         </div>
@@ -210,7 +237,7 @@ export default function ShoppingListView(
           <div class={`text-sm font-medium ${bought ? "line-through" : ""}`}>
             {amount != null && (
               <span class={bought ? "mr-1" : "text-orange-600 mr-1"}>
-                {formatAmount(amount)}
+                {formatAmount(amount, unit)}
                 {unit ? ` ${unit}` : ""}
               </span>
             )}
@@ -222,56 +249,93 @@ export default function ShoppingListView(
               )
               : line.name}
           </div>
-          {!bought && line.have > 0 && (
-            <div class="text-xs text-stone-400">
-              {formatAmount(line.have)}
-              {line.unit ? ` ${line.unit}` : ""} already in the pantry
-            </div>
-          )}
-          {!bought && line.quantityUnknown && line.have === 0 && (
-            <div class="text-xs text-amber-600 dark:text-amber-400">
-              In the pantry, amount not tracked
-            </div>
-          )}
-          {!bought && line.unconvertible && (
-            <div class="text-xs text-amber-600 dark:text-amber-400">
-              Units don't match — check this one yourself
-            </div>
-          )}
-          {showSources && line.sources.length > 0 && (
-            <div class="text-xs text-stone-400">
-              {line.sources.map((s, i) => (
-                <span key={`${s.kind}-${s.id}`}>
-                  {i > 0 && ", "}
-                  {s.kind === "plan" && s.slug
-                    ? <a href={`/recipes/${s.slug}`} class="link">{s.label}</a>
-                    : s.label}
-                </span>
-              ))}
-            </div>
-          )}
+          {
+            /* One meta line rather than a stack — this list is read one-handed
+              in a shop, so every row that grows pushes another off screen. */
+          }
+          {(() => {
+            const notes: ComponentChildren[] = [];
+            if (!bought && line.have > 0) {
+              notes.push(
+                <span class="text-stone-400">
+                  {formatAmount(line.have, line.unit ?? "")}
+                  {line.unit ? ` ${line.unit}` : ""} in pantry
+                </span>,
+              );
+            }
+            if (!bought && line.quantityUnknown && line.have === 0) {
+              notes.push(
+                <span class="text-amber-600 dark:text-amber-400">
+                  In the pantry, amount not tracked
+                </span>,
+              );
+            }
+            if (!bought && line.unconvertible) {
+              notes.push(
+                <span class="text-amber-600 dark:text-amber-400">
+                  Units don't match — check this one yourself
+                </span>,
+              );
+            }
+            if (showSources && line.sources.length > 0) {
+              notes.push(
+                <span class="text-stone-400">
+                  {line.sources.map((s, i) => (
+                    <span key={`${s.kind}-${s.id}`}>
+                      {i > 0 && ", "}
+                      {s.kind === "plan" && s.slug
+                        ? (
+                          <a href={`/recipes/${s.slug}`} class="link">
+                            {s.label}
+                          </a>
+                        )
+                        : s.label}
+                    </span>
+                  ))}
+                </span>,
+              );
+            }
+            if (notes.length === 0) return null;
+            return (
+              <div class="text-xs truncate">
+                {notes.map((n, i) => (
+                  <span key={i}>
+                    {i > 0 && <span class="text-stone-400 mx-1">·</span>}
+                    {n}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         </div>
-        <div class={STORE_COL}>
-          <Select
-            class="py-1 px-1 w-full"
-            size="xs"
-            value={line.store_id ?? ""}
-            onValueChange={(v) => updateStore(line, v || null)}
-          >
-            <option value="">Store...</option>
-            {lineStores.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </Select>
-        </div>
-        <div class={PRICE_COL}>
-          {costInfo && (
-            <span class="text-xs text-stone-500 whitespace-nowrap">
-              {getCurrencySymbol(costInfo.currency)}
-              {formatCurrency(costInfo.cost)}
-            </span>
-          )}
-        </div>
+        {showStoreCol && (
+          <div class={STORE_COL}>
+            {lineStores.length > 0 && (
+              <Select
+                class="py-1 px-1 w-full"
+                size="xs"
+                aria-label={`Store for ${line.name}`}
+                value={line.store_id ?? ""}
+                onValueChange={(v) => updateStore(line, v || null)}
+              >
+                <option value="">Store...</option>
+                {lineStores.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </Select>
+            )}
+          </div>
+        )}
+        {showPriceCol && (
+          <div class={PRICE_COL}>
+            {costInfo && (
+              <span class="text-xs text-stone-500 whitespace-nowrap">
+                {getCurrencySymbol(costInfo.currency)}
+                {formatCurrency(costInfo.cost)}
+              </span>
+            )}
+          </div>
+        )}
         <div class={REMOVE_COL}>
           <button
             type="button"
@@ -295,13 +359,18 @@ export default function ShoppingListView(
     >();
     for (const line of outstanding) {
       const primary = line.sources[0];
+      // Manual demands added from a recipe page carry that recipe's name as
+      // their label. Filing every manual row under one "Added by hand" heading
+      // threw that away — in the view whose whole point is grouping by meal.
       const key = primary?.kind === "plan"
         ? `plan:${primary.id}`
+        : primary?.label
+        ? `manual:${primary.label}`
         : "__manual__";
       let group = groups.get(key);
       if (!group) {
         group = {
-          label: primary?.kind === "plan" ? primary.label : "Added by hand",
+          label: primary?.label ?? "Added by hand",
           slug: primary?.kind === "plan" ? primary.slug ?? null : null,
           lines: [],
         };
@@ -317,7 +386,7 @@ export default function ShoppingListView(
             ? <a href={`/recipes/${group.slug}`} class="link">{group.label}</a>
             : group.label}
         </h3>
-        <div class="space-y-1">
+        <div class="card p-0">
           {group.lines.map((line) => renderLine(line, false))}
         </div>
       </div>
@@ -359,11 +428,14 @@ export default function ShoppingListView(
 
       return (
         <div key={storeId ?? "__none__"}>
-          <div class="flex items-center gap-2 mb-1 px-3">
+          <div class="flex items-center gap-2 mb-1 px-2">
             <div class={CHECK_COL}>
               <input
                 type="checkbox"
                 class="size-3.5 cursor-pointer accent-orange-600"
+                aria-label={`Buy everything from ${
+                  store ? store.name : "no store"
+                } — adds it all to your pantry`}
                 title="Check everything from this store"
                 onChange={async () => {
                   for (const line of groupLines) {
@@ -375,18 +447,20 @@ export default function ShoppingListView(
             <span class="flex-1 text-sm font-semibold text-stone-500">
               {store ? store.name : "No store"}
             </span>
-            <div class={STORE_COL} />
-            <div class={PRICE_COL}>
-              {hasGroupPrice && (
-                <span class="text-xs font-semibold text-orange-600 whitespace-nowrap">
-                  {getCurrencySymbol(groupCurrency)}
-                  {formatCurrency(groupCost)}
-                </span>
-              )}
-            </div>
+            {showStoreCol && <div class={STORE_COL} />}
+            {showPriceCol && (
+              <div class={PRICE_COL}>
+                {hasGroupPrice && (
+                  <span class="text-xs font-semibold text-orange-600 whitespace-nowrap">
+                    {getCurrencySymbol(groupCurrency)}
+                    {formatCurrency(groupCost)}
+                  </span>
+                )}
+              </div>
+            )}
             <div class={REMOVE_COL} />
           </div>
-          <div class="space-y-1">
+          <div class="card p-0">
             {groupLines.map((line) => renderLine(line, true))}
           </div>
         </div>
@@ -396,6 +470,15 @@ export default function ShoppingListView(
 
   const outstanding = lines.value.filter((l) => !l.purchase);
   const bought = lines.value.filter((l) => l.purchase);
+
+  /**
+   * Store and price columns only earn their width once the household has
+   * somewhere to shop. With no stores they were an empty `<select>` on every
+   * row — twelve inert dropdowns on the app's most density-sensitive screen.
+   */
+  const showStoreCol = stores.length > 0 &&
+    lines.value.some((l) => getStoresForLine(l.ingredient_id).length > 0);
+  const showPriceCol = lines.value.some((l) => getCost(l) != null);
 
   let totalCost = 0;
   let totalCurrency = "EUR";
@@ -511,6 +594,9 @@ export default function ShoppingListView(
                 >
                   By store
                 </button>
+                <span class="text-xs text-stone-500 self-center ml-2">
+                  {bought.length} of {lines.value.length} bought
+                </span>
               </div>
               <div class="flex items-center gap-2">
                 {hasAnyPrice && (
@@ -595,14 +681,17 @@ export default function ShoppingListView(
             )}
 
             <div class="text-right">
-              <button
-                type="button"
-                class="text-xs text-stone-400 hover:text-red-500 cursor-pointer"
+              <ConfirmButton
+                variant="danger-ghost"
+                size="xs"
+                class="text-xs"
+                message={"Clear the entire shopping list?\n\n" +
+                  "This deletes every item you added by hand, and stops your " +
+                  "planned meals from feeding the list.\n\nThis can't be undone."}
                 onClick={() => apiCall({ action: "clear_all" })}
-                title="Drops manual items and stops planned meals feeding the list"
               >
                 Clear entire list
-              </button>
+              </ConfirmButton>
             </div>
           </div>
         )}

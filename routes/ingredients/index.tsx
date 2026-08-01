@@ -1,6 +1,7 @@
 import { handler, page } from "./$index.ts";
 import { UnitSelect } from "../../components/UnitSelect.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
+import { EmptyState } from "../../components/EmptyState.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
@@ -232,7 +233,23 @@ export default page(
               All Ingredients ({totalCount})
             </h2>
             {ingredients.length === 0
-              ? <p class="text-stone-500">No ingredients yet.</p>
+              ? q
+                ? (
+                  <EmptyState title={`No ingredients match "${q}"`}>
+                    Nothing in the catalog goes by that name. Try a shorter
+                    search, or add it below.
+                  </EmptyState>
+                )
+                : (
+                  <EmptyState title="No ingredients yet">
+                    Ingredients are the shared catalog that recipes, your pantry
+                    and the shopping list all point at. Linking a recipe line to
+                    one is what lets Foodex track stock, prices and
+                    substitutions across recipes. {loggedIn
+                      ? "Use the Add Ingredient form to create the first one."
+                      : "Sign in to add one."}
+                  </EmptyState>
+                )
               : (
                 <div class="space-y-2">
                   {ingredients.map((g) => (

@@ -50,7 +50,10 @@ export async function parseJsonBody<T>(
 export const PantryAction = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("add"),
-    ingredient_id: uuid.optional(),
+    // Free-text adds send an explicit null when no catalog ingredient is
+    // selected; the add path handles that fine (`resolveIngredient` returns
+    // null), so the schema has to accept it too.
+    ingredient_id: optionalUuid,
     create_ingredient: z.boolean().optional(),
     name: z.string(),
     unit: z.string().nullable().optional(),

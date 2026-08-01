@@ -44,8 +44,13 @@ function MobileTab(
       }`}
     >
       <Icon class="size-5" />
-      {(badge ?? 0) > 0 && (
-        <span class="absolute -top-0.5 left-1/2 ml-1.5 bg-orange-600 text-white text-[9px] font-bold leading-none px-1 py-0.5 rounded-full min-w-3.5 text-center">
+      {badge !== undefined && (
+        <span
+          data-shopping-badge
+          class={`absolute -top-0.5 left-1/2 ml-1.5 bg-orange-600 text-white text-[9px] font-bold leading-none px-1 py-0.5 rounded-full min-w-3.5 text-center${
+            badge > 0 ? "" : " hidden"
+          }`}
+        >
           {badge}
         </span>
       )}
@@ -139,11 +144,14 @@ export function Nav(
                     }`}
                   >
                     Shopping List
-                    {(shoppingListCount ?? 0) > 0 && (
-                      <span class="ml-1.5 bg-orange-600 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full">
-                        {shoppingListCount}
-                      </span>
-                    )}
+                    <span
+                      data-shopping-badge
+                      class={`ml-1.5 bg-orange-600 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full${
+                        (shoppingListCount ?? 0) > 0 ? "" : " hidden"
+                      }`}
+                    >
+                      {shoppingListCount ?? 0}
+                    </span>
                   </a>
                 )}
               </div>

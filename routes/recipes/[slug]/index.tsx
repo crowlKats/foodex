@@ -217,6 +217,7 @@ export const handlers = handler({
           base_cost: baseCost ?? undefined,
           currency: priceInfo?.currency,
           density: i.density,
+          always_on_hand: i.always_on_hand ?? false,
         };
       });
 
@@ -593,7 +594,11 @@ export default page(function RecipeViewPage({
       )}
 
       <div class="flex gap-2 sm:gap-4 text-sm text-stone-500 mt-2 flex-wrap">
-        <span>{formatQuantity(baseQuantity)}</span>
+        {
+          /* Kept in step with the scaler by RecipeView — the two used to sit a
+            few centimetres apart showing different numbers. */
+        }
+        <span data-recipe-quantity>{formatQuantity(baseQuantity)}</span>
         {recipe.difficulty && (
           <span class="capitalize">{recipe.difficulty}</span>
         )}
