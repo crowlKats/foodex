@@ -198,7 +198,7 @@ export default function RecipeView(
       return (
         <div>
           <label class="text-sm font-medium mr-3">Servings:</label>
-          <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
             <button
               type="button"
               class="w-8 h-8 shrink-0 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 font-bold cursor-pointer"
@@ -215,7 +215,7 @@ export default function RecipeView(
               type="number"
               min="1"
               value={formatInputValue(targetValue.value)}
-              class="flex-1 text-center"
+              class="flex-1 min-w-0 text-center"
               onValueChange={(s) => {
                 const v = parseInt(s);
                 if (v > 0) {
@@ -243,13 +243,13 @@ export default function RecipeView(
       return (
         <div>
           <label class="text-sm font-medium mr-3">Weight:</label>
-          <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
             <Input
               type="number"
               min="0"
               step="any"
               value={formatInputValue(targetValue.value)}
-              class="flex-1 text-center"
+              class="flex-1 min-w-0 text-center"
               onValueChange={(s) => {
                 const v = parseFloat(s);
                 if (v > 0) {
@@ -278,13 +278,13 @@ export default function RecipeView(
       return (
         <div>
           <label class="text-sm font-medium mr-3">Volume:</label>
-          <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
             <Input
               type="number"
               min="0"
               step="any"
               value={formatInputValue(targetValue.value)}
-              class="flex-1 text-center"
+              class="flex-1 min-w-0 text-center"
               onValueChange={(s) => {
                 const v = parseFloat(s);
                 if (v > 0) {
