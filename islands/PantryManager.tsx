@@ -5,6 +5,7 @@ import type { SearchSelectOption } from "./SearchSelect.tsx";
 import ScanView from "./ScanView.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import { findDuplicates } from "../lib/inventory.ts";
+import { apiErrorMessage } from "../lib/api-error.ts";
 import { formatInputValue } from "../lib/format.ts";
 import { IconTrash } from "@tabler/icons-preact";
 import { IconAlertTriangle } from "@tabler/icons-preact";
@@ -71,7 +72,13 @@ export default function PantryManager(
   const newUnit = useSignal("");
   const newExpiresAt = useSignal("");
   const saving = useSignal(false);
+  const addError = useSignal("");
   const scanning = useSignal(false);
+  /**
+   * Bumped after a successful add to remount SearchSelect, whose query text is
+   * internal state that doesn't track the cleared `selectedIngredient`.
+   */
+  const addFormKey = useSignal(0);
 
   // Auto-open scanner when ?scan=1 is in the URL
   useEffect(() => {
@@ -118,6 +125,7 @@ export default function PantryManager(
     if (!name) return;
 
     saving.value = true;
+    addError.value = "";
     const res = await fetch(`/api/pantry`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -151,6 +159,9 @@ export default function PantryManager(
       newAmount.value = "";
       newUnit.value = "";
       newExpiresAt.value = "";
+      addFormKey.value++;
+    } else {
+      addError.value = await apiErrorMessage(res, "Couldn't add that item.");
     }
     saving.value = false;
   }
@@ -299,6 +310,7 @@ export default function PantryManager(
             <div>
               <label class="block text-sm font-medium mb-1">Ingredient</label>
               <SearchSelect
+                key={addFormKey.value}
                 value={selectedIngredient.value}
                 options={options}
                 placeholder="Search ingredients..."
@@ -359,6 +371,15 @@ export default function PantryManager(
                 onValueChange={(v) => newExpiresAt.value = v}
               />
             </div>
+            {addError.value && (
+              <p
+                role="alert"
+                class="flex items-start gap-2 text-sm text-red-600 dark:text-red-400"
+              >
+                <IconAlertTriangle class="size-4 shrink-0 mt-0.5" />
+                <span>{addError.value}</span>
+              </p>
+            )}
             <Button
               type="button"
               disabled={saving.value ||

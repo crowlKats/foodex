@@ -8,6 +8,7 @@ import { IconCameraRotate } from "@tabler/icons-preact";
 import SearchSelect from "./SearchSelect.tsx";
 import type { SearchSelectOption } from "./SearchSelect.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
+import { apiErrorMessage } from "../lib/api-error.ts";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
@@ -54,6 +55,8 @@ export default function ScanView(props: Props) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const error = useSignal("");
+  /** Save failures, shown inline so the form survives them. */
+  const saveError = useSignal("");
   const status = useSignal("Initializing camera...");
   const phase = useSignal<Phase>("scanning");
   const product = useSignal<ProductInfo | null>(null);
@@ -333,6 +336,7 @@ export default function ScanView(props: Props) {
     if (!name) return;
 
     saving.value = true;
+    saveError.value = "";
 
     const isNewIngredient = !selectedIngredient.value.id;
     const payload: Record<string, unknown> = {
@@ -375,6 +379,10 @@ export default function ScanView(props: Props) {
         startScanning();
         return;
       }
+    } else {
+      // Deliberately not `error`, which swaps the whole view out for a retry
+      // prompt — a failed save should leave the filled-in form standing.
+      saveError.value = await apiErrorMessage(res, "Couldn't add that item.");
     }
     saving.value = false;
   }
@@ -597,6 +605,12 @@ export default function ScanView(props: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {saveError.value && (
+        <p role="alert" class="text-sm text-red-600 dark:text-red-400">
+          {saveError.value}
+        </p>
       )}
 
       <div class="flex gap-3">
