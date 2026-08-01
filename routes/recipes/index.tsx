@@ -189,9 +189,11 @@ function buildRecipeQuery(opts: {
       `SELECT ${distinct}r.*, m.url as cover_image_url FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}\n             ORDER BY ${orderSql}\n             LIMIT $${p} OFFSET $${
         p + 1
       }`,
+    // ::int so `cnt` arrives as a number — pg hands back bigint as a string,
+    // which quietly defeats any `=== 0` comparison on the result.
     count: `SELECT COUNT(${
       needsDistinct ? "DISTINCT r.id" : "*"
-    }) as cnt FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}`,
+    })::int as cnt FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}`,
     params,
     limitIdx: p,
   };
@@ -262,6 +264,15 @@ export const handlers = handler({
     ]);
     const totalCount = countRes.rows[0].cnt;
 
+    // "Ready to make" returning nothing usually means the pantry is empty, not
+    // that no recipe matched. Only asked when it could change the empty state.
+    const pantryIsEmpty = cookableOnly && totalCount === 0 && householdId
+      ? (await ctx.state.db.query<{ cnt: number }>(
+        "SELECT COUNT(*)::int AS cnt FROM pantry_items WHERE household_id = $1",
+        [householdId],
+      )).rows[0].cnt === 0
+      : false;
+
     const recipeIds = result.rows.map((r) => r.id);
 
     const [tagsRows, drafts] = await Promise.all([
@@ -308,6 +319,7 @@ export const handlers = handler({
         totalCount,
         favoritesOnly,
         cookableOnly,
+        pantryIsEmpty,
         hasHousehold: !!householdId,
         drafts,
         difficulty,
@@ -390,6 +402,7 @@ export default page(function RecipesPage({
     totalCount,
     favoritesOnly,
     cookableOnly,
+    pantryIsEmpty,
     hasHousehold,
     drafts,
     difficulty,
@@ -413,6 +426,93 @@ export default page(function RecipesPage({
 
   const hasFilters = difficulty.length > 0 || mealTypes.length > 0 ||
     dietary.length > 0 || favoritesOnly || cookableOnly;
+
+  /**
+   * "No recipes found." was the same sentence whether the catalog was empty,
+   * a search matched nothing, or the pantry-aware filter had nothing to work
+   * with — which is the case that actually needs explaining.
+   */
+  function renderEmptyState() {
+    const clearHref = filterUrl(current, {
+      difficulty: undefined,
+      meal_type: undefined,
+      dietary: undefined,
+      favorites: undefined,
+      cookable: undefined,
+    });
+
+    if (cookableOnly && pantryIsEmpty) {
+      return (
+        <div class="card text-center py-8 space-y-2">
+          <p class="font-medium">Nothing is ready to make yet</p>
+          <p class="text-stone-500 text-sm">
+            "Ready to make" only shows recipes your pantry already covers, and
+            your pantry is empty.
+          </p>
+          <div class="flex flex-wrap gap-2 justify-center pt-1">
+            <ButtonLink href="/household/pantry" size="sm">
+              Stock the pantry
+            </ButtonLink>
+            <ButtonLink href={clearHref} variant="outline" size="sm">
+              Show all recipes
+            </ButtonLink>
+          </div>
+        </div>
+      );
+    }
+
+    if (q) {
+      return (
+        <div class="card text-center py-8 space-y-2">
+          <p class="font-medium">No recipes match "{q}"</p>
+          <p class="text-stone-500 text-sm">
+            Try a shorter search{hasFilters ? ", or clear the filters" : ""}.
+          </p>
+          {hasFilters && (
+            <div class="pt-1">
+              <ButtonLink href={clearHref} variant="outline" size="sm">
+                Clear all filters
+              </ButtonLink>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (hasFilters) {
+      return (
+        <div class="card text-center py-8 space-y-2">
+          <p class="font-medium">No recipes match these filters</p>
+          <p class="text-stone-500 text-sm">
+            Nothing in the collection fits every filter you've picked.
+          </p>
+          <div class="pt-1">
+            <ButtonLink href={clearHref} variant="outline" size="sm">
+              Clear all filters
+            </ButtonLink>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div class="card text-center py-8 space-y-2">
+        <p class="font-medium">No recipes yet</p>
+        <p class="text-stone-500 text-sm">
+          Write one from scratch, or import one from a URL, a photo or a block
+          of text.
+        </p>
+        {loggedIn && (
+          <div class="flex flex-wrap gap-2 justify-center pt-1">
+            <ButtonLink href="/recipes/new" size="sm">New recipe</ButtonLink>
+            <ButtonLink href="/recipes/import" variant="outline" size="sm">
+              Import
+            </ButtonLink>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   function toggleArrayFilter(
     key: string,
@@ -440,120 +540,137 @@ export default page(function RecipesPage({
         )}
       </PageHeader>
 
-      <details
-        class="mb-4 group"
-        open={hasFilters || undefined}
-      >
-        <summary class="cursor-pointer select-none flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
-          <IconFilter class="size-4" />
-          <span>Filters</span>
-          {hasFilters && (
-            <span class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-full">
-              {difficulty.length + mealTypes.length + dietary.length +
-                (favoritesOnly ? 1 : 0) + (cookableOnly ? 1 : 0)}
-            </span>
-          )}
-          <div class="ml-auto">
-            <SortSelect
-              current={sort}
-              desc={desc}
-              toggleHref={filterUrl(current, {
-                desc: desc ? "0" : "1",
-              })}
-              options={SORT_OPTIONS.map((o) => ({
-                value: o.value,
-                label: o.label,
-                href: filterUrl(current, {
-                  sort: o.value === "newest" ? undefined : o.value,
-                  desc: undefined,
-                }),
-              }))}
-            />
-          </div>
-        </summary>
-        <div class="mt-4 card space-y-3">
-          {loggedIn && (
-            <div class="flex flex-wrap gap-1.5">
-              {hasHousehold && (
-                <FilterChip
-                  label="Ready to make"
-                  active={cookableOnly}
-                  href={filterUrl(current, {
-                    cookable: cookableOnly ? undefined : "1",
-                  })}
-                />
+      {
+        /*
+        The summary keeps its default `list-item` display: Chrome drops a
+        summary's implicit role when `display` is changed, which left the
+        control exposed as a bare `generic` with no role and no expanded
+        state. The flex row lives in a child instead. The sort control moved
+        out of the summary for the same reason — a control nested inside a
+        summary toggles the disclosure when you click it.
+      */
+      }
+      <div class="mb-4 flex items-start gap-3">
+        <details
+          class="flex-1 min-w-0 group"
+          open={hasFilters || undefined}
+        >
+          <summary class="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-sm text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
+            <span class="inline-flex items-center gap-1.5">
+              <IconFilter class="size-4" />
+              <span>Filters</span>
+              {hasFilters && (
+                <span class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-full">
+                  {difficulty.length + mealTypes.length + dietary.length +
+                    (favoritesOnly ? 1 : 0) + (cookableOnly ? 1 : 0)}
+                </span>
               )}
-              <FilterChip
-                label="Favourites"
-                active={favoritesOnly}
+            </span>
+          </summary>
+          <div class="mt-4 card space-y-3">
+            {loggedIn && (
+              <div>
+                <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
+                  Show only
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  {hasHousehold && (
+                    <FilterChip
+                      label="Ready to make"
+                      active={cookableOnly}
+                      href={filterUrl(current, {
+                        cookable: cookableOnly ? undefined : "1",
+                      })}
+                    />
+                  )}
+                  <FilterChip
+                    label="Favourites"
+                    active={favoritesOnly}
+                    href={filterUrl(current, {
+                      favorites: favoritesOnly ? undefined : "1",
+                    })}
+                  />
+                </div>
+              </div>
+            )}
+            <div>
+              <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
+                Difficulty
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                {DIFFICULTY_LEVELS.map((d) => (
+                  <FilterChip
+                    key={d}
+                    label={d}
+                    active={difficulty.includes(d)}
+                    href={toggleArrayFilter("difficulty", d, difficulty)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
+                Meal Type
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                {MEAL_TYPES.map((mt) => (
+                  <FilterChip
+                    key={mt}
+                    label={mt}
+                    active={mealTypes.includes(mt)}
+                    href={toggleArrayFilter("meal_type", mt, mealTypes)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
+                Dietary
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                {DIETARY_TAGS.map((dt) => (
+                  <FilterChip
+                    key={dt}
+                    label={dt}
+                    active={dietary.includes(dt)}
+                    href={toggleArrayFilter("dietary", dt, dietary)}
+                  />
+                ))}
+              </div>
+            </div>
+            {hasFilters && (
+              <a
                 href={filterUrl(current, {
-                  favorites: favoritesOnly ? undefined : "1",
+                  difficulty: undefined,
+                  meal_type: undefined,
+                  dietary: undefined,
+                  favorites: undefined,
+                  cookable: undefined,
                 })}
-              />
-            </div>
-          )}
-          <div>
-            <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-              Difficulty
-            </div>
-            <div class="flex flex-wrap gap-1.5">
-              {DIFFICULTY_LEVELS.map((d) => (
-                <FilterChip
-                  key={d}
-                  label={d}
-                  active={difficulty.includes(d)}
-                  href={toggleArrayFilter("difficulty", d, difficulty)}
-                />
-              ))}
-            </div>
+                class="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
+              >
+                <IconX class="size-3.5" />
+                Clear all filters
+              </a>
+            )}
           </div>
-          <div>
-            <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-              Meal Type
-            </div>
-            <div class="flex flex-wrap gap-1.5">
-              {MEAL_TYPES.map((mt) => (
-                <FilterChip
-                  key={mt}
-                  label={mt}
-                  active={mealTypes.includes(mt)}
-                  href={toggleArrayFilter("meal_type", mt, mealTypes)}
-                />
-              ))}
-            </div>
-          </div>
-          <div>
-            <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-              Dietary
-            </div>
-            <div class="flex flex-wrap gap-1.5">
-              {DIETARY_TAGS.map((dt) => (
-                <FilterChip
-                  key={dt}
-                  label={dt}
-                  active={dietary.includes(dt)}
-                  href={toggleArrayFilter("dietary", dt, dietary)}
-                />
-              ))}
-            </div>
-          </div>
-          {hasFilters && (
-            <a
-              href={filterUrl(current, {
-                difficulty: undefined,
-                meal_type: undefined,
-                dietary: undefined,
-                favorites: undefined,
-                cookable: undefined,
-              })}
-              class="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
-            >
-              <IconX class="size-3.5" />
-              Clear all filters
-            </a>
-          )}
-        </div>
-      </details>
+        </details>
+        <SortSelect
+          current={sort}
+          desc={desc}
+          toggleHref={filterUrl(current, {
+            desc: desc ? "0" : "1",
+          })}
+          options={SORT_OPTIONS.map((o) => ({
+            value: o.value,
+            label: o.label,
+            href: filterUrl(current, {
+              sort: o.value === "newest" ? undefined : o.value,
+              desc: undefined,
+            }),
+          }))}
+        />
+      </div>
 
       {drafts.length > 0 && (
         <div class="mb-6">
@@ -602,105 +719,103 @@ export default page(function RecipesPage({
             Recipes
           </h2>
         )}
-        {recipes.length === 0
-          ? <p class="text-stone-500">No recipes found.</p>
-          : (
-            <div class="space-y-2">
-              {recipes.map((r) => (
-                <a
-                  key={String(r.id)}
-                  href={`/recipes/${r.slug}`}
-                  class="block card card-hover"
-                >
-                  <div class="flex items-center gap-3">
-                    {r.cover_image_url && (
-                      <img
-                        src={r.cover_image_url}
-                        alt={r.title}
-                        class="w-12 h-12 object-cover rounded"
-                      />
-                    )}
-                    <div>
-                      <div class="font-medium text-lg">
-                        {r.title}
-                        {r.private && (
-                          <span class="ml-2 text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-1.5 py-0.5 rounded align-middle">
-                            private
-                          </span>
-                        )}
-                      </div>
-                      {r.description && (
-                        <div class="text-sm text-stone-500 mt-1">
-                          {r.description}
-                        </div>
-                      )}
-                      {(r.tags.meal_types.length > 0 ||
-                        r.tags.dietary.length > 0) && (
-                        <div class="flex flex-wrap gap-1 mt-1">
-                          {r.tags.meal_types.map((mt) => (
-                            <span
-                              key={mt}
-                              class="text-[10px] bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded capitalize"
-                            >
-                              {mt}
-                            </span>
-                          ))}
-                          {r.tags.dietary.map((dt) => (
-                            <span
-                              key={dt}
-                              class="text-[10px] bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded capitalize"
-                            >
-                              {dt}
-                            </span>
-                          ))}
-                        </div>
+        {recipes.length === 0 ? renderEmptyState() : (
+          <div class="space-y-2">
+            {recipes.map((r) => (
+              <a
+                key={String(r.id)}
+                href={`/recipes/${r.slug}`}
+                class="block card card-hover"
+              >
+                <div class="flex items-center gap-3">
+                  {r.cover_image_url && (
+                    <img
+                      src={r.cover_image_url}
+                      alt={r.title}
+                      class="w-12 h-12 object-cover rounded"
+                    />
+                  )}
+                  <div>
+                    <div class="font-medium text-lg">
+                      {r.title}
+                      {r.private && (
+                        <span class="ml-2 text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-1.5 py-0.5 rounded align-middle">
+                          private
+                        </span>
                       )}
                     </div>
-                  </div>
-                  <div class="text-xs text-stone-400 mt-2 flex gap-4">
-                    {r.difficulty && (
-                      <span class="capitalize">{r.difficulty}</span>
+                    {r.description && (
+                      <div class="text-sm text-stone-500 mt-1">
+                        {r.description}
+                      </div>
                     )}
+                    {(r.tags.meal_types.length > 0 ||
+                      r.tags.dietary.length > 0) && (
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        {r.tags.meal_types.map((mt) => (
+                          <span
+                            key={mt}
+                            class="text-[10px] bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded capitalize"
+                          >
+                            {mt}
+                          </span>
+                        ))}
+                        {r.tags.dietary.map((dt) => (
+                          <span
+                            key={dt}
+                            class="text-[10px] bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded capitalize"
+                          >
+                            {dt}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div class="text-xs text-stone-400 mt-2 flex gap-4">
+                  {r.difficulty && (
+                    <span class="capitalize">{r.difficulty}</span>
+                  )}
+                  <span>
+                    <IconUsers class="size-3.5 inline mr-0.5" />
+                    {formatQuantity({
+                      type: (r.quantity_type || "servings") as RecipeQuantity[
+                        "type"
+                      ],
+                      value: r.quantity_value ?? 4,
+                      unit: r.quantity_unit || "servings",
+                      value2: r.quantity_value2 != null
+                        ? r.quantity_value2
+                        : undefined,
+                      value3: r.quantity_value3 != null
+                        ? r.quantity_value3
+                        : undefined,
+                      unit2: r.quantity_unit2 ?? undefined,
+                    })}
+                  </span>
+                  {r.prep_time != null && (
                     <span>
-                      <IconUsers class="size-3.5 inline mr-0.5" />
-                      {formatQuantity({
-                        type: (r.quantity_type || "servings") as RecipeQuantity[
-                          "type"
-                        ],
-                        value: r.quantity_value ?? 4,
-                        unit: r.quantity_unit || "servings",
-                        value2: r.quantity_value2 != null
-                          ? r.quantity_value2
-                          : undefined,
-                        value3: r.quantity_value3 != null
-                          ? r.quantity_value3
-                          : undefined,
-                        unit2: r.quantity_unit2 ?? undefined,
-                      })}
+                      <IconClock class="size-3.5 inline mr-0.5" />Prep:{" "}
+                      {formatDuration(r.prep_time)}
                     </span>
-                    {r.prep_time != null && (
-                      <span>
-                        <IconClock class="size-3.5 inline mr-0.5" />Prep:{" "}
-                        {formatDuration(r.prep_time)}
-                      </span>
-                    )}
-                    {r.cook_time != null && (
-                      <span>
-                        <IconFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
-                        {formatDuration(r.cook_time)}
-                      </span>
-                    )}
-                    {r.rest_time != null && (
-                      <span>
-                        <IconZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
-                        {formatDuration(r.rest_time)}
-                      </span>
-                    )}
-                  </div>
-                </a>
-              ))}
-            </div>
-          )}
+                  )}
+                  {r.cook_time != null && (
+                    <span>
+                      <IconFlame class="size-3.5 inline mr-0.5" />Cook:{" "}
+                      {formatDuration(r.cook_time)}
+                    </span>
+                  )}
+                  {r.rest_time != null && (
+                    <span>
+                      <IconZzz class="size-3.5 inline mr-0.5" />Rest:{" "}
+                      {formatDuration(r.rest_time)}
+                    </span>
+                  )}
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
         <Pagination
           currentPage={currentPage}
           totalCount={totalCount}

@@ -2,6 +2,7 @@ import { handler, page } from "./$index.ts";
 import { escapeLike } from "../../utils.ts";
 import type { CollectionWithCover } from "../../db/types.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
+import { EmptyState } from "../../components/EmptyState.tsx";
 import { ButtonLink } from "../../components/Button.tsx";
 import {
   getPage,
@@ -89,7 +90,26 @@ export default page(
         </PageHeader>
 
         {collections.length === 0
-          ? <p class="text-stone-500">No collections yet.</p>
+          ? q
+            ? (
+              <EmptyState title={`No collections match "${q}"`}>
+                Nothing here goes by that name.
+              </EmptyState>
+            )
+            : (
+              <EmptyState
+                title="No collections yet"
+                action={
+                  <ButtonLink href="/collections/new" size="sm">
+                    New collection
+                  </ButtonLink>
+                }
+              >
+                Collections group recipes however you like — a weeknight set, a
+                Christmas menu, everything you've cooked out of one book. They
+                can be shared with a link.
+              </EmptyState>
+            )
           : (
             <div class="space-y-2">
               {collections.map((c) => (

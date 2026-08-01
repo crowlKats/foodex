@@ -1,6 +1,7 @@
 import { handler, page } from "./$index.ts";
 import { escapeLike } from "../../utils.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
+import { EmptyState } from "../../components/EmptyState.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input, InputMultiline } from "../../components/Input.tsx";
@@ -169,7 +170,22 @@ export default page(
               All Tools ({totalCount})
             </h2>
             {tools.length === 0
-              ? <p class="text-stone-500">No tools yet.</p>
+              ? q
+                ? (
+                  <EmptyState title={`No tools match "${q}"`}>
+                    Nothing here goes by that name.
+                  </EmptyState>
+                )
+                : (
+                  <EmptyState title="No tools yet">
+                    Tools are your cookware — a pan, a stand mixer, an oven. A
+                    recipe can reference one along with the settings it needs
+                    ("180 °C", "medium-low") and a note on how it's used, so the
+                    method doesn't have to spell it out every time. {loggedIn
+                      ? "Add your first with the form on this page."
+                      : "Sign in to add one."}
+                  </EmptyState>
+                )
               : (
                 <div class="space-y-2">
                   {tools.map((m) => (
