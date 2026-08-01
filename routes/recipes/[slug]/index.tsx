@@ -217,6 +217,7 @@ export const handlers = handler({
           base_cost: baseCost ?? undefined,
           currency: priceInfo?.currency,
           density: i.density,
+          always_on_hand: i.always_on_hand ?? false,
         };
       });
 

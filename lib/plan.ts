@@ -84,6 +84,7 @@ export async function loadPlan(
        FROM recipe_ingredients ri
        LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE ri.recipe_id = ANY($1)
+         AND NOT ri.always_on_hand
        ORDER BY ri.sort_order`,
       [recipeIds],
     ),
@@ -212,7 +213,8 @@ export async function cookPlanEntry(
     `SELECT ri.recipe_id, ri.ingredient_id, ri.name, ri.amount, ri.unit, g.density
      FROM recipe_ingredients ri
      LEFT JOIN ingredients g ON g.id = ri.ingredient_id
-     WHERE ri.recipe_id = $1`,
+     WHERE ri.recipe_id = $1
+       AND NOT ri.always_on_hand`,
     [entry.recipe_id],
   );
 
@@ -372,7 +374,7 @@ export async function suggestRecipes(
             ri.ingredient_id, ri.name, ri.amount, ri.unit, g.density
      FROM recipes r
      LEFT JOIN media m ON m.id = r.cover_image_id
-     JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+     JOIN recipe_ingredients ri ON ri.recipe_id = r.id AND NOT ri.always_on_hand
      LEFT JOIN ingredients g ON g.id = ri.ingredient_id
      WHERE (r.household_id = $1 OR r.private = false)
        AND EXISTS (

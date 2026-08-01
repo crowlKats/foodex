@@ -116,6 +116,7 @@ function buildRecipeQuery(opts: {
       `NOT EXISTS (
         SELECT 1 FROM recipe_ingredients ri_ck
         WHERE ri_ck.recipe_id = r.id
+          AND NOT ri_ck.always_on_hand
           AND COALESCE((
             SELECT
               -- Staples and untracked amounts cover any requirement; otherwise

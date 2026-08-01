@@ -52,6 +52,8 @@ export interface RecipeIngredient {
   unit: string | null;
   key: string | null;
   sort_order: number;
+  /** Scales with the recipe but is never bought or counted as missing. */
+  always_on_hand: boolean;
   ingredient_name: string | null;
   ingredient_unit: string | null;
 }

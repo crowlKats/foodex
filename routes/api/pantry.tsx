@@ -11,7 +11,8 @@ import { PantryAction, parseJsonBody } from "../../lib/validation.ts";
 async function resolveIngredient(
   db: { query: QueryFn },
   body: {
-    ingredient_id?: string;
+    /** Null when the caller typed a free-text name instead of picking one. */
+    ingredient_id?: string | null;
     create_ingredient?: boolean;
     name: string;
     unit?: string | null;

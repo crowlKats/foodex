@@ -54,6 +54,8 @@ interface RecipeIngredient {
   base_cost?: number; // cost at the recipe's default quantity
   currency?: string;
   density?: number | null;
+  /** Water and the like — scales, but is never bought or counted missing. */
+  always_on_hand?: boolean;
 }
 
 interface RecipeTool {
@@ -146,6 +148,8 @@ export default function RecipeView(
   }
 
   function isInPantry(ing: RecipeIngredient, ratio: number): boolean {
+    // Water is measured, not shopped for — it never counts against you.
+    if (ing.always_on_hand) return true;
     return isAvailable(availabilityOf(ing, ratio));
   }
 
@@ -1070,7 +1074,7 @@ export default function RecipeView(
                   >
                     <div class="flex justify-between items-baseline gap-2">
                       <span class="flex items-baseline gap-1">
-                        {loggedIn && (
+                        {loggedIn && !ing.always_on_hand && (
                           <button
                             type="button"
                             class={`cursor-pointer text-xs leading-none ${
@@ -1088,6 +1092,16 @@ export default function RecipeView(
                           </button>
                         )}
                         {(() => {
+                          if (ing.always_on_hand) {
+                            return (
+                              <span
+                                class="text-xs leading-none text-stone-400"
+                                title="Always on hand \u2014 scales with the recipe, but never goes on the shopping list"
+                              >
+                                &#x25cb;
+                              </span>
+                            );
+                          }
                           const availability = availabilityOf(ing, ratio);
                           if (!availability.present) return null;
                           const covered = isAvailable(availability);

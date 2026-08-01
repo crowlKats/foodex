@@ -13,6 +13,8 @@ interface Ingredient {
   amount: string;
   unit: string;
   ingredient_id: string;
+  /** Scales with the recipe, but is never bought or counted as missing. */
+  always_on_hand?: boolean;
 }
 
 interface IngredientItem extends Ingredient {
@@ -69,6 +71,12 @@ export default function IngredientForm(
   function update(index: number, field: keyof Ingredient, value: string) {
     const next = [...items.value];
     next[index] = { ...next[index], [field]: value };
+    items.value = next;
+  }
+
+  function updateFlag(index: number, value: boolean) {
+    const next = [...items.value];
+    next[index] = { ...next[index], always_on_hand: value };
     items.value = next;
   }
 
@@ -162,6 +170,24 @@ export default function IngredientForm(
               monospace
             />
           </div>
+          {
+            /*
+            Water is in a large share of recipes: it has to scale, but
+            declaring it as an ingredient used to put it on the shopping list
+            and count it as missing from the pantry. Same for ice, and for
+            salt or oil depending on how the author thinks about staples.
+          */
+          }
+          <label class="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400 cursor-pointer">
+            <input
+              type="checkbox"
+              class="size-3.5 accent-orange-600 cursor-pointer"
+              checked={!!item.always_on_hand}
+              onChange={(e) =>
+                updateFlag(i, (e.currentTarget as HTMLInputElement).checked)}
+            />
+            Always on hand — scales, but never bought or counted as missing
+          </label>
           <p class="text-xs text-stone-400">
             {item.key
               ? (
@@ -203,6 +229,11 @@ export default function IngredientForm(
             type="hidden"
             name={`ingredients[${i}][ingredient_id]`}
             value={item.ingredient_id}
+          />
+          <input
+            type="hidden"
+            name={`ingredients[${i}][always_on_hand]`}
+            value={item.always_on_hand ? "1" : ""}
           />
         </div>
       ))}
