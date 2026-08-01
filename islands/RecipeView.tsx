@@ -201,7 +201,7 @@ export default function RecipeView(
           <div class="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              class="w-8 h-8 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 font-bold cursor-pointer"
+              class="w-8 h-8 shrink-0 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 font-bold cursor-pointer"
               onClick={() => {
                 if (targetValue.value > 1) {
                   targetValue.value = targetValue.value - 1;
@@ -215,7 +215,7 @@ export default function RecipeView(
               type="number"
               min="1"
               value={formatInputValue(targetValue.value)}
-              class="w-16 text-center"
+              class="flex-1 text-center"
               onValueChange={(s) => {
                 const v = parseInt(s);
                 if (v > 0) {
@@ -226,7 +226,7 @@ export default function RecipeView(
             />
             <button
               type="button"
-              class="w-8 h-8 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 font-bold cursor-pointer"
+              class="w-8 h-8 shrink-0 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 font-bold cursor-pointer"
               onClick={() => {
                 targetValue.value = targetValue.value + 1;
                 update();
@@ -249,7 +249,7 @@ export default function RecipeView(
               min="0"
               step="any"
               value={formatInputValue(targetValue.value)}
-              class="w-24 text-center"
+              class="flex-1 text-center"
               onValueChange={(s) => {
                 const v = parseFloat(s);
                 if (v > 0) {
@@ -260,7 +260,7 @@ export default function RecipeView(
             />
             <Select
               value={targetUnit}
-              class="w-16"
+              class="w-16 shrink-0"
               onValueChange={(v) => {
                 targetUnit.value = v;
                 update();
@@ -284,7 +284,7 @@ export default function RecipeView(
               min="0"
               step="any"
               value={formatInputValue(targetValue.value)}
-              class="w-24 text-center"
+              class="flex-1 text-center"
               onValueChange={(s) => {
                 const v = parseFloat(s);
                 if (v > 0) {
@@ -295,7 +295,7 @@ export default function RecipeView(
             />
             <Select
               value={targetUnit}
-              class="w-16"
+              class="w-16 shrink-0"
               onValueChange={(v) => {
                 targetUnit.value = v;
                 update();
