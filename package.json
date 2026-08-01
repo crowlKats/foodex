@@ -15,6 +15,7 @@
     "examples": "deno run -A --env-file=.env examples/import.ts"
   },
   "dependencies": {
+    "class-variance-authority": "^0.7.1",
     "fresh": "npm:@frsh/fresh@latest",
     "@tabler/icons-preact": "^3.45.0",
     "@luca/highlightable-textarea": "jsr:^0.1.1",
