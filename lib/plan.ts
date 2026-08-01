@@ -379,6 +379,16 @@ export async function suggestRecipes(
          SELECT 1 FROM recipe_ingredients hit
          WHERE hit.recipe_id = r.id
            AND (hit.ingredient_id = ANY($2) OR lower(hit.name) = ANY($3))
+       )
+       -- Already on the plan is not a suggestion. Beyond offering a second
+       -- entry for a meal you've planned, suggestions are evaluated at scale
+       -- 1 while the plan entry uses the batch you actually set — so the two
+       -- sat side by side on /plan disagreeing about the same recipe.
+       AND NOT EXISTS (
+         SELECT 1 FROM plan_entries pe
+         WHERE pe.household_id = $1
+           AND pe.recipe_id = r.id
+           AND pe.status = 'planned'
        )`,
     [householdId, ingredientIds, names],
   );
