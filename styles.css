@@ -137,6 +137,17 @@
     color: oklch(0.78 0.18 25);
     border-color: oklch(0.55 0.2 25);
   }
+  /* Amber when nothing is actually broken — only scaling warnings. */
+  .step-body-error-badge-warning {
+    color: oklch(0.5 0.14 75);
+    background-color: oklch(0.97 0.05 85);
+    border-color: oklch(0.7 0.16 75);
+  }
+  .dark .step-body-error-badge-warning {
+    background-color: oklch(0.28 0.05 75);
+    color: oklch(0.85 0.14 80);
+    border-color: oklch(0.55 0.14 75);
+  }
   .dark .step-body-error-badge:hover {
     background-color: oklch(0.34 0.08 25);
     color: oklch(0.85 0.2 25);
@@ -220,6 +231,32 @@
     padding: 0 0.25rem;
     border-radius: 2px;
     font-size: 0.92em;
+  }
+
+  /* Click-to-insert for declared ingredient keys. Making the token cheaper
+     to type than the literal number is the point. */
+  .step-body-insert-chip {
+    @apply text-xs font-mono px-1.5 py-0.5 border cursor-pointer
+      border-stone-300 dark:border-stone-700 text-stone-600
+      dark:text-stone-400 transition-colors;
+  }
+
+  .step-body-insert-chip:hover {
+    @apply border-orange-500 text-orange-600 dark:text-orange-400;
+  }
+
+  /* One-click repair for diagnostics whose answer is unambiguous. */
+  .step-body-error-popup-fix {
+    @apply mt-1.5 text-xs cursor-pointer px-2 py-0.5 border;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    background-color: oklch(0.28 0.005 240);
+    border-color: oklch(0.42 0.01 240);
+    color: oklch(0.92 0.005 240);
+  }
+
+  .step-body-error-popup-fix:hover {
+    border-color: oklch(0.7 0.17 45);
+    color: oklch(0.8 0.17 45);
   }
 
   /* Code-editor-style hover popover. Dark in both themes — matches the
@@ -323,6 +360,13 @@
     background-color: oklch(0.32 0.08 25);
     color: oklch(0.85 0.12 25);
     text-decoration: underline wavy oklch(0.7 0.22 25);
+  }
+  /* Valid source that quietly won't scale — a warning, not an error. */
+  ::highlight(tpl-warning) {
+    text-decoration: underline wavy oklch(0.72 0.16 75);
+  }
+  .dark ::highlight(tpl-warning) {
+    text-decoration: underline wavy oklch(0.78 0.15 75);
   }
 
   input[type="search"],

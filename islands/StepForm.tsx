@@ -12,6 +12,7 @@ import { Select } from "../components/Select.tsx";
 import {
   type StepBodyContext,
   StepBodyEditor,
+  type StepBodyIngredient,
 } from "../components/StepBodyEditor.tsx";
 
 interface MediaItem {
@@ -497,6 +498,40 @@ function computeNestedLayout(
 
 // ── Shared graph-card components ──
 
+/**
+ * What to call a step in the graph.
+ *
+ * Titles are optional and nothing suggests they're needed for anything, so the
+ * default authoring path produced a graph reading "#1 untitled ⟶ #2 untitled"
+ * — the one view whose whole purpose is showing which steps run in parallel,
+ * with no information in it. Falls back to the opening words of the body,
+ * with template directives reduced to the thing they name.
+ */
+export function stepLabel(
+  step: { title: string; body: string },
+  maxWords = 6,
+): string {
+  const title = step.title.trim();
+  if (title) return title;
+
+  const plain = step.body
+    // `{{ butter }}` / `{{ butter.amount }}` → `butter`
+    .replace(
+      /\{\{([^}]*)\}\}/g,
+      (_m, inner: string) => inner.trim().split(/[.\s(]/)[0] ?? "",
+    )
+    // `@step(2)`, `@timer(10m)`, `@recipe(slug)` carry nothing readable here.
+    .replace(/@\w+\([^)]*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return "";
+
+  const words = plain.split(" ");
+  return words.length > maxWords
+    ? `${words.slice(0, maxWords).join(" ")}…`
+    : plain;
+}
+
 function StepCardEl(
   {
     index,
@@ -542,15 +577,24 @@ function StepCardEl(
         <span class="text-xs text-stone-400 font-mono shrink-0">
           #{displayNum}
         </span>
-        <span class="font-medium truncate flex-1 min-w-0">
-          {step.title.trim() || (
-            <span class="text-stone-400 italic">untitled</span>
-          )}
-        </span>
+        {(() => {
+          const label = stepLabel(step);
+          return (
+            <span
+              class={`font-medium truncate flex-1 min-w-0 ${
+                step.title.trim() ? "" : "text-stone-500 dark:text-stone-400"
+              }`}
+              title={label}
+            >
+              {label || <span class="text-stone-400 italic">untitled</span>}
+            </span>
+          );
+        })()}
         <div class="flex items-center shrink-0 -mr-1">
           <button
             type="button"
             title="Insert step in sequence"
+            aria-label={`Insert a step after step ${displayNum}`}
             class="text-stone-400 hover:text-orange-600 p-0.5 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
@@ -562,6 +606,7 @@ function StepCardEl(
           <button
             type="button"
             title="Add parallel branch"
+            aria-label={`Add a step running in parallel with step ${displayNum}`}
             class="text-stone-400 hover:text-blue-600 p-0.5 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
@@ -575,6 +620,8 @@ function StepCardEl(
           </button>
           <button
             type="button"
+            title="Delete step"
+            aria-label={`Delete step ${displayNum}`}
             class="text-stone-400 hover:text-red-600 p-0.5 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
@@ -803,12 +850,25 @@ export default function StepForm(
   // form on each invocation; step counts come from our own state.
   const getStepBodyContext = useCallback((): StepBodyContext => {
     const ingredientKeys = new Set<string>();
-    const inputs = document.querySelectorAll<HTMLInputElement>(
-      'input[name^="ingredients["][name$="][key]"]',
-    );
+    const ingredients: StepBodyIngredient[] = [];
+    const inputs = typeof document === "undefined"
+      ? []
+      : document.querySelectorAll<HTMLInputElement>(
+        'input[name^="ingredients["][name$="][key]"]',
+      );
     inputs.forEach((el) => {
       const k = el.value?.trim();
-      if (k) ingredientKeys.add(k);
+      if (!k) return;
+      ingredientKeys.add(k);
+      // The sibling island mirrors each row into hidden inputs, so the name
+      // and unit are readable from the same index as the key.
+      const idx = el.name.match(/\[(\d+)\]/)?.[1];
+      if (idx == null) return;
+      const field = (f: string) =>
+        document.querySelector<HTMLInputElement>(
+          `input[name="ingredients[${idx}][${f}]"]`,
+        )?.value?.trim() ?? "";
+      ingredients.push({ key: k, name: field("name"), unit: field("unit") });
     });
 
     const sectionStepCounts = new Map<string, number>();
@@ -822,6 +882,7 @@ export default function StepForm(
     }
     return {
       ingredientKeys,
+      ingredients,
       totalSteps: items.value.length,
       sectionStepCounts,
     };
@@ -2040,7 +2101,7 @@ export default function StepForm(
               Recipe must have a single final step. Currently{" "}
               {flatLayout.leafNodes.length} steps have nothing after them:{" "}
               {flatLayout.leafNodes.map((i) =>
-                `#${i + 1} ${steps[i].title.trim() || "untitled"}`
+                `#${i + 1} ${stepLabel(steps[i]) || "untitled"}`
               ).join(", ")}. Connect them or remove extras.
             </div>
           )}
