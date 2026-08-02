@@ -13,6 +13,7 @@ import RecipePreview from "../../islands/RecipePreview.tsx";
 import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
+import { SectionHeader } from "../../components/SectionHeader.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input, InputMultiline } from "../../components/Input.tsx";
 import { Select } from "../../components/Select.tsx";
@@ -229,12 +230,12 @@ export default page(
 
         <form method="POST" class="space-y-6">
           <div class="card">
-            <h2 class="font-semibold mb-2">Cover Image</h2>
+            <SectionHeader title="Cover Image" />
             <MediaUpload name="cover_image_id" accept="image/*" />
           </div>
 
           <div class="card space-y-3">
-            <h2 class="font-semibold">Details</h2>
+            <SectionHeader title="Details" />
             <FormField label="Title">
               <Input
                 type="text"
@@ -323,7 +324,7 @@ export default page(
           </div>
 
           <div class="card">
-            <h2 class="font-semibold mb-2">Ingredients</h2>
+            <SectionHeader title="Ingredients" />
             <IngredientForm
               initialIngredients={[]}
               ingredients={ingredients.map((g) => ({
@@ -335,7 +336,7 @@ export default page(
           </div>
 
           <div class="card">
-            <h2 class="font-semibold mb-2">Tools</h2>
+            <SectionHeader title="Tools" />
             <ToolForm
               initialTools={[]}
               tools={allTools.map((m) => ({
@@ -346,13 +347,12 @@ export default page(
           </div>
 
           <div class="card">
-            <div class="flex items-center justify-between mb-2">
-              <h2 class="font-semibold">Steps</h2>
+            <SectionHeader title="Steps">
               <SegmentToggle
                 value={stepMode}
                 options={["list", "graph"]}
               />
-            </div>
+            </SectionHeader>
             <p class="text-xs text-stone-500 mb-2">
               Use <code class="code-hint">{"{{ key }}"}</code>{" "}
               for scaled ingredients,{" "}
@@ -364,7 +364,7 @@ export default page(
           </div>
 
           <div class="card">
-            <h2 class="font-semibold mb-2">Output Ingredient</h2>
+            <SectionHeader title="Output Ingredient" />
             <RecipeOutputForm
               ingredients={ingredients.map((g) => ({
                 id: String(g.id),
@@ -375,7 +375,7 @@ export default page(
           </div>
 
           <div class="card">
-            <h2 class="font-semibold mb-2">Sub-recipe References</h2>
+            <SectionHeader title="Sub-recipe References" />
             <RefForm
               initialRefs={[]}
               recipes={allRecipes.map((r) => ({

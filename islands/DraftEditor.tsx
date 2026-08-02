@@ -12,6 +12,7 @@ import RecipeOutputForm from "./RecipeOutputForm.tsx";
 import ConfirmButton from "./ConfirmButton.tsx";
 import { Button } from "../components/Button.tsx";
 import { Input, InputBar, InputMultiline } from "../components/Input.tsx";
+import { SectionHeader } from "../components/SectionHeader.tsx";
 import { Select } from "../components/Select.tsx";
 import MultiSearchSelect from "./MultiSearchSelect.tsx";
 import {
@@ -119,7 +120,7 @@ export default function DraftEditor({
         <input type="hidden" name="draft_id" value={draftId} />
 
         <div class="card">
-          <h2 class="section-title">Cover Image</h2>
+          <SectionHeader title="Cover Image" />
           <MediaUpload
             key={`cover-${v}`}
             name="cover_image_id"
@@ -129,7 +130,7 @@ export default function DraftEditor({
         </div>
 
         <div class="card space-y-3">
-          <h2 class="font-semibold">Details</h2>
+          <SectionHeader title="Details" />
           <div>
             <label class="block text-sm font-medium mb-1">Title</label>
             <Input
@@ -320,7 +321,7 @@ export default function DraftEditor({
         </div>
 
         <div class="card">
-          <h2 class="font-semibold mb-2">Ingredients</h2>
+          <SectionHeader title="Ingredients" />
           <IngredientForm
             key={`ing-${v}`}
             initialIngredients={(r.ingredients ?? []).map((ing) => ({
@@ -335,12 +336,12 @@ export default function DraftEditor({
         </div>
 
         <div class="card">
-          <h2 class="font-semibold mb-2">Tools</h2>
+          <SectionHeader title="Tools" />
           <ToolForm key={`tools-${v}`} initialTools={[]} tools={allTools} />
         </div>
 
         <div class="card">
-          <h2 class="font-semibold mb-2">Steps</h2>
+          <SectionHeader title="Steps" />
           <p class="text-xs text-stone-500 mb-2">
             Use <code class="code-hint">{"{{ key }}"}</code>{" "}
             for scaled ingredients,{" "}
@@ -382,7 +383,7 @@ export default function DraftEditor({
         </div>
 
         <div class="card">
-          <h2 class="font-semibold mb-2">Output Ingredient</h2>
+          <SectionHeader title="Output Ingredient" />
           <RecipeOutputForm
             ingredients={ingredients}
             initialIngredientId={(r.output_ingredient_id as string) ??
@@ -401,7 +402,7 @@ export default function DraftEditor({
         </div>
 
         <div class="card">
-          <h2 class="font-semibold mb-2">Sub-recipe References</h2>
+          <SectionHeader title="Sub-recipe References" />
           {/* RefForm is a server component, rendered as static HTML. We render a simple version here. */}
           <Select name="refs[0][referenced_recipe_id]" class="w-full" size="sm">
             <option value="">No sub-recipe</option>
