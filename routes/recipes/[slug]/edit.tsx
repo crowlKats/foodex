@@ -197,7 +197,11 @@ export default page(function RecipeEdit({ data }) {
 
   return (
     <div>
-      <BackLink href="/recipes" label="Back to Recipes" />
+      {
+        /* Up one level, to the recipe this is editing — which carries its own
+          link back to the list. */
+      }
+      <BackLink href={`/recipes/${slug}`} label="Back to Recipe" />
 
       {
         /*
@@ -210,10 +214,7 @@ export default page(function RecipeEdit({ data }) {
       }
       <form id="recipe-edit-form" method="POST" class="space-y-6">
         <TabValidation formId="recipe-edit-form" />
-        <FormActions
-          title={`Edit: ${d.recipe.title}`}
-          viewHref={`/recipes/${slug}`}
-        />
+        <FormActions title={`Edit: ${d.recipe.title}`} />
 
         <div class="edit-tabs">
           {TABS.map((t, i) => (
