@@ -120,18 +120,23 @@ export default function IngredientForm(
         every row, which meant the same two sentences repeated once per
         ingredient and drowned out the fields. Explain them once here instead.
 
-        Capped width: unconstrained this runs the full container as one very
-        long line, where the steps hint is held to roughly this measure by the
-        toggle sitting beside it.
+        One line per rule, rather than both run together: as a single
+        paragraph it had to wrap mid-phrase, and the break landed wherever the
+        container happened to end. `text-pretty` keeps that tidy if a line
+        does wrap on a narrow screen.
       */
       }
-      <p class="text-xs text-stone-500 dark:text-stone-400 max-w-3xl">
-        Every ingredient gets a key you can drop into steps as{" "}
-        <code class="code-hint">{"{{ key }}"}</code>. Tick{" "}
-        <span class="font-medium">Always on hand</span>{" "}
-        for staples like water or salt — they still scale with the recipe, but
-        are never bought or counted as missing.
-      </p>
+      <div class="text-xs text-stone-500 dark:text-stone-400 space-y-1 text-pretty">
+        <p>
+          Reference an ingredient in a step with{" "}
+          <code class="code-hint">{"{{ key }}"}</code>.
+        </p>
+        <p>
+          Tick <span class="font-medium">Always on hand</span>{" "}
+          for staples like water or salt — they scale, but are never bought or
+          counted as missing.
+        </p>
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         {items.value.map((item, i) => (
           <div key={item._uid} class="form-row space-y-2">
