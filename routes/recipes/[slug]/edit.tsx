@@ -250,9 +250,17 @@ export default page(function RecipeEdit({ data }) {
             ))}
           </div>
 
+          {
+            /*
+            No card around these three: the tab already draws the boundary,
+            and their heading would only repeat the tab's own label. Advanced
+            keeps its cards because it holds four distinct sections that need
+            separating from each other.
+          */
+          }
           <div
             data-tab-panel="basics"
-            class="edit-panel edit-panel-basics card space-y-3"
+            class="edit-panel edit-panel-basics space-y-3"
           >
             <IdentityFields d={d} />
             <SubGroup label="Yield & timing">
@@ -268,20 +276,16 @@ export default page(function RecipeEdit({ data }) {
 
           <div
             data-tab-panel="ingredients"
-            class="edit-panel edit-panel-ingredients card"
+            class="edit-panel edit-panel-ingredients"
           >
-            <SectionHeader title="Ingredients" />
             <IngredientsField d={d} />
           </div>
 
-          <div
-            data-tab-panel="steps"
-            class="edit-panel edit-panel-steps card"
-          >
-            <SectionHeader title="Steps">
+          <div data-tab-panel="steps" class="edit-panel edit-panel-steps">
+            <div class="flex items-start justify-between gap-3">
+              <StepsHint />
               <StepsModeToggle mode={mode} />
-            </SectionHeader>
-            <StepsHint />
+            </div>
             <StepsField d={d} mode={mode} />
           </div>
 

@@ -407,15 +407,16 @@
     border-stone-300 dark:border-stone-700;
 }
 
-/* A labelled band grouping related fields inside one card. */
+/* A labelled band grouping related fields. The label sits under the rule
+   rather than straddling it — straddling needs a background matching whatever
+   is behind, which only held while these lived inside a card. */
 .subgroup {
-  @apply relative border-t-2 border-stone-200 dark:border-stone-800 pt-4 mt-4;
+  @apply border-t-2 border-stone-200 dark:border-stone-800 pt-3 mt-4;
 }
 
 .subgroup-label {
-  @apply absolute -top-2 left-0 px-1 -ml-1 text-[0.625rem] font-bold uppercase
-    tracking-wider text-stone-400 dark:text-stone-500 bg-white
-    dark:bg-stone-900 select-none;
+  @apply block mb-2 text-[0.625rem] font-bold uppercase tracking-wider
+    text-stone-400 dark:text-stone-500 select-none;
 }
 
 /* Radio-driven tabs: no island, and every panel stays in the DOM so one
