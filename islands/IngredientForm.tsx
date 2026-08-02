@@ -113,15 +113,19 @@ export default function IngredientForm(
   }
 
   return (
-    <div class="space-y-3">
+    <div class="space-y-4">
       {
         /*
         The template-key and always-on-hand rules used to be spelled out on
         every row, which meant the same two sentences repeated once per
         ingredient and drowned out the fields. Explain them once here instead.
+
+        Capped width: unconstrained this runs the full container as one very
+        long line, where the steps hint is held to roughly this measure by the
+        toggle sitting beside it.
       */
       }
-      <p class="text-xs text-stone-500 dark:text-stone-400">
+      <p class="text-xs text-stone-500 dark:text-stone-400 max-w-3xl">
         Every ingredient gets a key you can drop into steps as{" "}
         <code class="code-hint">{"{{ key }}"}</code>. Tick{" "}
         <span class="font-medium">Always on hand</span>{" "}

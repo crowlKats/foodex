@@ -1,5 +1,4 @@
 import { handler, page } from "./$new.ts";
-import { signal } from "@preact/signals";
 import { slugify } from "../../utils.ts";
 import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
 import { saveRecipeChildren } from "../../lib/recipe-save.ts";
@@ -7,7 +6,6 @@ import QuantityInput from "../../islands/QuantityInput.tsx";
 import IngredientForm from "../../islands/IngredientForm.tsx";
 import ToolForm from "../../islands/ToolForm.tsx";
 import StepForm from "../../islands/StepForm.tsx";
-import SegmentToggle from "../../islands/SegmentToggle.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import RecipePreview from "../../islands/RecipePreview.tsx";
 import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
@@ -216,7 +214,6 @@ export default page(
   function NewRecipePage(
     { data: { ingredients, allTools, allRecipes } },
   ) {
-    const stepMode = signal<"list" | "graph">("list");
     return (
       <div>
         <BackLink href="/recipes" label="Back to Recipes" />
@@ -347,20 +344,8 @@ export default page(
           </div>
 
           <div class="card">
-            <SectionHeader title="Steps">
-              <SegmentToggle
-                value={stepMode}
-                options={["list", "graph"]}
-              />
-            </SectionHeader>
-            <p class="text-xs text-stone-500 mb-2">
-              Use <code class="code-hint">{"{{ key }}"}</code>{" "}
-              for scaled ingredients,{" "}
-              <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
-              for just the number. Supports math and functions.{" "}
-              <a href="/docs/templates" class="link text-xs">Full reference</a>
-            </p>
-            <StepForm initialSteps={[]} mode={stepMode} />
+            <SectionHeader title="Steps" />
+            <StepForm initialSteps={[]} />
           </div>
 
           <div class="card">

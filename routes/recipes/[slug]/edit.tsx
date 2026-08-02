@@ -1,6 +1,5 @@
 import { handler, page } from "./$edit.ts";
 import { HttpError } from "fresh/errors";
-import { signal } from "@preact/signals";
 import { slugify } from "../../../utils.ts";
 import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
 import { loadRecipeEditData } from "../../../lib/recipe-edit-data.ts";
@@ -19,10 +18,7 @@ import {
   OutputField,
   RefsField,
   SourceFields,
-  stepsDefaultMode,
   StepsField,
-  StepsHint,
-  StepsModeToggle,
   ToolsField,
   YieldTimingFields,
 } from "../../../components/recipe-form/fields.tsx";
@@ -201,7 +197,6 @@ const TABS = [
 export default page(function RecipeEdit({ data }) {
   const d = data;
   const slug = d.recipe.slug;
-  const mode = signal(stepsDefaultMode(d));
 
   return (
     <div>
@@ -281,11 +276,7 @@ export default page(function RecipeEdit({ data }) {
           </div>
 
           <div data-tab-panel="steps" class="edit-panel edit-panel-steps">
-            <div class="flex items-start justify-between gap-3">
-              <StepsHint />
-              <StepsModeToggle mode={mode} />
-            </div>
-            <StepsField d={d} mode={mode} />
+            <StepsField d={d} />
           </div>
 
           <div

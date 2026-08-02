@@ -1,4 +1,4 @@
-import { signal, useSignal } from "@preact/signals";
+import { useSignal } from "@preact/signals";
 import type { OcrRecipeData } from "../lib/ocr.ts";
 import RefineInput from "./RefineInput.tsx";
 import type { AiMessage } from "./RefineInput.tsx";
@@ -342,15 +342,6 @@ export default function DraftEditor({
 
         <div class="card">
           <SectionHeader title="Steps" />
-          <p class="text-xs text-stone-500 mb-2">
-            Use <code class="code-hint">{"{{ key }}"}</code>{" "}
-            for scaled ingredients,{" "}
-            <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
-            for just the number.{" "}
-            <a href="/docs/templates" class="link text-xs">
-              Full reference
-            </a>
-          </p>
           <StepForm
             key={`steps-${v}`}
             initialSteps={(r.steps ?? []).map((s, i) => {
@@ -378,7 +369,6 @@ export default function DraftEditor({
                   .filter((v): v is number => v != null),
               }));
             })()}
-            mode={signal<"list" | "graph">("list")}
           />
         </div>
 

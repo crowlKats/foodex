@@ -1,9 +1,7 @@
-import type { Signal } from "@preact/signals";
 import QuantityInput from "../../islands/QuantityInput.tsx";
 import IngredientForm from "../../islands/IngredientForm.tsx";
 import ToolForm from "../../islands/ToolForm.tsx";
 import StepForm from "../../islands/StepForm.tsx";
-import SegmentToggle from "../../islands/SegmentToggle.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
 import RecipeOutputForm from "../../islands/RecipeOutputForm.tsx";
@@ -219,25 +217,7 @@ export function ToolsField({ d }: FieldProps) {
   );
 }
 
-export function StepsHint() {
-  return (
-    <p class="text-xs text-stone-500 mb-2">
-      Use <code class="code-hint">{"{{ key }}"}</code> for scaled ingredients,
-      {" "}
-      <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
-      for just the number. Supports math and functions.{" "}
-      <a href="/docs/templates" class="link text-xs">Full reference</a>
-    </p>
-  );
-}
-
-export function StepsModeToggle({ mode }: { mode: Signal<"list" | "graph"> }) {
-  return <SegmentToggle value={mode} options={["list", "graph"]} />;
-}
-
-export function StepsField(
-  { d, mode }: FieldProps & { mode: Signal<"list" | "graph"> },
-) {
+export function StepsField({ d }: FieldProps) {
   return (
     <StepForm
       initialSteps={d.steps.map((s) => ({
@@ -248,7 +228,7 @@ export function StepsField(
         section: s.section ?? null,
       }))}
       initialSections={d.sections}
-      mode={mode}
+      initialMode={stepsDefaultMode(d)}
     />
   );
 }

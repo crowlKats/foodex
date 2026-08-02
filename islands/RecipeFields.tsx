@@ -1,4 +1,3 @@
-import { signal } from "@preact/signals";
 import QuantityInput from "./QuantityInput.tsx";
 import IngredientForm from "./IngredientForm.tsx";
 import ToolForm from "./ToolForm.tsx";
@@ -273,13 +272,6 @@ export default function RecipeFields(props: Props) {
 
       <div class="card">
         <SectionHeader title="Steps" />
-        <p class="text-xs text-stone-500 mb-2">
-          Use <code class="code-hint">{"{{ key }}"}</code>{" "}
-          for scaled ingredients,{" "}
-          <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
-          for just the number.{" "}
-          <a href="/docs/templates" class="link text-xs">Full reference</a>
-        </p>
         <StepForm
           key={`steps-${v}`}
           initialSteps={(r.steps ?? []).map((s: Any, i: number) => {
@@ -310,7 +302,6 @@ export default function RecipeFields(props: Props) {
                 .filter((v: number | undefined): v is number => v != null),
             }));
           })()}
-          mode={signal<"list" | "graph">("list")}
         />
       </div>
 

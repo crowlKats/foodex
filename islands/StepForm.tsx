@@ -14,6 +14,7 @@ import {
   StepBodyEditor,
   type StepBodyIngredient,
 } from "../components/StepBodyEditor.tsx";
+import SegmentToggle from "./SegmentToggle.tsx";
 
 interface MediaItem {
   id: string;
@@ -64,8 +65,6 @@ function newSection(partial: Partial<SectionEntry> = {}): SectionEntry {
   };
 }
 
-import type { Signal } from "@preact/signals";
-
 interface InitialSection {
   title: string;
   key: string;
@@ -85,7 +84,8 @@ interface InitialStep {
 interface StepFormProps {
   initialSteps: InitialStep[];
   initialSections?: InitialSection[];
-  mode: Signal<"list" | "graph">;
+  /** Starting view. The toggle lives in here, so the mode does too. */
+  initialMode?: "list" | "graph";
 }
 
 // ── Pure helpers ──
@@ -806,8 +806,12 @@ function StepEditor(
 // ── Main component ──
 
 export default function StepForm(
-  { initialSteps, initialSections, mode }: StepFormProps,
+  { initialSteps, initialSections, initialMode }: StepFormProps,
 ) {
+  // Owned here rather than passed in: the toggle that drives it is rendered
+  // below, so handing this out would split one island in two just to fit a
+  // line of help text between them.
+  const mode = useSignal<"list" | "graph">(initialMode ?? "list");
   const items = useSignal<StepEntry[]>(
     initialSteps.length > 0
       ? (() => {
@@ -1436,7 +1440,18 @@ export default function StepForm(
   })();
 
   return (
-    <div class="mt-4 space-y-4">
+    <div class="space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-xs text-stone-500 dark:text-stone-400">
+          Use <code class="code-hint">{"{{ key }}"}</code>{" "}
+          for scaled ingredients,{" "}
+          <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
+          for just the number. Supports math and functions.{" "}
+          <a href="/docs/templates" class="link text-xs">Full reference</a>
+        </p>
+        <SegmentToggle value={mode} options={["list", "graph"]} />
+      </div>
+
       {/* ── List mode (sections as containers) ── */}
       {!isGraph && (() => {
         // Group step indices by section
