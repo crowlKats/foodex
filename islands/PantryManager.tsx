@@ -444,11 +444,11 @@ export default function PantryManager(
                 return (
                   <div key={item.id}>
                     <div
-                      class={`card flex flex-wrap items-center gap-2 py-2${
+                      class={`card flex flex-wrap items-center gap-2 py-2 ${
                         status === "expired"
-                          ? " border-red-300 dark:border-red-700"
+                          ? "border-red-300 dark:border-red-700"
                           : status === "soon"
-                          ? " border-amber-300 dark:border-amber-700"
+                          ? "border-amber-300 dark:border-amber-700"
                           : ""
                       }`}
                     >

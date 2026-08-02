@@ -349,8 +349,8 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
           <button
             type="button"
             data-step-body-error-badge
-            class={`step-body-error-badge${
-              errorCount === 0 ? " step-body-error-badge-warning" : ""
+            class={`step-body-error-badge ${
+              errorCount === 0 ? "step-body-error-badge-warning" : ""
             }`}
             aria-label={`${diagnostics.value.length} problem${
               diagnostics.value.length === 1 ? "" : "s"
