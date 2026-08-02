@@ -7,7 +7,6 @@ import { loadRecipeEditData } from "../../../lib/recipe-edit-data.ts";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import TabValidation from "../../../islands/TabValidation.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
-import { SectionHeader } from "../../../components/SectionHeader.tsx";
 import {
   StickyActions,
   SubGroup,
@@ -291,40 +290,45 @@ export default page(function RecipeEdit({ data }) {
 
           <div
             data-tab-panel="advanced"
-            class="edit-panel edit-panel-advanced space-y-6"
+            class="edit-panel edit-panel-advanced space-y-3"
           >
-            <div class="card">
-              <SectionHeader title="Cover image" />
+            <SubGroup label="Cover image">
               <CoverField d={d} />
-            </div>
-            <div class="card">
-              <SectionHeader title="Tools" />
+            </SubGroup>
+            <SubGroup label="Tools">
               <ToolsField d={d} />
-            </div>
-            <div class="card">
-              <SectionHeader title="Output ingredient" />
+            </SubGroup>
+            <SubGroup label="Output ingredient">
               <OutputField d={d} />
-            </div>
-            <div class="card">
-              <SectionHeader title="Sub-recipe references" />
+            </SubGroup>
+            <SubGroup label="Sub-recipe references">
               <RefsField d={d} />
-            </div>
+            </SubGroup>
+            <SubGroup label="Danger zone">
+              <p class="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                Deleting removes the recipe and its steps for everyone in the
+                household. This cannot be undone.
+              </p>
+              {/* Targets the sibling form below — forms can't nest. */}
+              <ConfirmButton
+                form="delete-recipe-form"
+                message="Delete this recipe? This cannot be undone."
+                variant="danger"
+              >
+                Delete Recipe
+              </ConfirmButton>
+            </SubGroup>
           </div>
         </div>
       </form>
 
       <form
+        id="delete-recipe-form"
         action={`/recipes/${slug}`}
         method="POST"
-        class="mt-6 pt-6 border-t-2 border-stone-200 dark:border-stone-700"
+        class="hidden"
       >
         <input type="hidden" name="_method" value="DELETE" />
-        <ConfirmButton
-          message="Delete this recipe? This cannot be undone."
-          variant="danger"
-        >
-          Delete Recipe
-        </ConfirmButton>
       </form>
     </div>
   );

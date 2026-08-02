@@ -400,11 +400,13 @@
 
 /* ── Recipe edit form ── */
 
-/* Save rail pinned to the top of the scroll container. */
+/* Save rail pinned to the top of the scroll container. No bottom rule: the
+   tablist draws one immediately below it, and two parallel lines a few pixels
+   apart read as a mistake. The tinted, blurred backdrop is what separates it
+   from content scrolling underneath. */
 .sticky-actions {
   @apply sticky -top-6 z-20 flex items-center justify-between gap-3 -mx-4 px-4
-    py-3 bg-stone-50/95 dark:bg-stone-950/95 backdrop-blur border-b-2
-    border-stone-300 dark:border-stone-700;
+    py-3 bg-stone-50/95 dark:bg-stone-950/95 backdrop-blur;
 }
 
 /* A labelled band grouping related fields. The label sits under the rule
@@ -412,6 +414,12 @@
    is behind, which only held while these lived inside a card. */
 .subgroup {
   @apply border-t-2 border-stone-200 dark:border-stone-800 pt-3 mt-4;
+}
+
+/* A rule is a separator, so the first band in a panel doesn't need one —
+   it would just double the border the tablist already draws above it. */
+.subgroup:first-child {
+  @apply border-t-0 pt-0 mt-0;
 }
 
 .subgroup-label {
