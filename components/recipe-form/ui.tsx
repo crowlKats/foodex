@@ -14,10 +14,10 @@ export function SubGroup(
   );
 }
 
-/** Save/preview rail that stays put while the form scrolls under it. */
-export function StickyActions({ title }: { title: string }) {
+/** Page title with save/preview beside it, above the tabs. */
+export function FormActions({ title }: { title: string }) {
   return (
-    <div class="sticky-actions">
+    <div class="form-actions">
       <h1 class="text-lg font-bold truncate">{title}</h1>
       <div class="flex gap-2 shrink-0 items-center">
         <RecipeSubmitButton label="Save" />

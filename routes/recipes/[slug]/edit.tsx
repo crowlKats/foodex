@@ -6,10 +6,7 @@ import { loadRecipeEditData } from "../../../lib/recipe-edit-data.ts";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import TabValidation from "../../../islands/TabValidation.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
-import {
-  StickyActions,
-  SubGroup,
-} from "../../../components/recipe-form/ui.tsx";
+import { FormActions, SubGroup } from "../../../components/recipe-form/ui.tsx";
 import {
   ClassificationFields,
   CoverField,
@@ -216,7 +213,7 @@ export default page(function RecipeEdit({ data }) {
       }
       <form id="recipe-edit-form" method="POST" class="space-y-6 mt-2">
         <TabValidation formId="recipe-edit-form" />
-        <StickyActions title={`Edit: ${d.recipe.title}`} />
+        <FormActions title={`Edit: ${d.recipe.title}`} />
 
         <div class="edit-tabs">
           {TABS.map((t, i) => (
