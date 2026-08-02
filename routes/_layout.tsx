@@ -23,8 +23,16 @@ export default layout(function AppLayout({ Component, state, url }) {
         hasHousehold={state.householdId != null}
         currentPath={url.pathname}
       />
+      {
+        /*
+        Vertical only: `overscroll-none` also sets overscroll-behavior-x, and
+        suppressing horizontal overscroll is what cancels the browser's
+        swipe-back gesture. Nothing here scrolls sideways, so the x-axis has
+        no reason to be locked.
+      */
+      }
       <main
-        class={`flex-1 overscroll-none ${
+        class={`flex-1 overscroll-y-none ${
           fullBleed
             ? "overflow-hidden"
             : "overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0"

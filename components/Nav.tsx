@@ -47,8 +47,8 @@ function MobileTab(
       {badge !== undefined && (
         <span
           data-shopping-badge
-          class={`count-badge count-badge-accent absolute -top-0.5 left-1/2 ml-1.5${
-            badge > 0 ? "" : " hidden"
+          class={`count-badge count-badge-accent absolute -top-0.5 left-1/2 ml-1.5 ${
+            badge > 0 ? "" : "hidden"
           }`}
         >
           {badge}
@@ -146,8 +146,8 @@ export function Nav(
                     Shopping List
                     <span
                       data-shopping-badge
-                      class={`count-badge count-badge-accent ml-1.5${
-                        (shoppingListCount ?? 0) > 0 ? "" : " hidden"
+                      class={`count-badge count-badge-accent ml-1.5 ${
+                        (shoppingListCount ?? 0) > 0 ? "" : "hidden"
                       }`}
                     >
                       {shoppingListCount ?? 0}
