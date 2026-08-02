@@ -440,10 +440,6 @@
     cursor-pointer select-none hover:text-stone-900 dark:hover:text-stone-100;
 }
 
-.edit-tab-count {
-  @apply text-[0.625rem] px-1.5 py-0.5 bg-stone-200 dark:bg-stone-800
-    text-stone-600 dark:text-stone-300;
-}
 
 .edit-panel {
   display: none;
@@ -498,6 +494,29 @@
 .chip-tray {
   @apply flex flex-wrap gap-1.5 -mt-0.5 px-2 py-1.5 border-2 border-stone-300
     dark:border-stone-700 bg-stone-100 dark:bg-stone-800;
+}
+
+/* ── Count badges ── */
+/* Square, like every other surface in the app — a pill badge was the one
+   rounded thing sitting next to sharp-cornered cards, buttons and inputs.
+   Tabular figures stop the badge twitching as a count changes width-per-digit
+   (9 → 8); adding a digit still widens it, which is what `min-w-*` is for on
+   the badges that sit over an icon. */
+.count-badge {
+  @apply inline-block text-[0.625rem] font-bold leading-none px-1.5 py-0.5
+    text-center bg-stone-200 dark:bg-stone-800 text-stone-600
+    dark:text-stone-300;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Filled variant for counts that need to read as a notification. */
+.count-badge-accent {
+  @apply bg-orange-600 text-white;
+}
+
+/* Muted accent, for counts that annotate rather than alert. */
+.count-badge-soft {
+  @apply bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300;
 }
 
 /* ── Inline code hints ── */

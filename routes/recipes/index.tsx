@@ -561,7 +561,7 @@ export default page(function RecipesPage({
               <IconFilter class="size-4" />
               <span>Filters</span>
               {hasFilters && (
-                <span class="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded-full">
+                <span class="count-badge count-badge-soft">
                   {difficulty.length + mealTypes.length + dietary.length +
                     (favoritesOnly ? 1 : 0) + (cookableOnly ? 1 : 0)}
                 </span>

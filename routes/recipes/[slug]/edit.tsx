@@ -241,10 +241,10 @@ export default page(function RecipeEdit({ data }) {
               <label key={t.id} for={`tab-${t.id}`} class="edit-tab">
                 {t.label}
                 {t.id === "ingredients" && (
-                  <span class="edit-tab-count">{d.ingredients.length}</span>
+                  <span class="count-badge">{d.ingredients.length}</span>
                 )}
                 {t.id === "steps" && (
-                  <span class="edit-tab-count">{d.steps.length}</span>
+                  <span class="count-badge">{d.steps.length}</span>
                 )}
               </label>
             ))}
