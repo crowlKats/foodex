@@ -197,10 +197,7 @@ export default page(function RecipeEdit({ data }) {
 
   return (
     <div>
-      <div class="flex items-center gap-4">
-        <BackLink href="/recipes" label="Back to Recipes" />
-        <a href={`/recipes/${slug}`} class="link text-sm">View</a>
-      </div>
+      <BackLink href="/recipes" label="Back to Recipes" />
 
       {
         /*
@@ -211,9 +208,12 @@ export default page(function RecipeEdit({ data }) {
         unselected tab would otherwise block submit invisibly.
       */
       }
-      <form id="recipe-edit-form" method="POST" class="space-y-6 mt-2">
+      <form id="recipe-edit-form" method="POST" class="space-y-6">
         <TabValidation formId="recipe-edit-form" />
-        <FormActions title={`Edit: ${d.recipe.title}`} />
+        <FormActions
+          title={`Edit: ${d.recipe.title}`}
+          viewHref={`/recipes/${slug}`}
+        />
 
         <div class="edit-tabs">
           {TABS.map((t, i) => (

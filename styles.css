@@ -400,10 +400,11 @@
 
 /* ── Recipe edit form ── */
 
-/* Title and save/preview on one row above the tabs. Deliberately not sticky,
-   and with no rule of its own — the tablist draws one directly below it. */
+/* Title and its actions on one row above the tabs, spaced like the `h1` on
+   every other detail page. Deliberately not sticky, and with no rule of its
+   own — the tablist draws one directly below it. */
 .form-actions {
-  @apply flex items-center justify-between gap-3 mb-4;
+  @apply flex items-center justify-between gap-3 mt-4 mb-6;
 }
 
 /* A labelled band grouping related fields. The label sits under the rule
