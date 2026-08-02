@@ -499,13 +499,14 @@
 /* ── Count badges ── */
 /* Square, like every other surface in the app — a pill badge was the one
    rounded thing sitting next to sharp-cornered cards, buttons and inputs.
-   Tabular figures stop the badge twitching as a count changes width-per-digit
-   (9 → 8); adding a digit still widens it, which is what `min-w-*` is for on
-   the badges that sit over an icon. */
+   A matching min-width and min-height make a single digit an actual square
+   and stop wider counts from looking squashed; centring is what holds the
+   digits in the middle once the box stops hugging them. Tabular figures keep
+   it from twitching as a count changes width-per-digit (9 → 8). */
 .count-badge {
-  @apply inline-block text-[0.625rem] font-bold leading-none px-1.5 py-0.5
-    text-center bg-stone-200 dark:bg-stone-800 text-stone-600
-    dark:text-stone-300;
+  @apply inline-flex items-center justify-center min-w-5 min-h-5
+    text-[0.6875rem] font-bold leading-none px-1.5 py-1 bg-stone-200
+    dark:bg-stone-800 text-stone-600 dark:text-stone-300;
   font-variant-numeric: tabular-nums;
 }
 

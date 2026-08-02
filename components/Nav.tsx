@@ -47,7 +47,7 @@ function MobileTab(
       {badge !== undefined && (
         <span
           data-shopping-badge
-          class={`count-badge count-badge-accent absolute -top-0.5 left-1/2 ml-1.5 min-w-3.5${
+          class={`count-badge count-badge-accent absolute -top-0.5 left-1/2 ml-1.5${
             badge > 0 ? "" : " hidden"
           }`}
         >
