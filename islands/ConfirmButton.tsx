@@ -12,10 +12,16 @@ interface ConfirmButtonProps {
   class?: string;
   children: ComponentChildren;
   onClick?: () => void;
+  /**
+   * Id of the form to submit, for when the button can't sit inside it —
+   * forms don't nest, so a destructive action rendered within another form
+   * has to point at its own.
+   */
+  form?: string;
 }
 
 export default function ConfirmButton(
-  { message, variant, size, class: extra, children, onClick }:
+  { message, variant, size, class: extra, children, onClick, form }:
     ConfirmButtonProps,
 ) {
   const handleClick: JSX.MouseEventHandler<HTMLButtonElement> = (e) => {
@@ -45,6 +51,7 @@ export default function ConfirmButton(
       variant={variant}
       size={size}
       class={extra}
+      form={form}
       onClick={handleClick}
     >
       {children}

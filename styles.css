@@ -386,10 +386,145 @@
 }
 
 /* ── Section titles ── */
+/* The label itself. `.section-header` draws the rule beneath it and makes
+   room for controls (toggles, links) on the same line. */
 .section-title {
   @apply text-xs font-bold uppercase tracking-wider text-stone-500
-    dark:text-stone-400 border-b-2 border-stone-300 dark:border-stone-700 pb-2
-    mb-3 select-none;
+    dark:text-stone-400 select-none;
+}
+
+.section-header {
+  @apply flex items-center justify-between gap-3 border-b-2 border-stone-300
+    dark:border-stone-700 pb-2 mb-3;
+}
+
+/* ── Recipe edit form ── */
+
+/* Title and its actions on one row above the tabs, spaced like the `h1` on
+   every other detail page. Deliberately not sticky, and with no rule of its
+   own — the tablist draws one directly below it. */
+.form-actions {
+  @apply flex items-center justify-between gap-3 mt-4 mb-6;
+}
+
+/* A labelled band grouping related fields. The label sits under the rule
+   rather than straddling it — straddling needs a background matching whatever
+   is behind, which only held while these lived inside a card. */
+.subgroup {
+  @apply border-t-2 border-stone-200 dark:border-stone-800 pt-3 mt-4;
+}
+
+/* A rule is a separator, so the first band in a panel doesn't need one —
+   it would just double the border the tablist already draws above it. */
+.subgroup:first-child {
+  @apply border-t-0 pt-0 mt-0;
+}
+
+.subgroup-label {
+  @apply block mb-2 text-[0.625rem] font-bold uppercase tracking-wider
+    text-stone-400 dark:text-stone-500 select-none;
+}
+
+/* Radio-driven tabs: no island, and every panel stays in the DOM so one
+   submit still posts the whole form. `islands/TabValidation.tsx` reveals the
+   panel holding a field that fails validation. */
+.edit-tab-radio {
+  @apply hidden;
+}
+
+.edit-tablist {
+  @apply flex flex-wrap gap-1 mb-4 border-b-2 border-stone-300
+    dark:border-stone-700;
+}
+
+/* Weight is constant across states on purpose: bolding the active tab
+   changes that label's width and shoves every tab after it sideways on each
+   click. Colour and the underline carry the active state instead — the same
+   reason `.nav-link` stays `font-medium` and only swaps colour. */
+.edit-tab {
+  @apply flex items-center gap-1.5 text-sm font-medium px-4 py-2 -mb-0.5
+    border-b-2 border-transparent text-stone-500 dark:text-stone-400
+    cursor-pointer select-none hover:text-stone-900 dark:hover:text-stone-100;
+}
+
+
+.edit-panel {
+  display: none;
+}
+
+#tab-basics:checked ~ .edit-tablist [for="tab-basics"],
+#tab-ingredients:checked ~ .edit-tablist [for="tab-ingredients"],
+#tab-steps:checked ~ .edit-tablist [for="tab-steps"],
+#tab-advanced:checked ~ .edit-tablist [for="tab-advanced"] {
+  @apply text-orange-600 dark:text-orange-400 border-orange-600
+    dark:border-orange-400;
+}
+
+#tab-basics:checked ~ .edit-panel-basics,
+#tab-ingredients:checked ~ .edit-panel-ingredients,
+#tab-steps:checked ~ .edit-panel-steps,
+#tab-advanced:checked ~ .edit-panel-advanced {
+  display: block;
+}
+
+/* ── Nested rows ── */
+/* A repeated item inside a card (an ingredient, a tool, a step). A `.card`
+   nested in a `.card` is invisible, so a row gets its own surface between the
+   card and its fields — three steps are what make a long list scannable.
+   Light mode steps down from the white card; dark mode steps *up* from it,
+   since dropping to the page black would punch a hole in the card. */
+.form-row {
+  @apply bg-stone-200 dark:bg-stone-800 border-2 border-stone-300
+    dark:border-stone-700 p-3;
+}
+
+/* Fields return to the card's own surface, so a row reads as a tinted band
+   with its inputs punched back out of it. */
+.form-row input,
+.form-row select,
+.form-row textarea,
+.form-row [data-highlightable-textarea] {
+  @apply bg-white dark:bg-stone-900;
+}
+
+/* Static `{{`/`}}` braces flanking a template-key input, so the field reads
+   as the thing you type into steps without needing a caption. */
+.input-affix {
+  @apply flex items-center px-1.5 text-xs font-mono select-none border-2
+    border-stone-300 dark:border-stone-700 bg-stone-200 dark:bg-stone-700
+    text-stone-500 dark:text-stone-400;
+}
+
+/* Selected chips docked to the bottom edge of their input, sharing its border
+   so the pair reads as one control — the vertical counterpart to `InputBar`,
+   which joins an input to its unit select the same way. */
+.chip-tray {
+  @apply flex flex-wrap gap-1.5 -mt-0.5 px-2 py-1.5 border-2 border-stone-300
+    dark:border-stone-700 bg-stone-100 dark:bg-stone-800;
+}
+
+/* ── Count badges ── */
+/* Square, like every other surface in the app — a pill badge was the one
+   rounded thing sitting next to sharp-cornered cards, buttons and inputs.
+   A matching min-width and min-height make a single digit an actual square
+   and stop wider counts from looking squashed; centring is what holds the
+   digits in the middle once the box stops hugging them. Tabular figures keep
+   it from twitching as a count changes width-per-digit (9 → 8). */
+.count-badge {
+  @apply inline-flex items-center justify-center min-w-5 min-h-5
+    text-[0.6875rem] font-bold leading-none px-1.5 py-1 bg-stone-200
+    dark:bg-stone-800 text-stone-600 dark:text-stone-300;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Filled variant for counts that need to read as a notification. */
+.count-badge-accent {
+  @apply bg-orange-600 text-white;
+}
+
+/* Muted accent, for counts that annotate rather than alert. */
+.count-badge-soft {
+  @apply bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300;
 }
 
 /* ── Inline code hints ── */

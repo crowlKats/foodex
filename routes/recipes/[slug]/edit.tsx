@@ -1,61 +1,33 @@
 import { handler, page } from "./$edit.ts";
 import { HttpError } from "fresh/errors";
-import { signal } from "@preact/signals";
 import { slugify } from "../../../utils.ts";
-import type {
-  Ingredient,
-  Recipe,
-  RecipeIngredient,
-  RecipeReference,
-  RecipeStep,
-  RecipeStepDep,
-  RecipeStepSection,
-  RecipeTag,
-  RecipeTool,
-  RecipeWithCoverMedia,
-  Tool,
-} from "../../../db/types.ts";
 import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
-import QuantityInput from "../../../islands/QuantityInput.tsx";
-import IngredientForm from "../../../islands/IngredientForm.tsx";
-import ToolForm from "../../../islands/ToolForm.tsx";
-import StepForm from "../../../islands/StepForm.tsx";
-import SegmentToggle from "../../../islands/SegmentToggle.tsx";
-import MediaUpload from "../../../islands/MediaUpload.tsx";
-import RecipePreview from "../../../islands/RecipePreview.tsx";
-import RecipeSubmitButton from "../../../islands/RecipeSubmitButton.tsx";
-import MultiSearchSelect from "../../../islands/MultiSearchSelect.tsx";
+import { loadRecipeEditData } from "../../../lib/recipe-edit-data.ts";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
+import TabValidation from "../../../islands/TabValidation.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
-import { FormField } from "../../../components/FormField.tsx";
-import { Input, InputMultiline } from "../../../components/Input.tsx";
-import { Select } from "../../../components/Select.tsx";
-import { DurationInput } from "../../../components/DurationInput.tsx";
-import RecipeOutputForm from "../../../islands/RecipeOutputForm.tsx";
-import { RefForm } from "../../../components/RefForm.tsx";
+import { FormActions, SubGroup } from "../../../components/recipe-form/ui.tsx";
 import {
-  DIETARY_TAGS,
-  DIFFICULTY_LEVELS,
-  MEAL_TYPES,
-  SOURCE_TYPE_LABELS,
-  SOURCE_TYPES,
-} from "../../../lib/recipe-tags.ts";
-
+  ClassificationFields,
+  CoverField,
+  IdentityFields,
+  IngredientsField,
+  OutputField,
+  RefsField,
+  SourceFields,
+  StepsField,
+  ToolsField,
+  YieldTimingFields,
+} from "../../../components/recipe-form/fields.tsx";
 export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
-    const recipeRes = await ctx.state.db.query<RecipeWithCoverMedia>(
-      `SELECT r.*, m.id as cover_media_id, m.url as cover_media_url, m.filename as cover_media_filename, m.content_type as cover_media_content_type
-       FROM recipes r
-       LEFT JOIN media m ON m.id = r.cover_image_id
-       WHERE r.slug = $1`,
-      [slug],
-    );
-    if (recipeRes.rows.length === 0) throw new HttpError(404);
-    const recipe = recipeRes.rows[0];
+    const data = await loadRecipeEditData(ctx.state.db.query, slug);
+    if (!data) throw new HttpError(404);
 
     if (
-      !ctx.state.householdId || recipe.household_id !== ctx.state.householdId
+      !ctx.state.householdId ||
+      data.recipe.household_id !== ctx.state.householdId
     ) {
       return new Response(null, {
         status: 303,
@@ -63,173 +35,8 @@ export const handlers = handler({
       });
     }
 
-    const ingredientsRes = await ctx.state.db.query<RecipeIngredient>(
-      `SELECT ri.*, g.name as ingredient_name
-       FROM recipe_ingredients ri
-       LEFT JOIN ingredients g ON g.id = ri.ingredient_id
-       WHERE ri.recipe_id = $1
-       ORDER BY ri.sort_order, ri.id`,
-      [recipe.id],
-    );
-
-    const toolsRes = await ctx.state.db.query<RecipeTool>(
-      `SELECT rt.*, t.name as tool_name
-       FROM recipe_tools rt
-       JOIN tools t ON t.id = rt.tool_id
-       WHERE rt.recipe_id = $1
-       ORDER BY rt.sort_order, rt.id`,
-      [recipe.id],
-    );
-
-    const stepsRes = await ctx.state.db.query<RecipeStep>(
-      `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
-      [recipe.id],
-    );
-
-    const sectionsRes = await ctx.state.db.query<RecipeStepSection>(
-      `SELECT * FROM recipe_step_sections WHERE recipe_id = $1 ORDER BY sort_order, id`,
-      [recipe.id],
-    );
-
-    const sectionDepsRes = await ctx.state.db.query<
-      { section_id: string; depends_on: string }
-    >(
-      `SELECT sd.section_id, sd.depends_on
-       FROM recipe_section_deps sd
-       JOIN recipe_step_sections s ON s.id = sd.section_id
-       WHERE s.recipe_id = $1`,
-      [recipe.id],
-    );
-
-    const [stepMediaRes, stepDepsRes] = await Promise.all([
-      ctx.state.db.query<
-        { step_id: string; sort_order: number; media_id: string; url: string }
-      >(
-        `SELECT rsm.step_id, rsm.sort_order, m.id as media_id, m.url
-         FROM recipe_step_media rsm
-         JOIN media m ON m.id = rsm.media_id
-         JOIN recipe_steps rs ON rs.id = rsm.step_id
-         WHERE rs.recipe_id = $1
-         ORDER BY rsm.step_id, rsm.sort_order`,
-        [recipe.id],
-      ),
-      ctx.state.db.query<RecipeStepDep>(
-        `SELECT sd.step_id, sd.depends_on
-         FROM recipe_step_deps sd
-         JOIN recipe_steps rs ON rs.id = sd.step_id
-         WHERE rs.recipe_id = $1`,
-        [recipe.id],
-      ),
-    ]);
-
-    const stepMediaMap = new Map<string, { id: string; url: string }[]>();
-    for (const row of stepMediaRes.rows) {
-      const stepId = String(row.step_id);
-      if (!stepMediaMap.has(stepId)) stepMediaMap.set(stepId, []);
-      stepMediaMap.get(stepId)!.push({
-        id: String(row.media_id),
-        url: String(row.url),
-      });
-    }
-
-    // Build a map from step ID → indices of steps it depends on
-    const stepIdToIndex = new Map<string, number>();
-    stepsRes.rows.forEach((s, i) => stepIdToIndex.set(s.id, i));
-    const stepAfterMap = new Map<string, number[]>();
-    for (const dep of stepDepsRes.rows) {
-      const idx = stepIdToIndex.get(dep.depends_on);
-      if (idx == null) continue;
-      if (!stepAfterMap.has(dep.step_id)) stepAfterMap.set(dep.step_id, []);
-      stepAfterMap.get(dep.step_id)!.push(idx);
-    }
-
-    const refsRes = await ctx.state.db.query<RecipeReference>(
-      `SELECT rr.*, r.title as ref_title, r.slug as ref_slug
-       FROM recipe_references rr
-       JOIN recipes r ON r.id = rr.referenced_recipe_id
-       WHERE rr.recipe_id = $1
-       ORDER BY rr.sort_order`,
-      [recipe.id],
-    );
-
-    const tagsRes = await ctx.state.db.query<RecipeTag>(
-      "SELECT tag_type, tag_value FROM recipe_tags WHERE recipe_id = $1",
-      [recipe.id],
-    );
-    const mealTypes = tagsRes.rows
-      .filter((t) => t.tag_type === "meal_type")
-      .map((t) => t.tag_value);
-    const dietaryTags = tagsRes.rows
-      .filter((t) => t.tag_type === "dietary")
-      .map((t) => t.tag_value);
-
-    const ingredientsListRes = await ctx.state.db.query<Ingredient>(
-      "SELECT id, name, unit FROM ingredients ORDER BY name",
-    );
-    const allToolsRes = await ctx.state.db.query<Tool>(
-      "SELECT id, name FROM tools ORDER BY name",
-    );
-    const allRecipesRes = await ctx.state.db.query<Recipe>(
-      "SELECT id, title, slug FROM recipes WHERE id != $1 ORDER BY title",
-      [recipe.id],
-    );
-
-    // Map section UUID → index in the sections array (form expects index)
-    const sectionIdToIndex = new Map<string, number>();
-    sectionsRes.rows.forEach((s, i) => sectionIdToIndex.set(s.id, i));
-
-    const stepsWithMedia = stepsRes.rows.map((s, i) => ({
-      ...s,
-      media: stepMediaMap.get(String(s.id)) ?? [],
-      after: (stepAfterMap.get(s.id) ?? (i > 0 ? [i - 1] : [])).sort(
-        (a, b) => a - b,
-      ),
-      section: s.section_id != null
-        ? (sectionIdToIndex.get(s.section_id) ?? null)
-        : null,
-    }));
-
-    let outputIngredientName = "";
-    if (recipe.output_ingredient_id) {
-      const oRes = await ctx.state.db.query<{ name: string }>(
-        "SELECT name FROM ingredients WHERE id = $1",
-        [recipe.output_ingredient_id],
-      );
-      if (oRes.rows.length > 0) outputIngredientName = oRes.rows[0].name;
-    }
-
-    ctx.state.pageTitle = `Edit: ${recipe.title}`;
-    // Build per-section "after" arrays of section indices for the form
-    const sectionIndexById = new Map<string, number>();
-    sectionsRes.rows.forEach((s, i) => sectionIndexById.set(s.id, i));
-    const sectionAfters = sectionsRes.rows.map(() => [] as number[]);
-    for (const dep of sectionDepsRes.rows) {
-      const sIdx = sectionIndexById.get(dep.section_id);
-      const dIdx = sectionIndexById.get(dep.depends_on);
-      if (sIdx != null && dIdx != null) sectionAfters[sIdx].push(dIdx);
-    }
-    sectionAfters.forEach((arr) => arr.sort((a, b) => a - b));
-
-    return {
-      data: {
-        recipe,
-        ingredients: ingredientsRes.rows,
-        tools: toolsRes.rows,
-        steps: stepsWithMedia,
-        sections: sectionsRes.rows.map((s, i) => ({
-          title: s.title,
-          key: s.key,
-          after: sectionAfters[i],
-        })),
-        refs: refsRes.rows,
-        mealTypes,
-        dietaryTags,
-        allIngredients: ingredientsListRes.rows,
-        allTools: allToolsRes.rows,
-        allRecipes: allRecipesRes.rows,
-        outputIngredientName,
-      },
-    };
+    ctx.state.pageTitle = `Edit: ${data.recipe.title}`;
+    return { data };
   },
   async POST(ctx) {
     const slug = ctx.params.slug;
@@ -377,299 +184,140 @@ export const handlers = handler({
   },
 });
 
-export default page(function RecipeEdit({
-  data: {
-    recipe,
-    ingredients,
-    tools,
-    steps,
-    sections,
-    refs,
-    mealTypes,
-    dietaryTags,
-    allIngredients,
-    allTools,
-    allRecipes,
-    outputIngredientName,
-  },
-}) {
-  const ingredientData = ingredients.map((i) => ({
-    key: i.key ?? "",
-    name: i.name,
-    amount: i.amount != null ? String(i.amount) : "",
-    unit: i.unit ?? "",
-    ingredient_id: i.ingredient_id != null ? String(i.ingredient_id) : "",
-    always_on_hand: !!i.always_on_hand,
-  }));
+const TABS = [
+  { id: "basics", label: "Basics" },
+  { id: "ingredients", label: "Ingredients" },
+  { id: "steps", label: "Steps" },
+  { id: "advanced", label: "Advanced" },
+] as const;
 
-  const toolData = tools.map((m) => ({
-    tool_id: String(m.tool_id),
-    tool_name: m.tool_name ?? "",
-    usage_description: m.usage_description ?? "",
-    settings: m.settings ?? "",
-  }));
-
-  const stepData = steps.map((s) => ({
-    title: s.title ?? "",
-    body: s.body ?? "",
-    media: s.media ?? [],
-    after: s.after ?? [],
-    section: s.section ?? null,
-  }));
-
-  const hasGraph = stepData.length > 0 &&
-    !stepData.every((s, i) =>
-      i === 0
-        ? s.after.length === 0
-        : (s.after.length === 1 && s.after[0] === i - 1)
-    );
-  const stepMode = signal<"list" | "graph">(hasGraph ? "graph" : "list");
-
-  const refData = refs.map((r) => ({
-    referenced_recipe_id: String(r.referenced_recipe_id),
-  }));
+export default page(function RecipeEdit({ data }) {
+  const d = data;
+  const slug = d.recipe.slug;
 
   return (
     <div>
-      <div class="flex items-center gap-4">
-        <BackLink href="/recipes" label="Back to Recipes" />
-        <a
-          href={`/recipes/${recipe.slug}`}
-          class="link text-sm"
-        >
-          View
-        </a>
-      </div>
+      {
+        /* Up one level, to the recipe this is editing — which carries its own
+          link back to the list. */
+      }
+      <BackLink href={`/recipes/${slug}`} label="Back to Recipe" />
 
-      <h1 class="text-2xl font-bold mt-4 mb-6">Edit: {recipe.title}</h1>
+      {
+        /*
+        Tabs are radio inputs driving sibling selectors, so every panel stays
+        in the DOM and this single submit still posts the whole recipe. The
+        `_tab` radio itself is an extra form field the POST handler never
+        reads. <TabValidation> covers the flip side: a `required` field on an
+        unselected tab would otherwise block submit invisibly.
+      */
+      }
+      <form id="recipe-edit-form" method="POST" class="space-y-6">
+        <TabValidation formId="recipe-edit-form" />
+        <FormActions title={`Edit: ${d.recipe.title}`} />
 
-      <form method="POST" class="space-y-6">
-        <div class="card">
-          <h2 class="font-semibold mb-2">Cover Image</h2>
-          <MediaUpload
-            name="cover_image_id"
-            accept="image/*"
-            initialMedia={recipe.cover_media_id
-              ? [{
-                id: String(recipe.cover_media_id),
-                url: recipe.cover_media_url!,
-                filename: recipe.cover_media_filename!,
-                content_type: recipe.cover_media_content_type!,
-              }]
-              : []}
-          />
-        </div>
-
-        <div class="card space-y-3">
-          <h2 class="font-semibold">Details</h2>
-          <FormField label="Title">
-            <Input
-              type="text"
-              name="title"
-              value={recipe.title}
-              required
-              class="w-full"
-            />
-          </FormField>
-          <FormField label="Description">
-            <InputMultiline
-              name="description"
-              rows={2}
-              class="w-full"
-              value={recipe.description ?? ""}
-            />
-          </FormField>
-          <QuantityInput
-            initialType={recipe.quantity_type ?? "servings"}
-            initialValue={recipe.quantity_value ?? 4}
-            initialUnit={recipe.quantity_unit ?? "servings"}
-            initialValue2={recipe.quantity_value2 ?? undefined}
-            initialValue3={recipe.quantity_value3 ?? undefined}
-          />
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-            <DurationInput
-              name="prep_time"
-              label="Prep time"
-              value={recipe.prep_time != null ? String(recipe.prep_time) : ""}
-            />
-            <DurationInput
-              name="cook_time"
-              label="Cook time"
-              value={recipe.cook_time != null ? String(recipe.cook_time) : ""}
-            />
-            <DurationInput
-              name="rest_time"
-              label="Rest time"
-              value={recipe.rest_time != null ? String(recipe.rest_time) : ""}
-            />
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <FormField label="Difficulty">
-              <Select name="difficulty" class="w-full">
-                <option value="">—</option>
-                {DIFFICULTY_LEVELS.map((d) => (
-                  <option key={d} value={d} selected={recipe.difficulty === d}>
-                    {d[0].toUpperCase() + d.slice(1)}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            <FormField label="Meal Type">
-              <MultiSearchSelect
-                name="meal_type"
-                options={[...MEAL_TYPES]}
-                initialSelected={mealTypes}
-                placeholder="Search meal types..."
-              />
-            </FormField>
-            <FormField label="Dietary">
-              <MultiSearchSelect
-                name="dietary"
-                options={[...DIETARY_TAGS]}
-                initialSelected={dietaryTags}
-                placeholder="Search dietary tags..."
-              />
-            </FormField>
-          </div>
-          <label class="flex items-center gap-2 mt-3 cursor-pointer">
+        <div class="edit-tabs">
+          {TABS.map((t, i) => (
             <input
-              type="checkbox"
-              name="private"
-              checked={recipe.private}
-              class="size-4 accent-orange-600"
+              key={t.id}
+              type="radio"
+              name="_tab"
+              id={`tab-${t.id}`}
+              class="edit-tab-radio"
+              checked={i === 0}
             />
-            <span class="text-sm">
-              Private (only visible to household members)
-            </span>
-          </label>
-          <FormField label="Source">
-            <Select name="source_type" class="w-full">
-              <option value="">—</option>
-              {SOURCE_TYPES.map((s) => (
-                <option key={s} value={s} selected={recipe.source_type === s}>
-                  {SOURCE_TYPE_LABELS[s]}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField label="Source Name">
-              <Input
-                type="text"
-                name="source_name"
-                value={recipe.source_name ?? ""}
-                placeholder="e.g. Book title, website name, person's name"
-                class="w-full"
-              />
-            </FormField>
-            <FormField label="Source URL">
-              <Input
-                type="url"
-                name="source_url"
-                value={recipe.source_url ?? ""}
-                placeholder="https://..."
-                class="w-full"
-              />
-            </FormField>
+          ))}
+
+          <div class="edit-tablist">
+            {TABS.map((t) => (
+              <label key={t.id} for={`tab-${t.id}`} class="edit-tab">
+                {t.label}
+                {t.id === "ingredients" && (
+                  <span class="count-badge">{d.ingredients.length}</span>
+                )}
+                {t.id === "steps" && (
+                  <span class="count-badge">{d.steps.length}</span>
+                )}
+              </label>
+            ))}
           </div>
-        </div>
 
-        <div class="card">
-          <h2 class="font-semibold mb-2">Ingredients</h2>
-          <IngredientForm
-            initialIngredients={ingredientData}
-            ingredients={allIngredients.map((g) => ({
-              id: String(g.id),
-              name: g.name,
-              unit: g.unit ?? "",
-            }))}
-          />
-        </div>
-
-        <div class="card">
-          <h2 class="font-semibold mb-2">Tools</h2>
-          <ToolForm
-            initialTools={toolData}
-            tools={allTools.map((m) => ({
-              id: String(m.id),
-              name: m.name,
-            }))}
-          />
-        </div>
-
-        <div class="card">
-          <div class="flex items-center justify-between mb-2">
-            <h2 class="font-semibold">Steps</h2>
-            <SegmentToggle
-              value={stepMode}
-              options={["list", "graph"]}
-            />
+          {
+            /*
+            No card around these three: the tab already draws the boundary,
+            and their heading would only repeat the tab's own label. Advanced
+            keeps its cards because it holds four distinct sections that need
+            separating from each other.
+          */
+          }
+          <div
+            data-tab-panel="basics"
+            class="edit-panel edit-panel-basics space-y-3"
+          >
+            <IdentityFields d={d} />
+            <SubGroup label="Yield & timing">
+              <YieldTimingFields d={d} />
+            </SubGroup>
+            <SubGroup label="Classification">
+              <ClassificationFields d={d} />
+            </SubGroup>
+            <SubGroup label="Source">
+              <SourceFields d={d} />
+            </SubGroup>
           </div>
-          <p class="text-xs text-stone-500 mb-2">
-            Use <code class="code-hint">{"{{ key }}"}</code>{" "}
-            for scaled ingredients,{" "}
-            <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
-            for just the number. Supports math and functions.{" "}
-            <a href="/docs/templates" class="link text-xs">Full reference</a>
-          </p>
-          <StepForm
-            initialSteps={stepData}
-            initialSections={sections}
-            mode={stepMode}
-          />
-        </div>
 
-        <div class="card">
-          <h2 class="font-semibold mb-2">Output Ingredient</h2>
-          <RecipeOutputForm
-            ingredients={allIngredients.map((g) => ({
-              id: String(g.id),
-              name: g.name,
-              unit: g.unit ?? "",
-            }))}
-            initialIngredientId={recipe.output_ingredient_id
-              ? String(recipe.output_ingredient_id)
-              : undefined}
-            initialIngredientName={outputIngredientName || undefined}
-            initialAmount={recipe.output_amount != null
-              ? String(recipe.output_amount)
-              : undefined}
-            initialUnit={recipe.output_unit ?? undefined}
-            initialExpiresDays={recipe.output_expires_days != null
-              ? Number(recipe.output_expires_days)
-              : undefined}
-          />
-        </div>
+          <div
+            data-tab-panel="ingredients"
+            class="edit-panel edit-panel-ingredients"
+          >
+            <IngredientsField d={d} />
+          </div>
 
-        <div class="card">
-          <h2 class="font-semibold mb-2">Sub-recipe References</h2>
-          <RefForm
-            initialRefs={refData}
-            recipes={allRecipes.map((r) => ({
-              id: String(r.id),
-              title: r.title,
-            }))}
-          />
-        </div>
+          <div data-tab-panel="steps" class="edit-panel edit-panel-steps">
+            <StepsField d={d} />
+          </div>
 
-        <div class="flex gap-3">
-          <RecipeSubmitButton label="Save Recipe" />
-          <RecipePreview />
+          <div
+            data-tab-panel="advanced"
+            class="edit-panel edit-panel-advanced space-y-3"
+          >
+            <SubGroup label="Cover image">
+              <CoverField d={d} />
+            </SubGroup>
+            <SubGroup label="Tools">
+              <ToolsField d={d} />
+            </SubGroup>
+            <SubGroup label="Output ingredient">
+              <OutputField d={d} />
+            </SubGroup>
+            <SubGroup label="Sub-recipe references">
+              <RefsField d={d} />
+            </SubGroup>
+            <SubGroup label="Danger zone">
+              <p class="text-xs text-stone-500 dark:text-stone-400 mb-2">
+                Deleting removes the recipe and its steps for everyone in the
+                household. This cannot be undone.
+              </p>
+              {/* Targets the sibling form below — forms can't nest. */}
+              <ConfirmButton
+                form="delete-recipe-form"
+                message="Delete this recipe? This cannot be undone."
+                variant="danger"
+              >
+                Delete Recipe
+              </ConfirmButton>
+            </SubGroup>
+          </div>
         </div>
       </form>
 
       <form
-        action={`/recipes/${recipe.slug}`}
+        id="delete-recipe-form"
+        action={`/recipes/${slug}`}
         method="POST"
-        class="mt-6 pt-6 border-t-2 border-stone-200 dark:border-stone-700"
+        class="hidden"
       >
         <input type="hidden" name="_method" value="DELETE" />
-        <ConfirmButton
-          message="Delete this recipe? This cannot be undone."
-          variant="danger"
-        >
-          Delete Recipe
-        </ConfirmButton>
       </form>
     </div>
   );

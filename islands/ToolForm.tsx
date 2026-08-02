@@ -54,10 +54,13 @@ export default function ToolForm(
   }
 
   return (
-    <div class="space-y-2">
+    <div class="space-y-3">
       {items.value.map((item, i) => (
-        <div key={item._uid} class="space-y-2">
+        <div key={item._uid} class="form-row space-y-2">
           <div class="flex gap-2 items-center min-w-0">
+            <span class="text-xs text-stone-400 font-mono shrink-0 w-5">
+              #{i + 1}
+            </span>
             <SearchSelect
               value={{ id: item.tool_id, name: item.tool_name }}
               options={options}
@@ -79,15 +82,17 @@ export default function ToolForm(
               icon={IconTrash}
               title="Remove tool"
               class="shrink-0"
-              onClick={() => remove(i)}
+              onClick={() =>
+                remove(i)}
             />
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:pl-7">
             <Input
               type="text"
               placeholder="Settings (e.g. 180C)"
               value={item.settings}
-              onValueChange={(v) => update(i, "settings", v)}
+              onValueChange={(v) =>
+                update(i, "settings", v)}
               size="sm"
             />
             <Input
