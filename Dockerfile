@@ -16,7 +16,7 @@ COPY package.json deno.lock ./
 RUN deno install --allow-scripts
 
 # Copy app source and build the production server bundle (Vite + Nitro).
-# Nitro auto-selects the `deno-server` preset, emitting `.output/`.
+ENV NITRO_PRESET=deno-server
 COPY . .
 RUN deno task build
 
