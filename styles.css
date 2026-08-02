@@ -430,10 +430,14 @@
     dark:border-stone-700;
 }
 
+/* Weight is constant across states on purpose: bolding the active tab
+   changes that label's width and shoves every tab after it sideways on each
+   click. Colour and the underline carry the active state instead — the same
+   reason `.nav-link` stays `font-medium` and only swaps colour. */
 .edit-tab {
-  @apply flex items-center gap-1.5 text-sm px-4 py-2 -mb-0.5 border-b-2
-    border-transparent text-stone-500 dark:text-stone-400 cursor-pointer
-    select-none hover:text-stone-900 dark:hover:text-stone-100;
+  @apply flex items-center gap-1.5 text-sm font-medium px-4 py-2 -mb-0.5
+    border-b-2 border-transparent text-stone-500 dark:text-stone-400
+    cursor-pointer select-none hover:text-stone-900 dark:hover:text-stone-100;
 }
 
 .edit-tab-count {
@@ -450,7 +454,7 @@
 #tab-steps:checked ~ .edit-tablist [for="tab-steps"],
 #tab-advanced:checked ~ .edit-tablist [for="tab-advanced"] {
   @apply text-orange-600 dark:text-orange-400 border-orange-600
-    dark:border-orange-400 font-semibold;
+    dark:border-orange-400;
 }
 
 #tab-basics:checked ~ .edit-panel-basics,
