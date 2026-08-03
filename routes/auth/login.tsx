@@ -1,5 +1,6 @@
 import { handler, page } from "./$login.ts";
 import {
+  captchaEnabled,
   createOAuthStateCookie,
   generateOAuthState,
   getAuthentikAuthUrl,
@@ -34,7 +35,7 @@ export const handlers = handler({
         authentikUrl: providers.authentik
           ? getAuthentikAuthUrl(req, state)
           : null,
-        hcaptchaSitekey: HCAPTCHA_SITEKEY,
+        hcaptchaSitekey: captchaEnabled ? HCAPTCHA_SITEKEY : "",
         error: ctx.url.searchParams.get("error"),
       },
       headers: {
@@ -107,6 +108,9 @@ export default page(function LoginPage({ data }) {
               <div
                 class="h-captcha flex justify-center"
                 data-sitekey={data.hcaptchaSitekey}
+                data-callback="onCaptchaSolved"
+                data-expired-callback="onCaptchaCleared"
+                data-error-callback="onCaptchaCleared"
               >
               </div>
               {
@@ -122,6 +126,19 @@ export default page(function LoginPage({ data }) {
                 }}
               >
               </script>
+              {
+                /* The server rejects a submit with no captcha token, so keep
+                  the button disabled until hCaptcha hands us one. */
+              }
+              <script
+                // deno-lint-ignore react-no-danger
+                dangerouslySetInnerHTML={{
+                  __html:
+                    `function onCaptchaSolved(){var b=document.getElementById("magic-link-submit");if(b)b.disabled=false}` +
+                    `function onCaptchaCleared(){var b=document.getElementById("magic-link-submit");if(b)b.disabled=true}`,
+                }}
+              >
+              </script>
               <script
                 src="https://js.hcaptcha.com/1/api.js"
                 async
@@ -131,7 +148,13 @@ export default page(function LoginPage({ data }) {
             </>
           )}
 
-          <Button type="submit" variant="outline" class="w-full">
+          <Button
+            type="submit"
+            variant="outline"
+            class="w-full"
+            id="magic-link-submit"
+            disabled={!!data.hcaptchaSitekey}
+          >
             <IconMail class="size-5" />
             Continue with email
           </Button>

@@ -9,6 +9,11 @@ const ALWAYS_HTTPS = Deno.env.get("ALWAYS_HTTPS") === "true";
 export const HCAPTCHA_SITEKEY = Deno.env.get("HCAPTCHA_SITEKEY") ?? "";
 const HCAPTCHA_SECRET = Deno.env.get("HCAPTCHA_SECRET") ?? "";
 
+// Both halves are required: without the secret we cannot verify a token, and
+// without the sitekey the widget never renders, so a token can never be
+// produced. Only enforce the captcha when we can actually check it.
+export const captchaEnabled = !!(HCAPTCHA_SITEKEY && HCAPTCHA_SECRET);
+
 export const providers = {
   github: !!(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET),
   google: !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
@@ -20,7 +25,8 @@ export async function verifyHCaptcha(
   token: string | null | undefined,
   remoteIp?: string | null,
 ): Promise<boolean> {
-  if (!token) return true;
+  if (!captchaEnabled) return true;
+  if (!token) return false;
 
   const body = new URLSearchParams({
     secret: HCAPTCHA_SECRET,
