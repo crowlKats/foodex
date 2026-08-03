@@ -549,15 +549,19 @@ export default page(function RecipesPage({
         state. The flex row lives in a child instead. The sort control moved
         out of the summary for the same reason — a control nested inside a
         summary toggles the disclosure when you click it.
+
+        The details is a full-width block so the open panel spans the whole
+        page; the sort control is pinned to the top right of the row instead
+        of sharing a flex line, which would have squeezed the panel to the
+        left of it. The summary's inner span carries the sort control's
+        `h-10` so the panel starts below it rather than beside it, and the
+        panel's own margin is what keeps the two apart.
       */
       }
-      <div class="mb-4 flex items-start gap-3">
-        <details
-          class="flex-1 min-w-0 group"
-          open={hasFilters || undefined}
-        >
+      <div class="relative mb-4">
+        <details class="group" open={hasFilters || undefined}>
           <summary class="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-sm text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
-            <span class="inline-flex items-center gap-1.5">
+            <span class="inline-flex items-center gap-1.5 h-10">
               <IconFilter class="size-4" />
               <span>Filters</span>
               {hasFilters && (
@@ -656,21 +660,23 @@ export default page(function RecipesPage({
             )}
           </div>
         </details>
-        <SortSelect
-          current={sort}
-          desc={desc}
-          toggleHref={filterUrl(current, {
-            desc: desc ? "0" : "1",
-          })}
-          options={SORT_OPTIONS.map((o) => ({
-            value: o.value,
-            label: o.label,
-            href: filterUrl(current, {
-              sort: o.value === "newest" ? undefined : o.value,
-              desc: undefined,
-            }),
-          }))}
-        />
+        <div class="absolute top-0 right-0">
+          <SortSelect
+            current={sort}
+            desc={desc}
+            toggleHref={filterUrl(current, {
+              desc: desc ? "0" : "1",
+            })}
+            options={SORT_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+              href: filterUrl(current, {
+                sort: o.value === "newest" ? undefined : o.value,
+                desc: undefined,
+              }),
+            }))}
+          />
+        </div>
       </div>
 
       {drafts.length > 0 && (
