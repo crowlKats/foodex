@@ -4,13 +4,16 @@ import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import type { Household, HouseholdInvite } from "../../db/types.ts";
+import { loginUrl, sanitizeRedirect } from "../../lib/auth.ts";
 
 export const handlers = handler({
   async GET(ctx) {
+    const redirectTo = sanitizeRedirect(ctx.url.searchParams.get("redirect"));
+
     if (!ctx.state.user) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: loginUrl(ctx.url.pathname + ctx.url.search) },
       });
     }
 
@@ -24,20 +27,28 @@ export const handlers = handler({
     if (result.rows.length > 0) {
       return new Response(null, {
         status: 303,
-        headers: { Location: `/household` },
+        headers: { Location: redirectTo ?? `/household` },
       });
     }
 
     ctx.state.pageTitle = "Join or Create Household";
-    return { data: {} };
+    return { data: { redirectTo } };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: loginUrl(ctx.url.pathname + ctx.url.search) },
       });
     }
+
+    const form = await ctx.req.formData();
+    const rawRedirect = form.get("redirect");
+    // Onboarding is a detour: hand the user back to whatever sent them here.
+    const redirectTo = sanitizeRedirect(
+      typeof rawRedirect === "string" ? rawRedirect : null,
+    );
+    const done = redirectTo ?? "/household";
 
     // If user already belongs to a household, redirect to it
     const existing = await ctx.state.db.query<Pick<Household, "id">>(
@@ -48,17 +59,16 @@ export const handlers = handler({
     if (existing.rows.length > 0) {
       return new Response(null, {
         status: 303,
-        headers: { Location: `/household` },
+        headers: { Location: done },
       });
     }
 
-    const form = await ctx.req.formData();
     const method = form.get("_method");
 
     if (method === "JOIN") {
       const code = (form.get("code") as string)?.trim();
       if (!code) {
-        return { data: { error: "Invite code is required" } };
+        return { data: { error: "Invite code is required", redirectTo } };
       }
 
       const inviteRes = await ctx.state.db.query<
@@ -69,7 +79,9 @@ export const handlers = handler({
         [code],
       );
       if (inviteRes.rows.length === 0) {
-        return { data: { error: "Invalid or expired invite code" } };
+        return {
+          data: { error: "Invalid or expired invite code", redirectTo },
+        };
       }
 
       const householdId = inviteRes.rows[0].household_id;
@@ -80,14 +92,14 @@ export const handlers = handler({
 
       return new Response(null, {
         status: 303,
-        headers: { Location: `/household` },
+        headers: { Location: done },
       });
     }
 
     const name = form.get("name") as string;
 
     if (!name?.trim()) {
-      return { data: { error: "Name is required" } };
+      return { data: { error: "Name is required", redirectTo } };
     }
 
     const houseRes = await ctx.state.db.query<Pick<Household, "id">>(
@@ -103,13 +115,19 @@ export const handlers = handler({
 
     return new Response(null, {
       status: 303,
-      headers: { Location: `/household` },
+      headers: { Location: done },
     });
   },
 });
 
 export default page(function HouseholdsPage({ data }) {
-  const { error } = data as { error?: string };
+  const { error, redirectTo } = data as {
+    error?: string;
+    redirectTo?: string | null;
+  };
+  const carryRedirect = redirectTo
+    ? <input type="hidden" name="redirect" value={redirectTo} />
+    : null;
 
   return (
     <div class="max-w-md mx-auto mt-12">
@@ -130,6 +148,7 @@ export default page(function HouseholdsPage({ data }) {
         <div>
           <h2 class="text-lg font-semibold mb-3">Create Household</h2>
           <form method="POST" class="card space-y-3">
+            {carryRedirect}
             <FormField label="Name">
               <Input
                 type="text"
@@ -155,6 +174,7 @@ export default page(function HouseholdsPage({ data }) {
           <h2 class="text-lg font-semibold mb-3">Join Household</h2>
           <form method="POST" class="card space-y-3">
             <input type="hidden" name="_method" value="JOIN" />
+            {carryRedirect}
             <FormField label="Invite Code">
               <Input
                 type="text"

@@ -49,6 +49,48 @@ export async function verifyHCaptcha(
   }
 }
 
+/**
+ * Validate a post-sign-in destination.
+ *
+ * The destination rides in on a query string, so it is attacker-controlled:
+ * only same-origin paths may come back out. `//evil.com` and `/\evil.com` are
+ * protocol-relative URLs a browser resolves off-site, control characters would
+ * let a `Location` header be split, and an `/auth` destination would bounce the
+ * user straight back into the flow they just finished.
+ */
+export function sanitizeRedirect(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  if (!value.startsWith("/")) return null;
+  if (value.startsWith("//") || value.startsWith("/\\")) return null;
+  if (value.startsWith("/auth")) return null;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return null;
+  }
+  return value;
+}
+
+/**
+ * Sign-in URL that comes back to `redirectTo` once the user has an account.
+ * Use this instead of a bare "/auth/login" whenever the visitor was reaching
+ * for something specific — an invite, a shared collection — so signing in
+ * doesn't strand them on the default landing page.
+ */
+export function loginUrl(redirectTo: string): string {
+  return `/auth/login?redirect=${encodeURIComponent(redirectTo)}`;
+}
+
+/**
+ * Household onboarding, likewise returning to `redirectTo` afterwards. A
+ * brand-new account has no household, so this step sits between sign-in and
+ * anything household-scoped.
+ */
+export function householdSetupUrl(redirectTo: string): string {
+  return `/households?redirect=${encodeURIComponent(redirectTo)}`;
+}
+
 function getBaseUrl(req: Request): string {
   const url = new URL(req.url);
   return `${ALWAYS_HTTPS ? "https:" : url.protocol}//${url.host}`;
@@ -73,6 +115,30 @@ export function getOAuthStateFromRequest(req: Request): string | null {
   if (!cookie) return null;
   const match = cookie.match(/(?:^|;\s*)oauth_state=([^;]+)/);
   return match ? match[1] : null;
+}
+
+// The provider round-trip can't carry our own destination — `state` is spent on
+// CSRF — so it rides along in a cookie with the same lifetime.
+export function createOAuthRedirectCookie(path: string): string {
+  return `oauth_redirect=${
+    encodeURIComponent(path)
+  }; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=600`;
+}
+
+export function clearOAuthRedirectCookie(): string {
+  return "oauth_redirect=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0";
+}
+
+export function getOAuthRedirectFromRequest(req: Request): string | null {
+  const cookie = req.headers.get("cookie");
+  if (!cookie) return null;
+  const match = cookie.match(/(?:^|;\s*)oauth_redirect=([^;]+)/);
+  if (!match) return null;
+  try {
+    return sanitizeRedirect(decodeURIComponent(match[1]));
+  } catch {
+    return null;
+  }
 }
 
 export function getGitHubAuthUrl(req: Request, state: string): string {

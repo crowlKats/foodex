@@ -1,5 +1,9 @@
 import { handler, page } from "./$email.ts";
-import { createSessionCookie, generateSessionId } from "../../../lib/auth.ts";
+import {
+  createSessionCookie,
+  generateSessionId,
+  sanitizeRedirect,
+} from "../../../lib/auth.ts";
 import { ButtonLink } from "../../../components/Button.tsx";
 
 export const handlers = handler({
@@ -13,12 +17,12 @@ export const handlers = handler({
     }
 
     const result = await ctx.state.db.query<
-      { id: string; email: string }
+      { id: string; email: string; redirect_to: string | null }
     >(
       `UPDATE magic_link_tokens
        SET used = true
        WHERE id = $1 AND expires_at > now() AND used = false
-       RETURNING id, email`,
+       RETURNING id, email, redirect_to`,
       [token],
     );
 
@@ -27,7 +31,7 @@ export const handlers = handler({
       return { data: {} };
     }
 
-    const { email } = result.rows[0];
+    const { email, redirect_to } = result.rows[0];
 
     const userResult = await ctx.state.db.query<{ id: string }>(
       `INSERT INTO users (email, name)
@@ -49,7 +53,7 @@ export const handlers = handler({
     return new Response(null, {
       status: 303,
       headers: {
-        Location: "/recipes",
+        Location: sanitizeRedirect(redirect_to) ?? "/recipes",
         "Set-Cookie": createSessionCookie(sessionId),
       },
     });

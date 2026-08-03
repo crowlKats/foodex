@@ -1,9 +1,11 @@
 import { handler } from "./$github.ts";
 import {
+  clearOAuthRedirectCookie,
   clearOAuthStateCookie,
   createSessionCookie,
   exchangeGitHubCode,
   generateSessionId,
+  getOAuthRedirectFromRequest,
   getOAuthStateFromRequest,
 } from "../../../lib/auth.ts";
 
@@ -44,10 +46,11 @@ export const handlers = handler({
     );
 
     const headers = new Headers({
-      Location: "/recipes",
+      Location: getOAuthRedirectFromRequest(ctx.req) ?? "/recipes",
     });
     headers.append("Set-Cookie", createSessionCookie(sessionId));
     headers.append("Set-Cookie", clearOAuthStateCookie());
+    headers.append("Set-Cookie", clearOAuthRedirectCookie());
     return new Response(null, { status: 303, headers });
   },
 });

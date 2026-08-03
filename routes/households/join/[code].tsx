@@ -1,13 +1,24 @@
 import { handler, page } from "./$[code].ts";
 import type { HouseholdInvite, HouseholdMember } from "../../../db/types.ts";
 import { Button, ButtonLink } from "../../../components/Button.tsx";
+import { loginUrl } from "../../../lib/auth.ts";
+
+/**
+ * An invitee usually has no account yet, so the link lands on sign-in first.
+ * Carry the invite along so they come back here afterwards instead of being
+ * dropped on the generic onboarding page with nothing but a "paste your invite
+ * code" box — the code is in the URL they already clicked.
+ */
+function loginUrlForInvite(code: string): string {
+  return loginUrl(`/households/join/${encodeURIComponent(code)}`);
+}
 
 export const handlers = handler({
   async GET(ctx) {
     if (!ctx.state.user) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: loginUrlForInvite(ctx.params.code) },
       });
     }
 
@@ -63,7 +74,7 @@ export const handlers = handler({
     if (!ctx.state.user) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: loginUrlForInvite(ctx.params.code) },
       });
     }
 

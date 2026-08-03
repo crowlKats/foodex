@@ -2,6 +2,16 @@ import { handler, page } from "./$[token].ts";
 import { HttpError } from "fresh/errors";
 import type { Collection } from "../../../db/types.ts";
 import { Button, ButtonLink } from "../../../components/Button.tsx";
+import { householdSetupUrl, loginUrl } from "../../../lib/auth.ts";
+
+/**
+ * A share link is normally the recipient's first contact with the app, so both
+ * detours it can trigger — signing in, then creating a household — have to lead
+ * back here rather than dropping them on a landing page.
+ */
+function shareJoinPath(token: string): string {
+  return `/collections/share/${encodeURIComponent(token)}`;
+}
 
 export const handlers = handler({
   async GET(ctx) {
@@ -36,14 +46,28 @@ export const handlers = handler({
     }
 
     ctx.state.pageTitle = `Join Collection: ${collection.name}`;
-    return { data: { collection, loggedIn, hasHousehold, alreadyHasAccess } };
+    return {
+      data: {
+        collection,
+        loggedIn,
+        hasHousehold,
+        alreadyHasAccess,
+        joinPath: shareJoinPath(token),
+      },
+    };
   },
   async POST(ctx) {
     const token = ctx.params.token;
-    if (!ctx.state.user || !ctx.state.householdId) {
+    if (!ctx.state.user) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: loginUrl(shareJoinPath(token)) },
+      });
+    }
+    if (!ctx.state.householdId) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: householdSetupUrl(shareJoinPath(token)) },
       });
     }
 
@@ -77,7 +101,9 @@ export const handlers = handler({
 
 export default page(
   function ShareJoinPage(
-    { data: { collection, loggedIn, hasHousehold, alreadyHasAccess } },
+    {
+      data: { collection, loggedIn, hasHousehold, alreadyHasAccess, joinPath },
+    },
   ) {
     return (
       <div class="max-w-md mx-auto mt-12">
@@ -103,13 +129,13 @@ export default page(
             )
             : !loggedIn
             ? (
-              <ButtonLink href="/auth/login">
+              <ButtonLink href={loginUrl(joinPath)}>
                 Sign in to join
               </ButtonLink>
             )
             : !hasHousehold
             ? (
-              <ButtonLink href="/households">
+              <ButtonLink href={householdSetupUrl(joinPath)}>
                 Create a household first
               </ButtonLink>
             )

@@ -1,5 +1,9 @@
 import { handler, page } from "./$magic-link.ts";
-import { generateSessionId, verifyHCaptcha } from "../../lib/auth.ts";
+import {
+  generateSessionId,
+  sanitizeRedirect,
+  verifyHCaptcha,
+} from "../../lib/auth.ts";
 import { sendMagicLinkEmail } from "../../lib/email.ts";
 import { ButtonLink } from "../../components/Button.tsx";
 
@@ -7,11 +11,24 @@ export const handlers = handler({
   async POST(ctx) {
     const form = await ctx.req.formData();
     const email = form.get("email");
+    const rawRedirect = form.get("redirect");
+    const redirectTo = sanitizeRedirect(
+      typeof rawRedirect === "string" ? rawRedirect : null,
+    );
+    // Send the user back to a login page that still knows where they were
+    // headed, so a typo'd address or a failed captcha doesn't lose the invite.
+    const loginUrl = (error?: string) => {
+      const params = new URLSearchParams();
+      if (error) params.set("error", error);
+      if (redirectTo) params.set("redirect", redirectTo);
+      const query = params.toString();
+      return query ? `/auth/login?${query}` : "/auth/login";
+    };
 
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login" },
+        headers: { Location: loginUrl() },
       });
     }
 
@@ -25,7 +42,7 @@ export const handlers = handler({
     if (!captchaOk) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/auth/login?error=captcha" },
+        headers: { Location: loginUrl("captcha") },
       });
     }
 
@@ -40,9 +57,9 @@ export const handlers = handler({
 
     const token = generateSessionId();
     await ctx.state.db.query(
-      `INSERT INTO magic_link_tokens (id, email, expires_at)
-       VALUES ($1, $2, now() + interval '15 minutes')`,
-      [token, normalizedEmail],
+      `INSERT INTO magic_link_tokens (id, email, expires_at, redirect_to)
+       VALUES ($1, $2, now() + interval '15 minutes', $3)`,
+      [token, normalizedEmail, redirectTo],
     );
 
     const baseUrl = `${ctx.url.protocol}//${ctx.url.host}`;

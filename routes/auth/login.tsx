@@ -1,6 +1,8 @@
 import { handler, page } from "./$login.ts";
 import {
   captchaEnabled,
+  clearOAuthRedirectCookie,
+  createOAuthRedirectCookie,
   createOAuthStateCookie,
   generateOAuthState,
   getAuthentikAuthUrl,
@@ -8,6 +10,7 @@ import {
   getGoogleAuthUrl,
   HCAPTCHA_SITEKEY,
   providers,
+  sanitizeRedirect,
 } from "../../lib/auth.ts";
 import { Button, ButtonLink } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
@@ -18,16 +21,28 @@ import { IconMail } from "@tabler/icons-preact";
 
 export const handlers = handler({
   GET(ctx) {
+    const redirectTo = sanitizeRedirect(ctx.url.searchParams.get("redirect"));
+
     if (ctx.state.user) {
       return new Response(null, {
         status: 303,
-        headers: { Location: "/" },
+        headers: { Location: redirectTo ?? "/" },
       });
     }
     const state = generateOAuthState();
     const baseUrl = `${ctx.url.protocol}//${ctx.url.host}`;
     const req = new Request(baseUrl);
     ctx.state.pageTitle = "Sign In";
+    const headers = new Headers();
+    headers.append("Set-Cookie", createOAuthStateCookie(state));
+    // Always write the redirect cookie, so a plain visit to the login page
+    // clears a destination left over from an abandoned invite.
+    headers.append(
+      "Set-Cookie",
+      redirectTo
+        ? createOAuthRedirectCookie(redirectTo)
+        : clearOAuthRedirectCookie(),
+    );
     return {
       data: {
         githubUrl: providers.github ? getGitHubAuthUrl(req, state) : null,
@@ -37,10 +52,9 @@ export const handlers = handler({
           : null,
         hcaptchaSitekey: captchaEnabled ? HCAPTCHA_SITEKEY : "",
         error: ctx.url.searchParams.get("error"),
+        redirectTo,
       },
-      headers: {
-        "Set-Cookie": createOAuthStateCookie(state),
-      },
+      headers,
     };
   },
 });
@@ -95,6 +109,9 @@ export default page(function LoginPage({ data }) {
           </div>
         )}
         <form method="POST" action="/auth/magic-link" class="space-y-2">
+          {data.redirectTo && (
+            <input type="hidden" name="redirect" value={data.redirectTo} />
+          )}
           <Input
             type="email"
             name="email"

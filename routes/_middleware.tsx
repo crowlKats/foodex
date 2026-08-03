@@ -7,7 +7,11 @@ import {
   QueryFn,
   transaction,
 } from "../db/mod.ts";
-import { getSessionIdFromRequest } from "../lib/auth.ts";
+import {
+  getSessionIdFromRequest,
+  householdSetupUrl,
+  sanitizeRedirect,
+} from "../lib/auth.ts";
 import { loadSessionState } from "../lib/session.ts";
 import { deleteFile } from "../lib/s3.ts";
 
@@ -38,16 +42,23 @@ export default middleware(async function (ctx) {
 
   // Require household for authenticated users (onboarding).
   if (state.user && !state.householdId) {
-    const path = new URL(ctx.req.url).pathname;
+    const url = new URL(ctx.req.url);
+    const path = url.pathname;
     if (
       !path.startsWith("/auth") &&
       !path.startsWith("/households") &&
       !path.startsWith("/_fresh") &&
       !path.startsWith("/api")
     ) {
+      // Carry where they were headed through onboarding. A shared link is
+      // usually what brought a new account here in the first place, and it is
+      // lost for good if the detour forgets it.
+      const target = sanitizeRedirect(path + url.search);
       return new Response(null, {
         status: 303,
-        headers: { Location: "/households" },
+        headers: {
+          Location: target ? householdSetupUrl(target) : "/households",
+        },
       });
     }
   }
