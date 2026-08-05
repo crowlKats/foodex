@@ -3,12 +3,13 @@ import { formatAmount, formatInputValue } from "../lib/format.ts";
 import type { PlanEntryWithReadiness, Suggestion } from "../lib/plan.ts";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
+import { Select } from "../components/Select.tsx";
 import { IconTrash } from "@tabler/icons-preact";
 
 interface HistoryEntry {
   id: string;
-  recipe_title: string;
-  recipe_slug: string;
+  recipe_title: string | null;
+  recipe_slug: string | null;
   scale: number;
   cooked_at: string | null;
 }
@@ -112,6 +113,31 @@ export default function PlanView(
     globalThis.location.reload();
   }
 
+  async function pick(entry: PlanEntryWithReadiness, recipeId: string) {
+    if (!recipeId) return;
+    busy.value = entry.id;
+    const result = await planCall({
+      action: "pin",
+      entry_id: entry.id,
+      recipe_id: recipeId,
+    });
+    busy.value = null;
+    // The pinned recipe's ingredients land on the shopping list.
+    if (result.ok) globalThis.location.reload();
+  }
+
+  async function setServings(entry: PlanEntryWithReadiness, servings: number) {
+    if (!(servings > 0)) return;
+    entries.value = entries.value.map((e) =>
+      e.id === entry.id ? { ...e, target_servings: servings } : e
+    );
+    await planCall({
+      action: "update",
+      entry_id: entry.id,
+      target_servings: servings,
+    });
+  }
+
   async function uncook(entryId: string) {
     await planCall({ action: "uncook", entry_id: entryId });
     globalThis.location.reload();
@@ -143,46 +169,78 @@ export default function PlanView(
                 <div key={entry.id} class="card space-y-2">
                   <div class="flex items-start gap-3">
                     <div class="flex-1 min-w-0">
-                      <a
-                        href={`/recipes/${entry.recipe_slug}`}
-                        class="link font-medium"
-                      >
-                        {entry.recipe_title}
-                      </a>
-                      <div class="text-xs mt-0.5">
-                        {entry.ready
-                          ? (
-                            <span class="text-green-600 dark:text-green-400">
-                              Everything's in the pantry
+                      {entry.recipe_id
+                        ? (
+                          <>
+                            <a
+                              href={`/recipes/${entry.recipe_slug}`}
+                              class="link font-medium"
+                            >
+                              {entry.recipe_title}
+                            </a>
+                            {entry.dish_slug && (
+                              <a
+                                href={`/dishes/${entry.dish_slug}`}
+                                class="text-xs text-stone-400 ml-2 hover:text-orange-600"
+                                title="Other recipes for this dish"
+                              >
+                                switch version
+                              </a>
+                            )}
+                            <div class="text-xs mt-0.5">
+                              {entry.ready
+                                ? (
+                                  <span class="text-green-600 dark:text-green-400">
+                                    Everything's in the pantry
+                                  </span>
+                                )
+                                : (
+                                  <span class="text-amber-600 dark:text-amber-400">
+                                    Missing {entry.missing.length} of{" "}
+                                    {entry.ingredientCount}:{" "}
+                                    {entry.missing.slice(0, 3).map((m) =>
+                                      `${m.name}${
+                                        m.needed != null
+                                          ? ` (${
+                                            formatAmount(m.needed, m.unit ?? "")
+                                          }${m.unit ? ` ${m.unit}` : ""})`
+                                          : ""
+                                      }`
+                                    ).join(", ")}
+                                    {entry.missing.length > 3 && "…"}
+                                  </span>
+                                )}
+                            </div>
+                          </>
+                        )
+                        : (
+                          <>
+                            <a
+                              href={`/dishes/${entry.dish_slug}`}
+                              class="link font-medium"
+                            >
+                              {entry.dish_name}
+                            </a>
+                            <span class="text-xs text-stone-400 ml-2">
+                              dish — recipe not chosen yet
                             </span>
-                          )
-                          : (
-                            <span class="text-amber-600 dark:text-amber-400">
-                              Missing {entry.missing.length} of{" "}
-                              {entry.ingredientCount}:{" "}
-                              {entry.missing.slice(0, 3).map((m) =>
-                                `${m.name}${
-                                  m.needed != null
-                                    ? ` (${
-                                      formatAmount(m.needed, m.unit ?? "")
-                                    }${m.unit ? ` ${m.unit}` : ""})`
-                                    : ""
-                                }`
-                              ).join(", ")}
-                              {entry.missing.length > 3 && "…"}
-                            </span>
-                          )}
-                      </div>
+                            <div class="text-xs mt-0.5 text-amber-600 dark:text-amber-400">
+                              Pick a recipe to put its ingredients on the
+                              shopping list.
+                            </div>
+                          </>
+                        )}
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={busy.value === entry.id}
-                      onClick={() =>
-                        cook(entry)}
-                    >
-                      {busy.value === entry.id ? "Cooking..." : "Cooked it"}
-                    </Button>
+                    {entry.recipe_id && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={busy.value === entry.id}
+                        onClick={() => cook(entry)}
+                      >
+                        {busy.value === entry.id ? "Cooking..." : "Cooked it"}
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="danger-ghost"
@@ -193,25 +251,85 @@ export default function PlanView(
                     />
                   </div>
 
+                  {!entry.recipe_id && entry.candidates.length > 0 && (
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                      <Select id={`candidate-${entry.id}`} size="xs">
+                        {entry.candidates.map((c) => (
+                          <option key={c.recipe_id} value={c.recipe_id}>
+                            {c.title}
+                            {c.own ? " (yours)" : ""} — {c.missingCount === 0
+                              ? "ready to cook"
+                              : `${c.missingCount} of ${c.ingredientCount} missing`}
+                          </option>
+                        ))}
+                      </Select>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        disabled={busy.value === entry.id}
+                        onClick={() => {
+                          const sel = document.getElementById(
+                            `candidate-${entry.id}`,
+                          ) as HTMLSelectElement | null;
+                          if (sel) {
+                            pick(entry, sel.value);
+                          }
+                        }}
+                      >
+                        Choose
+                      </Button>
+                    </div>
+                  )}
+                  {!entry.recipe_id && entry.candidates.length === 0 && (
+                    <p class="text-xs text-stone-500">
+                      No visible recipe makes this dish yet.
+                    </p>
+                  )}
+
                   <div class="flex flex-wrap items-center gap-3 text-xs text-stone-500">
-                    <label class="flex items-center gap-1">
-                      Batch
-                      <Input
-                        type="number"
-                        min="0.25"
-                        step="0.25"
-                        class="w-20"
-                        value={formatInputValue(entry.scale)}
-                        onBlur={(e) =>
-                          setScale(
-                            entry,
-                            parseFloat(
-                              (e.currentTarget as HTMLInputElement).value,
-                            ),
-                          )}
-                      />
-                      ×
-                    </label>
+                    {entry.recipe_id
+                      ? (
+                        <label class="flex items-center gap-1">
+                          Batch
+                          <Input
+                            type="number"
+                            min="0.25"
+                            step="0.25"
+                            class="w-20"
+                            value={formatInputValue(entry.scale)}
+                            onBlur={(e) =>
+                              setScale(
+                                entry,
+                                parseFloat(
+                                  (e.currentTarget as HTMLInputElement).value,
+                                ),
+                              )}
+                          />
+                          ×
+                        </label>
+                      )
+                      : (
+                        <label class="flex items-center gap-1">
+                          Servings
+                          <Input
+                            type="number"
+                            min="1"
+                            step="1"
+                            class="w-20"
+                            value={entry.target_servings != null
+                              ? formatInputValue(entry.target_servings)
+                              : ""}
+                            onBlur={(e) =>
+                              setServings(
+                                entry,
+                                parseFloat(
+                                  (e.currentTarget as HTMLInputElement).value,
+                                ),
+                              )}
+                          />
+                        </label>
+                      )}
                     <label class="flex items-center gap-1">
                       When
                       <Input
@@ -225,15 +343,18 @@ export default function PlanView(
                           )}
                       />
                     </label>
-                    <label class="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        class="size-3.5 accent-orange-600"
-                        checked={entry.include_in_list}
-                        onChange={() => toggleList(entry)}
-                      />
-                      On the shopping list
-                    </label>
+                    {entry.recipe_id && (
+                      <label class="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          class="size-3.5 accent-orange-600"
+                          checked={entry.include_in_list}
+                          onChange={() =>
+                            toggleList(entry)}
+                        />
+                        On the shopping list
+                      </label>
+                    )}
                   </div>
                 </div>
               ))}

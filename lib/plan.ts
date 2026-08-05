@@ -21,9 +21,14 @@ export type PlanStatus = "planned" | "cooked" | "skipped";
 
 export interface PlanEntry {
   id: string;
-  recipe_id: string;
-  recipe_title: string;
-  recipe_slug: string;
+  /** Null while the entry is planned by dish and no recipe is pinned yet. */
+  recipe_id: string | null;
+  recipe_title: string | null;
+  recipe_slug: string | null;
+  dish_id: string | null;
+  dish_name: string | null;
+  dish_slug: string | null;
+  target_servings: number | null;
   cover_image_url: string | null;
   scale: number;
   planned_for: string | null;
@@ -34,11 +39,24 @@ export interface PlanEntry {
   cooked_at: string | null;
 }
 
+/** A recipe that could satisfy a dish-planned entry. */
+export interface PlanCandidate {
+  recipe_id: string;
+  title: string;
+  slug: string;
+  /** Belongs to the planning household. */
+  own: boolean;
+  missingCount: number;
+  ingredientCount: number;
+}
+
 export interface PlanEntryWithReadiness extends PlanEntry {
   /** Ingredients the pantry can't cover at this scale. */
   missing: { name: string; needed: number | null; unit: string | null }[];
   ingredientCount: number;
   ready: boolean;
+  /** For unpinned dish entries: the recipes to choose from, best first. */
+  candidates: PlanCandidate[];
 }
 
 interface RecipeIngredientRow {
@@ -61,10 +79,13 @@ export async function loadPlan(
     `SELECT pe.id, pe.recipe_id, pe.scale, pe.planned_for::text as planned_for,
             pe.status, pe.include_in_list, pe.note,
             pe.created_at::text as created_at, pe.cooked_at::text as cooked_at,
+            pe.dish_id, pe.target_servings,
             r.title as recipe_title, r.slug as recipe_slug,
+            d.name as dish_name, d.slug as dish_slug,
             m.url as cover_image_url
      FROM plan_entries pe
-     JOIN recipes r ON r.id = pe.recipe_id
+     LEFT JOIN recipes r ON r.id = pe.recipe_id
+     LEFT JOIN dishes d ON d.id = pe.dish_id
      LEFT JOIN media m ON m.id = r.cover_image_id
      WHERE pe.household_id = $1 AND pe.status = $2
      ORDER BY
@@ -76,18 +97,49 @@ export async function loadPlan(
   );
   if (entriesRes.rows.length === 0) return [];
 
-  const recipeIds = [...new Set(entriesRes.rows.map((e) => e.recipe_id))];
+  // Candidate recipes for unpinned dish entries, before the ingredient fetch
+  // so their readiness can be computed in the same pass.
+  const unpinnedDishIds = [
+    ...new Set(
+      entriesRes.rows
+        .filter((e) => e.recipe_id == null && e.dish_id != null)
+        .map((e) => e.dish_id!),
+    ),
+  ];
+  const candidateRows = unpinnedDishIds.length > 0
+    ? (await db.query<{
+      id: string;
+      title: string;
+      slug: string;
+      dish_id: string;
+      household_id: string;
+    }>(
+      `SELECT id, title, slug, dish_id, household_id FROM recipes
+       WHERE dish_id = ANY($1) AND (private = false OR household_id = $2)
+       ORDER BY created_at`,
+      [unpinnedDishIds, householdId],
+    )).rows
+    : [];
+
+  const pinnedIds = entriesRes.rows
+    .map((e) => e.recipe_id)
+    .filter((id): id is string => id != null);
+  const recipeIds = [
+    ...new Set([...pinnedIds, ...candidateRows.map((c) => c.id)]),
+  ];
   const [ingredientsRes, stock] = await Promise.all([
-    db.query<RecipeIngredientRow>(
-      `SELECT ri.recipe_id, ri.ingredient_id, ri.name, ri.amount, ri.unit,
+    recipeIds.length > 0
+      ? db.query<RecipeIngredientRow>(
+        `SELECT ri.recipe_id, ri.ingredient_id, ri.name, ri.amount, ri.unit,
               g.density
        FROM recipe_ingredients ri
        LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE ri.recipe_id = ANY($1)
          AND NOT ri.always_on_hand
        ORDER BY ri.sort_order`,
-      [recipeIds],
-    ),
+        [recipeIds],
+      )
+      : Promise.resolve({ rows: [] as RecipeIngredientRow[] }),
     loadStock(db, householdId),
   ]);
 
@@ -98,8 +150,40 @@ export async function loadPlan(
     else byRecipe.set(row.recipe_id, [row]);
   }
 
+  const missingCount = (recipeId: string, scale: number): number => {
+    const ingredients = byRecipe.get(recipeId) ?? [];
+    return ingredients.filter((ing) => {
+      const availability = computeAvailability(ing, stock, { scale });
+      return availability.needed != null
+        ? availability.needed > 0 && !availability.quantityUnknown
+        : !availability.present;
+    }).length;
+  };
+
+  // Own recipes first, then whatever the pantry covers best.
+  const candidatesByDish = new Map<string, PlanCandidate[]>();
+  for (const c of candidateRows) {
+    const list = candidatesByDish.get(c.dish_id) ?? [];
+    list.push({
+      recipe_id: c.id,
+      title: c.title,
+      slug: c.slug,
+      own: c.household_id === householdId,
+      missingCount: missingCount(c.id, 1),
+      ingredientCount: (byRecipe.get(c.id) ?? []).length,
+    });
+    candidatesByDish.set(c.dish_id, list);
+  }
+  for (const list of candidatesByDish.values()) {
+    list.sort((a, b) =>
+      Number(b.own) - Number(a.own) || a.missingCount - b.missingCount
+    );
+  }
+
   return entriesRes.rows.map((entry) => {
-    const ingredients = byRecipe.get(entry.recipe_id) ?? [];
+    const ingredients = entry.recipe_id
+      ? byRecipe.get(entry.recipe_id) ?? []
+      : [];
     const missing = ingredients
       .map((ing) => ({
         ing,
@@ -121,16 +205,25 @@ export async function loadPlan(
     return {
       ...entry,
       scale: Number(entry.scale) || 1,
+      target_servings: entry.target_servings != null
+        ? Number(entry.target_servings)
+        : null,
       missing,
       ingredientCount: ingredients.length,
-      ready: missing.length === 0,
+      ready: entry.recipe_id != null && missing.length === 0,
+      candidates: entry.recipe_id == null && entry.dish_id != null
+        ? candidatesByDish.get(entry.dish_id) ?? []
+        : [],
     };
   });
 }
 
 export interface AddPlanEntryInput {
   householdId: string;
-  recipeId: string;
+  /** Either a specific recipe or a dish whose recipe is chosen later. */
+  recipeId?: string | null;
+  dishId?: string | null;
+  targetServings?: number | null;
   scale?: number;
   plannedFor?: string | null;
   includeInList?: boolean;
@@ -142,15 +235,21 @@ export async function addPlanEntry(
   db: { query: QueryFn },
   input: AddPlanEntryInput,
 ): Promise<string> {
+  if (!input.recipeId && !input.dishId) {
+    throw new Error("plan entry needs a recipe or a dish");
+  }
   const res = await db.query<{ id: string }>(
     `INSERT INTO plan_entries (
-       household_id, recipe_id, scale, planned_for, include_in_list, note, created_by
+       household_id, recipe_id, dish_id, target_servings, scale, planned_for,
+       include_in_list, note, created_by
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING id`,
     [
       input.householdId,
-      input.recipeId,
+      input.recipeId ?? null,
+      input.dishId ?? null,
+      input.targetServings ?? null,
       input.scale ?? 1,
       input.plannedFor ?? null,
       input.includeInList ?? true,
@@ -159,6 +258,59 @@ export async function addPlanEntry(
     ],
   );
   return res.rows[0].id;
+}
+
+/**
+ * Pin a recipe onto a dish-planned entry (or switch an uncooked one). The
+ * batch scale is derived from the entry's target servings against the
+ * recipe's own base quantity, so "Carbonara for 6" picks the right multiple
+ * of whichever recipe was chosen.
+ */
+export async function pinPlanEntry(
+  db: { query: QueryFn },
+  householdId: string,
+  entryId: string,
+  recipeId: string,
+): Promise<boolean> {
+  const entryRes = await db.query<{
+    dish_id: string | null;
+    target_servings: number | null;
+  }>(
+    `SELECT dish_id, target_servings FROM plan_entries
+     WHERE id = $1 AND household_id = $2 AND status <> 'cooked'`,
+    [entryId, householdId],
+  );
+  if (entryRes.rows.length === 0 || entryRes.rows[0].dish_id == null) {
+    return false;
+  }
+  const entry = entryRes.rows[0];
+
+  const recipeRes = await db.query<{
+    quantity_type: string;
+    quantity_value: number;
+  }>(
+    `SELECT quantity_type, quantity_value FROM recipes
+     WHERE id = $1 AND dish_id = $2 AND (private = false OR household_id = $3)`,
+    [recipeId, entry.dish_id, householdId],
+  );
+  if (recipeRes.rows.length === 0) return false;
+  const recipe = recipeRes.rows[0];
+
+  const target = entry.target_servings != null
+    ? Number(entry.target_servings)
+    : null;
+  const base = Number(recipe.quantity_value);
+  const scale = target != null && recipe.quantity_type === "servings" &&
+      base > 0
+    ? target / base
+    : 1;
+
+  await db.query(
+    `UPDATE plan_entries SET recipe_id = $1, scale = $2, updated_at = now()
+     WHERE id = $3 AND household_id = $4`,
+    [recipeId, scale, entryId, householdId],
+  );
+  return true;
 }
 
 export interface CookResult {

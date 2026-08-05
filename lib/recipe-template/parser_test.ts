@@ -162,6 +162,21 @@ Deno.test("parseTemplate: @recipe(BAD CAPS) is invalid", () => {
   assertEquals(ast.nodes[0].kind, "invalid_directive");
 });
 
+// ── Dish references ────────────────────────────────────────────────────────
+
+Deno.test("parseTemplate: @dish(some-slug)", () => {
+  const src = "use any @dish(pizza-dough)";
+  const ast = parseTemplate(src);
+  const ref = ast.nodes[1];
+  assert(ref.kind === "dish_ref");
+  assertEquals(ref.slug, "pizza-dough");
+});
+
+Deno.test("parseTemplate: @dish(BAD CAPS) is invalid", () => {
+  const ast = parseTemplate("@dish(BadSlug)");
+  assertEquals(ast.nodes[0].kind, "invalid_directive");
+});
+
 // ── Unknown @-words pass through as text ───────────────────────────────────
 
 Deno.test("parseTemplate: @username(at-style stuff) stays as text", () => {

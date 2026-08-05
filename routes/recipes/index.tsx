@@ -72,7 +72,11 @@ function buildRecipeQuery(opts: {
   sort: SortValue;
   desc: boolean;
 }) {
-  const joins: string[] = ["LEFT JOIN media m ON m.id = r.cover_image_id"];
+  const joins: string[] = [
+    "LEFT JOIN media m ON m.id = r.cover_image_id",
+    "LEFT JOIN households h ON h.id = r.household_id",
+    "LEFT JOIN dishes d ON d.id = r.dish_id",
+  ];
   const wheres: string[] = [];
   const params: unknown[] = [];
   let needsDistinct = false;
@@ -187,7 +191,7 @@ function buildRecipeQuery(opts: {
 
   return {
     select:
-      `SELECT ${distinct}r.*, m.url as cover_image_url FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}\n             ORDER BY ${orderSql}\n             LIMIT $${p} OFFSET $${
+      `SELECT ${distinct}r.*, m.url as cover_image_url, h.name as household_name, d.slug as dish_slug FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}\n             ORDER BY ${orderSql}\n             LIMIT $${p} OFFSET $${
         p + 1
       }`,
     // ::int so `cnt` arrives as a number — pg hands back bigint as a string,
@@ -254,7 +258,12 @@ export const handlers = handler({
     });
 
     const [result, countRes] = await Promise.all([
-      ctx.state.db.query<RecipeWithCover>(
+      ctx.state.db.query<
+        RecipeWithCover & {
+          household_name: string | null;
+          dish_slug: string | null;
+        }
+      >(
         built.select,
         [...built.params, limit, offset],
       ),
@@ -275,8 +284,11 @@ export const handlers = handler({
       : false;
 
     const recipeIds = result.rows.map((r) => r.id);
+    const dishIds = [
+      ...new Set(result.rows.map((r) => r.dish_id).filter(Boolean)),
+    ];
 
-    const [tagsRows, drafts] = await Promise.all([
+    const [tagsRows, drafts, dishCountRows] = await Promise.all([
       recipeIds.length > 0
         ? ctx.state.db.query<RecipeTag>(
           "SELECT recipe_id, tag_type, tag_value FROM recipe_tags WHERE recipe_id = ANY($1)",
@@ -291,7 +303,18 @@ export const handlers = handler({
           [householdId],
         ).then((r) => r.rows)
         : Promise.resolve([] as RecipeDraft[]),
+      // How many visible recipes make each dish on this page
+      dishIds.length > 0
+        ? ctx.state.db.query<{ dish_id: string; cnt: number }>(
+          `SELECT dish_id, COUNT(*)::int as cnt FROM recipes
+           WHERE dish_id = ANY($1) AND (private = false OR household_id = $2)
+           GROUP BY dish_id`,
+          [dishIds, householdId],
+        ).then((r) => r.rows)
+        : Promise.resolve([] as { dish_id: string; cnt: number }[]),
     ]);
+
+    const dishCounts = new Map(dishCountRows.map((d) => [d.dish_id, d.cnt]));
 
     const tagsMap: Record<string, { meal_types: string[]; dietary: string[] }> =
       {};
@@ -308,6 +331,7 @@ export const handlers = handler({
     const recipes: RecipeListItem[] = result.rows.map((r) => ({
       ...r,
       tags: tagsMap[r.id] ?? { meal_types: [], dietary: [] },
+      dish_count: r.dish_id ? dishCounts.get(r.dish_id) ?? 0 : 0,
     }));
 
     ctx.state.pageTitle = "Recipes";
@@ -750,7 +774,17 @@ export default page(function RecipesPage({
                           private
                         </span>
                       )}
+                      {(r.dish_count ?? 0) > 1 && (
+                        <span class="ml-2 text-xs bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 px-1.5 py-0.5 rounded align-middle whitespace-nowrap">
+                          1 of {r.dish_count} versions
+                        </span>
+                      )}
                     </div>
+                    {r.household_name && (
+                      <div class="text-xs text-stone-400 mt-0.5">
+                        by {r.household_name}
+                      </div>
+                    )}
                     {r.description && (
                       <div class="text-sm text-stone-500 mt-1">
                         {r.description}

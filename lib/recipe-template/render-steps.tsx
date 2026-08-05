@@ -35,6 +35,7 @@ export interface RecipeStepsProps {
   variables: Record<string, number>;
   ingredients?: Record<string, IngredientVar>;
   recipeRefs?: Map<string, RecipeRefInfo>;
+  dishRefs?: Map<string, RecipeRefInfo>;
   onTimerStart?: (seconds: number, label: string) => void;
 }
 
@@ -47,6 +48,7 @@ export function RecipeSteps(props: RecipeStepsProps): VNode {
     steps: props.steps,
     layout,
     recipeRefs: props.recipeRefs,
+    dishRefs: props.dishRefs,
     onTimerStart: props.onTimerStart,
   };
 
@@ -126,6 +128,7 @@ export function RecipeStepBody(props: {
   variables: Record<string, number>;
   ingredients?: Record<string, IngredientVar>;
   recipeRefs?: Map<string, RecipeRefInfo>;
+  dishRefs?: Map<string, RecipeRefInfo>;
   onTimerStart?: (seconds: number, label: string) => void;
 }): VNode {
   const layout = computeSectionLayout(props.steps, props.sections);
@@ -135,6 +138,7 @@ export function RecipeStepBody(props: {
     steps: props.steps,
     layout,
     recipeRefs: props.recipeRefs,
+    dishRefs: props.dishRefs,
     onTimerStart: props.onTimerStart,
   };
   return (

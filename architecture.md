@@ -157,7 +157,18 @@
   value2/value3/unit2 for dimensions), prep_time, cook_time, difficulty,
   cover_image_id, household_id, private,
   output_ingredient_id/output_amount/output_unit (optional: links recipe to the
-  ingredient it produces with yield amount)
+  ingredient it produces with yield amount), dish_id/dish_manual (what dish the
+  recipe makes; see **dishes**)
+- **dishes** — name, slug. The identity shared by every recipe that makes the
+  same dish, across households. Maintained automatically: a trigger
+  (`update_recipe_dish`, migration 062) resolves the recipe title through
+  `dish_aliases` on every insert/title change and creates the dish on first
+  use, so no write path can forget it. `dish_manual = true` pins a recipe to a
+  user-chosen dish through later title edits. Orthogonal to
+  output_ingredient_id (identity vs. pantry yield)
+- **dish_aliases** — dish_id, norm_name (unique). Every normalized name that
+  resolves to a dish. Merging two dishes must repoint aliases rather than
+  delete them — that is what makes the merge permanent for future recipes
 - **recipe_ingredients** — recipe_id, ingredient_id (nullable), name, amount,
   unit, key, sort_order
 - **recipe_steps** — recipe_id, title, body (markdown + template syntax),
@@ -185,9 +196,13 @@
   signed amount, unit, kind (bought|cooked|wasted|adjusted|produced),
   source_type/source_id/source_seq (unique — the idempotency key), store_id,
   unit_price, expires_at. Why stock moved
-- **plan_entries** — household_id, recipe_id, scale, planned_for, status
-  (planned|cooked|skipped), include_in_list, cooked_at. What the household
-  intends to cook; the source of recipe demand
+- **plan_entries** — household_id, recipe_id (nullable), dish_id (nullable),
+  target_servings, scale, planned_for, status (planned|cooked|skipped),
+  include_in_list, cooked_at. What the household intends to cook; the source
+  of recipe demand. An entry names a recipe OR a dish (CHECK-enforced):
+  dish entries defer the recipe choice to cook time ("pin"), contribute no
+  shopping demand until pinned (every demand reader inner-joins recipe_id),
+  and derive their batch scale from target_servings when pinned
 - **shopping_lists** — household_id (unique — one list per household),
   share_token
 - **shopping_list_demands** — shopping_list_id, ingredient_id, name, amount,

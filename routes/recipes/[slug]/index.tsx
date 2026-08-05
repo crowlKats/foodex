@@ -259,11 +259,37 @@ export const handlers = handler({
     if (recipeRefSlugs.size > 0) {
       const slugs = [...recipeRefSlugs];
       const res = await ctx.state.db.query<{ slug: string; title: string }>(
-        "SELECT slug, title FROM recipes WHERE slug = ANY($1)",
-        [slugs],
+        `SELECT slug, title FROM recipes
+         WHERE slug = ANY($1) AND (private = false OR household_id = $2)`,
+        [slugs, ctx.state.householdId],
       );
       for (const r of res.rows) {
         recipeRefs.push({ slug: r.slug, title: r.title });
+      }
+    }
+
+    // Same for `@dish(slug)` directives. A dish only resolves when at least
+    // one recipe the viewer may see makes it — otherwise the dish's name
+    // (derived from someone's private recipe title) would leak.
+    const dishRefSlugs = new Set<string>();
+    for (const s of stepsData) {
+      const re = /@dish\(([a-z0-9_-]+)\)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(s.body)) !== null) dishRefSlugs.add(m[1]);
+    }
+    const dishRefs: { slug: string; title: string }[] = [];
+    if (dishRefSlugs.size > 0) {
+      const res = await ctx.state.db.query<{ slug: string; name: string }>(
+        `SELECT d.slug, d.name FROM dishes d
+         WHERE d.slug = ANY($1)
+           AND EXISTS (
+             SELECT 1 FROM recipes r WHERE r.dish_id = d.id
+               AND (r.private = false OR r.household_id = $2)
+           )`,
+        [[...dishRefSlugs], ctx.state.householdId],
+      );
+      for (const d of res.rows) {
+        dishRefs.push({ slug: d.slug, title: d.name });
       }
     }
 
@@ -291,8 +317,9 @@ export const handlers = handler({
       const forkRes = await ctx.state.db.query<
         { title: string; slug: string }
       >(
-        "SELECT title, slug FROM recipes WHERE id = $1",
-        [recipe.forked_from_id],
+        `SELECT title, slug FROM recipes
+         WHERE id = $1 AND (private = false OR household_id = $2)`,
+        [recipe.forked_from_id, ctx.state.householdId],
       );
       if (forkRes.rows.length > 0) {
         forkedFrom = forkRes.rows[0];
@@ -305,6 +332,30 @@ export const handlers = handler({
       [recipe.id],
     );
     const forkCount = forkCountRes.rows[0]?.count ?? 0;
+
+    // Other recipes for the same dish (visible ones only)
+    let dish: { name: string; slug: string; otherCount: number } | null = null;
+    if (recipe.dish_id) {
+      const dishRes = await ctx.state.db.query<{
+        name: string;
+        slug: string;
+        other_count: number;
+      }>(
+        `SELECT d.name, d.slug,
+                (SELECT count(*)::int FROM recipes r2
+                 WHERE r2.dish_id = d.id AND r2.id != $2
+                   AND (r2.private = false OR r2.household_id = $3)) as other_count
+         FROM dishes d WHERE d.id = $1`,
+        [recipe.dish_id, recipe.id, ctx.state.householdId],
+      );
+      if (dishRes.rows.length > 0) {
+        dish = {
+          name: dishRes.rows[0].name,
+          slug: dishRes.rows[0].slug,
+          otherCount: dishRes.rows[0].other_count,
+        };
+      }
+    }
 
     // Load output ingredient name
     let outputIngredient: {
@@ -330,8 +381,10 @@ export const handlers = handler({
       }
     }
 
-    // Load source recipes for ingredients (recipes that output an ingredient used here)
-    const sourceRecipes = new Map<string, { title: string; slug: string }>();
+    // Load source recipes for ingredients (recipes that output an ingredient
+    // used here). Several recipes can produce the same ingredient, so each
+    // entry is a list, not a single winner.
+    const sourceRecipes = new Map<string, { title: string; slug: string }[]>();
     if (ingredientIds.length > 0) {
       const srcRes = await ctx.state.db.query<{
         output_ingredient_id: string;
@@ -340,14 +393,15 @@ export const handlers = handler({
       }>(
         `SELECT output_ingredient_id, title, slug FROM recipes
          WHERE output_ingredient_id = ANY($1) AND id != $2
+           AND (private = false OR household_id = $3)
+         ORDER BY title
          LIMIT 100`,
-        [ingredientIds, recipe.id],
+        [ingredientIds, recipe.id, ctx.state.householdId],
       );
       for (const row of srcRes.rows) {
-        sourceRecipes.set(row.output_ingredient_id, {
-          title: row.title,
-          slug: row.slug,
-        });
+        const list = sourceRecipes.get(row.output_ingredient_id) ?? [];
+        list.push({ title: row.title, slug: row.slug });
+        sourceRecipes.set(row.output_ingredient_id, list);
       }
     }
 
@@ -384,6 +438,7 @@ export const handlers = handler({
         sections: sectionsData,
         refs: refsRes.rows,
         recipeRefs,
+        dishRefs,
         mealTypes,
         dietaryTags,
         baseQuantity,
@@ -395,6 +450,7 @@ export const handlers = handler({
         unitSystem: ctx.state.unitSystem,
         forkedFrom,
         forkCount,
+        dish,
         collections,
         outputIngredient,
         sourceRecipes: Object.fromEntries(sourceRecipes),
@@ -444,6 +500,7 @@ export default page(function RecipeViewPage({
     sections,
     refs,
     recipeRefs,
+    dishRefs,
     mealTypes,
     dietaryTags,
     isOwner,
@@ -455,6 +512,7 @@ export default page(function RecipeViewPage({
     unitSystem,
     forkedFrom,
     forkCount,
+    dish,
     collections,
     outputIngredient,
     sourceRecipes,
@@ -530,6 +588,16 @@ export default page(function RecipeViewPage({
       {forkCount > 0 && (
         <p class="text-xs text-stone-400 mt-1">
           {forkCount} {forkCount === 1 ? "fork" : "forks"}
+        </p>
+      )}
+      {dish && dish.otherCount > 0 && (
+        <p class="text-sm text-stone-500 mt-1">
+          <a href={`/dishes/${dish.slug}`} class="link">
+            {dish.otherCount}{" "}
+            {dish.otherCount === 1
+              ? "other recipe makes"
+              : "other recipes make"} this dish
+          </a>
         </p>
       )}
       {recipe.description && (
@@ -661,6 +729,7 @@ export default page(function RecipeViewPage({
             title: r.ref_title,
           }))}
           recipeRefs={recipeRefs}
+          dishRefs={dishRefs}
           baseQuantity={baseQuantity}
           slug={recipe.slug}
           recipeId={recipe.id}

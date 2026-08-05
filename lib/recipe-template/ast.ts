@@ -8,6 +8,7 @@
  *   - `@step(N)` / `@step(key.N)` — step references.
  *   - `@timer(15m)` etc. — timer buttons.
  *   - `@recipe(slug)` — sub-recipe links (resolved asynchronously).
+ *   - `@dish(slug)` — dish links: "any recipe for this dish".
  *
  * Every node carries (`start`, `length`) into the original source so a syntax
  * highlighter or editor tooling can map nodes back to text ranges. Parse errors
@@ -67,6 +68,12 @@ export interface RecipeRefNode extends Pos {
   slugRange: Pos;
 }
 
+export interface DishRefNode extends Pos {
+  kind: "dish_ref";
+  slug: string;
+  slugRange: Pos;
+}
+
 export interface InvalidDirectiveNode extends Pos {
   kind: "invalid_directive";
   /** Raw source covering the offending construct, including the leading `@` or `{{`. */
@@ -81,6 +88,7 @@ export type TemplateNode =
   | StepRefSectionNode
   | TimerNode
   | RecipeRefNode
+  | DishRefNode
   | InvalidDirectiveNode;
 
 export interface TemplateAst extends Pos {

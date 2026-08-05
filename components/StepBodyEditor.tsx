@@ -866,6 +866,7 @@ function emitNode(
       pushToken(tokens, node.start, node.length, "tpl-timer", 2);
       return;
     case "recipe_ref":
+    case "dish_ref":
       pushToken(tokens, node.start, node.length, "tpl-recipe", 2);
       return;
   }

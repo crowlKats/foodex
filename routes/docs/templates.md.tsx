@@ -68,6 +68,10 @@ Plain \`@step(N)\` always refers to the Nth step counted globally across the who
 Link to other recipes using \`@recipe(slug)\` where slug is the URL-friendly recipe name.
 Example: \`@recipe(pizza-dough)\` renders as a clickable link to that recipe.
 
+## Dish References
+Link to a dish — "any recipe that makes this" — using \`@dish(slug)\`.
+Example: \`@dish(pizza-dough)\` renders as a link to the dish page listing every recipe for it. Use this instead of \`@recipe()\` when any version of the dish will do.
+
 ## Timers
 Embed interactive countdown timers using \`@timer(duration)\`. Duration supports hours (\`h\`), minutes (\`m\`), and seconds (\`s\`), which can be combined.
 

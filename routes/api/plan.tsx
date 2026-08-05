@@ -3,6 +3,7 @@ import {
   addPlanEntry,
   cookNow,
   cookPlanEntry,
+  pinPlanEntry,
   uncookPlanEntry,
 } from "../../lib/plan.ts";
 import { parseJsonBody, PlanAction } from "../../lib/validation.ts";
@@ -20,9 +21,17 @@ export const handlers = handler({
     const userId = ctx.state.user.id;
 
     if (body.action === "add") {
+      if (!body.recipe_id && !body.dish_id) {
+        return Response.json(
+          { error: "recipe_id or dish_id is required" },
+          { status: 400 },
+        );
+      }
       const entryId = await addPlanEntry(ctx.state.db, {
         householdId,
         recipeId: body.recipe_id,
+        dishId: body.dish_id,
+        targetServings: body.target_servings,
         scale: body.scale,
         plannedFor: body.planned_for,
         includeInList: body.include_in_list,
@@ -32,17 +41,29 @@ export const handlers = handler({
       return Response.json({ ok: true, entry_id: entryId });
     }
 
+    if (body.action === "pin") {
+      const ok = await pinPlanEntry(
+        ctx.state.db,
+        householdId,
+        body.entry_id,
+        body.recipe_id,
+      );
+      return Response.json({ ok });
+    }
+
     if (body.action === "update") {
       await ctx.state.db.query(
         `UPDATE plan_entries
          SET scale = COALESCE($1, scale),
-             planned_for = COALESCE($2, planned_for),
-             include_in_list = COALESCE($3, include_in_list),
-             status = COALESCE($4, status),
+             target_servings = COALESCE($2, target_servings),
+             planned_for = COALESCE($3, planned_for),
+             include_in_list = COALESCE($4, include_in_list),
+             status = COALESCE($5, status),
              updated_at = now()
-         WHERE id = $5 AND household_id = $6 AND status <> 'cooked'`,
+         WHERE id = $6 AND household_id = $7 AND status <> 'cooked'`,
         [
           body.scale ?? null,
+          body.target_servings ?? null,
           body.planned_for ?? null,
           body.include_in_list ?? null,
           body.status ?? null,

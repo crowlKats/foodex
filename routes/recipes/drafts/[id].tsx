@@ -1,6 +1,6 @@
 import { handler, page } from "./$[id].ts";
 import { HttpError } from "fresh/errors";
-import { slugify } from "../../../utils.ts";
+import { uniqueSlug } from "../../../lib/slug.ts";
 import type {
   Ingredient,
   Media,
@@ -37,7 +37,8 @@ export const handlers = handler({
         "SELECT id, name FROM tools ORDER BY name",
       ),
       ctx.state.db.query<Recipe>(
-        "SELECT id, title, slug FROM recipes ORDER BY title",
+        "SELECT id, title, slug FROM recipes WHERE (private = false OR household_id = $1) ORDER BY title",
+        [ctx.state.householdId],
       ),
     ]);
 
@@ -90,7 +91,6 @@ export const handlers = handler({
     const form = await ctx.req.formData();
     const draftId = ctx.params.id;
     const title = form.get("title") as string;
-    const slug = slugify(title || "");
     const description = form.get("description") as string;
     const quantityType = (form.get("quantity_type") as string) || "servings";
     const quantityValue = parseFloat(form.get("quantity_value") as string) || 4;
@@ -145,6 +145,8 @@ export const handlers = handler({
         },
       });
     }
+
+    const slug = await uniqueSlug(ctx.state.db.query, title);
 
     try {
       await ctx.state.db.transaction(async (q) => {

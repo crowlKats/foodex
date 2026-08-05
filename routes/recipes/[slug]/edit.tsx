@@ -1,6 +1,6 @@
 import { handler, page } from "./$edit.ts";
 import { HttpError } from "fresh/errors";
-import { slugify } from "../../../utils.ts";
+import { uniqueSlug } from "../../../lib/slug.ts";
 import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
 import { loadRecipeEditData } from "../../../lib/recipe-edit-data.ts";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
@@ -22,7 +22,11 @@ import {
 export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
-    const data = await loadRecipeEditData(ctx.state.db.query, slug);
+    const data = await loadRecipeEditData(
+      ctx.state.db.query,
+      slug,
+      ctx.state.householdId ?? null,
+    );
     if (!data) throw new HttpError(404);
 
     if (
@@ -113,28 +117,23 @@ export const handlers = handler({
     const outputExpiresDays = outputExpiresDaysRaw
       ? parseInt(outputExpiresDaysRaw)
       : null;
+    // A manual pin needs a chosen dish; anything else clears the assignment
+    // so the dish trigger re-derives it from the (possibly new) title.
+    const dishIdRaw = (form.get("dish_id") as string) || null;
+    const dishManual = form.get("dish_manual") === "true" && dishIdRaw != null;
+    const dishId = dishManual ? dishIdRaw : null;
 
     let newSlug = slug;
     await ctx.state.db.transaction(async (q) => {
-      const baseSlug = slugify(title?.trim() || "");
-      newSlug = baseSlug;
-      let suffix = 1;
-      while (true) {
-        const existing = await q<{ id: string }>(
-          "SELECT id FROM recipes WHERE slug = $1 AND id != $2",
-          [newSlug, recipeId],
-        );
-        if (existing.rows.length === 0) break;
-        suffix++;
-        newSlug = `${baseSlug}-${suffix}`;
-      }
+      newSlug = await uniqueSlug(q, title?.trim() || "", recipeId as string);
 
       await q(
         `UPDATE recipes SET title=$1, slug=$23, description=$2,
          quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
          prep_time=$9, cook_time=$10, rest_time=$22, cover_image_id=$11, difficulty=$13, private=$14,
          source_type=$15, source_name=$16, source_url=$17,
-         output_ingredient_id=$18, output_amount=$19, output_unit=$20, output_expires_days=$21, updated_at=now()
+         output_ingredient_id=$18, output_amount=$19, output_unit=$20, output_expires_days=$21,
+         dish_id=$24, dish_manual=$25, updated_at=now()
          WHERE id=$12`,
         [
           title?.trim(),
@@ -160,6 +159,8 @@ export const handlers = handler({
           outputExpiresDays,
           restTime,
           newSlug,
+          dishId,
+          dishManual,
         ],
       );
 

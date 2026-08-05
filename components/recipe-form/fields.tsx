@@ -5,6 +5,7 @@ import StepForm from "../../islands/StepForm.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
 import RecipeOutputForm from "../../islands/RecipeOutputForm.tsx";
+import DishSelect from "../../islands/DishSelect.tsx";
 import { FormField } from "../FormField.tsx";
 import { Input, InputMultiline } from "../Input.tsx";
 import { Select } from "../Select.tsx";
@@ -46,6 +47,17 @@ export function IdentityFields({ d }: FieldProps) {
           rows={2}
           class="w-full"
           value={d.recipe.description ?? ""}
+        />
+      </FormField>
+      <FormField label="Dish">
+        <DishSelect
+          dishes={d.allDishes.map((di) => ({
+            id: String(di.id),
+            name: di.name,
+          }))}
+          initialDishId={d.recipe.dish_id ? String(d.recipe.dish_id) : ""}
+          initialDishName={d.dishName ?? ""}
+          initialManual={d.recipe.dish_manual}
         />
       </FormField>
     </>

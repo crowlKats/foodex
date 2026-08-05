@@ -150,16 +150,27 @@ export const ShoppingListSharedBody = z.object({
 export const PlanAction = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("add"),
-    recipe_id: uuid,
+    // One of recipe_id / dish_id is required; enforced in the handler since
+    // a discriminated-union member has to stay a plain object schema.
+    recipe_id: uuid.optional(),
+    dish_id: uuid.optional(),
+    target_servings: z.number().positive().optional(),
     scale: z.number().positive().optional(),
     planned_for: z.string().nullable().optional(),
     include_in_list: z.boolean().optional(),
     note: z.string().nullable().optional(),
   }),
   z.object({
+    /** Choose (or switch) the recipe for a dish-planned entry. */
+    action: z.literal("pin"),
+    entry_id: uuid,
+    recipe_id: uuid,
+  }),
+  z.object({
     action: z.literal("update"),
     entry_id: uuid,
     scale: z.number().positive().optional(),
+    target_servings: z.number().positive().optional(),
     planned_for: z.string().nullable().optional(),
     include_in_list: z.boolean().optional(),
     status: z.enum(["planned", "skipped"]).optional(),
