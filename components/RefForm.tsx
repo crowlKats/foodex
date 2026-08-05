@@ -42,7 +42,7 @@ export function RefForm({ initialRefs, recipes }: RefFormProps) {
       )}
       <p class="text-xs text-stone-500 mt-2">
         Add more references by saving and re-editing, or use @recipe(slug) in
-        the steps.
+        the steps — @dish(slug) links every version of a dish instead.
       </p>
     </div>
   );

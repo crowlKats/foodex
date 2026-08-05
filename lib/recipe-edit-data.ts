@@ -22,7 +22,11 @@ export type RecipeEditData = Awaited<
   ReturnType<typeof loadRecipeEditData>
 > extends infer T ? T extends null ? never : T : never;
 
-export async function loadRecipeEditData(query: QueryFn, slug: string) {
+export async function loadRecipeEditData(
+  query: QueryFn,
+  slug: string,
+  householdId: string | null,
+) {
   const recipeRes = await query<RecipeWithCoverMedia>(
     `SELECT r.*, m.id as cover_media_id, m.url as cover_media_url, m.filename as cover_media_filename, m.content_type as cover_media_content_type
      FROM recipes r
@@ -140,9 +144,27 @@ export async function loadRecipeEditData(query: QueryFn, slug: string) {
     "SELECT id, name FROM tools ORDER BY name",
   );
   const allRecipesRes = await query<Recipe>(
-    "SELECT id, title, slug FROM recipes WHERE id != $1 ORDER BY title",
-    [recipe.id],
+    `SELECT id, title, slug FROM recipes
+     WHERE id != $1 AND (private = false OR household_id = $2)
+     ORDER BY title`,
+    [recipe.id, householdId],
   );
+
+  // Dish picker options: dishes with at least one recipe the editor may see,
+  // plus this recipe's own dish (which might otherwise be invisible when the
+  // recipe is private and the group's only member).
+  const allDishesRes = await query<{ id: string; name: string }>(
+    `SELECT d.id, d.name FROM dishes d
+     WHERE d.id = $1 OR EXISTS (
+       SELECT 1 FROM recipes r WHERE r.dish_id = d.id
+         AND (r.private = false OR r.household_id = $2)
+     )
+     ORDER BY d.name`,
+    [recipe.dish_id, householdId],
+  );
+  const dishName = recipe.dish_id
+    ? allDishesRes.rows.find((di) => di.id === recipe.dish_id)?.name ?? null
+    : null;
 
   // Map section UUID → index in the sections array (form expects index)
   const sectionIdToIndex = new Map<string, number>();
@@ -195,6 +217,8 @@ export async function loadRecipeEditData(query: QueryFn, slug: string) {
     allIngredients: ingredientsListRes.rows,
     allTools: allToolsRes.rows,
     allRecipes: allRecipesRes.rows,
+    allDishes: allDishesRes.rows,
+    dishName,
     outputIngredientName,
   };
 }

@@ -251,6 +251,39 @@ export default page(function TemplateDocs() {
 
         <section>
           <h2 class="text-xl font-bold mb-3 pb-1 border-b-2 border-stone-300 dark:border-stone-700">
+            Dish References
+          </h2>
+          <p class="mb-3">
+            When any version of a dish will do — "use pizza dough", not one
+            specific dough recipe — link the dish itself with the{" "}
+            <code class="code-hint">@dish()</code> syntax.
+          </p>
+          <div class="card space-y-3">
+            <div>
+              <div class="text-xs font-bold uppercase text-stone-500 mb-1">
+                Syntax
+              </div>
+              <code class="code-hint">@dish(pizza-dough)</code>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase text-stone-500 mb-1">
+                Renders as
+              </div>
+              <a href="#" class="link">Pizza Dough</a>
+              <span class="text-stone-500 text-sm ml-2">
+                (linked to the dish page listing every recipe that makes it)
+              </span>
+            </div>
+          </div>
+          <p class="text-sm text-stone-500 mt-2">
+            Use the dish's slug from its page's address ({"/dishes/…"}). Prefer
+            this over <code class="code-hint">@recipe()</code>{" "}
+            when the reader should pick whichever version they like.
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-bold mb-3 pb-1 border-b-2 border-stone-300 dark:border-stone-700">
             Timers
           </h2>
           <p class="mb-3">

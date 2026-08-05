@@ -28,6 +28,7 @@ import {
 } from "./evaluator.ts";
 import { parseTemplate } from "./parser.ts";
 import type {
+  DishRefNode,
   Expr,
   InterpolationNode,
   InvalidDirectiveNode,
@@ -58,6 +59,8 @@ export interface RenderContext {
   layout: SectionLayout;
   /** Map of `slug -> {title,slug}` for resolved sub-recipes. */
   recipeRefs?: Map<string, RecipeRefInfo>;
+  /** Map of `slug -> {title,slug}` for resolved dishes (`@dish(...)`). */
+  dishRefs?: Map<string, RecipeRefInfo>;
   /** Click handler for timer buttons; pass `null` to render a static button. */
   onTimerStart?: (seconds: number, label: string) => void;
 }
@@ -110,6 +113,8 @@ function renderNodeToMarkdown(
       return slot(renderTimer(node, ctx));
     case "recipe_ref":
       return slot(renderRecipeRef(node, ctx));
+    case "dish_ref":
+      return slot(renderDishRef(node, ctx));
     case "invalid_directive":
       return slot(renderInvalid(node));
   }
@@ -239,6 +244,20 @@ function renderRecipeRef(
     );
   }
   return <a href={`/recipes/${encodeURIComponent(ref.slug)}`}>{ref.title}</a>;
+}
+
+function renderDishRef(
+  node: DishRefNode,
+  ctx: RenderContext,
+): ComponentChildren {
+  const ref = ctx.dishRefs?.get(node.slug);
+  if (!ref) {
+    return renderError(
+      `@dish(${node.slug})`,
+      `Can't find a dish with the slug "${node.slug}".`,
+    );
+  }
+  return <a href={`/dishes/${encodeURIComponent(ref.slug)}`}>{ref.title}</a>;
 }
 
 function renderInvalid(node: InvalidDirectiveNode): ComponentChildren {

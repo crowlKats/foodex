@@ -7,8 +7,8 @@
 // serializes back to the exact FormData field names `saveRecipeChildren` expects,
 // so the whole child-save path (deps, sections, media, tags) is reused verbatim.
 
-import { slugify } from "../../utils.ts";
 import { saveRecipeChildren } from "../recipe-save.ts";
+import { uniqueSlug } from "../slug.ts";
 import { isoVersion } from "./version.ts";
 import type { QueryFn } from "../../db/mod.ts";
 import type {
@@ -290,27 +290,6 @@ export function agentRecipeToFormData(r: AgentRecipe): FormData {
 }
 
 // ── Insert / update ─────────────────────────────────────────────────
-
-async function uniqueSlug(
-  q: QueryFn,
-  title: string,
-  excludeId?: string,
-): Promise<string> {
-  const base = slugify(title || "") || "recipe";
-  let slug = base;
-  let suffix = 1;
-  while (true) {
-    const existing = await q<{ id: string }>(
-      excludeId
-        ? "SELECT id FROM recipes WHERE slug = $1 AND id != $2"
-        : "SELECT id FROM recipes WHERE slug = $1",
-      excludeId ? [slug, excludeId] : [slug],
-    );
-    if (existing.rows.length === 0) return slug;
-    suffix++;
-    slug = `${base}-${suffix}`;
-  }
-}
 
 const SCALAR_COLS = [
   "description",

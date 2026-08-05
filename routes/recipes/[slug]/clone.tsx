@@ -1,6 +1,6 @@
 import { handler } from "./$clone.ts";
 import { HttpError } from "fresh/errors";
-import { slugify } from "../../../utils.ts";
+import { uniqueSlug } from "../../../lib/slug.ts";
 
 export const handlers = handler({
   async POST(ctx) {
@@ -19,27 +19,23 @@ export const handlers = handler({
     if (recipeRes.rows.length === 0) throw new HttpError(404);
     const recipe = recipeRes.rows[0];
 
-    const title = String(recipe.title);
-    const baseSlug = slugify(title);
-    let newSlug = baseSlug;
-    let suffix = 1;
-    while (true) {
-      const existing = await ctx.state.db.query(
-        "SELECT id FROM recipes WHERE slug = $1",
-        [newSlug],
-      );
-      if (existing.rows.length === 0) break;
-      suffix++;
-      newSlug = `${baseSlug}-${suffix}`;
+    // Same gate as the view route: a private recipe belongs to its household.
+    if (recipe.private && recipe.household_id !== ctx.state.householdId) {
+      throw new HttpError(404);
     }
+
+    const title = String(recipe.title);
+    const newSlug = await uniqueSlug(ctx.state.db.query, title);
 
     // Track the original recipe: if the source is itself a fork, link to the root
     const forkedFromId = recipe.forked_from_id ?? recipe.id;
 
-    // Clone recipe with fork attribution
+    // Clone recipe with fork attribution. dish_id/dish_manual are copied so a
+    // manually-chosen dish survives the fork (the trigger trusts a provided
+    // dish_id on insert).
     const newRecipeRes = await ctx.state.db.query(
-      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, rest_time, cover_image_id, difficulty, household_id, forked_from_id, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, rest_time, cover_image_id, difficulty, household_id, forked_from_id, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days, dish_id, dish_manual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
        RETURNING id`,
       [
         title,
@@ -65,6 +61,8 @@ export const handlers = handler({
         recipe.output_amount,
         recipe.output_unit,
         recipe.output_expires_days,
+        recipe.dish_id,
+        recipe.dish_manual,
       ],
     );
     const newRecipeId = newRecipeRes.rows[0].id;

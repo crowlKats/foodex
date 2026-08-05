@@ -56,8 +56,11 @@ export const handlers = handler({
     const sourceRecipesRes = await ctx.state.db.query<
       { title: string; slug: string }
     >(
-      "SELECT title, slug FROM recipes WHERE output_ingredient_id = $1",
-      [id],
+      `SELECT title, slug FROM recipes
+       WHERE output_ingredient_id = $1
+         AND (private = false OR household_id = $2)
+       ORDER BY title`,
+      [id, ctx.state.householdId],
     );
 
     ctx.state.pageTitle = ingredientRes.rows[0].name;
@@ -107,28 +110,35 @@ export const handlers = handler({
         });
       }
 
-      // Reparent all references from this ingredient to the target
-      await Promise.all([
-        ctx.state.db.query(
+      // Reparent all references from this ingredient to the target. One
+      // transaction: a failure midway must not leave a half-merged ingredient.
+      await ctx.state.db.transaction(async (q) => {
+        await q(
           "UPDATE recipe_ingredients SET ingredient_id = $1 WHERE ingredient_id = $2",
           [targetId, id],
-        ),
-        ctx.state.db.query(
+        );
+        // Recipes that produce this ingredient keep producing it after the
+        // merge — otherwise cooking them stops booking output stock.
+        await q(
+          "UPDATE recipes SET output_ingredient_id = $1 WHERE output_ingredient_id = $2",
+          [targetId, id],
+        );
+        await q(
           "UPDATE shopping_list_demands SET ingredient_id = $1 WHERE ingredient_id = $2",
           [targetId, id],
-        ),
-        ctx.state.db.query(
+        );
+        await q(
           "UPDATE pantry_items SET ingredient_id = $1 WHERE ingredient_id = $2",
           [targetId, id],
-        ),
+        );
         // History follows the ingredient too, or the ledger stops reconciling.
-        ctx.state.db.query(
+        await q(
           "UPDATE pantry_transactions SET ingredient_id = $1 WHERE ingredient_id = $2",
           [targetId, id],
-        ),
+        );
         // Purchases carry the projected line's identity, so the key moves with
         // them — otherwise a ticked-off line would reappear as unbought.
-        ctx.state.db.query(
+        await q(
           `UPDATE shopping_list_purchases
            SET ingredient_id = $1, match_key = 'id:' || $1::text
            WHERE ingredient_id = $2
@@ -138,8 +148,8 @@ export const handlers = handler({
                  AND other.match_key = 'id:' || $1::text
              )`,
           [targetId, id],
-        ),
-        ctx.state.db.query(
+        );
+        await q(
           `UPDATE household_ingredient_stores SET ingredient_id = $1
            WHERE ingredient_id = $2
              AND NOT EXISTS (
@@ -148,25 +158,25 @@ export const handlers = handler({
                  AND other.ingredient_id = $1
              )`,
           [targetId, id],
-        ),
+        );
         // Move brands that don't conflict
-        ctx.state.db.query(
+        await q(
           `UPDATE ingredient_brands SET ingredient_id = $1
            WHERE ingredient_id = $2
              AND brand NOT IN (SELECT brand FROM ingredient_brands WHERE ingredient_id = $1)`,
           [targetId, id],
-        ),
+        );
         // Move prices that don't conflict on (ingredient_id, store_id)
-        ctx.state.db.query(
+        await q(
           `UPDATE ingredient_prices SET ingredient_id = $1
            WHERE ingredient_id = $2
              AND store_id NOT IN (SELECT store_id FROM ingredient_prices WHERE ingredient_id = $1)`,
           [targetId, id],
-        ),
-      ]);
+        );
 
-      // Delete the source ingredient (cascades remaining brands/prices)
-      await ctx.state.db.query("DELETE FROM ingredients WHERE id = $1", [id]);
+        // Delete the source ingredient (cascades remaining brands/prices)
+        await q("DELETE FROM ingredients WHERE id = $1", [id]);
+      });
 
       return new Response(null, {
         status: 303,

@@ -28,8 +28,18 @@ export interface Recipe {
   output_amount: number | null;
   output_unit: string | null;
   output_expires_days: number | null;
+  dish_id: string | null;
+  dish_manual: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** A dish: the identity shared by every recipe that makes the same thing. */
+export interface Dish {
+  id: string;
+  name: string;
+  slug: string;
+  created_at: string;
 }
 
 export interface RecipeWithCover extends Recipe {
@@ -316,6 +326,11 @@ export interface StepMedia {
 
 export interface RecipeListItem extends RecipeWithCover {
   tags: { meal_types: string[]; dietary: string[] };
+  /** Owning household, for attribution on cross-household lists. */
+  household_name?: string | null;
+  dish_slug?: string | null;
+  /** Visible recipes for the same dish, this one included. */
+  dish_count?: number;
 }
 
 export interface HouseholdRecipe {

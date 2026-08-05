@@ -21,6 +21,7 @@
  */
 
 import type {
+  DishRefNode,
   Expr,
   InterpolationNode,
   InvalidDirectiveNode,
@@ -185,7 +186,10 @@ class TemplateParser {
     const m = /^@([a-zA-Z]+)\(/.exec(this.src.slice(this.pos));
     if (!m) return null;
     const name = m[1];
-    if (name !== "step" && name !== "timer" && name !== "recipe") return null;
+    if (
+      name !== "step" && name !== "timer" && name !== "recipe" &&
+      name !== "dish"
+    ) return null;
 
     const argStart = this.pos + m[0].length;
     const closeIdx = this.src.indexOf(")", argStart);
@@ -214,6 +218,8 @@ class TemplateParser {
         return this.buildTimer(arg, argStart, start, totalLen);
       case "recipe":
         return this.buildRecipeRef(arg, argStart, start, totalLen);
+      case "dish":
+        return this.buildDishRef(arg, argStart, start, totalLen);
     }
     return null;
   }
@@ -321,6 +327,33 @@ class TemplateParser {
     }
     return {
       kind: "recipe_ref",
+      slug: arg,
+      slugRange: { start: argStart, length: arg.length },
+      start,
+      length: totalLen,
+    };
+  }
+
+  private buildDishRef(
+    arg: string,
+    argStart: number,
+    start: number,
+    totalLen: number,
+  ): DishRefNode | InvalidDirectiveNode {
+    if (!/^[a-z0-9_-]+$/.test(arg)) {
+      return {
+        kind: "invalid_directive",
+        raw: this.src.slice(start, start + totalLen),
+        message: "`@dish(...)` needs the slug of a dish — " +
+          "that's the part at the end of the dish's web address. " +
+          "It uses lowercase letters, numbers, `-` and `_` " +
+          "(e.g. `@dish(pizza-dough)`).",
+        start,
+        length: totalLen,
+      };
+    }
+    return {
+      kind: "dish_ref",
       slug: arg,
       slugRange: { start: argStart, length: arg.length },
       start,

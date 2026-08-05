@@ -93,6 +93,8 @@ interface RecipeViewProps {
   refs?: RecipeRef[];
   /** Sub-recipes referenced via `@recipe(slug)` in step bodies. */
   recipeRefs?: { slug: string; title: string }[];
+  /** Dishes referenced via `@dish(slug)` in step bodies. */
+  dishRefs?: { slug: string; title: string }[];
   baseQuantity: RecipeQuantity;
   slug: string;
   recipeId: string;
@@ -101,7 +103,7 @@ interface RecipeViewProps {
   pantryItems?: PantryItem[];
   householdId?: string | null;
   unitSystem?: UnitSystem;
-  sourceRecipes?: Record<string, { title: string; slug: string }>;
+  sourceRecipes?: Record<string, { title: string; slug: string }[]>;
 }
 
 export default function RecipeView(
@@ -112,6 +114,7 @@ export default function RecipeView(
     tools,
     refs,
     recipeRefs: recipeRefsList,
+    dishRefs: dishRefsList,
     baseQuantity,
     slug: _slug,
     recipeId,
@@ -188,6 +191,12 @@ export default function RecipeView(
     for (const r of recipeRefsList ?? []) map.set(r.slug, r);
     return map;
   }, [recipeRefsList]);
+
+  const dishRefsMap = useMemo(() => {
+    const map = new Map<string, { slug: string; title: string }>();
+    for (const d of dishRefsList ?? []) map.set(d.slug, d);
+    return map;
+  }, [dishRefsList]);
 
   function getTarget(): RecipeQuantity {
     return {
@@ -627,6 +636,7 @@ export default function RecipeView(
         variables={{ ratio }}
         ingredients={scaleIngredients(ingredients, ratio)}
         recipeRefs={recipeRefsMap}
+        dishRefs={dishRefsMap}
         onTimerStart={startTimer}
       />
     );
@@ -1150,19 +1160,20 @@ export default function RecipeView(
                             )
                             : <span>{ing.name}</span>}
                           {ing.ingredient_id &&
-                            sourceRecipes?.[ing.ingredient_id] && (
-                            <a
-                              href={`/recipes/${
-                                sourceRecipes[ing.ingredient_id].slug
-                              }`}
-                              class="link text-xs ml-1"
-                              title={`Recipe: ${
-                                sourceRecipes[ing.ingredient_id].title
-                              }`}
-                            >
-                              (recipe)
-                            </a>
-                          )}
+                            sourceRecipes?.[ing.ingredient_id]?.map(
+                              (src, i, all) => (
+                                <a
+                                  key={src.slug}
+                                  href={`/recipes/${src.slug}`}
+                                  class="link text-xs ml-1"
+                                  title={`Recipe: ${src.title}`}
+                                >
+                                  {all.length === 1
+                                    ? "(recipe)"
+                                    : `(recipe ${i + 1})`}
+                                </a>
+                              ),
+                            )}
                         </span>
                       </span>
                       <span class="flex items-baseline gap-2">
@@ -1312,6 +1323,7 @@ export default function RecipeView(
             variables={{ ratio: getCurrentRatio() }}
             ingredients={scaleIngredients(ingredients, getCurrentRatio())}
             recipeRefs={recipeRefsMap}
+            dishRefs={dishRefsMap}
             onTimerStart={startTimer}
           />
         </div>

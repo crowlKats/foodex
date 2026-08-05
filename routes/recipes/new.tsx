@@ -1,5 +1,5 @@
 import { handler, page } from "./$new.ts";
-import { slugify } from "../../utils.ts";
+import { uniqueSlug } from "../../lib/slug.ts";
 import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
 import { saveRecipeChildren } from "../../lib/recipe-save.ts";
 import QuantityInput from "../../islands/QuantityInput.tsx";
@@ -42,7 +42,8 @@ export const handlers = handler({
       "SELECT id, name FROM tools ORDER BY name",
     );
     const allRecipesRes = await ctx.state.db.query<Recipe>(
-      "SELECT id, title, slug FROM recipes ORDER BY title",
+      "SELECT id, title, slug FROM recipes WHERE (private = false OR household_id = $1) ORDER BY title",
+      [ctx.state.householdId],
     );
 
     ctx.state.pageTitle = "New Recipe";
@@ -64,7 +65,6 @@ export const handlers = handler({
 
     const form = await ctx.req.formData();
     const title = form.get("title") as string;
-    const slug = slugify(title || "");
     const description = form.get("description") as string;
     const quantityType = (form.get("quantity_type") as string) || "servings";
     const quantityValue = parseFloat(
@@ -137,6 +137,8 @@ export const handlers = handler({
       };
     }
 
+    const slug = await uniqueSlug(ctx.state.db.query, title);
+
     try {
       await ctx.state.db.transaction(async (q) => {
         const res = await q<{ id: string }>(
@@ -188,7 +190,8 @@ export const handlers = handler({
           ),
           ctx.state.db.query<Tool>("SELECT id, name FROM tools ORDER BY name"),
           ctx.state.db.query<Recipe>(
-            "SELECT id, title, slug FROM recipes ORDER BY title",
+            "SELECT id, title, slug FROM recipes WHERE (private = false OR household_id = $1) ORDER BY title",
+            [ctx.state.householdId],
           ),
         ]);
         return {

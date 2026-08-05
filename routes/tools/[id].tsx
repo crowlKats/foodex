@@ -20,9 +20,9 @@ export const handlers = handler({
       `SELECT rt.*, r.title as recipe_title, r.slug as recipe_slug
        FROM recipe_tools rt
        JOIN recipes r ON r.id = rt.recipe_id
-       WHERE rt.tool_id = $1
+       WHERE rt.tool_id = $1 AND (r.private = false OR r.household_id = $2)
        ORDER BY r.title`,
-      [id],
+      [id, ctx.state.householdId],
     );
 
     let householdHasTool = false;
