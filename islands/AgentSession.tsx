@@ -106,6 +106,9 @@ export default function AgentSession(props: Props) {
   const [attachments, setAttachments] = useState<
     { file: File; url: string }[]
   >([]);
+  // A seeded import session shows the editor shell (with a placeholder pane)
+  // from the first paint, never a bare chat. Cleared when the turn ends.
+  const [importing, setImporting] = useState(!!props.autoStart);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,7 +125,10 @@ export default function AgentSession(props: Props) {
     history.replaceState(null, "", globalThis.location.pathname);
     const last = props.initialTimeline[props.initialTimeline.length - 1];
     if (!props.initialTurnActive && last?.kind === "user") {
-      runStream({ mode: "resume" });
+      runStream({ mode: "resume" }).finally(() => setImporting(false));
+    } else {
+      // Nothing to run (already extracted, or a turn is streaming elsewhere).
+      setImporting(false);
     }
   }, []);
 
@@ -495,10 +501,15 @@ export default function AgentSession(props: Props) {
     recipeItems[recipeItems.length - 1] ?? null;
   const workbench = focusedRecipe != null;
 
+  // Editor-shell layout: the workbench, or — while a seeded import turn is
+  // still extracting — its placeholder pane, so an import never opens as a
+  // bare chat window.
+  const shell = workbench || importing;
+
   // The right-hand drawer: editing an item takes precedence over the apply view
-  // (so "Edit" from within apply returns to apply when closed). In workbench
+  // (so "Edit" from within apply returns to apply when closed). In shell
   // mode the drawers are replaced by the always-visible editor pane.
-  const drawerMode: "edit" | "apply" | null = workbench
+  const drawerMode: "edit" | "apply" | null = shell
     ? null
     : editingItem
     ? "edit"
@@ -516,7 +527,7 @@ export default function AgentSession(props: Props) {
       setPreviewOpen(false);
       setFocusedId(id);
       setMobileView("editor");
-    } else if (workbench) {
+    } else if (shell) {
       // Staged ingredients are edited inline in the workbench pane.
       setMobileView("editor");
     } else {
@@ -528,7 +539,7 @@ export default function AgentSession(props: Props) {
   return (
     <div class="h-full flex flex-col overflow-hidden">
       {/* Mobile: the editor and the chat are alternate views. */}
-      {workbench && (
+      {shell && (
         <div class="md:hidden shrink-0 flex border-b-2 border-stone-200 dark:border-stone-700">
           {(["editor", "chat"] as const).map((view) => (
             <button
@@ -567,13 +578,27 @@ export default function AgentSession(props: Props) {
             onResolve={resolveConflict}
           />
         )}
+        {!workbench && importing && (
+          <div
+            class={`flex-1 min-w-0 min-h-0 flex flex-col items-center justify-center gap-3 p-6 ${
+              mobileView === "chat" ? "max-md:hidden" : ""
+            }`}
+          >
+            <IconLoader2 class="size-10 text-orange-600 animate-spin" />
+            <p class="text-sm font-medium">Preparing your recipe…</p>
+            <p class="text-xs text-stone-500 max-w-xs text-center">
+              It will appear here for review as soon as it's ready — progress
+              shows in the chat panel.
+            </p>
+          </div>
+        )}
         {
-          /* Chat column — side panel in workbench mode, otherwise pushed to a
+          /* Chat column — side panel in shell mode, otherwise pushed to a
           third as the drawer grows in from the right. */
         }
         <div
           class={`flex flex-col min-w-0 min-h-0 overflow-hidden ${
-            workbench
+            shell
               ? `max-md:flex-1 md:w-[26rem] md:shrink-0 md:border-l-2 border-stone-200 dark:border-stone-700 ${
                 mobileView === "editor" ? "max-md:hidden" : ""
               }`
@@ -626,7 +651,7 @@ export default function AgentSession(props: Props) {
           <div class="border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950">
             <div class="max-w-3xl mx-auto p-3 space-y-2">
               {error && <div class="alert-error text-sm">{error}</div>}
-              {staging.length > 0 && !workbench && (
+              {staging.length > 0 && !shell && (
                 <div class="flex flex-wrap items-center gap-1.5">
                   {staging.map((it) => {
                     const PillIcon = it.kind.startsWith("create")
@@ -2028,6 +2053,10 @@ function WorkbenchPane(p: WorkbenchProps) {
   const [dirty, setDirty] = useState(false);
   const [stale, setStale] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Which editor tab is showing — tracked via the bubbling radio change
+  // events so the memoized form vnode never has to re-render. Extras like
+  // the staged-ingredients card dock onto their matching tab.
+  const [activeTab, setActiveTab] = useState("basics");
   const seenVersion = useRef(item.version);
 
   // When the item advances underneath the form (an agent edit or a save
@@ -2178,7 +2207,13 @@ function WorkbenchPane(p: WorkbenchProps) {
         </div>
       </div>
       <div class="flex-1 min-h-0 overflow-y-auto p-4">
-        <div class="max-w-3xl mx-auto space-y-4">
+        <div
+          class="max-w-3xl mx-auto space-y-4"
+          onChange={(e) => {
+            const t = e.target as HTMLInputElement;
+            if (t?.name === "_tab") setActiveTab(t.id.replace("tab-", ""));
+          }}
+        >
           {stale && (
             <div class="card border-orange-400 text-sm flex items-center gap-3 flex-wrap">
               <span>
@@ -2217,7 +2252,7 @@ function WorkbenchPane(p: WorkbenchProps) {
             </div>
           )}
           {fields}
-          {p.ingredientItems.length > 0 && (
+          {activeTab === "ingredients" && p.ingredientItems.length > 0 && (
             <div class="card space-y-2">
               <div class="text-sm font-semibold">Staged ingredients</div>
               <p class="text-xs text-stone-500">
