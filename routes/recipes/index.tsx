@@ -91,10 +91,14 @@ function buildRecipeQuery(opts: {
   if (opts.q) {
     joins.push("LEFT JOIN recipe_steps rs ON rs.recipe_id = r.id");
     joins.push("LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id");
+    // Match the live ingredient name too: the line's snapshot goes stale when
+    // the ingredient is renamed or merged away.
+    joins.push("LEFT JOIN ingredients gi ON gi.id = ri.ingredient_id");
     wheres.push(
       `(r.search_vector @@ plainto_tsquery('english', $${p})` +
         ` OR rs.body ILIKE '%' || $${p + 1} || '%' ESCAPE '\\'` +
-        ` OR ri.name ILIKE '%' || $${p + 1} || '%' ESCAPE '\\')`,
+        ` OR ri.name ILIKE '%' || $${p + 1} || '%' ESCAPE '\\'` +
+        ` OR gi.name ILIKE '%' || $${p + 1} || '%' ESCAPE '\\')`,
     );
     params.push(opts.q, escapeLike(opts.q));
     p += 2;

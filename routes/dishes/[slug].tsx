@@ -56,9 +56,12 @@ export const handlers = handler({
         amount: number | null;
         unit: string | null;
       }>(
-        `SELECT recipe_id, ingredient_id, name, amount, unit
-         FROM recipe_ingredients WHERE recipe_id = ANY($1)
-         ORDER BY sort_order, id`,
+        `SELECT ri.recipe_id, ri.ingredient_id,
+                COALESCE(g.name, ri.name) AS name, ri.amount, ri.unit
+         FROM recipe_ingredients ri
+         LEFT JOIN ingredients g ON g.id = ri.ingredient_id
+         WHERE ri.recipe_id = ANY($1)
+         ORDER BY ri.sort_order, ri.id`,
         [recipes.map((r) => r.id)],
       );
       const colIndex = new Map(recipes.map((r, i) => [String(r.id), i]));

@@ -130,7 +130,8 @@ export async function loadPlan(
   const [ingredientsRes, stock] = await Promise.all([
     recipeIds.length > 0
       ? db.query<RecipeIngredientRow>(
-        `SELECT ri.recipe_id, ri.ingredient_id, ri.name, ri.amount, ri.unit,
+        `SELECT ri.recipe_id, ri.ingredient_id,
+              COALESCE(g.name, ri.name) AS name, ri.amount, ri.unit,
               g.density
        FROM recipe_ingredients ri
        LEFT JOIN ingredients g ON g.id = ri.ingredient_id
@@ -362,7 +363,8 @@ export async function cookPlanEntry(
   const scale = Number(entry.scale) || 1;
 
   const ingredientsRes = await db.query<RecipeIngredientRow>(
-    `SELECT ri.recipe_id, ri.ingredient_id, ri.name, ri.amount, ri.unit, g.density
+    `SELECT ri.recipe_id, ri.ingredient_id,
+            COALESCE(g.name, ri.name) AS name, ri.amount, ri.unit, g.density
      FROM recipe_ingredients ri
      LEFT JOIN ingredients g ON g.id = ri.ingredient_id
      WHERE ri.recipe_id = $1

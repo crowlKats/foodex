@@ -427,7 +427,10 @@ export async function executeTool(
         if (ingredient) {
           params.push(`%${escapeLike(ingredient)}%`);
           clauses.push(
-            `EXISTS (SELECT 1 FROM recipe_ingredients ri WHERE ri.recipe_id = r.id AND ri.name ILIKE $${params.length})`,
+            `EXISTS (SELECT 1 FROM recipe_ingredients ri
+               LEFT JOIN ingredients g ON g.id = ri.ingredient_id
+               WHERE ri.recipe_id = r.id
+                 AND (ri.name ILIKE $${params.length} OR g.name ILIKE $${params.length}))`,
           );
         }
         params.push(limit, offset);

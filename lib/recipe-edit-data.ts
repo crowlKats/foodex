@@ -54,7 +54,9 @@ export function editDataToRecipeFields(
     dietary_tags: d.dietaryTags,
     ingredients: d.ingredients.map((i) => ({
       key: i.key ?? "",
-      name: i.name,
+      // Prefer the live ingredient name: the line's snapshot goes stale when
+      // the ingredient is renamed or merged away.
+      name: i.ingredient_name ?? i.name,
       amount: i.amount != null ? String(i.amount) : "",
       unit: i.unit ?? "",
       ingredient_id: i.ingredient_id != null ? String(i.ingredient_id) : "",

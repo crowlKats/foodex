@@ -196,7 +196,9 @@ export async function loadAgentRecipe(
     ),
     ingredients: ing.rows.map((r) => ({
       key: r.key ?? "",
-      name: r.name,
+      // Prefer the live ingredient name: the line's snapshot goes stale when
+      // the ingredient is renamed or merged away.
+      name: r.ingredient_name ?? r.name,
       amount: r.amount != null ? String(r.amount) : "",
       unit: r.unit ?? "",
       ingredient_id: r.ingredient_id,
