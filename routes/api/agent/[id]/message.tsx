@@ -118,8 +118,11 @@ export const handlers = handler({
 
         // After the first and second completed user turns, refine the title
         // with a model-computed one. Best-effort — never breaks the stream.
+        // Resume turns count too: seeded imports (chatless and bulk) only
+        // ever run as resume, and their raw "Import the recipe…" seed text
+        // would otherwise stay the title forever — unsearchable.
         async function maybeRetitle() {
-          if (body.mode === "resume" || !session) return;
+          if (!session) return;
           try {
             const evs = await loadEvents(
               db.query,

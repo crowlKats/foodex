@@ -1,7 +1,15 @@
 import { handler, page } from "./$index.ts";
-import { createSession, listSessions } from "../../lib/agent/session.ts";
-import { BackLink } from "../../components/BackLink.tsx";
+import { escapeLike } from "../../utils.ts";
+import type { AgentSession } from "../../db/types.ts";
+import { createSession } from "../../lib/agent/session.ts";
+import { PageHeader } from "../../components/PageHeader.tsx";
+import { EmptyState } from "../../components/EmptyState.tsx";
 import { Button } from "../../components/Button.tsx";
+import {
+  getPage,
+  Pagination,
+  paginationParams,
+} from "../../components/Pagination.tsx";
 import DeleteChatButton from "../../islands/DeleteChatButton.tsx";
 
 export const handlers = handler({
@@ -12,9 +20,41 @@ export const handlers = handler({
         headers: { Location: "/auth/login" },
       });
     }
-    const sessions = await listSessions(ctx.state.db.query, ctx.state.user.id);
+
+    const q = ctx.url.searchParams.get("q")?.trim() || "";
+    const currentPage = getPage(ctx.url);
+    const { limit, offset } = paginationParams(currentPage);
+
+    const wheres = ["user_id = $1"];
+    const params: unknown[] = [ctx.state.user.id];
+    if (q) {
+      params.push(escapeLike(q));
+      wheres.push(`title ILIKE '%' || $${params.length} || '%' ESCAPE '\\'`);
+    }
+    const whereSql = wheres.join(" AND ");
+
+    const [result, countRes] = await Promise.all([
+      ctx.state.db.query<AgentSession>(
+        `SELECT * FROM agent_sessions WHERE ${whereSql}
+         ORDER BY updated_at DESC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset],
+      ),
+      ctx.state.db.query<{ cnt: number }>(
+        `SELECT COUNT(*) as cnt FROM agent_sessions WHERE ${whereSql}`,
+        params,
+      ),
+    ]);
+
     ctx.state.pageTitle = "Assistant";
-    return { data: { sessions } };
+    return {
+      data: {
+        sessions: result.rows,
+        q,
+        currentPage,
+        totalCount: Number(countRes.rows[0].cnt),
+      },
+    };
   },
 
   async POST(ctx) {
@@ -36,32 +76,49 @@ export const handlers = handler({
   },
 });
 
-export default page(function AgentIndex({ data }) {
-  const { sessions } = data;
+export default page(function AgentIndex(
+  { data: { sessions, q, currentPage, totalCount }, url },
+) {
   return (
     <div>
-      <BackLink href="/recipes" label="Back to Recipes" />
-      <div class="flex items-center justify-between mt-4 mb-6">
-        <h1 class="text-2xl font-bold">Recipe Assistant</h1>
+      <PageHeader
+        title="Assistant"
+        query={q}
+        searchPlaceholder="Search conversations..."
+      >
         <form method="POST">
           <Button type="submit">New chat</Button>
         </form>
-      </div>
+      </PageHeader>
 
       {sessions.length === 0
-        ? (
-          <p class="text-stone-500">
-            No conversations yet. Start a new chat to plan, create, or improve
-            recipes with the assistant.
-          </p>
-        )
+        ? q
+          ? (
+            <EmptyState title={`No conversations match "${q}"`}>
+              Nothing here goes by that name.
+            </EmptyState>
+          )
+          : (
+            <EmptyState
+              title="No conversations yet"
+              action={
+                <form method="POST">
+                  <Button type="submit" size="sm">New chat</Button>
+                </form>
+              }
+            >
+              The assistant finds, imports, creates, and improves recipes with
+              you — every change is staged for your review before it touches the
+              library.
+            </EmptyState>
+          )
         : (
           <ul class="space-y-2">
             {sessions.map((s) => (
               <li key={s.id} class="flex items-center gap-2">
                 <a
                   href={`/agent/${s.id}`}
-                  class="card flex-1 hover:border-orange-400"
+                  class="card card-hover flex-1"
                 >
                   <span class="font-medium">{s.title}</span>
                   <span class="block text-xs text-stone-500">
@@ -73,6 +130,7 @@ export default page(function AgentIndex({ data }) {
             ))}
           </ul>
         )}
+      <Pagination currentPage={currentPage} totalCount={totalCount} url={url} />
     </div>
   );
 });
