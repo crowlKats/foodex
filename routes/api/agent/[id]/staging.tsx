@@ -17,6 +17,7 @@ import {
   INGREDIENT_SCHEMA,
   RECIPE_SCHEMA,
 } from "../../../../lib/agent/merge.ts";
+import type { ApplyResult } from "../../../../lib/agent/events.ts";
 import type { AgentSession } from "../../../../db/types.ts";
 import type { State } from "../../../_middleware.tsx";
 
@@ -153,6 +154,7 @@ export const handlers = handler({
         if (ids.length === 0) return json({ error: "item_ids required" }, 400);
 
         const applied: string[] = [];
+        const appliedResults: { item_id: string; result: ApplyResult }[] = [];
         const conflicts: {
           item_id: string;
           conflict_paths: string[];
@@ -233,6 +235,7 @@ export const handlers = handler({
                 payload: { item_id: itemId, result: outcome.result },
               });
               if (!applied.includes(itemId)) applied.push(itemId);
+              appliedResults.push({ item_id: itemId, result: outcome.result });
             } else if (outcome.conflict) {
               conflicts.push({ item_id: itemId, ...outcome.conflict });
             }
@@ -241,6 +244,7 @@ export const handlers = handler({
 
         return json({
           applied,
+          applied_results: appliedResults,
           conflicts,
           items: await serializeStaging(ctx, s),
         });

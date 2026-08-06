@@ -423,6 +423,15 @@ export default function AgentSession(props: Props) {
   async function applyItem(id: string) {
     const r = await postStaging({ action: "apply", item_ids: [id] });
     if (!r) return;
+    // Applying a recipe from the workbench lands on the recipe itself —
+    // the session stays in the conversation list for later.
+    const done = (r.applied_results ?? []).find(
+      (a: Any) => a.item_id === id,
+    );
+    if (done?.result?.slug) {
+      globalThis.location.href = `/recipes/${done.result.slug}`;
+      return;
+    }
     setStaging(r.items);
     setConflicts((c) => {
       const next = { ...c };
@@ -2126,7 +2135,11 @@ function WorkbenchPane(p: WorkbenchProps) {
     setEpoch((e) => e + 1);
   }
 
-  const markDirty = () => setDirty(true);
+  // Tab radios live inside the form — switching tabs is not an edit.
+  const markDirty = (e: Event) => {
+    if ((e.target as HTMLInputElement)?.name === "_tab") return;
+    setDirty(true);
+  };
 
   // The form vnode is memoized so the constant chat re-renders (stream deltas)
   // never re-diff it — Preact re-syncs `value` attrs on every diff, which

@@ -11,6 +11,7 @@ import { Input, InputMultiline } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
 import { DurationInput } from "../components/DurationInput.tsx";
 import { RefForm } from "../components/RefForm.tsx";
+import { Checkbox } from "../components/Checkbox.tsx";
 import { SubGroup } from "../components/recipe-form/ui.tsx";
 import MultiSearchSelect from "./MultiSearchSelect.tsx";
 import {
@@ -286,18 +287,6 @@ export default function RecipeFields(props: Props) {
               />
             </div>
           </div>
-          <label class="flex items-center gap-2 mt-3 w-fit cursor-pointer">
-            <input
-              key={`private-${v}`}
-              type="checkbox"
-              name="private"
-              checked={r.private ?? false}
-              class="size-4 accent-orange-600"
-            />
-            <span class="text-sm">
-              Private (only visible to household members)
-            </span>
-          </label>
         </SubGroup>
         <SubGroup label="Source">
           <div>
@@ -422,6 +411,14 @@ export default function RecipeFields(props: Props) {
               referenced_recipe_id: String(ref.referenced_recipe_id ?? ""),
             }))}
             recipes={allRecipes}
+          />
+        </SubGroup>
+        <SubGroup label="Visibility">
+          <Checkbox
+            key={`private-${v}`}
+            name="private"
+            checked={r.private ?? false}
+            label="Private (only visible to household members)"
           />
         </SubGroup>
         {props.children}
