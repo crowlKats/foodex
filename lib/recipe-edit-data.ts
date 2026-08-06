@@ -58,7 +58,6 @@ export function editDataToRecipeFields(
       amount: i.amount != null ? String(i.amount) : "",
       unit: i.unit ?? "",
       ingredient_id: i.ingredient_id != null ? String(i.ingredient_id) : "",
-      always_on_hand: !!i.always_on_hand,
     })),
     sections: d.sections.map((s) => ({
       key: s.key,

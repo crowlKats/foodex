@@ -119,8 +119,9 @@ function buildRecipeQuery(opts: {
     wheres.push(
       `NOT EXISTS (
         SELECT 1 FROM recipe_ingredients ri_ck
+        LEFT JOIN ingredients g_ck ON g_ck.id = ri_ck.ingredient_id
         WHERE ri_ck.recipe_id = r.id
-          AND NOT ri_ck.always_on_hand
+          AND NOT COALESCE(g_ck.always_on_hand, false)
           AND COALESCE((
             SELECT
               -- Staples and untracked amounts cover any requirement; otherwise

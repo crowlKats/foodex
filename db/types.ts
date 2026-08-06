@@ -63,8 +63,6 @@ export interface RecipeIngredient {
   unit: string | null;
   key: string | null;
   sort_order: number;
-  /** Scales with the recipe but is never bought or counted as missing. */
-  always_on_hand: boolean;
   ingredient_name: string | null;
   ingredient_unit: string | null;
 }
@@ -128,6 +126,8 @@ export interface Ingredient {
   name: string;
   unit: string | null;
   density: number | null;
+  /** Scales with recipes but is never bought or counted as missing. */
+  always_on_hand: boolean;
   created_at: string;
 }
 

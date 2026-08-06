@@ -3,6 +3,7 @@ import { HttpError } from "fresh/errors";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { BackLink } from "../../components/BackLink.tsx";
+import { Checkbox } from "../../components/Checkbox.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
@@ -246,6 +247,7 @@ export const handlers = handler({
 
     const name = form.get("name") as string;
     const unit = form.get("unit") as string;
+    const alwaysOnHand = form.get("always_on_hand") != null;
 
     // Convert user-friendly unit conversion to density (g/ml)
     const convAmount1 = parseFloat(form.get("conv_amount1") as string);
@@ -267,8 +269,8 @@ export const handlers = handler({
       });
     }
     await ctx.state.db.query(
-      "UPDATE ingredients SET name = $1, unit = $2, density = $3, updated_at = now() WHERE id = $4",
-      [name.trim(), unit?.trim() || null, density, id],
+      "UPDATE ingredients SET name = $1, unit = $2, density = $3, always_on_hand = $4, updated_at = now() WHERE id = $5",
+      [name.trim(), unit?.trim() || null, density, alwaysOnHand, id],
     );
     return new Response(null, {
       status: 303,
@@ -337,6 +339,13 @@ export default page(
                   <IngredientUnitFields
                     unit={ingredient.unit ?? ""}
                     density={ingredient.density}
+                  />
+                  <Checkbox
+                    name="always_on_hand"
+                    checked={ingredient.always_on_hand}
+                    label="Always on hand"
+                    labelClass="text-sm"
+                    title="Water, salt and the like — scales with recipes, but is never added to the shopping list or counted as missing from the pantry."
                   />
                   <Button type="submit">Save</Button>
                 </form>

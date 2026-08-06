@@ -259,7 +259,7 @@ export async function loadDemands(
          AND pe.status = 'planned'
          AND pe.include_in_list = true
          -- Water and the like scale with the recipe but are never bought.
-         AND NOT ri.always_on_hand
+         AND NOT COALESCE(g.always_on_hand, false)
        ORDER BY pe.planned_for NULLS LAST, ri.sort_order`,
       [householdId],
     ),
@@ -484,10 +484,11 @@ export async function countOutstandingLines(
               SUM(fx_base_amount(COALESCE(ri.amount, 0) * pe.scale, ri.unit)) AS amt
        FROM plan_entries pe
        JOIN recipe_ingredients ri ON ri.recipe_id = pe.recipe_id
+       LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE pe.household_id = $1
          AND pe.status = 'planned'
          AND pe.include_in_list = true
-         AND NOT ri.always_on_hand
+         AND NOT COALESCE(g.always_on_hand, false)
        GROUP BY 1, 2
        UNION ALL
        SELECT fx_match_key(d.ingredient_id, d.name),

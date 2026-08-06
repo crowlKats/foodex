@@ -24,7 +24,6 @@ export async function saveRecipeChildren(
         ing.amount ? parseFloat(ing.amount) : null,
         ing.unit?.trim() || null,
         i,
-        !!ing.always_on_hand,
       ];
     })
     .filter((r) => r != null);
@@ -38,7 +37,6 @@ export async function saveRecipeChildren(
       "amount",
       "unit",
       "sort_order",
-      "always_on_hand",
     ], ingRows);
   }
 

@@ -46,9 +46,10 @@ export const handlers = handler({
     }
 
     const ingredientsRes = await ctx.state.db.query<
-      RecipeIngredient & { density: number | null }
+      RecipeIngredient & { density: number | null; always_on_hand: boolean }
     >(
-      `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit, g.density
+      `SELECT ri.*, g.name as ingredient_name, g.unit as ingredient_unit, g.density,
+              COALESCE(g.always_on_hand, false) as always_on_hand
        FROM recipe_ingredients ri
        LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE ri.recipe_id = $1

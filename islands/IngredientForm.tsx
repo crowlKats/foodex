@@ -4,7 +4,6 @@ import SearchSelect from "./SearchSelect.tsx";
 import { IconPlus } from "@tabler/icons-preact";
 import { IconTrash } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
-import { Checkbox } from "../components/Checkbox.tsx";
 import { Input, InputBar } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
 
@@ -14,8 +13,6 @@ interface Ingredient {
   amount: string;
   unit: string;
   ingredient_id: string;
-  /** Scales with the recipe, but is never bought or counted as missing. */
-  always_on_hand?: boolean;
 }
 
 interface IngredientItem extends Ingredient {
@@ -75,12 +72,6 @@ export default function IngredientForm(
     items.value = next;
   }
 
-  function updateFlag(index: number, value: boolean) {
-    const next = [...items.value];
-    next[index] = { ...next[index], always_on_hand: value };
-    items.value = next;
-  }
-
   function selectIngredient(index: number, id: string) {
     const g = availableIngredients.find((g) => g.id === id);
     if (!g) return;
@@ -117,14 +108,10 @@ export default function IngredientForm(
     <div class="space-y-4">
       {
         /*
-        The template-key and always-on-hand rules used to be spelled out on
-        every row, which meant the same two sentences repeated once per
-        ingredient and drowned out the fields. Explain them once here instead.
-
-        One line per rule, rather than both run together: as a single
-        paragraph it had to wrap mid-phrase, and the break landed wherever the
-        container happened to end. `text-pretty` keeps that tidy if a line
-        does wrap on a narrow screen.
+        The template-key rule used to be spelled out on every row, which meant
+        the same sentence repeated once per ingredient and drowned out the
+        fields. Explain it once here instead. `text-pretty` keeps the break
+        tidy if the line wraps on a narrow screen.
       */
       }
       <div class="text-xs text-stone-500 dark:text-stone-400 space-y-1 text-pretty">
@@ -133,9 +120,10 @@ export default function IngredientForm(
           <code class="code-hint">{"{{ key }}"}</code>.
         </p>
         <p>
-          Tick <span class="font-medium">Always on hand</span>{" "}
-          for staples like water or salt — they scale, but are never bought or
-          counted as missing.
+          Staples like water or salt are marked{" "}
+          <span class="font-medium">Always on hand</span>{" "}
+          on the ingredient itself — they scale, but are never bought or counted
+          as missing.
         </p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -206,23 +194,6 @@ export default function IngredientForm(
                 <span class="input-affix">{"}}"}</span>
               </div>
             </div>
-            {
-              /*
-              Water is in a large share of recipes: it has to scale, but
-              declaring it as an ingredient used to put it on the shopping list
-              and count it as missing from the pantry. Same for ice, and for
-              salt or oil depending on how the author thinks about staples.
-            */
-            }
-            <Checkbox
-              class="sm:pl-7"
-              labelClass="text-xs text-stone-500 dark:text-stone-400"
-              title="Scales with the recipe, but is never added to the shopping list or counted as missing from the pantry."
-              checked={!!item.always_on_hand}
-              onChange={(e) =>
-                updateFlag(i, (e.currentTarget as HTMLInputElement).checked)}
-              label="Always on hand"
-            />
             <input
               type="hidden"
               name={`ingredients[${i}][key]`}
@@ -247,11 +218,6 @@ export default function IngredientForm(
               type="hidden"
               name={`ingredients[${i}][ingredient_id]`}
               value={item.ingredient_id}
-            />
-            <input
-              type="hidden"
-              name={`ingredients[${i}][always_on_hand]`}
-              value={item.always_on_hand ? "1" : ""}
             />
           </div>
         ))}
