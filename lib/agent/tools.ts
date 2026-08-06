@@ -26,6 +26,7 @@ import { getOrCreateList, projectShoppingList } from "../shopping-list.ts";
 import { isoVersion } from "./version.ts";
 import { assertPublicUrl, fetchRaw, jinaSearch, jinaSummary } from "./fetch.ts";
 import { importRecipeFromUrl } from "../url-import.ts";
+import { unknownTemplateRefs } from "./validate-refs.ts";
 
 export interface ToolCtx {
   q: QueryFn;
@@ -752,6 +753,15 @@ export async function executeTool(
           return err("recipe.title is required.");
         }
         ensureStepIds(recipe);
+        const refProblems = unknownTemplateRefs(recipe);
+        if (refProblems.length > 0) {
+          return err(
+            `Template refs don't match the ingredient keys: ${
+              refProblems.join("; ")
+            }. Every {{ ref }} in a step body must be an ingredient row's ` +
+              `"key" — fix the refs or the keys and retry.`,
+          );
+        }
         return {
           content: { item_id: toolUseId, proposed: true },
           is_error: false,
@@ -810,6 +820,16 @@ export async function executeTool(
             `"${slug}" changed since you read it — call get_recipe again, then retry.`,
           );
         }
+        const base = loaded.recipe as unknown as Record<string, unknown>;
+        const refProblems = unknownTemplateRefs(applyPatch(base, ops));
+        if (refProblems.length > 0) {
+          return err(
+            `After these ops, template refs don't match the ingredient keys: ${
+              refProblems.join("; ")
+            }. When you swap or rename an ingredient, update the row's "key" ` +
+              `AND every {{ ref }} in the step bodies in the same call.`,
+          );
+        }
         return {
           content: { item_id: toolUseId, proposed: true },
           is_error: false,
@@ -820,7 +840,7 @@ export async function executeTool(
             item_id: toolUseId,
             target: { recipe_id: recipeId, slug },
             base_version: loaded.version,
-            base_data: loaded.recipe as unknown as Record<string, unknown>,
+            base_data: base,
             ops,
           },
         };
@@ -877,8 +897,22 @@ export async function executeTool(
         }
         const isCreateKind = it.kind === "create_recipe" ||
           it.kind === "create_ingredient";
+        const nextFull = isCreateKind
+          ? applyPatch(it.full ?? {}, ops)
+          : applyPatch(it.base_data ?? {}, [...it.ops, ...ops]);
+        if (it.kind === "create_recipe" || it.kind === "edit_recipe") {
+          const refProblems = unknownTemplateRefs(nextFull);
+          if (refProblems.length > 0) {
+            return err(
+              `After these ops, template refs don't match the ingredient keys: ${
+                refProblems.join("; ")
+              }. When you swap or rename an ingredient, update the row's ` +
+                `"key" AND every {{ ref }} in the step bodies in the same call.`,
+            );
+          }
+        }
         const staged: StagingMutation = isCreateKind
-          ? { op: "update", item_id: id, full: applyPatch(it.full ?? {}, ops) }
+          ? { op: "update", item_id: id, full: nextFull }
           : { op: "update", item_id: id, ops };
         return {
           content: { item_id: id, proposed: true },

@@ -45,6 +45,13 @@ references by "referenced_recipe_id".
 - reorder: { "op": "reorder", "collection": "steps", "order": ["<id2>", "<id1>"] }
 meal_types and dietary_tags are scalar array fields — replace the whole array with a "set".
 
+Swapping or renaming an ingredient is a PAIRED change — do all of it in one edit call:
+1. Remove the old row and add the replacement (its own new snake_case "key", searched/created \
+and linked "ingredient_id").
+2. Rewrite EVERY {{ ref }} in the step bodies from the old key to the new one.
+3. Adjust amounts/units if the substitution needs different quantities.
+The server rejects any recipe whose step bodies reference a key no ingredient row has.
+
 ## Ingredients — EVERY row must be linked
 This is a hard rule with no exceptions: every single ingredient row in a recipe MUST have an \
 "ingredient_id" pointing at a real ingredient entity. A row looks like \
