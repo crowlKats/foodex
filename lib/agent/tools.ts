@@ -26,7 +26,7 @@ import { getOrCreateList, projectShoppingList } from "../shopping-list.ts";
 import { isoVersion } from "./version.ts";
 import { assertPublicUrl, fetchRaw, jinaSearch, jinaSummary } from "./fetch.ts";
 import { importRecipeFromUrl } from "../url-import.ts";
-import { unknownTemplateRefs } from "./validate-refs.ts";
+import { stepDiagnostics } from "./validate-refs.ts";
 
 export interface ToolCtx {
   q: QueryFn;
@@ -730,12 +730,25 @@ export async function executeTool(
         if (!it || it.status !== "pending") {
           return err(`No pending proposal ${id}.`);
         }
+        const eff = effective(it);
+        // Recipes carry their current step diagnostics, so the model can see
+        // (and repair) validation problems in items staged before the write
+        // checks existed, or introduced by user edits.
+        const diag = it.kind === "create_recipe" || it.kind === "edit_recipe"
+          ? stepDiagnostics(eff)
+          : null;
         return {
           content: {
             id,
             kind: it.kind,
             base_version: it.base_version ?? null,
-            effective: effective(it),
+            effective: eff,
+            ...(diag && diag.errors.length > 0
+              ? { step_errors: diag.errors }
+              : {}),
+            ...(diag && diag.warnings.length > 0
+              ? { step_warnings: diag.warnings }
+              : {}),
           },
           is_error: false,
           observations: [{
@@ -753,17 +766,22 @@ export async function executeTool(
           return err("recipe.title is required.");
         }
         ensureStepIds(recipe);
-        const refProblems = unknownTemplateRefs(recipe);
-        if (refProblems.length > 0) {
+        const diag = stepDiagnostics(recipe);
+        if (diag.errors.length > 0) {
           return err(
-            `Template refs don't match the ingredient keys: ${
-              refProblems.join("; ")
-            }. Every {{ ref }} in a step body must be an ingredient row's ` +
-              `"key" — fix the refs or the keys and retry.`,
+            `The step bodies fail validation: ${
+              diag.errors.join("; ")
+            }. Fix the steps (or the ingredient keys they reference) and retry.`,
           );
         }
         return {
-          content: { item_id: toolUseId, proposed: true },
+          content: {
+            item_id: toolUseId,
+            proposed: true,
+            ...(diag.warnings.length > 0
+              ? { step_warnings: diag.warnings }
+              : {}),
+          },
           is_error: false,
           staged: {
             op: "create",
@@ -821,17 +839,23 @@ export async function executeTool(
           );
         }
         const base = loaded.recipe as unknown as Record<string, unknown>;
-        const refProblems = unknownTemplateRefs(applyPatch(base, ops));
-        if (refProblems.length > 0) {
+        const diag = stepDiagnostics(applyPatch(base, ops));
+        if (diag.errors.length > 0) {
           return err(
-            `After these ops, template refs don't match the ingredient keys: ${
-              refProblems.join("; ")
+            `After these ops, the step bodies fail validation: ${
+              diag.errors.join("; ")
             }. When you swap or rename an ingredient, update the row's "key" ` +
               `AND every {{ ref }} in the step bodies in the same call.`,
           );
         }
         return {
-          content: { item_id: toolUseId, proposed: true },
+          content: {
+            item_id: toolUseId,
+            proposed: true,
+            ...(diag.warnings.length > 0
+              ? { step_warnings: diag.warnings }
+              : {}),
+          },
           is_error: false,
           observations: [{ target: `staged:${toolUseId}`, version: "seed" }],
           staged: {
@@ -900,22 +924,28 @@ export async function executeTool(
         const nextFull = isCreateKind
           ? applyPatch(it.full ?? {}, ops)
           : applyPatch(it.base_data ?? {}, [...it.ops, ...ops]);
+        let stepWarnings: string[] = [];
         if (it.kind === "create_recipe" || it.kind === "edit_recipe") {
-          const refProblems = unknownTemplateRefs(nextFull);
-          if (refProblems.length > 0) {
+          const diag = stepDiagnostics(nextFull);
+          if (diag.errors.length > 0) {
             return err(
-              `After these ops, template refs don't match the ingredient keys: ${
-                refProblems.join("; ")
+              `After these ops, the step bodies fail validation: ${
+                diag.errors.join("; ")
               }. When you swap or rename an ingredient, update the row's ` +
                 `"key" AND every {{ ref }} in the step bodies in the same call.`,
             );
           }
+          stepWarnings = diag.warnings;
         }
         const staged: StagingMutation = isCreateKind
           ? { op: "update", item_id: id, full: nextFull }
           : { op: "update", item_id: id, ops };
         return {
-          content: { item_id: id, proposed: true },
+          content: {
+            item_id: id,
+            proposed: true,
+            ...(stepWarnings.length > 0 ? { step_warnings: stepWarnings } : {}),
+          },
           is_error: false,
           observations: [{ target: `staged:${id}`, version: "updated" }],
           staged,

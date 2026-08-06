@@ -52,6 +52,11 @@ and linked "ingredient_id").
 3. Adjust amounts/units if the substitution needs different quantities.
 The server rejects any recipe whose step bodies reference a key no ingredient row has.
 
+Step bodies are validated on every staging write. Errors (unknown refs, broken expressions) \
+reject the call — fix and retry. Successful results may carry "step_warnings" (soft lints, \
+e.g. a typed-out amount that won't scale where a {{ ref }} would); resolve them when it \
+makes sense. get_proposed also reports a staged recipe's current step_errors/step_warnings.
+
 ## Ingredients — EVERY row must be linked
 This is a hard rule with no exceptions: every single ingredient row in a recipe MUST have an \
 "ingredient_id" pointing at a real ingredient entity. A row looks like \
