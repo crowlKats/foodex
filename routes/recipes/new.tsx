@@ -61,6 +61,10 @@ export const handlers = handler({
       ? parseFloat(quantityValue3Raw)
       : null;
     const quantityUnit2 = (form.get("quantity_unit2") as string) || null;
+    const quantityServingsRaw = form.get("quantity_servings") as string;
+    const quantityServings = quantityServingsRaw
+      ? parseInt(quantityServingsRaw)
+      : null;
     const prepTimeRaw = form.get("prep_time") as string;
     const prepTimeUnit = form.get("prep_time_unit") as string;
     const prepTime = prepTimeRaw
@@ -123,8 +127,8 @@ export const handlers = handler({
     try {
       await ctx.state.db.transaction(async (q) => {
         const res = await q<{ id: string }>(
-          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, rest_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, quantity_servings, prep_time, cook_time, rest_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
            RETURNING id`,
           [
             title.trim(),
@@ -136,6 +140,7 @@ export const handlers = handler({
             quantityValue2,
             quantityValue3,
             quantityUnit2,
+            quantityServings,
             prepTime,
             cookTime,
             restTime,

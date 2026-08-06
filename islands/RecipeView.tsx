@@ -404,6 +404,16 @@ export default function RecipeView(
     return computeScaleRatio(baseQuantity, getTarget());
   }
 
+  // The (retargeted) tray for {{ tray }} refs — only dimensions recipes.
+  function getTray() {
+    if (baseQuantity.type !== "dimensions") return undefined;
+    return {
+      value: targetValue.value,
+      value2: targetValue2.value,
+      value3: targetValue3.value > 0 ? targetValue3.value : undefined,
+    };
+  }
+
   /**
    * The metadata line under the title is server-rendered outside this island,
    * so it kept showing the authored servings while the scaler showed another.
@@ -633,6 +643,7 @@ export default function RecipeView(
         step={steps[idx]}
         steps={steps}
         sections={sections}
+        tray={getTray()}
         variables={{ ratio }}
         ingredients={scaleIngredients(ingredients, ratio)}
         recipeRefs={recipeRefsMap}
@@ -1322,6 +1333,7 @@ export default function RecipeView(
             sections={sections}
             variables={{ ratio: getCurrentRatio() }}
             ingredients={scaleIngredients(ingredients, getCurrentRatio())}
+            tray={getTray()}
             recipeRefs={recipeRefsMap}
             dishRefs={dishRefsMap}
             onTimerStart={startTimer}

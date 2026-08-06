@@ -16,9 +16,13 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
   "cook_time": <number in minutes or null>,
   "rest_time": <number in minutes or null>,
   "difficulty": "easy" | "medium" | "hard" | null,
-  "quantity_type": "servings",
-  "quantity_value": <number>,
-  "quantity_unit": "servings",
+  "quantity_type": "servings" | "dimensions",
+  "quantity_value": <servings count, or tray width in cm>,
+  "quantity_unit": "servings" | "cm",
+  "quantity_value2": <tray length in cm — dimensions only, else null>,
+  "quantity_value3": <tray depth in cm — dimensions only, optional, else null>,
+  "quantity_unit2": <"cm" for dimensions, else null>,
+  "quantity_servings": <servings/pieces the tray yields, dimensions only, or null>,
   "ingredients": [
     { "key": "snake_case_key", "name": "Ingredient name", "amount": "numeric amount as string", "unit": "unit" }
   ],
@@ -48,6 +52,13 @@ export const RECIPE_FIELD_RULES = `\
   ALL_UNITS.join(", ")
 } — or empty string if no unit applies
 - "quantity_type" should be "servings" unless the recipe specifies weight/volume/dimensions
+- TRAY RECIPES: when the recipe is baked or set in a tray/pan/tin/dish of stated dimensions \
+(e.g. "20x30 cm tray", "9x13 inch pan"), use quantity_type "dimensions" with the tray size in \
+cm as quantity_value (width) / quantity_value2 (length) / quantity_value3 (depth, if stated) — \
+the tray is what the recipe scales by. If the source ALSO states a yield in pieces or servings \
+("makes 15", "serves 12"), record it in "quantity_servings". Where a step mentions the tray or \
+its size, write {{ tray }} instead of the literal dimensions so the text follows the scaled \
+tray size.
 - If prep, cook, or rest time is not specified, use null. "rest_time" covers any inactive waiting (rising dough, marinating, chilling, resting cooked meat, etc.) — not active prep or cook time.
 - "difficulty" should be "easy", "medium", or "hard" based on the recipe's complexity, technique requirements, and skill level needed. Use null if uncertain
 - Step titles should be short (2-4 words). Step bodies support Markdown and a template syntax for dynamic ingredient scaling. Only use template refs when an ingredient amount is explicitly mentioned in a step — if a step just names an ingredient without a specific quantity, use plain text.

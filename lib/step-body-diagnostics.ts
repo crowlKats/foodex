@@ -294,7 +294,8 @@ function emitExpr(
     case "variable": {
       const known = ctx.ingredientKeys.has(expr.name) ||
         ctx.ingredientKeys.has(lowerFirst(expr.name)) ||
-        expr.name === "ratio";
+        expr.name === "ratio" ||
+        lowerFirst(expr.name) === "tray";
       if (!known) {
         pushUnknownKey(
           tokens,
@@ -466,6 +467,16 @@ function requireNumeric(
       expr.length,
       `\`.name\` gives you text (the ingredient's name), so it can't be ` +
         `used in ${context}. Use \`.amount\` if you want the number.`,
+    );
+  }
+  if (expr.kind === "variable" && lowerFirst(expr.name) === "tray") {
+    pushInvalid(
+      tokens,
+      diagnostics,
+      expr.start,
+      expr.length,
+      '`tray` gives you text (the tray size, e.g. "20 x 30 cm"), so it ' +
+        `can't be used in ${context}. Use it on its own: {{ tray }}.`,
     );
   }
 }

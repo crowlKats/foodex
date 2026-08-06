@@ -18,6 +18,7 @@
 
 import type { ComponentChildren, VNode } from "preact";
 import { formatAmount } from "../format.ts";
+import { formatQuantity } from "../quantity.ts";
 import type { SectionInfo, SectionLayout } from "../step-sections.ts";
 import {
   collectIngredientRefs,
@@ -52,8 +53,17 @@ export interface RecipeRefInfo {
   title: string;
 }
 
+/** Current (possibly retargeted) tray size of a dimensions recipe, in cm. */
+export interface TrayDims {
+  value: number;
+  value2?: number;
+  value3?: number;
+}
+
 export interface RenderContext {
   variables: Record<string, number>;
+  /** Set only for dimensions recipes — resolves the {{ tray }} ref. */
+  tray?: TrayDims;
   ingredients?: Record<string, IngredientVar>;
   steps: RenderStepShape[];
   layout: SectionLayout;
@@ -127,6 +137,30 @@ function renderInterpolation(
   const expr = node.expr;
   if (expr.kind === "invalid_expr") {
     return renderError(`{{ ${expr.raw} }}`, expr.message);
+  }
+
+  // {{ tray }} — the recipe's (scaled) tray dimensions, as text. Only valid
+  // bare: it's a string, so it can't take part in math.
+  if (expr.kind === "variable" && expr.name.toLowerCase() === "tray") {
+    if (!ctx.tray) {
+      return renderError(
+        "{{ tray }}",
+        "This recipe has no tray dimensions — its quantity type isn't a tray.",
+      );
+    }
+    return formatQuantity({
+      type: "dimensions",
+      value: ctx.tray.value,
+      unit: "cm",
+      value2: ctx.tray.value2,
+      value3: ctx.tray.value3,
+    });
+  }
+  if (referencesTray(expr)) {
+    return renderError(
+      rawOf(expr),
+      "`tray` is text (the tray size), so it can't be used in math.",
+    );
   }
 
   // Special case: bare property access on an ingredient name.
@@ -324,3 +358,20 @@ export function scaleIngredients(
 }
 
 export type { IngredientVar, SectionInfo };
+
+/** True when `expr` mentions the `tray` builtin anywhere below the top level. */
+function referencesTray(expr: Expr): boolean {
+  switch (expr.kind) {
+    case "variable":
+      return expr.name.toLowerCase() === "tray";
+    case "property":
+      return expr.object.toLowerCase() === "tray";
+    case "binary":
+      return referencesTray(expr.left) || referencesTray(expr.right);
+    case "unary":
+      return referencesTray(expr.operand);
+    case "call":
+      return expr.args.some(referencesTray);
+  }
+  return false;
+}

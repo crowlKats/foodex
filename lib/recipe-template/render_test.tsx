@@ -87,3 +87,22 @@ Deno.test("render: capitalised ingredient ref capitalises the name", () => {
   });
   assertStringIncludes(html, "200g All-purpose flour");
 });
+
+Deno.test("render: {{ tray }} renders the tray dimensions as text", () => {
+  const html = renderToHtml("Line a {{ tray }} tray with parchment.", {
+    tray: { value: 20, value2: 30, value3: 5 },
+  });
+  assertStringIncludes(html, "20 x 30 x 5 cm");
+});
+
+Deno.test("render: {{ tray }} without tray dims is an inline error", () => {
+  const html = renderToHtml("Use a {{ tray }}.");
+  assertStringIncludes(html, "recipe-template-error");
+});
+
+Deno.test("render: tray in math is an inline error", () => {
+  const html = renderToHtml("{{ tray * 2 }}", {
+    tray: { value: 20, value2: 30 },
+  });
+  assertStringIncludes(html, "recipe-template-error");
+});

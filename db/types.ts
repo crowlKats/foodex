@@ -13,6 +13,7 @@ export interface Recipe {
   quantity_value2: number | null;
   quantity_value3: number | null;
   quantity_unit2: string | null;
+  quantity_servings: number | null;
   prep_time: number | null;
   cook_time: number | null;
   rest_time: number | null;

@@ -34,8 +34,8 @@ export const handlers = handler({
     // manually-chosen dish survives the fork (the trigger trusts a provided
     // dish_id on insert).
     const newRecipeRes = await ctx.state.db.query(
-      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, rest_time, cover_image_id, difficulty, household_id, forked_from_id, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days, dish_id, dish_manual)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+      `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, quantity_servings, prep_time, cook_time, rest_time, cover_image_id, difficulty, household_id, forked_from_id, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days, dish_id, dish_manual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
        RETURNING id`,
       [
         title,
@@ -47,6 +47,7 @@ export const handlers = handler({
         recipe.quantity_value2,
         recipe.quantity_value3,
         recipe.quantity_unit2,
+        recipe.quantity_servings,
         recipe.prep_time,
         recipe.cook_time,
         recipe.rest_time,

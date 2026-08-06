@@ -35,6 +35,7 @@ export function editDataToRecipeFields(
     quantity_value2: r.quantity_value2,
     quantity_value3: r.quantity_value3,
     quantity_unit2: r.quantity_unit2,
+    quantity_servings: r.quantity_servings,
     prep_time: r.prep_time,
     cook_time: r.cook_time,
     rest_time: r.rest_time,
