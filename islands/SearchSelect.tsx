@@ -13,11 +13,22 @@ interface SearchSelectProps {
   onSelect: (option: SearchSelectOption) => void;
   onClear: () => void;
   onChange?: (text: string) => void;
+  /** When set, a query matching no option offers creating it. */
+  onCreate?: (text: string) => void;
+  createLabel?: string;
 }
 
 export default function SearchSelect(
-  { value, options, placeholder, onSelect, onClear, onChange }:
-    SearchSelectProps,
+  {
+    value,
+    options,
+    placeholder,
+    onSelect,
+    onClear,
+    onChange,
+    onCreate,
+    createLabel,
+  }: SearchSelectProps,
 ) {
   const query = useSignal(value.name);
   const open = useSignal(false);
@@ -38,6 +49,19 @@ export default function SearchSelect(
     onSelect(o);
   }
 
+  function canCreate(): boolean {
+    const q = query.value.trim();
+    return onCreate != null && !linked.value && q !== "" &&
+      !options.some((o) => o.name.toLowerCase() === q.toLowerCase());
+  }
+
+  function create() {
+    linked.value = true;
+    open.value = false;
+    highlightIndex.value = -1;
+    onCreate!(query.value.trim());
+  }
+
   function handleKeyDown(e: KeyboardEvent) {
     const filtered = getFiltered();
     if (e.key === "ArrowDown") {
@@ -53,6 +77,8 @@ export default function SearchSelect(
       e.preventDefault();
       if (highlightIndex.value >= 0 && filtered[highlightIndex.value]) {
         select(filtered[highlightIndex.value]);
+      } else if (filtered.length === 0 && canCreate()) {
+        create();
       }
     } else if (e.key === "Escape") {
       open.value = false;
@@ -92,7 +118,7 @@ export default function SearchSelect(
         }}
         onKeyDown={handleKeyDown}
       />
-      {open.value && filtered.length > 0 && (
+      {open.value && (filtered.length > 0 || canCreate()) && (
         <div class="absolute z-10 left-0 right-0 mt-0.5 bg-white dark:bg-stone-800 border-2 border-stone-300 dark:border-stone-600 max-h-48 overflow-y-auto shadow-lg">
           {filtered.map((o, idx) => (
             <button
@@ -117,6 +143,18 @@ export default function SearchSelect(
               )}
             </button>
           ))}
+          {canCreate() && (
+            <button
+              type="button"
+              class="block w-full text-left px-3 py-1.5 text-sm cursor-pointer text-orange-600 dark:text-orange-400 hover:bg-stone-100 dark:hover:bg-stone-700"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                create();
+              }}
+            >
+              {createLabel ?? "Create"} “{query.value.trim()}”
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -117,15 +117,28 @@ export const handlers = handler({
     const outputExpiresDays = outputExpiresDaysRaw
       ? parseInt(outputExpiresDaysRaw)
       : null;
-    // A manual pin needs a chosen dish; anything else clears the assignment
-    // so the dish trigger re-derives it from the (possibly new) title.
+    // A manual pin needs a chosen dish or a new dish name; anything else
+    // clears the assignment so the dish trigger re-derives it from the
+    // (possibly new) title.
     const dishIdRaw = (form.get("dish_id") as string) || null;
-    const dishManual = form.get("dish_manual") === "true" && dishIdRaw != null;
-    const dishId = dishManual ? dishIdRaw : null;
+    const dishNewName = ((form.get("dish_new_name") as string) || "").trim() ||
+      null;
+    let dishManual = form.get("dish_manual") === "true" &&
+      (dishIdRaw != null || dishNewName != null);
+    let dishId = dishManual ? dishIdRaw : null;
 
     let newSlug = slug;
     await ctx.state.db.transaction(async (q) => {
       newSlug = await uniqueSlug(q, title?.trim() || "", recipeId as string);
+
+      if (dishManual && dishId == null) {
+        const created = await q<{ id: string | null }>(
+          "SELECT fx_dish_create($1) AS id",
+          [dishNewName],
+        );
+        dishId = created.rows[0].id;
+        if (dishId == null) dishManual = false;
+      }
 
       await q(
         `UPDATE recipes SET title=$1, slug=$23, description=$2,

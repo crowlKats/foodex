@@ -168,7 +168,11 @@
   output_ingredient_id (identity vs. pantry yield)
 - **dish_aliases** — dish_id, norm_name (unique). Every normalized name that
   resolves to a dish. Merging two dishes must repoint aliases rather than
-  delete them — that is what makes the merge permanent for future recipes
+  delete them — that is what makes the merge permanent for future recipes.
+  The inverse, splitting a name back out of a merged dish, cannot happen
+  through resolution (the alias always wins); `fx_dish_create` (migration
+  064, used by the edit form's dish picker) creates the name's own dish,
+  repoints the alias to it, and moves matching auto-tracked recipes along
 - **recipe_ingredients** — recipe_id, ingredient_id (nullable), name, amount,
   unit, key, sort_order
 - **recipe_steps** — recipe_id, title, body (markdown + template syntax),
