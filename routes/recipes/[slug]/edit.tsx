@@ -9,8 +9,7 @@ import {
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import RecipeFields from "../../../islands/RecipeFields.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
-import { SectionHeader } from "../../../components/SectionHeader.tsx";
-import { FormActions } from "../../../components/recipe-form/ui.tsx";
+import { FormActions, SubGroup } from "../../../components/recipe-form/ui.tsx";
 export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
@@ -234,23 +233,22 @@ export default page(function RecipeEdit({ data }) {
             initialDishName: d.dishName ?? "",
             initialManual: d.recipe.dish_manual,
           }}
-        />
-
-        <div class="card">
-          <SectionHeader title="Danger Zone" />
-          <p class="text-xs text-stone-500 dark:text-stone-400 mb-2">
-            Deleting removes the recipe and its steps for everyone in the
-            household. This cannot be undone.
-          </p>
-          {/* Targets the sibling form below — forms can't nest. */}
-          <ConfirmButton
-            form="delete-recipe-form"
-            message="Delete this recipe? This cannot be undone."
-            variant="danger"
-          >
-            Delete Recipe
-          </ConfirmButton>
-        </div>
+        >
+          <SubGroup label="Danger zone">
+            <p class="text-xs text-stone-500 dark:text-stone-400 mb-2">
+              Deleting removes the recipe and its steps for everyone in the
+              household. This cannot be undone.
+            </p>
+            {/* Targets the sibling form below — forms can't nest. */}
+            <ConfirmButton
+              form="delete-recipe-form"
+              message="Delete this recipe? This cannot be undone."
+              variant="danger"
+            >
+              Delete Recipe
+            </ConfirmButton>
+          </SubGroup>
+        </RecipeFields>
       </form>
 
       <form

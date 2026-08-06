@@ -1,3 +1,5 @@
+import type { ComponentChildren } from "preact";
+import { useEffect, useRef } from "preact/hooks";
 import QuantityInput from "./QuantityInput.tsx";
 import IngredientForm from "./IngredientForm.tsx";
 import ToolForm from "./ToolForm.tsx";
@@ -6,10 +8,10 @@ import MediaUpload from "./MediaUpload.tsx";
 import RecipeOutputForm from "./RecipeOutputForm.tsx";
 import DishSelect from "./DishSelect.tsx";
 import { Input, InputMultiline } from "../components/Input.tsx";
-import { SectionHeader } from "../components/SectionHeader.tsx";
 import { Select } from "../components/Select.tsx";
 import { DurationInput } from "../components/DurationInput.tsx";
 import { RefForm } from "../components/RefForm.tsx";
+import { SubGroup } from "../components/recipe-form/ui.tsx";
 import MultiSearchSelect from "./MultiSearchSelect.tsx";
 import {
   DIETARY_TAGS,
@@ -50,7 +52,16 @@ interface Props {
   mediaUrls?: Record<string, string>;
   /** Render the dish picker (route editors have dish data, staging doesn't). */
   dish?: DishProps;
+  /** Extra content for the Advanced tab (e.g. the edit page's danger zone). */
+  children?: ComponentChildren;
 }
+
+const TABS = [
+  { id: "basics", label: "Basics" },
+  { id: "ingredients", label: "Ingredients" },
+  { id: "steps", label: "Steps" },
+  { id: "advanced", label: "Advanced" },
+] as const;
 
 function formatDuration(
   minutes: number | null | undefined,
@@ -62,7 +73,15 @@ function formatDuration(
   return { value: String(minutes), unit: "min" };
 }
 
-/** The one recipe edit form, shared by every create/edit/import surface. */
+/**
+ * The one recipe edit form, shared by every create/edit/import surface.
+ *
+ * Tabs are radio inputs driving sibling selectors, so every panel stays in
+ * the DOM and a single submit posts the whole recipe. The flip side — a
+ * `required` field on an unselected tab would block submit invisibly — is
+ * handled by the `invalid`-capture effect below, which reveals the tab
+ * holding the first failing field.
+ */
 export default function RecipeFields(props: Props) {
   const { r, ingredients, allTools, allRecipes } = props;
   const v = props.v ?? 0;
@@ -70,6 +89,35 @@ export default function RecipeFields(props: Props) {
   const prep = formatDuration(r.prep_time);
   const cook = formatDuration(r.cook_time);
   const rest = formatDuration(r.rest_time);
+
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Reveal the tab holding the first field that fails validation. `invalid`
+  // doesn't bubble, hence capture on the enclosing form.
+  useEffect(() => {
+    const form = rootRef.current?.closest("form");
+    if (!form) return;
+
+    function onInvalid(e: Event) {
+      const panel = (e.target as HTMLElement).closest<HTMLElement>(
+        "[data-tab-panel]",
+      );
+      const tab = panel?.dataset.tabPanel;
+      if (!tab) return;
+      const radio = document.getElementById(
+        `tab-${tab}`,
+      ) as HTMLInputElement | null;
+      if (radio && !radio.checked) {
+        radio.checked = true;
+        // The control was display:none when the browser tried to focus it, so
+        // re-focus once the panel is painted.
+        requestAnimationFrame(() => (e.target as HTMLElement).focus());
+      }
+    }
+
+    form.addEventListener("invalid", onInvalid, true);
+    return () => form.removeEventListener("invalid", onInvalid, true);
+  }, []);
 
   const sections: Any[] = r.sections ?? [];
   const sectionKeyToIdx = new Map<string, number>();
@@ -109,21 +157,35 @@ export default function RecipeFields(props: Props) {
     );
 
   return (
-    <div class="space-y-6">
-      {showCover && (
-        <div class="card">
-          <SectionHeader title="Cover Image" />
-          <MediaUpload
-            key={`cover-${v}`}
-            name="cover_image_id"
-            accept="image/*"
-            initialMedia={props.coverImage ? [props.coverImage] : undefined}
-          />
-        </div>
-      )}
+    <div ref={rootRef} class="edit-tabs">
+      {TABS.map((t, i) => (
+        <input
+          key={t.id}
+          type="radio"
+          name="_tab"
+          id={`tab-${t.id}`}
+          class="edit-tab-radio"
+          defaultChecked={i === 0}
+        />
+      ))}
 
-      <div class="card space-y-3">
-        <SectionHeader title="Details" />
+      <div class="edit-tablist">
+        {TABS.map((t) => (
+          <label key={t.id} for={`tab-${t.id}`} class="edit-tab">
+            {t.label}
+            {t.id === "ingredients" && (
+              <span class="count-badge">{(r.ingredients ?? []).length}</span>
+            )}
+            {t.id === "steps" && <span class="count-badge">{steps.length}
+            </span>}
+          </label>
+        ))}
+      </div>
+
+      <div
+        data-tab-panel="basics"
+        class="edit-panel edit-panel-basics space-y-3"
+      >
         <div>
           <label class="block text-sm font-medium mb-1">Title</label>
           <Input
@@ -157,118 +219,129 @@ export default function RecipeFields(props: Props) {
             />
           </div>
         )}
-        <QuantityInput
-          key={`qty-${v}`}
-          initialType={r.quantity_type ?? "servings"}
-          initialValue={r.quantity_value ?? 4}
-          initialUnit={r.quantity_unit ?? "servings"}
-          initialValue2={r.quantity_value2 ?? undefined}
-          initialValue3={r.quantity_value3 ?? undefined}
-        />
-        <div class="grid grid-cols-3 gap-3 mt-3" key={`times-${v}`}>
-          <DurationInput
-            name="prep_time"
-            label="Prep time"
-            value={prep.value}
-            unit={prep.unit}
+        <SubGroup label="Yield & timing">
+          <QuantityInput
+            key={`qty-${v}`}
+            initialType={r.quantity_type ?? "servings"}
+            initialValue={r.quantity_value ?? 4}
+            initialUnit={r.quantity_unit ?? "servings"}
+            initialValue2={r.quantity_value2 ?? undefined}
+            initialValue3={r.quantity_value3 ?? undefined}
           />
-          <DurationInput
-            name="cook_time"
-            label="Cook time"
-            value={cook.value}
-            unit={cook.unit}
-          />
-          <DurationInput
-            name="rest_time"
-            label="Rest time"
-            value={rest.value}
-            unit={rest.unit}
-          />
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div
+            class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3"
+            key={`times-${v}`}
+          >
+            <DurationInput
+              name="prep_time"
+              label="Prep time"
+              value={prep.value}
+              unit={prep.unit}
+            />
+            <DurationInput
+              name="cook_time"
+              label="Cook time"
+              value={cook.value}
+              unit={cook.unit}
+            />
+            <DurationInput
+              name="rest_time"
+              label="Rest time"
+              value={rest.value}
+              unit={rest.unit}
+            />
+          </div>
+        </SubGroup>
+        <SubGroup label="Classification">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Difficulty</label>
+              <Select key={`diff-${v}`} name="difficulty" class="w-full">
+                <option value="">—</option>
+                {DIFFICULTY_LEVELS.map((l) => (
+                  <option key={l} value={l} selected={r.difficulty === l}>
+                    {l[0].toUpperCase() + l.slice(1)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Meal Type</label>
+              <MultiSearchSelect
+                key={`meal-${v}`}
+                name="meal_type"
+                options={[...MEAL_TYPES]}
+                initialSelected={r.meal_types ?? []}
+                placeholder="Search meal types..."
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Dietary</label>
+              <MultiSearchSelect
+                key={`diet-${v}`}
+                name="dietary"
+                options={[...DIETARY_TAGS]}
+                initialSelected={r.dietary_tags ?? []}
+                placeholder="Search dietary tags..."
+              />
+            </div>
+          </div>
+          <label class="flex items-center gap-2 mt-3 w-fit cursor-pointer">
+            <input
+              key={`private-${v}`}
+              type="checkbox"
+              name="private"
+              checked={r.private ?? false}
+              class="size-4 accent-orange-600"
+            />
+            <span class="text-sm">
+              Private (only visible to household members)
+            </span>
+          </label>
+        </SubGroup>
+        <SubGroup label="Source">
           <div>
-            <label class="block text-sm font-medium mb-1">Difficulty</label>
-            <Select key={`diff-${v}`} name="difficulty" class="w-full">
+            <label class="block text-sm font-medium mb-1">Source</label>
+            <Select key={`source-type-${v}`} name="source_type" class="w-full">
               <option value="">—</option>
-              {DIFFICULTY_LEVELS.map((l) => (
-                <option key={l} value={l} selected={r.difficulty === l}>
-                  {l[0].toUpperCase() + l.slice(1)}
+              {SOURCE_TYPES.map((s) => (
+                <option key={s} value={s} selected={r.source_type === s}>
+                  {SOURCE_TYPE_LABELS[s]}
                 </option>
               ))}
             </Select>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Meal Type</label>
-            <MultiSearchSelect
-              key={`meal-${v}`}
-              name="meal_type"
-              options={[...MEAL_TYPES]}
-              initialSelected={r.meal_types ?? []}
-              placeholder="Search meal types..."
-            />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Source Name</label>
+              <Input
+                key={`source-name-${v}`}
+                type="text"
+                name="source_name"
+                value={r.source_name ?? ""}
+                placeholder="e.g. Book title, website name, person's name"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Source URL</label>
+              <Input
+                key={`source-url-${v}`}
+                type="url"
+                name="source_url"
+                value={r.source_url ?? ""}
+                placeholder="https://..."
+                class="w-full"
+              />
+            </div>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Dietary</label>
-            <MultiSearchSelect
-              key={`diet-${v}`}
-              name="dietary"
-              options={[...DIETARY_TAGS]}
-              initialSelected={r.dietary_tags ?? []}
-              placeholder="Search dietary tags..."
-            />
-          </div>
-        </div>
-        <label class="flex items-center gap-2 mt-3 cursor-pointer">
-          <input
-            key={`private-${v}`}
-            type="checkbox"
-            name="private"
-            checked={r.private ?? false}
-            class="size-4 accent-orange-600"
-          />
-          <span class="text-sm">
-            Private (only visible to household members)
-          </span>
-        </label>
-        <div>
-          <label class="block text-sm font-medium mb-1">Source</label>
-          <Select key={`source-type-${v}`} name="source_type" class="w-full">
-            <option value="">—</option>
-            {SOURCE_TYPES.map((s) => (
-              <option key={s} value={s} selected={r.source_type === s}>
-                {SOURCE_TYPE_LABELS[s]}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-medium mb-1">Source Name</label>
-            <Input
-              key={`source-name-${v}`}
-              type="text"
-              name="source_name"
-              value={r.source_name ?? ""}
-              placeholder="e.g. Book title, website name, person's name"
-              class="w-full"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Source URL</label>
-            <Input
-              key={`source-url-${v}`}
-              type="url"
-              name="source_url"
-              value={r.source_url ?? ""}
-              placeholder="https://..."
-              class="w-full"
-            />
-          </div>
-        </div>
+        </SubGroup>
       </div>
 
-      <div class="card">
-        <SectionHeader title="Ingredients" />
+      <div
+        data-tab-panel="ingredients"
+        class="edit-panel edit-panel-ingredients"
+      >
         <IngredientForm
           key={`ing-${v}`}
           initialIngredients={(r.ingredients ?? []).map((ing: Any) => ({
@@ -283,23 +356,7 @@ export default function RecipeFields(props: Props) {
         />
       </div>
 
-      <div class="card">
-        <SectionHeader title="Tools" />
-        <ToolForm
-          key={`tools-${v}`}
-          initialTools={(r.tools ?? []).map((t: Any) => ({
-            tool_id: t.tool_id ?? "",
-            tool_name: t.tool_name ??
-              allTools.find((at) => at.id === t.tool_id)?.name ?? "",
-            usage_description: t.usage_description ?? "",
-            settings: t.settings ?? "",
-          }))}
-          tools={allTools}
-        />
-      </div>
-
-      <div class="card">
-        <SectionHeader title="Steps" />
+      <div data-tab-panel="steps" class="edit-panel edit-panel-steps">
         <StepForm
           key={`steps-${v}`}
           initialSteps={initialSteps}
@@ -314,33 +371,60 @@ export default function RecipeFields(props: Props) {
         />
       </div>
 
-      <div class="card">
-        <SectionHeader title="Output Ingredient" />
-        <RecipeOutputForm
-          ingredients={ingredients}
-          initialIngredientId={(r.output_ingredient_id as string) ?? undefined}
-          initialIngredientName={r.output_ingredient_id
-            ? ingredients.find((g) => g.id === r.output_ingredient_id)?.name
-            : undefined}
-          initialAmount={r.output_amount != null
-            ? String(r.output_amount)
-            : undefined}
-          initialUnit={(r.output_unit as string) ?? undefined}
-          initialExpiresDays={r.output_expires_days != null
-            ? r.output_expires_days
-            : undefined}
-        />
-      </div>
-
-      <div class="card">
-        <SectionHeader title="Sub-recipe References" />
-        <RefForm
-          key={`refs-${v}`}
-          initialRefs={(r.refs ?? []).map((ref: Any) => ({
-            referenced_recipe_id: String(ref.referenced_recipe_id ?? ""),
-          }))}
-          recipes={allRecipes}
-        />
+      <div
+        data-tab-panel="advanced"
+        class="edit-panel edit-panel-advanced space-y-3"
+      >
+        {showCover && (
+          <SubGroup label="Cover image">
+            <MediaUpload
+              key={`cover-${v}`}
+              name="cover_image_id"
+              accept="image/*"
+              initialMedia={props.coverImage ? [props.coverImage] : undefined}
+            />
+          </SubGroup>
+        )}
+        <SubGroup label="Tools">
+          <ToolForm
+            key={`tools-${v}`}
+            initialTools={(r.tools ?? []).map((t: Any) => ({
+              tool_id: t.tool_id ?? "",
+              tool_name: t.tool_name ??
+                allTools.find((at) => at.id === t.tool_id)?.name ?? "",
+              usage_description: t.usage_description ?? "",
+              settings: t.settings ?? "",
+            }))}
+            tools={allTools}
+          />
+        </SubGroup>
+        <SubGroup label="Output ingredient">
+          <RecipeOutputForm
+            ingredients={ingredients}
+            initialIngredientId={(r.output_ingredient_id as string) ??
+              undefined}
+            initialIngredientName={r.output_ingredient_id
+              ? ingredients.find((g) => g.id === r.output_ingredient_id)?.name
+              : undefined}
+            initialAmount={r.output_amount != null
+              ? String(r.output_amount)
+              : undefined}
+            initialUnit={(r.output_unit as string) ?? undefined}
+            initialExpiresDays={r.output_expires_days != null
+              ? r.output_expires_days
+              : undefined}
+          />
+        </SubGroup>
+        <SubGroup label="Sub-recipe references">
+          <RefForm
+            key={`refs-${v}`}
+            initialRefs={(r.refs ?? []).map((ref: Any) => ({
+              referenced_recipe_id: String(ref.referenced_recipe_id ?? ""),
+            }))}
+            recipes={allRecipes}
+          />
+        </SubGroup>
+        {props.children}
       </div>
     </div>
   );

@@ -3,9 +3,8 @@ import { uniqueSlug } from "../../lib/slug.ts";
 import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
 import { saveRecipeChildren } from "../../lib/recipe-save.ts";
 import RecipeFields from "../../islands/RecipeFields.tsx";
-import RecipePreview from "../../islands/RecipePreview.tsx";
-import RecipeSubmitButton from "../../islands/RecipeSubmitButton.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
+import { FormActions } from "../../components/recipe-form/ui.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -194,14 +193,14 @@ export default page(
       <div>
         <BackLink href="/recipes" label="Back to Recipes" />
 
-        <div class="flex items-center gap-4 mt-4 mb-6">
-          <h1 class="text-2xl font-bold">New Recipe</h1>
-          <a href="/recipes/import" class="link text-sm">
-            or import from URL, text or photos
-          </a>
-        </div>
+        <form method="POST" class="space-y-6 mt-4">
+          <FormActions title="New Recipe" submitLabel="Create Recipe" />
+          <p class="text-sm -mt-4">
+            <a href="/recipes/import" class="link">
+              …or import from URL, text or photos
+            </a>
+          </p>
 
-        <form method="POST" class="space-y-6">
           {error && <div class="alert-error">{error}</div>}
 
           <RecipeFields
@@ -220,11 +219,6 @@ export default page(
               title: r.title,
             }))}
           />
-
-          <div class="flex gap-3">
-            <RecipeSubmitButton label="Create Recipe" />
-            <RecipePreview />
-          </div>
         </form>
       </div>
     );
