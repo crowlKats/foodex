@@ -19,6 +19,8 @@ import { IconEye } from "@tabler/icons-preact";
 import { IconWorld } from "@tabler/icons-preact";
 import { IconTool } from "@tabler/icons-preact";
 import { IconPhoto } from "@tabler/icons-preact";
+import { IconLayoutSidebarRightCollapse } from "@tabler/icons-preact";
+import { IconLayoutSidebarRightExpand } from "@tabler/icons-preact";
 import type { StagedDiff, TimelineEntry } from "../lib/agent/conversation.ts";
 import type { SerializedStagedItem } from "../lib/agent/staging.ts";
 import { Button, type IconComponent } from "../components/Button.tsx";
@@ -109,6 +111,36 @@ export default function AgentSession(props: Props) {
   // A seeded import session shows the editor shell (with a placeholder pane)
   // from the first paint, never a bare chat. Cleared when the turn ends.
   const [importing, setImporting] = useState(!!props.autoStart);
+  // Desktop chat panel: user-resizable width (persisted) and collapsible.
+  const [chatWidth, setChatWidth] = useState(416);
+  const [chatHidden, setChatHidden] = useState(false);
+
+  // Apply the persisted width after hydration so SSR markup stays stable.
+  useEffect(() => {
+    const w = parseInt(localStorage.getItem("agent-chat-width") ?? "");
+    if (w >= 280 && w <= 800) setChatWidth(w);
+  }, []);
+
+  function toggleChat() {
+    setChatHidden(!chatHidden);
+  }
+
+  function startChatResize(e: PointerEvent) {
+    e.preventDefault();
+    const onMove = (ev: PointerEvent) => {
+      setChatWidth(Math.min(800, Math.max(280, self.innerWidth - ev.clientX)));
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      setChatWidth((w) => {
+        localStorage.setItem("agent-chat-width", String(w));
+        return w;
+      });
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -576,6 +608,8 @@ export default function AgentSession(props: Props) {
             onDiscard={discardItem}
             onApply={applyItem}
             onResolve={resolveConflict}
+            chatHidden={chatHidden}
+            onToggleChat={toggleChat}
           />
         )}
         {!workbench && importing && (
@@ -593,15 +627,27 @@ export default function AgentSession(props: Props) {
           </div>
         )}
         {
+          /* Desktop: drag to resize the chat panel. The visible line is thin;
+            an invisible overlay widens the grab target. */
+        }
+        {shell && !(workbench && chatHidden) && (
+          <div
+            class="max-md:hidden relative z-10 w-1 shrink-0 cursor-col-resize touch-none bg-stone-200 dark:bg-stone-700 hover:bg-orange-400 transition-colors before:absolute before:inset-y-0 before:-left-1.5 before:-right-1.5 before:content-['']"
+            title="Drag to resize the chat panel"
+            onPointerDown={startChatResize}
+          />
+        )}
+        {
           /* Chat column — side panel in shell mode, otherwise pushed to a
           third as the drawer grows in from the right. */
         }
         <div
+          style={{ "--chat-w": `${chatWidth}px` }}
           class={`flex flex-col min-w-0 min-h-0 overflow-hidden ${
             shell
-              ? `max-md:flex-1 md:w-[26rem] md:shrink-0 md:border-l-2 border-stone-200 dark:border-stone-700 ${
-                mobileView === "editor" ? "max-md:hidden" : ""
-              }`
+              ? `max-md:flex-1 md:w-[var(--chat-w)] md:shrink-0 ${
+                workbench && chatHidden ? "md:hidden" : ""
+              } ${mobileView === "editor" ? "max-md:hidden" : ""}`
               : `transition-[width] duration-300 ease-in-out ${
                 drawerMode ? "w-0 md:w-1/3" : "w-full"
               }`
@@ -2038,6 +2084,8 @@ interface WorkbenchProps {
   onDiscard: (id: string) => void;
   onApply: (id: string) => void;
   onResolve: (id: string) => void;
+  chatHidden: boolean;
+  onToggleChat: () => void;
 }
 
 /**
@@ -2203,6 +2251,16 @@ function WorkbenchPane(p: WorkbenchProps) {
             >
               {item.kind === "create_recipe" ? "Save to library" : "Apply"}
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              icon={p.chatHidden
+                ? IconLayoutSidebarRightExpand
+                : IconLayoutSidebarRightCollapse}
+              title={p.chatHidden ? "Show chat" : "Hide chat"}
+              class="max-md:hidden"
+              onClick={p.onToggleChat}
+            />
           </div>
         </div>
       </div>
