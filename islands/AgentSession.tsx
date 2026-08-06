@@ -2215,16 +2215,12 @@ function WorkbenchPane(p: WorkbenchProps) {
           {item.user_edited && (
             <span class="text-xs text-orange-600 shrink-0">edited</span>
           )}
-          <div class="ml-auto flex items-center gap-1.5 shrink-0">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!dirty || busy}
-              onClick={save}
-            >
-              {saving ? "Saving…" : "Save edits"}
-            </Button>
+          {
+            /* Grouped left to right: destructive icons, then the save
+              actions, then the panel toggle — thin rules keep the groups
+              readable at a glance. */
+          }
+          <div class="ml-auto flex items-center gap-2 shrink-0">
             {item.user_edited && (
               <Button
                 type="button"
@@ -2239,10 +2235,26 @@ function WorkbenchPane(p: WorkbenchProps) {
               type="button"
               variant="danger-ghost"
               icon={IconTrash}
-              title="Discard"
+              title="Discard this proposal"
               disabled={busy}
-              onClick={() => p.onDiscard(item.id)}
+              onClick={() => {
+                if (
+                  confirm(
+                    "Discard this proposal? The assistant's work on it is lost.",
+                  )
+                ) p.onDiscard(item.id);
+              }}
             />
+            <div class="w-0.5 h-5 bg-stone-200 dark:bg-stone-700" />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!dirty || busy}
+              onClick={save}
+            >
+              {saving ? "Saving…" : "Save edits"}
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -2251,6 +2263,7 @@ function WorkbenchPane(p: WorkbenchProps) {
             >
               {item.kind === "create_recipe" ? "Save to library" : "Apply"}
             </Button>
+            <div class="max-md:hidden w-0.5 h-5 bg-stone-200 dark:bg-stone-700" />
             <Button
               type="button"
               variant="ghost"
