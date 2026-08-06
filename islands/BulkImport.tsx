@@ -1,4 +1,5 @@
 import { useSignal } from "@preact/signals";
+import { useEffect } from "preact/hooks";
 import { IconFileImport } from "@tabler/icons-preact";
 import { IconLoader2 } from "@tabler/icons-preact";
 import { IconX } from "@tabler/icons-preact";
@@ -6,6 +7,8 @@ import { IconCheck } from "@tabler/icons-preact";
 import { IconAlertTriangle } from "@tabler/icons-preact";
 import { IconArrowMerge } from "@tabler/icons-preact";
 import { IconScissors } from "@tabler/icons-preact";
+import { IconChevronLeft } from "@tabler/icons-preact";
+import { IconChevronRight } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { uploadImages } from "../lib/image-downscale.ts";
@@ -59,6 +62,26 @@ export default function BulkImport() {
   const statuses = useSignal<GroupStatus[]>([]);
   const sessionIds = useSignal<(string | null)[]>([]);
   const started = useSignal(false);
+  /** Index of the photo open in the large viewer, or null. */
+  const viewer = useSignal<number | null>(null);
+
+  // Arrow keys page through the photos while the viewer is open, so
+  // neighbouring pages can be compared for the "same recipe?" call.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (viewer.value === null) return;
+      if (e.key === "Escape") viewer.value = null;
+      else if (e.key === "ArrowLeft" && viewer.value > 0) {
+        viewer.value = viewer.value - 1;
+      } else if (
+        e.key === "ArrowRight" && viewer.value < photos.value.length - 1
+      ) {
+        viewer.value = viewer.value + 1;
+      }
+    }
+    globalThis.addEventListener("keydown", onKey);
+    return () => globalThis.removeEventListener("keydown", onKey);
+  }, []);
 
   function addFiles(newFiles: FileList | File[]) {
     const images = Array.from(newFiles)
@@ -266,7 +289,8 @@ export default function BulkImport() {
                         <img
                           src={p.preview}
                           alt=""
-                          class="size-24 object-cover border-2 border-stone-200 dark:border-stone-700"
+                          class="size-24 object-cover border-2 border-stone-200 dark:border-stone-700 cursor-zoom-in"
+                          onClick={() => viewer.value = idx}
                         />
                         <span class="absolute bottom-0 left-0 px-1 text-[0.625rem] bg-black/60 text-white">
                           {idx + 1}
@@ -378,6 +402,80 @@ export default function BulkImport() {
           )}
         </>
       )}
+
+      {viewer.value !== null && photos.value[viewer.value] && (() => {
+        const idx = viewer.value;
+        const gi = gs.findIndex((g) => idx >= g.from && idx <= g.to);
+        return (
+          <div
+            class="fixed inset-0 z-50 flex flex-col bg-black/85"
+            onClick={() => viewer.value = null}
+          >
+            <div
+              class="shrink-0 flex items-center gap-3 px-4 py-2 text-sm text-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span class="font-medium">
+                Photo {idx + 1} of {photos.value.length}
+              </span>
+              <span class="text-white/70">Recipe {gi + 1}</span>
+              {idx > 0 && !running.value && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={merged.value[idx] ? IconScissors : IconArrowMerge}
+                  onClick={() => toggleMerge(idx)}
+                >
+                  {merged.value[idx]
+                    ? "Split into its own recipe"
+                    : "Merge into previous recipe"}
+                </Button>
+              )}
+              <button
+                type="button"
+                title="Close"
+                class="ml-auto text-white/70 hover:text-white cursor-pointer"
+                onClick={() => viewer.value = null}
+              >
+                <IconX class="size-6" />
+              </button>
+            </div>
+            <div class="flex-1 min-h-0 flex items-center justify-center gap-2 px-2 pb-4">
+              <button
+                type="button"
+                title="Previous photo"
+                disabled={idx === 0}
+                class="shrink-0 text-white/70 hover:text-white disabled:opacity-20 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (idx > 0) viewer.value = idx - 1;
+                }}
+              >
+                <IconChevronLeft class="size-10" />
+              </button>
+              <img
+                src={photos.value[idx].preview}
+                alt=""
+                class="max-w-full max-h-full object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                type="button"
+                title="Next photo"
+                disabled={idx === photos.value.length - 1}
+                class="shrink-0 text-white/70 hover:text-white disabled:opacity-20 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (idx < photos.value.length - 1) viewer.value = idx + 1;
+                }}
+              >
+                <IconChevronRight class="size-10" />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
