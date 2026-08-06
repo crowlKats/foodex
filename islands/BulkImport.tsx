@@ -415,15 +415,22 @@ export default function BulkImport() {
               class="shrink-0 flex items-center gap-3 px-4 py-2 text-sm text-white"
               onClick={(e) => e.stopPropagation()}
             >
-              <span class="font-medium">
+              {
+                /* Fixed widths — toggling the merge button or paging through
+                  photos must not nudge its neighbours. */
+              }
+              <span class="font-medium w-28 tabular-nums">
                 Photo {idx + 1} of {photos.value.length}
               </span>
-              <span class="text-white/70">Recipe {gi + 1}</span>
+              <span class="text-white/70 w-20 tabular-nums">
+                Recipe {gi + 1}
+              </span>
               {idx > 0 && !running.value && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  class="w-64"
                   icon={merged.value[idx] ? IconScissors : IconArrowMerge}
                   onClick={() => toggleMerge(idx)}
                 >
