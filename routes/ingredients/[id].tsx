@@ -54,15 +54,26 @@ export const handlers = handler({
     ]);
     if (ingredientRes.rows.length === 0) throw new HttpError(404);
 
-    const sourceRecipesRes = await ctx.state.db.query<
-      { title: string; slug: string }
-    >(
-      `SELECT title, slug FROM recipes
-       WHERE output_ingredient_id = $1
-         AND (private = false OR household_id = $2)
-       ORDER BY title`,
-      [id, ctx.state.householdId],
-    );
+    const [sourceRecipesRes, usedInRecipesRes] = await Promise.all([
+      ctx.state.db.query<{ title: string; slug: string }>(
+        `SELECT title, slug FROM recipes
+         WHERE output_ingredient_id = $1
+           AND (private = false OR household_id = $2)
+         ORDER BY title`,
+        [id, ctx.state.householdId],
+      ),
+      // DISTINCT: a recipe can reference the same ingredient on several lines
+      // (e.g. dough and filling) but should appear once here.
+      ctx.state.db.query<{ title: string; slug: string }>(
+        `SELECT DISTINCT r.title, r.slug
+           FROM recipes r
+           JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+         WHERE ri.ingredient_id = $1
+           AND (r.private = false OR r.household_id = $2)
+         ORDER BY r.title`,
+        [id, ctx.state.householdId],
+      ),
+    ]);
 
     ctx.state.pageTitle = ingredientRes.rows[0].name;
     return {
@@ -73,6 +84,7 @@ export const handlers = handler({
         stores: storesRes.rows,
         otherIngredients: otherIngredientsRes.rows,
         sourceRecipes: sourceRecipesRes.rows,
+        usedInRecipes: usedInRecipesRes.rows,
         loggedIn: ctx.state.user != null,
         error: ctx.url.searchParams.get("error"),
       },
@@ -320,6 +332,7 @@ export default page(
         stores,
         otherIngredients,
         sourceRecipes,
+        usedInRecipes,
         loggedIn,
         error,
       },
@@ -380,13 +393,20 @@ export default page(
                     unit={ingredient.unit ?? ""}
                     density={ingredient.density}
                   />
-                  <Checkbox
-                    name="always_on_hand"
-                    checked={ingredient.always_on_hand}
-                    label="Always on hand"
-                    labelClass="text-sm"
-                    title="Water, salt and the like — scales with recipes, but is never added to the shopping list or counted as missing from the pantry."
-                  />
+                  {
+                    /* .checkbox and .btn are both inline-flex; left as
+                       siblings they share a line and touch. The div makes
+                       the checkbox a block child so space-y-3 applies. */
+                  }
+                  <div>
+                    <Checkbox
+                      name="always_on_hand"
+                      checked={ingredient.always_on_hand}
+                      label="Always on hand"
+                      labelClass="text-sm"
+                      title="Water, salt and the like — scales with recipes, but is never added to the shopping list or counted as missing from the pantry."
+                    />
+                  </div>
                   <Button type="submit">Save</Button>
                 </form>
                 <form method="POST" class="mt-3">
@@ -409,7 +429,17 @@ export default page(
                 </p>
                 <form method="POST" class="flex gap-2">
                   <input type="hidden" name="_method" value="MERGE" />
-                  <Select name="target_id" required class="flex-1" size="sm">
+                  {
+                    /* min-w-0: a flex item's min-width:auto keeps the select
+                       as wide as its longest option name, shoving the Merge
+                       button past the card edge. */
+                  }
+                  <Select
+                    name="target_id"
+                    required
+                    class="flex-1 min-w-0"
+                    size="sm"
+                  >
                     <option value="">Select target...</option>
                     {otherIngredients.map((i) => (
                       <option key={i.id} value={i.id}>
@@ -595,6 +625,29 @@ export default page(
                 <Button type="submit">Add Price</Button>
               </form>
             )}
+
+            <div class="mt-6">
+              <h2 class="text-lg font-semibold mb-3">
+                Used in Recipes ({usedInRecipes.length})
+              </h2>
+              {usedInRecipes.length > 0
+                ? (
+                  <ul class="space-y-1">
+                    {usedInRecipes.map((r) => (
+                      <li key={r.slug}>
+                        <a href={`/recipes/${r.slug}`} class="link text-sm">
+                          {r.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )
+                : (
+                  <p class="text-sm text-stone-500">
+                    No recipes use this ingredient yet.
+                  </p>
+                )}
+            </div>
           </div>
         </div>
       </div>
