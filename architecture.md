@@ -105,6 +105,7 @@
 │   │   ├── index.tsx          # List with search, favorites, cookable filter, pagination
 │   │   ├── new.tsx            # Create form + POST handler
 │   │   ├── import/index.tsx   # Chatless import (URL/text/photos → agent session)
+│   │   ├── import/bulk.tsx    # Bulk import: many photos → grouped → one session each
 │   │   ├── [slug]/
 │   │   │   ├── index.tsx      # View (SSR + RecipeView island) + DELETE handler
 │   │   │   ├── edit.tsx       # Edit form + POST handler

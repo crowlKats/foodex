@@ -68,3 +68,10 @@ Deno.test("stepDiagnostics: a literal amount naming an ingredient warns", () => 
   assertEquals(d.errors, []);
   assertEquals(d.warnings.length, 1);
 });
+
+Deno.test("stepDiagnostics: {{ tray }} is a known ref, but not in math", () => {
+  const ok = recipe(["flour"], ["Pour into a {{ tray }} tray."]);
+  assertEquals(stepDiagnostics(ok).errors, []);
+  const bad = recipe(["flour"], ["Use {{ tray * 2 }} of space."]);
+  assertEquals(stepDiagnostics(bad).errors.length, 1);
+});

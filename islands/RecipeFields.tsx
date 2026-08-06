@@ -228,6 +228,7 @@ export default function RecipeFields(props: Props) {
             initialUnit={r.quantity_unit ?? "servings"}
             initialValue2={r.quantity_value2 ?? undefined}
             initialValue3={r.quantity_value3 ?? undefined}
+            initialServings={r.quantity_servings ?? undefined}
           />
           <div
             class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3"

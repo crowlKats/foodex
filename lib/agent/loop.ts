@@ -20,6 +20,10 @@ import { getFile } from "../s3.ts";
 // mechanical data transform, not deep reasoning. (Haiku 4.5 does not support
 // adaptive thinking / effort — omit them entirely.)
 const MODEL = "claude-haiku-4-5";
+// Turns that carry photos use the stronger vision model instead — deciphering
+// hand-written pages is what the old OCR pipeline used it for, and Haiku gives
+// up (and starts asking the user) on handwriting Sonnet reads fine.
+const VISION_MODEL = "claude-sonnet-4-6";
 const MAX_STEPS = 24;
 const MAX_TOKENS = 8192;
 
@@ -66,6 +70,13 @@ async function loadBase64(key: string): Promise<string | null> {
     bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
   return btoa(bin);
+}
+
+function hasImageBlock(messages: Anthropic.MessageParam[]): boolean {
+  return messages.some((m) =>
+    Array.isArray(m.content) &&
+    m.content.some((b) => (b as { type: string }).type === "image")
+  );
 }
 
 /**
@@ -204,7 +215,7 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
       // `finalMessage()` assembles the complete message (content blocks, usage,
       // stop_reason) for persistence and tool execution.
       const stream = client.messages.stream({
-        model: MODEL,
+        model: hasImageBlock(apiMessages) ? VISION_MODEL : MODEL,
         max_tokens: MAX_TOKENS,
         system,
         tools: TOOLS,

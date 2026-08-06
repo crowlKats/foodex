@@ -72,6 +72,10 @@ export const handlers = handler({
       ? parseFloat(quantityValue3Raw)
       : null;
     const quantityUnit2 = (form.get("quantity_unit2") as string) || null;
+    const quantityServingsRaw = form.get("quantity_servings") as string;
+    const quantityServings = quantityServingsRaw
+      ? parseInt(quantityServingsRaw)
+      : null;
     const prepTimeRaw = form.get("prep_time") as string;
     const prepTimeUnit = form.get("prep_time_unit") as string;
     const prepTime = prepTimeRaw
@@ -134,6 +138,7 @@ export const handlers = handler({
       await q(
         `UPDATE recipes SET title=$1, slug=$23, description=$2,
          quantity_type=$3, quantity_value=$4, quantity_unit=$5, quantity_value2=$6, quantity_value3=$7, quantity_unit2=$8,
+         quantity_servings=$26,
          prep_time=$9, cook_time=$10, rest_time=$22, cover_image_id=$11, difficulty=$13, private=$14,
          source_type=$15, source_name=$16, source_url=$17,
          output_ingredient_id=$18, output_amount=$19, output_unit=$20, output_expires_days=$21,
@@ -165,6 +170,7 @@ export const handlers = handler({
           newSlug,
           dishId,
           dishManual,
+          quantityServings,
         ],
       );
 

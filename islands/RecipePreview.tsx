@@ -25,6 +25,7 @@ interface PreviewData {
   steps: RenderStep[];
   sections: SectionInfo[];
   ingredients: RenderIngredient[];
+  tray?: { value: number; value2?: number; value3?: number };
 }
 
 export default function RecipePreview() {
@@ -88,7 +89,17 @@ export default function RecipePreview() {
     }
 
     message.value = null;
-    return { steps, sections, ingredients };
+    const num = (name: string) =>
+      parseFloat((fd.get(name) as string) || "") || undefined;
+    const tray = (fd.get("quantity_type") as string) === "dimensions"
+      ? {
+        value: num("quantity_value") ?? 0,
+        value2: num("quantity_value2"),
+        value3: num("quantity_value3"),
+      }
+      : undefined;
+
+    return { steps, sections, ingredients, tray };
   }
 
   function show(e: Event) {
@@ -142,6 +153,7 @@ export default function RecipePreview() {
                   sections={data.value.sections}
                   variables={{ ratio: 1 }}
                   ingredients={scaleIngredients(data.value.ingredients, 1)}
+                  tray={data.value.tray}
                 />
               </div>
             )}

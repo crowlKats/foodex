@@ -833,6 +833,9 @@ export default page(function RecipesPage({
                         : undefined,
                       unit2: r.quantity_unit2 ?? undefined,
                     })}
+                    {r.quantity_type === "dimensions" &&
+                      r.quantity_servings != null &&
+                      ` (~${r.quantity_servings} servings)`}
                   </span>
                   {r.prep_time != null && (
                     <span>

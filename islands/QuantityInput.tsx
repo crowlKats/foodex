@@ -15,6 +15,8 @@ interface QuantityInputProps {
   initialUnit?: string;
   initialValue2?: number;
   initialValue3?: number;
+  /** Dimensions recipes: the stated yield in servings/pieces, if any. */
+  initialServings?: number;
 }
 
 export default function QuantityInput(
@@ -24,6 +26,7 @@ export default function QuantityInput(
     initialUnit = "servings",
     initialValue2,
     initialValue3,
+    initialServings,
   }: QuantityInputProps,
 ) {
   const qType = useSignal<QuantityType>(initialType as QuantityType);
@@ -31,6 +34,7 @@ export default function QuantityInput(
   const qUnit = useSignal(initialUnit);
   const qValue2 = useSignal(initialValue2 ?? 0);
   const qValue3 = useSignal(initialValue3 ?? 0);
+  const qServings = useSignal(initialServings ?? 0);
 
   function onTypeChange(newType: QuantityType) {
     qType.value = newType;
@@ -96,6 +100,25 @@ export default function QuantityInput(
               />
               <span class="text-stone-500 text-sm whitespace-nowrap">cm</span>
             </div>
+            <label
+              class="block text-xs text-stone-500 dark:text-stone-400 mt-2"
+              title="The tray stays the scaling quantity; this records how many pieces it makes."
+            >
+              Makes about{" "}
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                size="xs"
+                value={qServings.value > 0
+                  ? formatInputValue(qServings.value)
+                  : ""}
+                placeholder="—"
+                class="w-16 text-center inline-block"
+                onValueChange={(v) => qServings.value = parseInt(v) || 0}
+              />{" "}
+              servings/pieces (optional)
+            </label>
           </div>
         )
         : (
@@ -155,6 +178,13 @@ export default function QuantityInput(
         type="hidden"
         name="quantity_unit2"
         value={qType.value === "dimensions" ? "cm" : ""}
+      />
+      <input
+        type="hidden"
+        name="quantity_servings"
+        value={qType.value === "dimensions" && qServings.value > 0
+          ? String(qServings.value)
+          : ""}
       />
     </div>
   );

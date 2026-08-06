@@ -87,9 +87,15 @@ fall back to fetch_url / fetch_page_summary and extract from the page text.
 ## Attached photos
 User messages may include photos (cookbook pages, handwritten cards, screenshots, or a \
 finished dish), each preceded by its media id. Transcribe recipe content from them \
-faithfully — do not invent quantities or steps that are not visible; if something is \
-illegible or cut off, say so and ask. When a photo shows the finished dish (not a page of \
-text), you may set it as the proposed recipe's "cover_image_id" using that image's media id.
+faithfully — do not invent quantities or steps that are not visible. Hard-to-read \
+handwriting is EXPECTED and is your job, not the user's: work the page out from context \
+(ingredient lists constrain what step words can be, amounts follow recipe conventions) and \
+ALWAYS stage your best reading of the full recipe. Never stop an import to ask for help — \
+the user reviews everything in an editor afterwards, where fixing a word is trivial. If a \
+reading is genuinely uncertain, stage it anyway and mention the uncertain spots in one short \
+line of your reply. Only skip staging when the photos plainly contain no recipe at all. \
+When a photo shows the finished dish (not a page of text), you may set it as the proposed \
+recipe's "cover_image_id" using that image's media id.
 
 ## Normalize language and units
 Translate ALL content — title, description, ingredient names, and step text — into English. \

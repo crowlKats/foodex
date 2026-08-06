@@ -59,6 +59,8 @@ export interface AgentRecipe {
   quantity_value2?: number | null;
   quantity_value3?: number | null;
   quantity_unit2?: string | null;
+  /** For dimensions (tray) recipes: the yield in servings/pieces, if stated. */
+  quantity_servings?: number | null;
   prep_time?: number | null;
   cook_time?: number | null;
   rest_time?: number | null;
@@ -172,6 +174,7 @@ export async function loadAgentRecipe(
     quantity_value2: recipe.quantity_value2,
     quantity_value3: recipe.quantity_value3,
     quantity_unit2: recipe.quantity_unit2,
+    quantity_servings: recipe.quantity_servings,
     prep_time: recipe.prep_time,
     cook_time: recipe.cook_time,
     rest_time: recipe.rest_time,
@@ -299,6 +302,7 @@ const SCALAR_COLS = [
   "quantity_value2",
   "quantity_value3",
   "quantity_unit2",
+  "quantity_servings",
   "prep_time",
   "cook_time",
   "rest_time",
@@ -323,6 +327,7 @@ function scalarValues(r: AgentRecipe): unknown[] {
     r.quantity_value2 ?? null,
     r.quantity_value3 ?? null,
     r.quantity_unit2 ?? null,
+    r.quantity_servings ?? null,
     r.prep_time ?? null,
     r.cook_time ?? null,
     r.rest_time ?? null,

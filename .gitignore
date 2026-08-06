@@ -14,3 +14,4 @@ _fresh/
 node_modules/
 vendor/
 
+.s3data/

@@ -667,6 +667,10 @@ export default page(function RecipeViewPage({
             few centimetres apart showing different numbers. */
         }
         <span data-recipe-quantity>{formatQuantity(baseQuantity)}</span>
+        {recipe.quantity_type === "dimensions" &&
+          recipe.quantity_servings != null && (
+          <span>~{recipe.quantity_servings} servings</span>
+        )}
         {recipe.difficulty && (
           <span class="capitalize">{recipe.difficulty}</span>
         )}

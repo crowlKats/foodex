@@ -119,6 +119,9 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     quantity_value2: num(fd, "quantity_value2"),
     quantity_value3: num(fd, "quantity_value3"),
     quantity_unit2: (fd.get("quantity_unit2") as string) || null,
+    quantity_servings: fd.get("quantity_servings")
+      ? parseInt(fd.get("quantity_servings") as string)
+      : null,
     prep_time: minutes(fd, "prep_time"),
     cook_time: minutes(fd, "cook_time"),
     rest_time: minutes(fd, "rest_time"),

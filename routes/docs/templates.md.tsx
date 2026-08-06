@@ -28,6 +28,12 @@ Example: \`{{ flour.amount }}\` → "200"
 
 All values scale automatically when the recipe quantity (servings, weight, volume, or tray dimensions) is changed.
 
+### Tray dimensions: \`{{ tray }}\`
+For recipes whose quantity type is tray dimensions, renders the current tray size as text.
+Example: \`{{ tray }}\` → "20 x 30 cm" (or "20 x 30 x 5 cm" with a depth)
+Use: "Line a {{ tray }} tray with parchment." — it follows along when the reader retargets the tray size.
+Text, not a number: it can't be used in math. Only meaningful in tray-dimension recipes.
+
 ## Arithmetic
 Math operators work inside \`{{ }}\` expressions:
 - \`+\` addition

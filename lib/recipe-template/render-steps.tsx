@@ -19,6 +19,7 @@ import {
   type RecipeRefInfo,
   type RenderContext,
   renderTemplate,
+  type TrayDims,
 } from "./render.tsx";
 
 export interface RenderStep {
@@ -34,6 +35,8 @@ export interface RecipeStepsProps {
   sections?: SectionInfo[];
   variables: Record<string, number>;
   ingredients?: Record<string, IngredientVar>;
+  /** Tray size for dimensions recipes ({{ tray }} in step bodies). */
+  tray?: TrayDims;
   recipeRefs?: Map<string, RecipeRefInfo>;
   dishRefs?: Map<string, RecipeRefInfo>;
   onTimerStart?: (seconds: number, label: string) => void;
@@ -45,6 +48,7 @@ export function RecipeSteps(props: RecipeStepsProps): VNode {
   const ctx: RenderContext = {
     variables: props.variables,
     ingredients: props.ingredients,
+    tray: props.tray,
     steps: props.steps,
     layout,
     recipeRefs: props.recipeRefs,
@@ -127,6 +131,7 @@ export function RecipeStepBody(props: {
   sections?: SectionInfo[];
   variables: Record<string, number>;
   ingredients?: Record<string, IngredientVar>;
+  tray?: TrayDims;
   recipeRefs?: Map<string, RecipeRefInfo>;
   dishRefs?: Map<string, RecipeRefInfo>;
   onTimerStart?: (seconds: number, label: string) => void;
@@ -135,6 +140,7 @@ export function RecipeStepBody(props: {
   const ctx: RenderContext = {
     variables: props.variables,
     ingredients: props.ingredients,
+    tray: props.tray,
     steps: props.steps,
     layout,
     recipeRefs: props.recipeRefs,
