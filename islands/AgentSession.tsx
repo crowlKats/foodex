@@ -18,6 +18,9 @@ import { IconSearch } from "@tabler/icons-preact";
 import { IconEye } from "@tabler/icons-preact";
 import { IconWorld } from "@tabler/icons-preact";
 import { IconTool } from "@tabler/icons-preact";
+import { IconPhoto } from "@tabler/icons-preact";
+import { IconLayoutSidebarRightCollapse } from "@tabler/icons-preact";
+import { IconLayoutSidebarRightExpand } from "@tabler/icons-preact";
 import type { StagedDiff, TimelineEntry } from "../lib/agent/conversation.ts";
 import type { SerializedStagedItem } from "../lib/agent/staging.ts";
 import { Button, type IconComponent } from "../components/Button.tsx";
@@ -27,6 +30,7 @@ import { UNIT_GROUPS } from "../lib/units.ts";
 import RecipeFields from "./RecipeFields.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import { formDataToRecipeData } from "../lib/recipe-form-data.ts";
+import { uploadImages } from "../lib/image-downscale.ts";
 
 interface IngredientOption {
   id: string;
@@ -44,6 +48,8 @@ interface Props {
   ingredients: IngredientOption[];
   allTools: { id: string; name: string }[];
   allRecipes: { id: string; title: string }[];
+  /** Run the turn for a pending seeded user message on mount (?start=1). */
+  autoStart?: boolean;
 }
 
 interface LiveTool {
@@ -97,11 +103,65 @@ export default function AgentSession(props: Props) {
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<"editor" | "chat">("editor");
+  const [attachments, setAttachments] = useState<
+    { file: File; url: string }[]
+  >([]);
+  // A seeded import session shows the editor shell (with a placeholder pane)
+  // from the first paint, never a bare chat. Cleared when the turn ends.
+  const [importing, setImporting] = useState(!!props.autoStart);
+  // Desktop chat panel: user-resizable width (persisted) and collapsible.
+  const [chatWidth, setChatWidth] = useState(416);
+  const [chatHidden, setChatHidden] = useState(false);
+
+  // Apply the persisted width after hydration so SSR markup stays stable.
+  useEffect(() => {
+    const w = parseInt(localStorage.getItem("agent-chat-width") ?? "");
+    if (w >= 280 && w <= 800) setChatWidth(w);
+  }, []);
+
+  function toggleChat() {
+    setChatHidden(!chatHidden);
+  }
+
+  function startChatResize(e: PointerEvent) {
+    e.preventDefault();
+    const onMove = (ev: PointerEvent) => {
+      setChatWidth(Math.min(800, Math.max(280, self.innerWidth - ev.clientX)));
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      setChatWidth((w) => {
+        localStorage.setItem("agent-chat-width", String(w));
+        return w;
+      });
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Start scrolled to the newest message on load.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, []);
+
+  // Chatless entry (import page etc.): the session was created with a pending
+  // user message; run the turn for it once, then drop the ?start flag so a
+  // reload doesn't re-trigger it.
+  useEffect(() => {
+    if (!props.autoStart) return;
+    history.replaceState(null, "", globalThis.location.pathname);
+    const last = props.initialTimeline[props.initialTimeline.length - 1];
+    if (!props.initialTurnActive && last?.kind === "user") {
+      runStream({ mode: "resume" }).finally(() => setImporting(false));
+    } else {
+      // Nothing to run (already extracted, or a turn is streaming elsewhere).
+      setImporting(false);
+    }
   }, []);
 
   const base = `/api/agent/${props.sessionId}`;
@@ -266,8 +326,48 @@ export default function AgentSession(props: Props) {
     setInput("");
     runStream({ text });
   }
-  function send() {
-    sendText(input);
+
+  function addAttachments(files: FileList | File[] | null) {
+    if (!files) return;
+    const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (images.length === 0) return;
+    setAttachments((a) => [
+      ...a,
+      ...images.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    ]);
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments((a) => {
+      URL.revokeObjectURL(a[index]?.url ?? "");
+      return a.filter((_, i) => i !== index);
+    });
+  }
+
+  async function send() {
+    const text = input.trim();
+    const atts = attachments;
+    if ((!text && atts.length === 0) || turnActive) return;
+    setTimeline((t) => [...t, {
+      kind: "user",
+      text,
+      images: atts.length > 0
+        ? atts.map((a) => ({ media_id: "", url: a.url }))
+        : undefined,
+    }]);
+    setInput("");
+    setAttachments([]);
+    // Cover the upload window too, so a second send can't race the first.
+    setTurnActive(true);
+    try {
+      const ids = await uploadImages(atts.map((a) => a.file));
+      await runStream(
+        ids.length > 0 ? { text, images: ids } : { text },
+      );
+    } catch (e) {
+      setError((e as Error).message);
+      setTurnActive(false);
+    }
   }
 
   // ── staging mutations ────────────────────────────────────────────
@@ -320,6 +420,33 @@ export default function AgentSession(props: Props) {
       if ((r.conflicts?.length ?? 0) === 0) setPreviewOpen(false);
     }
   }
+  async function applyItem(id: string) {
+    const r = await postStaging({ action: "apply", item_ids: [id] });
+    if (!r) return;
+    // Applying a recipe from the workbench lands on the recipe itself —
+    // the session stays in the conversation list for later.
+    const done = (r.applied_results ?? []).find(
+      (a: Any) => a.item_id === id,
+    );
+    if (done?.result?.slug) {
+      globalThis.location.href = `/recipes/${done.result.slug}`;
+      return;
+    }
+    setStaging(r.items);
+    setConflicts((c) => {
+      const next = { ...c };
+      delete next[id];
+      for (const conf of r.conflicts ?? []) {
+        next[conf.item_id] = {
+          conflict_paths: conf.conflict_paths,
+          live_version: conf.live_version,
+        };
+      }
+      return next;
+    });
+    if ((r.applied?.length ?? 0) > 0) await refetchState();
+  }
+
   async function resolveConflict(id: string) {
     const info = conflicts[id];
     const r = await postStaging({
@@ -403,193 +530,355 @@ export default function AgentSession(props: Props) {
     ? staging.find((it) => it.id === editingId) ?? null
     : null;
 
+  // A staged recipe puts the session in workbench mode: the recipe editor is
+  // the main pane and the chat becomes a side panel.
+  const recipeItems = staging.filter(
+    (it) => it.kind === "create_recipe" || it.kind === "edit_recipe",
+  );
+  const ingredientItems = staging.filter(
+    (it) => it.kind === "create_ingredient" || it.kind === "edit_ingredient",
+  );
+  const focusedRecipe = recipeItems.find((it) => it.id === focusedId) ??
+    recipeItems[recipeItems.length - 1] ?? null;
+  const workbench = focusedRecipe != null;
+
+  // Editor-shell layout: the workbench, or — while a seeded import turn is
+  // still extracting — its placeholder pane, so an import never opens as a
+  // bare chat window.
+  const shell = workbench || importing;
+
   // The right-hand drawer: editing an item takes precedence over the apply view
-  // (so "Edit" from within apply returns to apply when closed).
-  const drawerMode: "edit" | "apply" | null = editingItem
+  // (so "Edit" from within apply returns to apply when closed). In shell
+  // mode the drawers are replaced by the always-visible editor pane.
+  const drawerMode: "edit" | "apply" | null = shell
+    ? null
+    : editingItem
     ? "edit"
     : previewOpen
     ? "apply"
     : null;
 
+  // Open a staged item for editing from anywhere in the chat.
+  function openItem(id: string) {
+    const it = staging.find((s) => s.id === id);
+    const isRecipe = it &&
+      (it.kind === "create_recipe" || it.kind === "edit_recipe");
+    if (isRecipe) {
+      setEditingId(null);
+      setPreviewOpen(false);
+      setFocusedId(id);
+      setMobileView("editor");
+    } else if (shell) {
+      // Staged ingredients are edited inline in the workbench pane.
+      setMobileView("editor");
+    } else {
+      setPreviewOpen(false);
+      setEditingId(id);
+    }
+  }
+
   return (
-    <div class="h-full flex overflow-hidden">
-      {/* Chat column — pushed to a third as the drawer grows in from the right. */}
-      <div
-        class={`flex flex-col min-w-0 min-h-0 overflow-hidden transition-[width] duration-300 ease-in-out ${
-          drawerMode ? "w-0 md:w-1/3" : "w-full"
-        }`}
-      >
-        {/* Messages */}
-        <div ref={scrollRef} class="flex-1 overflow-y-auto px-4 py-6">
-          <div class="max-w-3xl mx-auto space-y-4">
-            {timeline.map((e, i) => (
-              <TimelineItem
-                key={i}
-                entry={e}
-                toolStatus={toolStatus}
-                stagedDiffs={stagedDiffs}
-                names={names}
-                onEdit={(id) => {
-                  setPreviewOpen(false);
-                  setEditingId(id);
-                }}
-              />
-            ))}
-            {live && <LiveTurnView live={live} names={names} />}
-            {timeline.length === 0 && !live && (
-              <div class="space-y-3">
-                <p class="text-stone-400 text-sm">
-                  Ask me to find, create, or improve recipes and ingredients.
-                  I'll propose changes here for you to review before anything is
-                  applied. Try:
-                </p>
+    <div class="h-full flex flex-col overflow-hidden">
+      {/* Mobile: the editor and the chat are alternate views. */}
+      {shell && (
+        <div class="md:hidden shrink-0 flex border-b-2 border-stone-200 dark:border-stone-700">
+          {(["editor", "chat"] as const).map((view) => (
+            <button
+              key={view}
+              type="button"
+              onClick={() => setMobileView(view)}
+              class={`flex-1 py-2 text-sm font-medium ${
+                mobileView === view
+                  ? "text-orange-600 border-b-2 border-orange-500 -mb-0.5"
+                  : "text-stone-500"
+              }`}
+            >
+              {view === "editor" ? "Recipe" : "Chat"}
+            </button>
+          ))}
+        </div>
+      )}
+      <div class="flex-1 min-h-0 flex overflow-hidden">
+        {workbench && focusedRecipe && (
+          <WorkbenchPane
+            key={focusedRecipe.id}
+            class={mobileView === "chat" ? "max-md:hidden" : ""}
+            item={focusedRecipe}
+            recipeItems={recipeItems}
+            ingredientItems={ingredientItems}
+            conflicts={conflicts}
+            turnActive={turnActive}
+            ingredients={ingredientOptions}
+            allTools={props.allTools}
+            allRecipes={props.allRecipes}
+            onFocus={setFocusedId}
+            onSave={saveItem}
+            onRevert={revertItem}
+            onDiscard={discardItem}
+            onApply={applyItem}
+            onResolve={resolveConflict}
+            chatHidden={chatHidden}
+            onToggleChat={toggleChat}
+          />
+        )}
+        {!workbench && importing && (
+          <div
+            class={`flex-1 min-w-0 min-h-0 flex flex-col items-center justify-center gap-3 p-6 ${
+              mobileView === "chat" ? "max-md:hidden" : ""
+            }`}
+          >
+            <IconLoader2 class="size-10 text-orange-600 animate-spin" />
+            <p class="text-sm font-medium">Preparing your recipe…</p>
+            <p class="text-xs text-stone-500 max-w-xs text-center">
+              It will appear here for review as soon as it's ready — progress
+              shows in the chat panel.
+            </p>
+          </div>
+        )}
+        {
+          /* Desktop: drag to resize the chat panel. The visible line is thin;
+            an invisible overlay widens the grab target. */
+        }
+        {shell && !(workbench && chatHidden) && (
+          <div
+            class="max-md:hidden relative z-10 w-1 shrink-0 cursor-col-resize touch-none bg-stone-200 dark:bg-stone-700 hover:bg-orange-400 transition-colors before:absolute before:inset-y-0 before:-left-1.5 before:-right-1.5 before:content-['']"
+            title="Drag to resize the chat panel"
+            onPointerDown={startChatResize}
+          />
+        )}
+        {
+          /* Chat column — side panel in shell mode, otherwise pushed to a
+          third as the drawer grows in from the right. */
+        }
+        <div
+          style={{ "--chat-w": `${chatWidth}px` }}
+          class={`flex flex-col min-w-0 min-h-0 overflow-hidden ${
+            shell
+              ? `max-md:flex-1 md:w-[var(--chat-w)] md:shrink-0 ${
+                workbench && chatHidden ? "md:hidden" : ""
+              } ${mobileView === "editor" ? "max-md:hidden" : ""}`
+              : `transition-[width] duration-300 ease-in-out ${
+                drawerMode ? "w-0 md:w-1/3" : "w-full"
+              }`
+          }`}
+        >
+          {/* Messages */}
+          <div ref={scrollRef} class="flex-1 overflow-y-auto px-4 py-6">
+            <div class="max-w-3xl mx-auto space-y-4">
+              {timeline.map((e, i) => (
+                <TimelineItem
+                  key={i}
+                  entry={e}
+                  toolStatus={toolStatus}
+                  stagedDiffs={stagedDiffs}
+                  names={names}
+                  onEdit={openItem}
+                />
+              ))}
+              {live && <LiveTurnView live={live} names={names} />}
+              {timeline.length === 0 && !live && (
+                <div class="space-y-3">
+                  <p class="text-stone-400 text-sm">
+                    Ask me to find, create, or improve recipes and ingredients.
+                    I'll propose changes here for you to review before anything
+                    is applied. Try:
+                  </p>
+                  <div class="flex flex-wrap gap-1.5">
+                    {EXAMPLE_PROMPTS.map((ex) => (
+                      <button
+                        key={ex}
+                        type="button"
+                        disabled={turnActive}
+                        class="border-2 border-stone-200 dark:border-stone-700 hover:border-orange-400 px-2.5 py-1 text-sm text-left disabled:opacity-50"
+                        onClick={() =>
+                          ex.endsWith(": ") ? setInput(ex) : sendText(ex)}
+                      >
+                        {ex}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Composer with the staged-changes pills attached on top */}
+          <div class="border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950">
+            <div class="max-w-3xl mx-auto p-3 space-y-2">
+              {error && <div class="alert-error text-sm">{error}</div>}
+              {staging.length > 0 && !shell && (
+                <div class="flex flex-wrap items-center gap-1.5">
+                  {staging.map((it) => {
+                    const PillIcon = it.kind.startsWith("create")
+                      ? IconPlus
+                      : IconPencil;
+                    const conflict = conflicts[it.id];
+                    return (
+                      <button
+                        key={it.id}
+                        type="button"
+                        title="Edit"
+                        class={`inline-flex items-center gap-1 border-2 px-2 py-0.5 text-sm max-w-[16rem] bg-white dark:bg-stone-900 hover:border-orange-400 ${
+                          conflict
+                            ? "border-red-400"
+                            : "border-stone-200 dark:border-stone-700"
+                        }`}
+                        onClick={() => {
+                          setPreviewOpen(false);
+                          setEditingId(it.id);
+                        }}
+                      >
+                        <PillIcon class="size-3.5 shrink-0 text-stone-400" />
+                        <span class="truncate">{stagedName(it)}</span>
+                        {conflict && (
+                          <IconAlertTriangle class="size-3.5 shrink-0 text-red-500" />
+                        )}
+                      </button>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    size="sm"
+                    class="ml-auto shrink-0"
+                    onClick={() => {
+                      setEditingId(null);
+                      setPreviewOpen(true);
+                    }}
+                  >
+                    Apply…
+                  </Button>
+                </div>
+              )}
+              {attachments.length > 0 && (
                 <div class="flex flex-wrap gap-1.5">
-                  {EXAMPLE_PROMPTS.map((ex) => (
-                    <button
-                      key={ex}
-                      type="button"
-                      disabled={turnActive}
-                      class="border-2 border-stone-200 dark:border-stone-700 hover:border-orange-400 px-2.5 py-1 text-sm text-left disabled:opacity-50"
-                      onClick={() =>
-                        ex.endsWith(": ") ? setInput(ex) : sendText(ex)}
-                    >
-                      {ex}
-                    </button>
+                  {attachments.map((a, i) => (
+                    <div key={a.url} class="relative group">
+                      <img
+                        src={a.url}
+                        alt=""
+                        class="size-14 object-cover border-2 border-stone-200 dark:border-stone-700"
+                      />
+                      <button
+                        type="button"
+                        title="Remove image"
+                        onClick={() =>
+                          removeAttachment(i)}
+                        class="absolute top-0 right-0 bg-red-600 text-white size-4 flex items-center justify-center cursor-pointer"
+                      >
+                        <IconX class="size-3" />
+                      </button>
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Composer with the staged-changes pills attached on top */}
-        <div class="border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950">
-          <div class="max-w-3xl mx-auto p-3 space-y-2">
-            {error && <div class="alert-error text-sm">{error}</div>}
-            {staging.length > 0 && (
-              <div class="flex flex-wrap items-center gap-1.5">
-                {staging.map((it) => {
-                  const PillIcon = it.kind.startsWith("create")
-                    ? IconPlus
-                    : IconPencil;
-                  const conflict = conflicts[it.id];
-                  return (
-                    <button
-                      key={it.id}
-                      type="button"
-                      title="Edit"
-                      class={`inline-flex items-center gap-1 border-2 px-2 py-0.5 text-sm max-w-[16rem] bg-white dark:bg-stone-900 hover:border-orange-400 ${
-                        conflict
-                          ? "border-red-400"
-                          : "border-stone-200 dark:border-stone-700"
-                      }`}
-                      onClick={() => {
-                        setPreviewOpen(false);
-                        setEditingId(it.id);
-                      }}
-                    >
-                      <PillIcon class="size-3.5 shrink-0 text-stone-400" />
-                      <span class="truncate">{stagedName(it)}</span>
-                      {conflict && (
-                        <IconAlertTriangle class="size-3.5 shrink-0 text-red-500" />
-                      )}
-                    </button>
-                  );
-                })}
+              )}
+              <div class="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  class="hidden"
+                  onChange={(e) => {
+                    addAttachments(e.currentTarget.files);
+                    e.currentTarget.value = "";
+                  }}
+                />
                 <Button
                   type="button"
-                  size="sm"
-                  class="ml-auto shrink-0"
-                  onClick={() => {
-                    setEditingId(null);
-                    setPreviewOpen(true);
+                  variant="outline"
+                  icon={IconPhoto}
+                  title="Attach photos"
+                  disabled={turnActive}
+                  onClick={() => fileInputRef.current?.click()}
+                />
+                <Input
+                  type="text"
+                  class="flex-1"
+                  placeholder="Message the assistant…"
+                  value={input}
+                  disabled={turnActive}
+                  onValueChange={setInput}
+                  onPaste={(e) => {
+                    if (e.clipboardData?.files?.length) {
+                      e.preventDefault();
+                      addAttachments(e.clipboardData.files);
+                    }
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={send}
+                  disabled={turnActive ||
+                    (!input.trim() && attachments.length === 0)}
                 >
-                  Apply…
+                  {turnActive
+                    ? <IconLoader2 class="size-4 animate-spin" />
+                    : <IconSend class="size-4" />}
                 </Button>
               </div>
-            )}
-            <div class="flex gap-2">
-              <Input
-                type="text"
-                class="flex-1"
-                placeholder="Message the assistant…"
-                value={input}
-                disabled={turnActive}
-                onValueChange={setInput}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                onClick={send}
-                disabled={turnActive || !input.trim()}
-              >
-                {turnActive
-                  ? <IconLoader2 class="size-4 animate-spin" />
-                  : <IconSend class="size-4" />}
-              </Button>
             </div>
           </div>
         </div>
-      </div>
 
-      {
-        /* Right-hand drawer: edit an item, or review & apply. Always mounted so
-          its width can animate in from the right, pushing the chat aside. */
-      }
-      <div
-        class={`shrink-0 min-h-0 h-full overflow-hidden transition-[width] duration-300 ease-in-out ${
-          drawerMode
-            ? "w-full md:w-2/3 border-l-2 border-stone-200 dark:border-stone-700"
-            : "w-0"
-        }`}
-      >
         {
-          /* Fixed width = open width, so the content slides in as one piece
-            instead of reflowing while the container animates. */
+          /* Right-hand drawer: edit an item, or review & apply. Always mounted so
+          its width can animate in from the right, pushing the chat aside. */
         }
-        <div class="h-full w-screen md:w-[66.6667vw]">
-          {drawerMode === "edit" && editingItem
-            ? (
-              <EditDrawer
-                key={`${editingItem.id}:${editingItem.version}`}
-                item={editingItem}
-                ingredients={ingredientOptions.filter((g) =>
-                  g.id !== editingItem.id
-                )}
-                allTools={props.allTools}
-                allRecipes={props.allRecipes}
-                onCancel={() => setEditingId(null)}
-                onSave={async (data) => {
-                  await saveItem(editingItem.id, data);
-                  setEditingId(null);
-                }}
-              />
-            )
-            : drawerMode === "apply"
-            ? (
-              <ApplyDrawer
-                staging={staging}
-                turnActive={turnActive}
-                conflicts={conflicts}
-                checkedCount={checkedCount}
-                applyLabel={applyLabel}
-                isChecked={isChecked}
-                onClose={() => setPreviewOpen(false)}
-                onToggle={toggle}
-                onEdit={(id) => setEditingId(id)}
-                onRevert={revertItem}
-                onDiscard={discardItem}
-                onResolve={resolveConflict}
-                onApply={applyChecked}
-              />
-            )
-            : null}
+        <div
+          class={`shrink-0 min-h-0 h-full overflow-hidden transition-[width] duration-300 ease-in-out ${
+            drawerMode
+              ? "w-full md:w-2/3 border-l-2 border-stone-200 dark:border-stone-700"
+              : "w-0"
+          }`}
+        >
+          {
+            /* Fixed width = open width, so the content slides in as one piece
+            instead of reflowing while the container animates. */
+          }
+          <div class="h-full w-screen md:w-[66.6667vw]">
+            {drawerMode === "edit" && editingItem
+              ? (
+                <EditDrawer
+                  key={`${editingItem.id}:${editingItem.version}`}
+                  item={editingItem}
+                  ingredients={ingredientOptions.filter((g) =>
+                    g.id !== editingItem.id
+                  )}
+                  allTools={props.allTools}
+                  allRecipes={props.allRecipes}
+                  onCancel={() => setEditingId(null)}
+                  onSave={async (data) => {
+                    await saveItem(editingItem.id, data);
+                    setEditingId(null);
+                  }}
+                />
+              )
+              : drawerMode === "apply"
+              ? (
+                <ApplyDrawer
+                  staging={staging}
+                  turnActive={turnActive}
+                  conflicts={conflicts}
+                  checkedCount={checkedCount}
+                  applyLabel={applyLabel}
+                  isChecked={isChecked}
+                  onClose={() => setPreviewOpen(false)}
+                  onToggle={toggle}
+                  onEdit={(id) => setEditingId(id)}
+                  onRevert={revertItem}
+                  onDiscard={discardItem}
+                  onResolve={resolveConflict}
+                  onApply={applyChecked}
+                />
+              )
+              : null}
+          </div>
         </div>
       </div>
     </div>
@@ -599,9 +888,14 @@ export default function AgentSession(props: Props) {
 // ── chat rendering ──────────────────────────────────────────────────
 
 const USER_ACTION_META: Record<
-  "applied" | "discarded" | "edited" | "reverted",
+  "applied" | "discarded" | "edited" | "reverted" | "staged",
   { verb: string; icon: IconComponent; color: string }
 > = {
+  staged: {
+    verb: "Staged",
+    icon: IconPlus,
+    color: "text-orange-500",
+  },
   applied: {
     verb: "Applied",
     icon: IconDeviceFloppy,
@@ -636,8 +930,20 @@ function TimelineItem(
   if (entry.kind === "user") {
     return (
       <div class="flex justify-end">
-        <div class="bg-orange-100 dark:bg-orange-950 px-3 py-2 max-w-[85%] text-sm">
-          <Markdown text={entry.text} />
+        <div class="bg-orange-100 dark:bg-orange-950 px-3 py-2 max-w-[85%] text-sm space-y-1.5">
+          {(entry.images?.length ?? 0) > 0 && (
+            <div class="flex flex-wrap gap-1.5 justify-end">
+              {entry.images!.map((im, i) => (
+                <img
+                  key={i}
+                  src={im.url}
+                  alt=""
+                  class="size-24 object-cover border-2 border-orange-200 dark:border-orange-900"
+                />
+              ))}
+            </div>
+          )}
+          {entry.text && <Markdown text={entry.text} />}
         </div>
       </div>
     );
@@ -774,7 +1080,10 @@ function toolIcon(name: string): IconComponent {
   if (name === "discard_proposed") return IconTrash;
   if (name.startsWith("list_") || name === "web_search") return IconSearch;
   if (name.startsWith("get_")) return IconEye;
-  if (name === "fetch_url" || name === "fetch_page_summary") return IconWorld;
+  if (
+    name === "fetch_url" || name === "fetch_page_summary" ||
+    name === "fetch_recipe_structured"
+  ) return IconWorld;
   return IconTool;
 }
 
@@ -871,6 +1180,9 @@ function toolLabel(
       break;
     case "fetch_page_summary":
       [verb, obj] = ["read", hostOf(q(i.url))];
+      break;
+    case "fetch_recipe_structured":
+      [verb, obj] = ["fetch", `the recipe from ${hostOf(q(i.url))}`];
       break;
     case "list_proposed":
       [verb, obj] = ["review", "proposed changes"];
@@ -1759,6 +2071,366 @@ function IngredientEditor(
           onChange={(v) => set("unit", v || null)}
         />
       </Field>
+    </div>
+  );
+}
+
+// ── workbench (staged recipe front and center, chat as side panel) ──
+
+interface WorkbenchProps {
+  item: SerializedStagedItem;
+  recipeItems: SerializedStagedItem[];
+  ingredientItems: SerializedStagedItem[];
+  conflicts: Record<string, ConflictInfo>;
+  turnActive: boolean;
+  ingredients: IngredientOption[];
+  allTools: { id: string; name: string }[];
+  allRecipes: { id: string; title: string }[];
+  class?: string;
+  onFocus: (id: string) => void;
+  onSave: (id: string, data: Record<string, unknown>) => Promise<void>;
+  onRevert: (id: string) => void;
+  onDiscard: (id: string) => void;
+  onApply: (id: string) => void;
+  onResolve: (id: string) => void;
+  chatHidden: boolean;
+  onToggleChat: () => void;
+}
+
+/**
+ * The main pane while a recipe is staged: the full recipe editor, the staged
+ * ingredients, and the apply/discard actions. Mounted keyed by item id, so
+ * switching focus resets the local form state.
+ */
+function WorkbenchPane(p: WorkbenchProps) {
+  const { item } = p;
+  const formRef = useRef<HTMLFormElement>(null);
+  // Bumping the epoch re-seeds the form from the item's latest data.
+  const [epoch, setEpoch] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [stale, setStale] = useState(false);
+  const [saving, setSaving] = useState(false);
+  // Which editor tab is showing — tracked via the bubbling radio change
+  // events so the memoized form vnode never has to re-render. Extras like
+  // the staged-ingredients card dock onto their matching tab.
+  const [activeTab, setActiveTab] = useState("basics");
+  const seenVersion = useRef(item.version);
+
+  // When the item advances underneath the form (an agent edit or a save
+  // round-trip), reload it — unless the user has unsaved edits, in which case
+  // surface a banner instead of clobbering their work.
+  useEffect(() => {
+    if (item.version === seenVersion.current) return;
+    seenVersion.current = item.version;
+    if (dirty) setStale(true);
+    else {
+      setStale(false);
+      setEpoch((e) => e + 1);
+    }
+  }, [item.version, dirty]);
+
+  function reload() {
+    setStale(false);
+    setDirty(false);
+    setEpoch((e) => e + 1);
+  }
+
+  // Tab radios live inside the form — switching tabs is not an edit.
+  const markDirty = (e: Event) => {
+    if ((e.target as HTMLInputElement)?.name === "_tab") return;
+    setDirty(true);
+  };
+
+  // The form vnode is memoized so the constant chat re-renders (stream deltas)
+  // never re-diff it — Preact re-syncs `value` attrs on every diff, which
+  // would clobber in-progress typing.
+  const fields = useMemo(
+    () => (
+      <form ref={formRef} onInput={markDirty} onChange={markDirty}>
+        <RecipeFields
+          r={structuredClone(item.effective)}
+          v={epoch}
+          showCover={false}
+          ingredients={p.ingredients.filter((g) => g.id !== item.id)}
+          allTools={p.allTools}
+          allRecipes={p.allRecipes}
+        />
+      </form>
+    ),
+    [item.id, epoch],
+  );
+
+  async function save(): Promise<boolean> {
+    const form = formRef.current;
+    if (!form) return false;
+    setSaving(true);
+    // Optimistically clean: the version bump from the save response must
+    // reload the form rather than flag it stale.
+    setDirty(false);
+    try {
+      const converted = formDataToRecipeData(new FormData(form));
+      const eff = item.effective as Any;
+      // Keep the existing cover — the staged form has no cover field.
+      const merged: Record<string, unknown> = {
+        ...structuredClone(eff),
+        ...converted,
+        cover_image_id: (converted.cover_image_id as string) ??
+          eff.cover_image_id ?? null,
+      };
+      await p.onSave(item.id, merged);
+      return true;
+    } catch {
+      setDirty(true);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function applyNow() {
+    if (dirty && !(await save())) return;
+    p.onApply(item.id);
+  }
+
+  const conflict = p.conflicts[item.id];
+  const busy = p.turnActive || saving;
+
+  return (
+    <div
+      class={`flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden ${
+        p.class ?? ""
+      }`}
+    >
+      <div class="shrink-0 border-b-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950 px-4 py-2 space-y-2">
+        {p.recipeItems.length > 1 && (
+          <div class="flex flex-wrap gap-1.5">
+            {p.recipeItems.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => p.onFocus(r.id)}
+                class={`border-2 px-2 py-0.5 text-sm max-w-[16rem] truncate ${
+                  r.id === item.id
+                    ? "border-orange-400 bg-white dark:bg-stone-900"
+                    : "border-stone-200 dark:border-stone-700 hover:border-orange-400"
+                }`}
+              >
+                {stagedName(r)}
+              </button>
+            ))}
+          </div>
+        )}
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-xs uppercase tracking-wide text-stone-500 shrink-0">
+            {KIND_LABEL[item.kind] ?? item.kind}
+          </span>
+          <span class="font-medium truncate">{stagedName(item)}</span>
+          {item.user_edited && (
+            <span class="text-xs text-orange-600 shrink-0">edited</span>
+          )}
+          {
+            /* Grouped left to right: destructive icons, then the save
+              actions, then the panel toggle — thin rules keep the groups
+              readable at a glance. */
+          }
+          <div class="ml-auto flex items-center gap-2 shrink-0">
+            {item.user_edited && (
+              <Button
+                type="button"
+                variant="ghost"
+                icon={IconArrowBackUp}
+                title="Revert to the assistant's proposal"
+                disabled={busy}
+                onClick={() => p.onRevert(item.id)}
+              />
+            )}
+            <Button
+              type="button"
+              variant="danger-ghost"
+              icon={IconTrash}
+              title="Discard this proposal"
+              disabled={busy}
+              onClick={() => {
+                if (
+                  confirm(
+                    "Discard this proposal? The assistant's work on it is lost.",
+                  )
+                ) p.onDiscard(item.id);
+              }}
+            />
+            <div class="w-0.5 h-5 bg-stone-200 dark:bg-stone-700" />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!dirty || busy}
+              onClick={save}
+            >
+              {saving ? "Saving…" : "Save edits"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy || !!conflict}
+              onClick={applyNow}
+            >
+              {item.kind === "create_recipe" ? "Save to library" : "Apply"}
+            </Button>
+            <div class="max-md:hidden w-0.5 h-5 bg-stone-200 dark:bg-stone-700" />
+            <Button
+              type="button"
+              variant="ghost"
+              icon={p.chatHidden
+                ? IconLayoutSidebarRightExpand
+                : IconLayoutSidebarRightCollapse}
+              title={p.chatHidden ? "Show chat" : "Hide chat"}
+              class="max-md:hidden"
+              onClick={p.onToggleChat}
+            />
+          </div>
+        </div>
+      </div>
+      <div class="flex-1 min-h-0 overflow-y-auto p-4 pb-16">
+        <div
+          class="max-w-3xl mx-auto space-y-4"
+          onChange={(e) => {
+            const t = e.target as HTMLInputElement;
+            if (t?.name === "_tab") setActiveTab(t.id.replace("tab-", ""));
+          }}
+        >
+          {stale && (
+            <div class="card border-orange-400 text-sm flex items-center gap-3 flex-wrap">
+              <span>
+                The assistant updated this item while you were editing.
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={reload}
+              >
+                Load latest (discards your edits)
+              </Button>
+            </div>
+          )}
+          {conflict && (
+            <div class="card border-red-400 text-sm space-y-2">
+              <p class="flex items-center gap-1 text-red-600">
+                <IconAlertTriangle class="size-4" />{" "}
+                Merge conflict — the underlying item changed since this was
+                proposed.
+              </p>
+              {conflict.conflict_paths.length > 0 && (
+                <p class="text-xs text-stone-500">
+                  Conflicting: {conflict.conflict_paths.join(", ")}
+                </p>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                disabled={p.turnActive}
+                onClick={() => p.onResolve(item.id)}
+              >
+                Ask AI to resolve
+              </Button>
+            </div>
+          )}
+          {fields}
+          {activeTab === "ingredients" && p.ingredientItems.length > 0 && (
+            <div class="subgroup">
+              <span class="subgroup-label">New ingredients</span>
+              <p class="text-xs text-stone-500 dark:text-stone-400 mb-3 text-pretty">
+                Added to the ingredient library when this recipe is saved.
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {p.ingredientItems.map((ing) => (
+                  <StagedIngredientRow
+                    key={`${ing.id}:${ing.version}`}
+                    item={ing}
+                    disabled={p.turnActive}
+                    onSave={(data) => p.onSave(ing.id, data)}
+                    onDiscard={() => p.onDiscard(ing.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One staged ingredient entity, styled to match the recipe ingredient rows
+ * above it. Edits persist on their own — the name saves when it loses focus,
+ * the unit saves on selection — so the row needs no Save button.
+ */
+function StagedIngredientRow(
+  { item, disabled, onSave, onDiscard }: {
+    item: SerializedStagedItem;
+    disabled: boolean;
+    onSave: (data: Record<string, unknown>) => Promise<void>;
+    onDiscard: () => void;
+  },
+) {
+  const [data, setData] = useState<Any>(structuredClone(item.effective));
+  const [saving, setSaving] = useState(false);
+
+  async function persist(next: Any) {
+    if (
+      disabled || saving ||
+      JSON.stringify(next) === JSON.stringify(item.effective)
+    ) return;
+    setSaving(true);
+    try {
+      await onSave(next);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div class="form-row space-y-2">
+      <div class="flex gap-2 items-center min-w-0">
+        <span
+          class="text-xs text-stone-400 font-mono shrink-0 w-8"
+          title="Created in the ingredient library when the recipe is saved"
+        >
+          new
+        </span>
+        <Input
+          class="w-full"
+          size="sm"
+          placeholder="Ingredient name"
+          value={data.name ?? ""}
+          disabled={disabled}
+          onValueChange={(v) => setData({ ...data, name: v })}
+          onBlur={() => persist(data)}
+        />
+        <Button
+          type="button"
+          variant="danger-ghost"
+          icon={IconTrash}
+          title="Discard"
+          class="shrink-0"
+          disabled={disabled}
+          onClick={onDiscard}
+        />
+      </div>
+      <div class="flex items-center gap-2 sm:pl-10">
+        <UnitDropdown
+          class="w-40"
+          value={data.unit ?? ""}
+          disabled={disabled}
+          onChange={(v) => {
+            const next = { ...data, unit: v || null };
+            setData(next);
+            persist(next);
+          }}
+        />
+        {saving && <span class="text-xs text-stone-400">Saving…</span>}
+      </div>
     </div>
   );
 }

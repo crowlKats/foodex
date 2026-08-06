@@ -41,6 +41,7 @@ export const handlers = handler({
     return {
       data: {
         sessionId: session.id,
+        autoStart: ctx.url.searchParams.has("start"),
         title: session.title,
         timeline: foldConversation(events).timeline,
         staging: serializePending(foldStaging(events)),
@@ -70,6 +71,7 @@ export default page(function AgentSessionPage({ data }) {
       <div class="flex-1 min-h-0">
         <AgentSession
           sessionId={data.sessionId}
+          autoStart={data.autoStart}
           initialTimeline={data.timeline}
           initialStaging={data.staging}
           initialTurnActive={data.turnActive}

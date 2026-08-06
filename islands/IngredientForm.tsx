@@ -4,6 +4,7 @@ import SearchSelect from "./SearchSelect.tsx";
 import { IconPlus } from "@tabler/icons-preact";
 import { IconTrash } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
+import { Checkbox } from "../components/Checkbox.tsx";
 import { Input, InputBar } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
 
@@ -213,19 +214,15 @@ export default function IngredientForm(
               salt or oil depending on how the author thinks about staples.
             */
             }
-            <label
-              class="flex items-center gap-2 w-fit text-xs text-stone-500 dark:text-stone-400 cursor-pointer sm:pl-7"
+            <Checkbox
+              class="sm:pl-7"
+              labelClass="text-xs text-stone-500 dark:text-stone-400"
               title="Scales with the recipe, but is never added to the shopping list or counted as missing from the pantry."
-            >
-              <input
-                type="checkbox"
-                class="size-3.5 accent-orange-600 cursor-pointer"
-                checked={!!item.always_on_hand}
-                onChange={(e) =>
-                  updateFlag(i, (e.currentTarget as HTMLInputElement).checked)}
-              />
-              Always on hand
-            </label>
+              checked={!!item.always_on_hand}
+              onChange={(e) =>
+                updateFlag(i, (e.currentTarget as HTMLInputElement).checked)}
+              label="Always on hand"
+            />
             <input
               type="hidden"
               name={`ingredients[${i}][key]`}

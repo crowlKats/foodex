@@ -3,7 +3,7 @@
  *
  * Step bodies are edited inside `<StepBodyEditor>` instances rendered by the
  * `<StepForm>` island, but the Save / Preview buttons that need to react
- * to those errors live in sibling islands (`<DraftEditor>`, `<RecipePreview>`,
+ * to those errors live in sibling islands (`<RecipePreview>`,
  * `<SubmitWhenValid>`). Preact signals are shared across islands on the
  * client, so each editor publishes its error count here, and the buttons
  * subscribe.

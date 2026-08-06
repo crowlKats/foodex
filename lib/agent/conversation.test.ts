@@ -131,3 +131,60 @@ Deno.test("foldConversation: edits with no following turn produce no notice", ()
   assert(!text.includes("staging area"));
   assert(!timeline.some((t) => t.kind === "notice"));
 });
+
+Deno.test("foldConversation: image attachments become marker blocks + timeline images", () => {
+  const events = log(
+    {
+      type: "user_message",
+      payload: {
+        text: "import this",
+        images: [{
+          media_id: "m1",
+          key: "uploads/x.jpg",
+          content_type: "image/jpeg",
+          url: "/api/media/file/uploads%2Fx.jpg",
+        }],
+      },
+    },
+  );
+  const { apiMessages, timeline } = foldConversation(events);
+  const content = apiMessages[0].content as { type: string; text?: string }[];
+  assertEquals(content.map((b) => b.type), [
+    "text", // "Attached image (media id: …)"
+    "foodex_image",
+    "text", // the user text
+  ]);
+  assert(content[0].text!.includes("m1"));
+  const user = timeline[0];
+  assert(user.kind === "user");
+  assertEquals(user.images, [{
+    media_id: "m1",
+    url: "/api/media/file/uploads%2Fx.jpg",
+  }]);
+});
+
+Deno.test("foldConversation: user_staged reports via notice on the next user turn", () => {
+  const events = log(
+    {
+      type: "user_staged",
+      payload: {
+        mutation: {
+          op: "create",
+          kind: "create_recipe",
+          item_id: "d1",
+          full: { title: "Draft Soup" },
+        },
+      },
+    },
+    { type: "user_message", payload: { text: "make it vegan" } },
+  );
+  const { apiMessages, timeline } = foldConversation(events);
+  // The staged item is described to the model before the user's text.
+  const content = apiMessages[0].content as { type: string; text: string }[];
+  assert(content[0].text.includes("Draft Soup"));
+  assertEquals(content[1].text, "make it vegan");
+  // And the chat shows a "Staged" user action.
+  const action = timeline.find((e) => e.kind === "user_action");
+  assert(action && action.kind === "user_action");
+  assertEquals(action.action, "staged");
+});

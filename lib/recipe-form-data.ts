@@ -52,6 +52,7 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
   }));
 
   const steps: Record<string, unknown>[] = [];
+  const stepAfterIdx: number[][] = [];
   let s = 0;
   while (fd.has(`steps[${s}][title]`) || fd.has(`steps[${s}][body]`)) {
     const secIdxRaw = fd.get(`steps[${s}][section]`);
@@ -65,6 +66,10 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
       if (m) media.push(m);
       mi++;
     }
+    const afterStr = String(fd.get(`steps[${s}][after]`) ?? "");
+    stepAfterIdx.push(
+      afterStr ? afterStr.split(",").map(Number).filter((n) => !isNaN(n)) : [],
+    );
     steps.push({
       id: (fd.get(`steps[${s}][id]`) as string) || `tmp_${s}`,
       title: String(fd.get(`steps[${s}][title]`) ?? ""),
@@ -75,6 +80,34 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
       media,
     });
     s++;
+  }
+  steps.forEach((step, i) => {
+    step.after = stepAfterIdx[i]
+      .map((idx) => steps[idx]?.id)
+      .filter((id): id is string => typeof id === "string" && id !== step.id);
+  });
+
+  const tools: Record<string, unknown>[] = [];
+  let t = 0;
+  while (fd.has(`tools[${t}][tool_id]`)) {
+    const toolId = (fd.get(`tools[${t}][tool_id]`) as string) || "";
+    if (toolId) {
+      tools.push({
+        tool_id: toolId,
+        usage_description:
+          (fd.get(`tools[${t}][usage_description]`) as string)?.trim() || null,
+        settings: (fd.get(`tools[${t}][settings]`) as string)?.trim() || null,
+      });
+    }
+    t++;
+  }
+
+  const refs: Record<string, unknown>[] = [];
+  let rf = 0;
+  while (fd.has(`refs[${rf}][referenced_recipe_id]`)) {
+    const refId = (fd.get(`refs[${rf}][referenced_recipe_id]`) as string) || "";
+    if (refId) refs.push({ referenced_recipe_id: refId });
+    rf++;
   }
 
   return {
@@ -100,6 +133,8 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     ingredients,
     sections,
     steps,
+    tools,
+    refs,
     output_ingredient_id: (fd.get("output_ingredient_id") as string) || null,
     output_amount: num(fd, "output_amount"),
     output_unit: (fd.get("output_unit") as string) || null,

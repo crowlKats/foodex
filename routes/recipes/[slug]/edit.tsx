@@ -2,23 +2,14 @@ import { handler, page } from "./$edit.ts";
 import { HttpError } from "fresh/errors";
 import { uniqueSlug } from "../../../lib/slug.ts";
 import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
-import { loadRecipeEditData } from "../../../lib/recipe-edit-data.ts";
+import {
+  editDataToRecipeFields,
+  loadRecipeEditData,
+} from "../../../lib/recipe-edit-data.ts";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
-import TabValidation from "../../../islands/TabValidation.tsx";
+import RecipeFields from "../../../islands/RecipeFields.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormActions, SubGroup } from "../../../components/recipe-form/ui.tsx";
-import {
-  ClassificationFields,
-  CoverField,
-  IdentityFields,
-  IngredientsField,
-  OutputField,
-  RefsField,
-  SourceFields,
-  StepsField,
-  ToolsField,
-  YieldTimingFields,
-} from "../../../components/recipe-form/fields.tsx";
 export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
@@ -198,13 +189,6 @@ export const handlers = handler({
   },
 });
 
-const TABS = [
-  { id: "basics", label: "Basics" },
-  { id: "ingredients", label: "Ingredients" },
-  { id: "steps", label: "Steps" },
-  { id: "advanced", label: "Advanced" },
-] as const;
-
 export default page(function RecipeEdit({ data }) {
   const d = data;
   const slug = d.recipe.slug;
@@ -217,112 +201,54 @@ export default page(function RecipeEdit({ data }) {
       }
       <BackLink href={`/recipes/${slug}`} label="Back to Recipe" />
 
-      {
-        /*
-        Tabs are radio inputs driving sibling selectors, so every panel stays
-        in the DOM and this single submit still posts the whole recipe. The
-        `_tab` radio itself is an extra form field the POST handler never
-        reads. <TabValidation> covers the flip side: a `required` field on an
-        unselected tab would otherwise block submit invisibly.
-      */
-      }
-      <form id="recipe-edit-form" method="POST" class="space-y-6">
-        <TabValidation formId="recipe-edit-form" />
+      <form id="recipe-edit-form" method="POST" class="space-y-6 pb-16">
         <FormActions title={`Edit: ${d.recipe.title}`} />
 
-        <div class="edit-tabs">
-          {TABS.map((t, i) => (
-            <input
-              key={t.id}
-              type="radio"
-              name="_tab"
-              id={`tab-${t.id}`}
-              class="edit-tab-radio"
-              checked={i === 0}
-            />
-          ))}
-
-          <div class="edit-tablist">
-            {TABS.map((t) => (
-              <label key={t.id} for={`tab-${t.id}`} class="edit-tab">
-                {t.label}
-                {t.id === "ingredients" && (
-                  <span class="count-badge">{d.ingredients.length}</span>
-                )}
-                {t.id === "steps" && (
-                  <span class="count-badge">{d.steps.length}</span>
-                )}
-              </label>
-            ))}
-          </div>
-
-          {
-            /*
-            No card around these three: the tab already draws the boundary,
-            and their heading would only repeat the tab's own label. Advanced
-            keeps its cards because it holds four distinct sections that need
-            separating from each other.
-          */
-          }
-          <div
-            data-tab-panel="basics"
-            class="edit-panel edit-panel-basics space-y-3"
-          >
-            <IdentityFields d={d} />
-            <SubGroup label="Yield & timing">
-              <YieldTimingFields d={d} />
-            </SubGroup>
-            <SubGroup label="Classification">
-              <ClassificationFields d={d} />
-            </SubGroup>
-            <SubGroup label="Source">
-              <SourceFields d={d} />
-            </SubGroup>
-          </div>
-
-          <div
-            data-tab-panel="ingredients"
-            class="edit-panel edit-panel-ingredients"
-          >
-            <IngredientsField d={d} />
-          </div>
-
-          <div data-tab-panel="steps" class="edit-panel edit-panel-steps">
-            <StepsField d={d} />
-          </div>
-
-          <div
-            data-tab-panel="advanced"
-            class="edit-panel edit-panel-advanced space-y-3"
-          >
-            <SubGroup label="Cover image">
-              <CoverField d={d} />
-            </SubGroup>
-            <SubGroup label="Tools">
-              <ToolsField d={d} />
-            </SubGroup>
-            <SubGroup label="Output ingredient">
-              <OutputField d={d} />
-            </SubGroup>
-            <SubGroup label="Sub-recipe references">
-              <RefsField d={d} />
-            </SubGroup>
-            <SubGroup label="Danger zone">
-              <p class="text-xs text-stone-500 dark:text-stone-400 mb-2">
-                Deleting removes the recipe and its steps for everyone in the
-                household. This cannot be undone.
-              </p>
-              {/* Targets the sibling form below — forms can't nest. */}
-              <ConfirmButton
-                form="delete-recipe-form"
-                message="Delete this recipe? This cannot be undone."
-                variant="danger"
-              >
-                Delete Recipe
-              </ConfirmButton>
-            </SubGroup>
-          </div>
-        </div>
+        <RecipeFields
+          r={editDataToRecipeFields(d)}
+          coverImage={d.recipe.cover_media_id
+            ? {
+              id: String(d.recipe.cover_media_id),
+              url: d.recipe.cover_media_url!,
+              filename: d.recipe.cover_media_filename ?? "",
+              content_type: d.recipe.cover_media_content_type ?? "",
+            }
+            : null}
+          ingredients={d.allIngredients.map((g) => ({
+            id: String(g.id),
+            name: g.name,
+            unit: g.unit ?? "",
+          }))}
+          allTools={d.allTools.map((t) => ({ id: String(t.id), name: t.name }))}
+          allRecipes={d.allRecipes.map((r) => ({
+            id: String(r.id),
+            title: r.title,
+          }))}
+          dish={{
+            dishes: d.allDishes.map((di) => ({
+              id: String(di.id),
+              name: di.name,
+            })),
+            initialDishId: d.recipe.dish_id ? String(d.recipe.dish_id) : "",
+            initialDishName: d.dishName ?? "",
+            initialManual: d.recipe.dish_manual,
+          }}
+        >
+          <SubGroup label="Danger zone">
+            <p class="text-xs text-stone-500 dark:text-stone-400 mb-2">
+              Deleting removes the recipe and its steps for everyone in the
+              household. This cannot be undone.
+            </p>
+            {/* Targets the sibling form below — forms can't nest. */}
+            <ConfirmButton
+              form="delete-recipe-form"
+              message="Delete this recipe? This cannot be undone."
+              variant="danger"
+            >
+              Delete Recipe
+            </ConfirmButton>
+          </SubGroup>
+        </RecipeFields>
       </form>
 
       <form

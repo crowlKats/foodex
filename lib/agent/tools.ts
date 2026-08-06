@@ -24,7 +24,9 @@ import { addStock, expiringSoon, loadStock } from "../pantry.ts";
 import { addPlanEntry, loadPlan, suggestRecipes } from "../plan.ts";
 import { getOrCreateList, projectShoppingList } from "../shopping-list.ts";
 import { isoVersion } from "./version.ts";
-import { fetchRaw, jinaSearch, jinaSummary } from "./fetch.ts";
+import { assertPublicUrl, fetchRaw, jinaSearch, jinaSummary } from "./fetch.ts";
+import { importRecipeFromUrl } from "../url-import.ts";
+import { stepDiagnostics } from "./validate-refs.ts";
 
 export interface ToolCtx {
   q: QueryFn;
@@ -279,6 +281,20 @@ export const TOOLS: Anthropic.Tool[] = [
     name: "fetch_page_summary",
     description:
       "Fetch a URL and return a clean, readable markdown summary of the page.",
+    input_schema: {
+      type: "object",
+      properties: { url: { type: "string" } },
+      required: ["url"],
+    },
+  },
+  {
+    name: "fetch_recipe_structured",
+    description:
+      "Extract structured recipe data (schema.org JSON-LD, or a Foodex export) directly " +
+      "from a recipe page URL. Fast and exact when the site provides it — when importing " +
+      "from a URL try this FIRST, and fall back to fetch_url if it finds nothing. The " +
+      "result may be incomplete (no sections/tags/tools); verify and fill gaps before " +
+      "proposing.",
     input_schema: {
       type: "object",
       properties: { url: { type: "string" } },
@@ -683,6 +699,12 @@ export async function executeTool(
         const out = await jinaSummary(String(input.url ?? ""));
         return { content: out, is_error: false };
       }
+      case "fetch_recipe_structured": {
+        const url = String(input.url ?? "");
+        assertPublicUrl(url);
+        const recipe = await importRecipeFromUrl(url);
+        return { content: { recipe }, is_error: false };
+      }
 
       case "list_proposed": {
         const map = foldStaging(events);
@@ -708,12 +730,25 @@ export async function executeTool(
         if (!it || it.status !== "pending") {
           return err(`No pending proposal ${id}.`);
         }
+        const eff = effective(it);
+        // Recipes carry their current step diagnostics, so the model can see
+        // (and repair) validation problems in items staged before the write
+        // checks existed, or introduced by user edits.
+        const diag = it.kind === "create_recipe" || it.kind === "edit_recipe"
+          ? stepDiagnostics(eff)
+          : null;
         return {
           content: {
             id,
             kind: it.kind,
             base_version: it.base_version ?? null,
-            effective: effective(it),
+            effective: eff,
+            ...(diag && diag.errors.length > 0
+              ? { step_errors: diag.errors }
+              : {}),
+            ...(diag && diag.warnings.length > 0
+              ? { step_warnings: diag.warnings }
+              : {}),
           },
           is_error: false,
           observations: [{
@@ -731,8 +766,22 @@ export async function executeTool(
           return err("recipe.title is required.");
         }
         ensureStepIds(recipe);
+        const diag = stepDiagnostics(recipe);
+        if (diag.errors.length > 0) {
+          return err(
+            `The step bodies fail validation: ${
+              diag.errors.join("; ")
+            }. Fix the steps (or the ingredient keys they reference) and retry.`,
+          );
+        }
         return {
-          content: { item_id: toolUseId, proposed: true },
+          content: {
+            item_id: toolUseId,
+            proposed: true,
+            ...(diag.warnings.length > 0
+              ? { step_warnings: diag.warnings }
+              : {}),
+          },
           is_error: false,
           staged: {
             op: "create",
@@ -789,8 +838,24 @@ export async function executeTool(
             `"${slug}" changed since you read it — call get_recipe again, then retry.`,
           );
         }
+        const base = loaded.recipe as unknown as Record<string, unknown>;
+        const diag = stepDiagnostics(applyPatch(base, ops));
+        if (diag.errors.length > 0) {
+          return err(
+            `After these ops, the step bodies fail validation: ${
+              diag.errors.join("; ")
+            }. When you swap or rename an ingredient, update the row's "key" ` +
+              `AND every {{ ref }} in the step bodies in the same call.`,
+          );
+        }
         return {
-          content: { item_id: toolUseId, proposed: true },
+          content: {
+            item_id: toolUseId,
+            proposed: true,
+            ...(diag.warnings.length > 0
+              ? { step_warnings: diag.warnings }
+              : {}),
+          },
           is_error: false,
           observations: [{ target: `staged:${toolUseId}`, version: "seed" }],
           staged: {
@@ -799,7 +864,7 @@ export async function executeTool(
             item_id: toolUseId,
             target: { recipe_id: recipeId, slug },
             base_version: loaded.version,
-            base_data: loaded.recipe as unknown as Record<string, unknown>,
+            base_data: base,
             ops,
           },
         };
@@ -856,11 +921,31 @@ export async function executeTool(
         }
         const isCreateKind = it.kind === "create_recipe" ||
           it.kind === "create_ingredient";
+        const nextFull = isCreateKind
+          ? applyPatch(it.full ?? {}, ops)
+          : applyPatch(it.base_data ?? {}, [...it.ops, ...ops]);
+        let stepWarnings: string[] = [];
+        if (it.kind === "create_recipe" || it.kind === "edit_recipe") {
+          const diag = stepDiagnostics(nextFull);
+          if (diag.errors.length > 0) {
+            return err(
+              `After these ops, the step bodies fail validation: ${
+                diag.errors.join("; ")
+              }. When you swap or rename an ingredient, update the row's ` +
+                `"key" AND every {{ ref }} in the step bodies in the same call.`,
+            );
+          }
+          stepWarnings = diag.warnings;
+        }
         const staged: StagingMutation = isCreateKind
-          ? { op: "update", item_id: id, full: applyPatch(it.full ?? {}, ops) }
+          ? { op: "update", item_id: id, full: nextFull }
           : { op: "update", item_id: id, ops };
         return {
-          content: { item_id: id, proposed: true },
+          content: {
+            item_id: id,
+            proposed: true,
+            ...(stepWarnings.length > 0 ? { step_warnings: stepWarnings } : {}),
+          },
           is_error: false,
           observations: [{ target: `staged:${id}`, version: "updated" }],
           staged,

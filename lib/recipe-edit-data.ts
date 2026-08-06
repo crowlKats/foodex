@@ -13,14 +13,81 @@ import type {
   Tool,
 } from "../db/types.ts";
 
-/**
- * Everything the recipe edit form needs to render. Shared by the real edit
- * route and the layout-comparison previews under `edit-preview/`, so the
- * variants differ only in arrangement, never in the data behind them.
- */
+/** Everything the recipe edit form needs to render. */
 export type RecipeEditData = Awaited<
   ReturnType<typeof loadRecipeEditData>
 > extends infer T ? T extends null ? never : T : never;
+
+/**
+ * Adapt RecipeEditData to the shape the shared RecipeFields editor seeds from
+ * (the AgentRecipe layout: step deps by step id, step sections by section key).
+ */
+export function editDataToRecipeFields(
+  d: RecipeEditData,
+): Record<string, unknown> {
+  const r = d.recipe;
+  return {
+    title: r.title,
+    description: r.description,
+    quantity_type: r.quantity_type,
+    quantity_value: r.quantity_value,
+    quantity_unit: r.quantity_unit,
+    quantity_value2: r.quantity_value2,
+    quantity_value3: r.quantity_value3,
+    quantity_unit2: r.quantity_unit2,
+    prep_time: r.prep_time,
+    cook_time: r.cook_time,
+    rest_time: r.rest_time,
+    difficulty: r.difficulty,
+    private: r.private,
+    source_type: r.source_type,
+    source_name: r.source_name,
+    source_url: r.source_url,
+    output_ingredient_id: r.output_ingredient_id
+      ? String(r.output_ingredient_id)
+      : null,
+    output_amount: r.output_amount,
+    output_unit: r.output_unit,
+    output_expires_days: r.output_expires_days,
+    meal_types: d.mealTypes,
+    dietary_tags: d.dietaryTags,
+    ingredients: d.ingredients.map((i) => ({
+      key: i.key ?? "",
+      name: i.name,
+      amount: i.amount != null ? String(i.amount) : "",
+      unit: i.unit ?? "",
+      ingredient_id: i.ingredient_id != null ? String(i.ingredient_id) : "",
+      always_on_hand: !!i.always_on_hand,
+    })),
+    sections: d.sections.map((s) => ({
+      key: s.key,
+      title: s.title,
+      after: s.after
+        .map((idx) => d.sections[idx]?.key)
+        .filter((k): k is string => !!k),
+    })),
+    steps: d.steps.map((s) => ({
+      id: String(s.id),
+      title: s.title ?? "",
+      body: s.body ?? "",
+      section: s.section != null ? d.sections[s.section]?.key ?? null : null,
+      after: s.after
+        .map((idx) => d.steps[idx]?.id)
+        .filter((id): id is string => id != null)
+        .map(String),
+      media: s.media,
+    })),
+    tools: d.tools.map((t) => ({
+      tool_id: String(t.tool_id),
+      tool_name: t.tool_name ?? "",
+      usage_description: t.usage_description,
+      settings: t.settings,
+    })),
+    refs: d.refs.map((ref) => ({
+      referenced_recipe_id: String(ref.referenced_recipe_id),
+    })),
+  };
+}
 
 export async function loadRecipeEditData(
   query: QueryFn,

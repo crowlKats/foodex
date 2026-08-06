@@ -1,17 +1,12 @@
-import { handler, page } from "./$[id].ts";
+// Legacy recipe drafts (from the old import flows) migrate into an assistant
+// session on open: the draft becomes a user-staged recipe in the session's
+// editor view, and the draft row is consumed. Old draft links keep working
+// until the table drains.
+
+import { handler } from "./$[id].ts";
 import { HttpError } from "fresh/errors";
-import { uniqueSlug } from "../../../lib/slug.ts";
-import type {
-  Ingredient,
-  Media,
-  Recipe,
-  RecipeDraft,
-  Tool,
-} from "../../../db/types.ts";
-import type { OcrRecipeData } from "../../../lib/ocr.ts";
-import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
-import DraftEditor from "../../../islands/DraftEditor.tsx";
-import { BackLink } from "../../../components/BackLink.tsx";
+import type { RecipeDraft } from "../../../db/types.ts";
+import { appendEvent, createSession } from "../../../lib/agent/session.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -22,241 +17,55 @@ export const handlers = handler({
       });
     }
 
-    const draftRes = await ctx.state.db.query<RecipeDraft>(
+    const res = await ctx.state.db.query<RecipeDraft>(
       "SELECT * FROM recipe_drafts WHERE id = $1 AND household_id = $2",
       [ctx.params.id, ctx.state.householdId],
     );
-    if (draftRes.rows.length === 0) throw new HttpError(404);
-    const draft = draftRes.rows[0];
+    if (res.rows.length === 0) throw new HttpError(404);
+    const draft = res.rows[0];
 
-    const [ingredientsRes, allToolsRes, allRecipesRes] = await Promise.all([
-      ctx.state.db.query<Ingredient>(
-        "SELECT id, name, unit FROM ingredients ORDER BY name",
-      ),
-      ctx.state.db.query<Tool>(
-        "SELECT id, name FROM tools ORDER BY name",
-      ),
-      ctx.state.db.query<Recipe>(
-        "SELECT id, title, slug FROM recipes WHERE (private = false OR household_id = $1) ORDER BY title",
-        [ctx.state.householdId],
-      ),
-    ]);
-
-    let coverImage: {
-      id: string;
-      url: string;
-      filename: string;
-      content_type: string;
-    } | null = null;
+    const data = { ...(draft.recipe_data as Record<string, unknown>) };
+    // The extraction shape has no step ids and may carry an OCR crop bbox,
+    // which is not a recipe field.
+    data.steps = (Array.isArray(data.steps) ? data.steps : []).map((s, i) => {
+      const step = s as Record<string, unknown>;
+      return { ...step, id: step.id ?? `tmp_${i}` };
+    });
+    delete data.cover_image;
     if (draft.cover_image_id) {
-      const mediaRes = await ctx.state.db.query<Media>(
-        "SELECT id, url, filename, content_type FROM media WHERE id = $1",
-        [draft.cover_image_id],
+      data.cover_image_id = String(draft.cover_image_id);
+    }
+
+    const title = typeof data.title === "string" && data.title.trim()
+      ? data.title.trim().slice(0, 60)
+      : "Recipe draft";
+
+    let sessionId = "";
+    await ctx.state.db.transaction(async (q) => {
+      const session = await createSession(
+        q,
+        ctx.state.user!.id,
+        ctx.state.householdId!,
+        title,
       );
-      if (mediaRes.rows.length > 0) {
-        const m = mediaRes.rows[0];
-        coverImage = {
-          id: String(m.id),
-          url: m.url,
-          filename: m.filename ?? "",
-          content_type: m.content_type,
-        };
-      }
-    }
-
-    const recipeData = draft.recipe_data as unknown as OcrRecipeData;
-    const title = recipeData?.title;
-    ctx.state.pageTitle = title ? `Draft: ${title}` : "Draft";
-
-    return {
-      data: {
-        draft,
-        recipeData,
-        coverImage,
-        ingredients: ingredientsRes.rows,
-        allTools: allToolsRes.rows,
-        allRecipes: allRecipesRes.rows,
-      },
-    };
-  },
-
-  async POST(ctx) {
-    if (!ctx.state.user || !ctx.state.householdId) {
-      return new Response(null, {
-        status: 303,
-        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
-      });
-    }
-
-    const form = await ctx.req.formData();
-    const draftId = ctx.params.id;
-    const title = form.get("title") as string;
-    const description = form.get("description") as string;
-    const quantityType = (form.get("quantity_type") as string) || "servings";
-    const quantityValue = parseFloat(form.get("quantity_value") as string) || 4;
-    const quantityUnit = (form.get("quantity_unit") as string) || "servings";
-    const quantityValue2Raw = form.get("quantity_value2") as string;
-    const quantityValue2 = quantityValue2Raw
-      ? parseFloat(quantityValue2Raw)
-      : null;
-    const quantityValue3Raw = form.get("quantity_value3") as string;
-    const quantityValue3 = quantityValue3Raw
-      ? parseFloat(quantityValue3Raw)
-      : null;
-    const quantityUnit2 = (form.get("quantity_unit2") as string) || null;
-    const prepTimeRaw = form.get("prep_time") as string;
-    const prepTimeUnit = form.get("prep_time_unit") as string;
-    const prepTime = prepTimeRaw
-      ? Math.round(parseFloat(prepTimeRaw) * (prepTimeUnit === "hr" ? 60 : 1))
-      : null;
-    const cookTimeRaw = form.get("cook_time") as string;
-    const cookTimeUnit = form.get("cook_time_unit") as string;
-    const cookTime = cookTimeRaw
-      ? Math.round(parseFloat(cookTimeRaw) * (cookTimeUnit === "hr" ? 60 : 1))
-      : null;
-    const restTimeRaw = form.get("rest_time") as string;
-    const restTimeUnit = form.get("rest_time_unit") as string;
-    const restTime = restTimeRaw
-      ? Math.round(parseFloat(restTimeRaw) * (restTimeUnit === "hr" ? 60 : 1))
-      : null;
-    const coverImageId = form.get("cover_image_id") as string;
-    const difficulty = (form.get("difficulty") as string) || null;
-    const isPrivate = form.get("private") === "on";
-    const sourceType = (form.get("source_type") as string) || null;
-    const sourceName = (form.get("source_name") as string)?.trim() || null;
-    const sourceUrl = (form.get("source_url") as string)?.trim() || null;
-    const outputIngredientId = (form.get("output_ingredient_id") as string) ||
-      null;
-    const outputAmountRaw = form.get("output_amount") as string;
-    const outputAmount = outputAmountRaw ? parseFloat(outputAmountRaw) : null;
-    const outputUnit = (form.get("output_unit") as string) || null;
-    const outputExpiresDaysRaw = form.get("output_expires_days") as string;
-    const outputExpiresDays = outputExpiresDaysRaw
-      ? parseInt(outputExpiresDaysRaw)
-      : null;
-
-    if (!title?.trim()) {
-      return new Response(null, {
-        status: 303,
-        headers: {
-          Location: `/recipes/drafts/${draftId}?error=${
-            encodeURIComponent("Title is required")
-          }`,
+      sessionId = session.id;
+      await appendEvent(q, session.id, {
+        type: "user_staged",
+        payload: {
+          mutation: {
+            kind: "create_recipe",
+            op: "create",
+            item_id: crypto.randomUUID(),
+            full: data,
+          },
         },
       });
-    }
-
-    const slug = await uniqueSlug(ctx.state.db.query, title);
-
-    try {
-      await ctx.state.db.transaction(async (q) => {
-        const res = await q<{ id: string }>(
-          `INSERT INTO recipes (title, slug, description, quantity_type, quantity_value, quantity_unit, quantity_value2, quantity_value3, quantity_unit2, prep_time, cook_time, rest_time, cover_image_id, difficulty, household_id, private, source_type, source_name, source_url, output_ingredient_id, output_amount, output_unit, output_expires_days)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
-           RETURNING id`,
-          [
-            title.trim(),
-            slug,
-            description?.trim() || null,
-            quantityType,
-            quantityValue,
-            quantityUnit,
-            quantityValue2,
-            quantityValue3,
-            quantityUnit2,
-            prepTime,
-            cookTime,
-            restTime,
-            coverImageId || null,
-            difficulty,
-            ctx.state.householdId,
-            isPrivate,
-            sourceType,
-            sourceName,
-            sourceUrl,
-            outputIngredientId,
-            outputAmount,
-            outputUnit,
-            outputExpiresDays,
-          ],
-        );
-        await saveRecipeChildren(q, res.rows[0].id, form);
-
-        // Delete the draft
-        await q(
-          "DELETE FROM recipe_drafts WHERE id = $1 AND household_id = $2",
-          [draftId, ctx.state.householdId],
-        );
-      });
-    } catch (err) {
-      if (String(err).includes("unique")) {
-        return new Response(null, {
-          status: 303,
-          headers: {
-            Location: `/recipes/drafts/${draftId}?error=${
-              encodeURIComponent(`Slug "${slug}" already exists`)
-            }`,
-          },
-        });
-      }
-      throw err;
-    }
+      await q("DELETE FROM recipe_drafts WHERE id = $1", [draft.id]);
+    });
 
     return new Response(null, {
       status: 303,
-      headers: { Location: `/recipes/${slug}` },
+      headers: { Location: `/agent/${sessionId}` },
     });
   },
 });
-
-export default page(
-  function DraftPage(
-    {
-      data: {
-        draft,
-        recipeData,
-        coverImage,
-        ingredients,
-        allTools,
-        allRecipes,
-      },
-      url,
-    },
-  ) {
-    const error = url.searchParams.get("error");
-
-    return (
-      <div>
-        <BackLink href="/recipes" label="Back to Recipes" />
-
-        <h1 class="text-2xl font-bold mt-4 mb-6">
-          {recipeData.title ? `Draft: ${recipeData.title}` : "New Draft"}
-        </h1>
-
-        {error && <div class="alert-error mb-4">{error}</div>}
-
-        <DraftEditor
-          draftId={draft.id}
-          initialRecipe={recipeData}
-          aiMessages={draft.ai_messages}
-          hasAi={draft.source === "ocr" || draft.source === "generate" ||
-            draft.source === "text"}
-          coverImage={coverImage}
-          ingredients={ingredients.map((g) => ({
-            id: String(g.id),
-            name: g.name,
-            unit: g.unit ?? "",
-          }))}
-          allTools={allTools.map((t) => ({
-            id: String(t.id),
-            name: t.name,
-          }))}
-          allRecipes={allRecipes.map((r) => ({
-            id: String(r.id),
-            title: r.title,
-          }))}
-        />
-      </div>
-    );
-  },
-);

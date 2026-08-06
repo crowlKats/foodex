@@ -7,7 +7,8 @@
 - **Styling:** Tailwind CSS v4 (no rounded corners, `border-2`, sharp cards)
 - **Bundler:** Vite
 - **Icons:** Tabler icons (`tb-icons`)
-- **AI:** Anthropic Claude SDK (OCR, generation, refinement)
+- **AI:** Anthropic Claude SDK (assistant sessions with staging; imports —
+  URL/text/photos — run through the assistant)
 - **Storage:** AWS S3 with presigned URLs
 - **Auth:** GitHub & Google OAuth
 
@@ -34,14 +35,15 @@
 │   ├── duration.ts            # formatDuration(minutes) → "X hr Y min"
 │   ├── format.ts              # CENTRALIZED number formatting: formatAmount, formatCurrency, formatInputValue
 │   ├── form.ts                # Form parsing utilities
-│   ├── generate-recipe.ts     # AI recipe generation orchestration
 │   ├── inventory.ts           # CANONICAL "do we have it?" — matching, availability,
 │   │                          #   consumption planning. Every surface uses this
 │   ├── pantry.ts              # The only writer of stock: ledger + balance
 │   ├── plan.ts                # Meal plan, cooking, suggestions
 │   ├── shopping-list.ts       # Demand → line projection, buying
 │   ├── markdown.ts            # Server-side step rendering (marked + template eval + @step/@recipe/@timer)
-│   ├── ocr.ts                 # OCR extraction via Claude (OcrRecipeData interface)
+│   ├── recipe-data.ts         # OcrRecipeData extraction-output shape
+│   ├── image-downscale.ts     # Client-side photo re-encode + upload (islands only)
+│   ├── agent/                 # Assistant: event log, staging, tools, turn loop
 │   ├── quantity.ts            # RecipeQuantity types, computeScaleRatio, formatQuantity
 │   ├── recipe-prompt.ts       # JSON schema + rules for AI recipe output
 │   ├── recipe-save.ts         # saveRecipeChildren() — bulk save ingredients/tools/steps/refs/tags
@@ -67,21 +69,21 @@
 │   ├── ConfirmButton.tsx
 │   ├── CopyButton.tsx
 │   ├── DarkModeToggle.tsx
-│   ├── DraftEditor.tsx        # Draft editing with AI refinement
+│   ├── AgentSession.tsx       # Assistant chat + staged-recipe workbench
+│   ├── RecipeFields.tsx       # THE shared recipe edit form (new/edit/agent)
+│   ├── ImportStart.tsx        # Chatless import entry (URL/text/photos → session)
 │   ├── FavoriteButton.tsx
-│   ├── GenerateRecipe.tsx     # AI recipe generation UI
+│   ├── GenerateRecipe.tsx     # Generate-from-pantry (seeds an agent session)
 │   ├── ImageCrop.tsx
 │   ├── ImageLightbox.tsx
 │   ├── IngredientForm.tsx     # Dynamic ingredient list editor
 │   ├── IngredientUnitFields.tsx
 │   ├── MediaUpload.tsx
 │   ├── MultiSearchSelect.tsx
-│   ├── OcrUpload.tsx
 │   ├── PantryManager.tsx      # Pantry CRUD with expiration warnings
 │   ├── QuantityInput.tsx      # Servings/weight/volume/dimensions input
 │   ├── RecipePreview.tsx      # Live markdown preview
 │   ├── RecipeView.tsx         # Recipe display: scaling, timers, pantry check, cost, shopping list
-│   ├── RefineInput.tsx
 │   ├── SearchSelect.tsx
 │   ├── SharedShoppingList.tsx
 │   ├── ShoppingListView.tsx
@@ -102,12 +104,12 @@
 │   ├── recipes/
 │   │   ├── index.tsx          # List with search, favorites, cookable filter, pagination
 │   │   ├── new.tsx            # Create form + POST handler
-│   │   ├── import/index.tsx   # Import from images (OCR)
+│   │   ├── import/index.tsx   # Chatless import (URL/text/photos → agent session)
 │   │   ├── [slug]/
 │   │   │   ├── index.tsx      # View (SSR + RecipeView island) + DELETE handler
 │   │   │   ├── edit.tsx       # Edit form + POST handler
 │   │   │   └── clone.tsx      # POST-only clone handler
-│   │   └── drafts/[id].tsx    # Draft edit + publish
+│   │   └── drafts/[id].tsx    # Legacy draft → agent session migration (303)
 │   │
 │   ├── ingredients/
 │   │   ├── index.tsx          # List with pagination
@@ -135,14 +137,10 @@
 │   └── api/
 │       ├── recipes/favorite.tsx
 │       ├── recipes/[slug]/render.tsx
-│       ├── drafts.tsx
-│       ├── drafts/[id].tsx
-│       ├── generate-recipe.tsx
-│       ├── refine-recipe.tsx
+│       ├── agent/…            # Sessions, messages (SSE), staging, rollback
 │       ├── shopping-list.tsx
 │       ├── shopping-list-shared.tsx
 │       ├── pantry.tsx         # add, update, remove, deduct_recipe actions
-│       ├── ocr.tsx
 │       ├── upload.tsx
 │       └── media/{[id],[key]}.tsx
 │
@@ -269,18 +267,25 @@ Processing order: template eval → @step/@recipe resolution → marked parse �
 
 ## Recipe Field Touch Points
 
+There is ONE recipe edit form — `islands/RecipeFields.tsx` — used by
+`/recipes/new`, `/recipes/[slug]/edit`, and the agent session workbench.
+All imports (URL / text / photos) run through the assistant
+(`/recipes/import` seeds a session; `lib/agent/*` stages the recipe).
+
 Adding a new recipe-level field requires changes in:
 
 1. **Migration** — `db/migrations/NNN_*.sql`
 2. **Type** — `db/types.ts` Recipe interface
-3. **Create** — `routes/recipes/new.tsx` (form + INSERT)
-4. **Edit** — `routes/recipes/[slug]/edit.tsx` (form + UPDATE)
-5. **View** — `routes/recipes/[slug]/index.tsx` (display)
-6. **List** — `routes/recipes/index.tsx` (display in cards)
-7. **Clone** — `routes/recipes/[slug]/clone.tsx` (copy in INSERT)
-8. **Draft editor** — `islands/DraftEditor.tsx` (form + formDataToRecipeData)
-9. **Draft publish** — `routes/recipes/drafts/[id].tsx` (extract + INSERT)
-10. **OCR interface** — `lib/ocr.ts` (OcrRecipeData interface)
+3. **Form** — `islands/RecipeFields.tsx` (the one shared editor)
+4. **Form round-trip** — `lib/recipe-form-data.ts` (FormData → recipe data)
+5. **Create** — `routes/recipes/new.tsx` (POST scalar extraction)
+6. **Edit** — `routes/recipes/[slug]/edit.tsx` (POST scalar extraction) +
+   `lib/recipe-edit-data.ts` (load + `editDataToRecipeFields`)
+7. **View** — `routes/recipes/[slug]/index.tsx` (display)
+8. **List** — `routes/recipes/index.tsx` (display in cards)
+9. **Clone** — `routes/recipes/[slug]/clone.tsx` (copy in INSERT)
+10. **Agent shape** — `lib/agent/recipe.ts` (AgentRecipe + SCALAR_COLS +
+    loaders/writers)
 11. **AI prompt** — `lib/recipe-prompt.ts` (JSON schema + field rules)
 
 ## Key Conventions

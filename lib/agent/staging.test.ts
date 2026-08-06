@@ -183,3 +183,33 @@ Deno.test("foldStaging: discard and apply remove from pending", () => {
   assertEquals(map.get("b")!.status, "applied");
   assertEquals(pendingItems(map).length, 0);
 });
+
+Deno.test("foldStaging: user_staged creates a pending item like a tool create", () => {
+  const events = log(
+    {
+      type: "user_staged",
+      payload: {
+        mutation: {
+          op: "create",
+          kind: "create_recipe",
+          item_id: "d1",
+          full: { title: "Migrated Draft", ingredients: [], steps: [] },
+        },
+      },
+    },
+    {
+      type: "user_edit",
+      payload: {
+        item_id: "d1",
+        ops: [{ op: "set", path: "title", value: "Renamed" }],
+      },
+    },
+  );
+  const map = foldStaging(events);
+  const it = map.get("d1")!;
+  assertEquals(it.status, "pending");
+  assertEquals(it.kind, "create_recipe");
+  assertEquals(effective(it).title, "Renamed");
+  assertEquals(agentProposal(it).title, "Migrated Draft");
+  assertEquals(pendingItems(map).length, 1);
+});

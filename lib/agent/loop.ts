@@ -11,9 +11,10 @@ import type { QueryFn } from "../../db/mod.ts";
 import type { AgentSession } from "../../db/types.ts";
 import type { AgentEvent, AgentEventBody } from "./events.ts";
 import { appendEvent, loadEvents } from "./session.ts";
-import { foldConversation } from "./conversation.ts";
+import { foldConversation, type PendingImageBlock } from "./conversation.ts";
 import { executeTool, TOOLS } from "./tools.ts";
 import { buildSystemPrompt } from "./system-prompt.ts";
+import { getFile } from "../s3.ts";
 
 // A fast, low-cost model with no extended thinking: recipe staging is largely a
 // mechanical data transform, not deep reasoning. (Haiku 4.5 does not support
@@ -53,6 +54,66 @@ export interface RunTurnOpts {
   emit: (ev: TurnEvent) => void | Promise<void>;
 }
 
+// ── attached images ─────────────────────────────────────────────────
+
+async function loadBase64(key: string): Promise<string | null> {
+  const f = await getFile(key);
+  if (!f) return null;
+  const bytes = new Uint8Array(await new Response(f.body).arrayBuffer());
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+
+/**
+ * Replace the fold's `foodex_image` placeholder blocks with base64 image
+ * blocks read from S3. `cache` spans the steps of one turn, so each image is
+ * fetched at most once per turn.
+ */
+async function resolveImageBlocks(
+  messages: Anthropic.MessageParam[],
+  cache: Map<string, string | null>,
+): Promise<Anthropic.MessageParam[]> {
+  const out: Anthropic.MessageParam[] = [];
+  for (const m of messages) {
+    if (typeof m.content === "string") {
+      out.push(m);
+      continue;
+    }
+    const blocks: Anthropic.ContentBlockParam[] = [];
+    for (const b of m.content) {
+      if ((b as { type: string }).type !== "foodex_image") {
+        blocks.push(b as Anthropic.ContentBlockParam);
+        continue;
+      }
+      const img = b as unknown as PendingImageBlock;
+      let data = cache.get(img.key);
+      if (data === undefined) {
+        data = await loadBase64(img.key);
+        cache.set(img.key, data);
+      }
+      blocks.push(
+        data == null
+          ? { type: "text", text: "[attached image is no longer available]" }
+          : {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: img
+                .content_type as Anthropic.Base64ImageSource["media_type"],
+              data,
+            },
+          },
+      );
+    }
+    out.push({ ...m, content: blocks });
+  }
+  return out;
+}
+
 function summarize(content: unknown, isError: boolean): string {
   const s = typeof content === "string" ? content : JSON.stringify(content);
   const short = s.length > 200 ? s.slice(0, 200) + "…" : s;
@@ -73,7 +134,10 @@ export async function generateChatTitle(
   const parts: string[] = [];
   for (const ev of events) {
     if (ev.type === "user_message") {
-      parts.push(`User: ${ev.payload.text}`);
+      const photos = (ev.payload.images?.length ?? 0) > 0
+        ? " [attached photos]"
+        : "";
+      parts.push(`User: ${ev.payload.text}${photos}`);
     } else if (ev.type === "assistant_message") {
       const text = (ev.payload.content as Anthropic.ContentBlock[])
         .filter((b): b is Anthropic.TextBlock => b.type === "text")
@@ -126,10 +190,15 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
   // never hangs on a spinner without explanation.
   try {
     let events = await loadEvents(db.query, session.id, session.head_seq);
+    const imageCache = new Map<string, string | null>();
 
     for (let step = 0; step < MAX_STEPS; step++) {
-      const { apiMessages } = foldConversation(events);
-      if (apiMessages.length === 0) return;
+      const folded = foldConversation(events);
+      if (folded.apiMessages.length === 0) return;
+      const apiMessages = await resolveImageBlocks(
+        folded.apiMessages,
+        imageCache,
+      );
 
       // Stream the model's response, emitting text token deltas as they arrive;
       // `finalMessage()` assembles the complete message (content blocks, usage,

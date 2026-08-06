@@ -257,29 +257,6 @@ export const CollectionRecipesBody = z.object({
   recipe_id: uuid,
 });
 
-// ── Drafts ─────────────────────────────────────────────────────────
-
-export const DraftCreateBody = z.object({
-  recipe_data: z.record(z.unknown()).optional(),
-  ai_messages: z.array(z.unknown()).optional(),
-  ai_thinking: z.string().nullable().optional(),
-  cover_image_id: optionalUuid,
-  source: z.enum(["manual", "ocr", "generate", "url", "text"]).optional(),
-  source_url: z.string().optional(),
-});
-
-export const ImportTextBody = z.object({
-  text: z.string().min(20).max(20000),
-  context: z.string().max(500).optional(),
-});
-
-export const DraftUpdateBody = z.object({
-  recipe_data: z.record(z.unknown()).optional(),
-  ai_messages: z.array(z.unknown()).optional(),
-  ai_thinking: z.string().nullable().optional(),
-  cover_image_id: optionalUuid,
-});
-
 // ── Barcode ────────────────────────────────────────────────────────
 
 export const BarcodeQuery = z.object({

@@ -18,13 +18,15 @@ export function SubGroup(
  * Page title with its actions beside it, matching how `PageHeader` pairs a
  * `text-2xl` title with buttons on the index pages.
  */
-export function FormActions({ title }: { title: string }) {
+export function FormActions(
+  { title, submitLabel = "Save" }: { title: string; submitLabel?: string },
+) {
   return (
     <div class="form-actions">
       <h1 class="text-2xl font-bold truncate">{title}</h1>
       <div class="flex gap-2 shrink-0 items-center">
         <RecipePreview />
-        <RecipeSubmitButton label="Save" />
+        <RecipeSubmitButton label={submitLabel} />
       </div>
     </div>
   );

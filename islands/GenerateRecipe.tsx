@@ -5,6 +5,7 @@ import { Button } from "../components/Button.tsx";
 import { Input, InputBar, InputMultiline } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
 
+/** Seeds an assistant session with a generate-from-pantry request and opens it. */
 export default function GenerateRecipe() {
   const maxTime = useSignal("");
   const maxTimeUnit = useSignal("min");
@@ -22,37 +23,27 @@ export default function GenerateRecipe() {
     generating.value = true;
     error.value = null;
 
-    try {
-      const res = await fetch("/api/generate-recipe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          max_minutes: getMaxMinutes(),
-          instructions: instructions.value.trim() || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Generation failed");
-      }
+    const parts = [
+      "Look at my pantry and create a new recipe from what's on hand, " +
+      "prioritizing items that expire soon.",
+    ];
+    const max = getMaxMinutes();
+    if (max) {
+      parts.push(`Total time (prep + cook) must stay under ${max} minutes.`);
+    }
+    if (instructions.value.trim()) {
+      parts.push(`Additional instructions: ${instructions.value.trim()}`);
+    }
 
-      // Create draft and redirect to editor
-      const draftRes = await fetch("/api/drafts", {
+    try {
+      const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipe_data: data.recipe,
-          ai_messages: [{
-            role: "assistant",
-            content: JSON.stringify(data.recipe),
-            thinking: data.thinking ?? undefined,
-          }],
-          ai_thinking: data.thinking ?? null,
-          source: "generate",
-        }),
+        body: JSON.stringify({ message: { text: parts.join("\n") } }),
       });
-      const draft = await draftRes.json();
-      globalThis.location.href = `/recipes/drafts/${draft.id}`;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Generation failed");
+      globalThis.location.href = `/agent/${data.id}?start=1`;
     } catch (err) {
       error.value = (err as Error).message;
       generating.value = false;
@@ -65,9 +56,8 @@ export default function GenerateRecipe() {
         <div class="flex flex-col items-center justify-center py-8 gap-3">
           <IconLoader2 class="size-10 text-orange-600 animate-spin" />
           <p class="text-sm font-medium">
-            Generating recipe from your pantry...
+            Starting the assistant…
           </p>
-          <p class="text-xs text-stone-500">This may take a few seconds.</p>
         </div>
       </div>
     );
@@ -80,7 +70,7 @@ export default function GenerateRecipe() {
         Generate Recipe from Pantry
       </h2>
       <p class="text-sm text-stone-500">
-        AI will suggest a recipe based on what you have on hand.
+        The assistant suggests a recipe based on what you have on hand.
       </p>
 
       {error.value && <div class="alert-error">{error.value}</div>}

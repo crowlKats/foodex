@@ -411,7 +411,7 @@
    rather than straddling it — straddling needs a background matching whatever
    is behind, which only held while these lived inside a card. */
 .subgroup {
-  @apply border-t-2 border-stone-200 dark:border-stone-800 pt-3 mt-4;
+  @apply border-t-2 border-stone-200 dark:border-stone-800 pt-5 mt-8;
 }
 
 /* A rule is a separator, so the first band in a panel doesn't need one —
@@ -425,9 +425,45 @@
     text-stone-400 dark:text-stone-500 select-none;
 }
 
+/* ── Checkboxes ── */
+/* The native input keeps the semantics (form value, keyboard, a11y) but is
+   visually replaced by a sharp-cornered box that fills orange when checked —
+   the OS-native widget was the one control that ignored the app's border-2
+   look. See `components/Checkbox.tsx`. */
+.checkbox {
+  @apply inline-flex items-center gap-2 w-fit cursor-pointer select-none;
+}
+.checkbox input {
+  @apply sr-only;
+}
+.checkbox-box {
+  @apply size-4 shrink-0 flex items-center justify-center border-2
+    border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800
+    text-white transition-colors duration-75;
+}
+.checkbox-box svg {
+  @apply opacity-0 transition-opacity duration-75;
+}
+.checkbox input:checked + .checkbox-box {
+  @apply bg-orange-600 border-orange-600;
+}
+.checkbox input:checked + .checkbox-box svg {
+  @apply opacity-100;
+}
+.checkbox input:focus-visible + .checkbox-box {
+  @apply border-orange-600 dark:border-orange-500;
+}
+.checkbox input:disabled + .checkbox-box {
+  @apply opacity-50;
+}
+.checkbox:hover .checkbox-box {
+  @apply border-orange-400;
+}
+
 /* Radio-driven tabs: no island, and every panel stays in the DOM so one
-   submit still posts the whole form. `islands/TabValidation.tsx` reveals the
-   panel holding a field that fails validation. */
+   submit still posts the whole form. The invalid-capture effect inside
+   `islands/RecipeFields.tsx` reveals the panel holding a field that fails
+   validation. */
 .edit-tab-radio {
   @apply hidden;
 }
@@ -446,7 +482,6 @@
     border-b-2 border-transparent text-stone-500 dark:text-stone-400
     cursor-pointer select-none hover:text-stone-900 dark:hover:text-stone-100;
 }
-
 
 .edit-panel {
   display: none;
@@ -484,6 +519,12 @@
 .form-row select,
 .form-row textarea,
 .form-row [data-highlightable-textarea] {
+  @apply bg-white dark:bg-stone-900;
+}
+
+/* The checkbox's visible box is a span, so the input rule above misses it —
+   without this it sits flush on the row tint (identical in dark mode). */
+.form-row .checkbox-box {
   @apply bg-white dark:bg-stone-900;
 }
 
