@@ -35,7 +35,15 @@ export const handlers = handler({
 
     const key = `uploads/${crypto.randomUUID()}.${ext}`;
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const url = await uploadFile(key, bytes, file.type);
+    let url: string;
+    try {
+      url = await uploadFile(key, bytes, file.type);
+    } catch (e) {
+      // Surface storage failures as JSON (misconfigured/unreachable S3) —
+      // an uncaught throw would render the HTML error page instead.
+      console.error("upload: storage write failed:", e);
+      return Response.json({ error: "Storage upload failed" }, { status: 502 });
+    }
 
     const result = await ctx.state.db.query(
       `INSERT INTO media (key, url, content_type, filename, size_bytes, household_id)

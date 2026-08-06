@@ -43,8 +43,15 @@ export async function uploadImages(files: File[]): Promise<string[]> {
     const fd = new FormData();
     fd.append("file", blob, "photo.jpg");
     const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Image upload failed");
-    ids.push(String((await res.json()).id));
+    // Never trust the body blindly: server errors can come back as HTML
+    // (the dev server even serves its error page with a 200 status).
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.id) {
+      throw new Error(
+        data?.error ?? `Image upload failed (HTTP ${res.status})`,
+      );
+    }
+    ids.push(String(data.id));
   }
   return ids;
 }

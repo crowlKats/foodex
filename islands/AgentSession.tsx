@@ -28,7 +28,7 @@ import { UNIT_GROUPS } from "../lib/units.ts";
 import RecipeFields from "./RecipeFields.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import { formDataToRecipeData } from "../lib/recipe-form-data.ts";
-import { downscaleImage } from "../lib/image-downscale.ts";
+import { uploadImages } from "../lib/image-downscale.ts";
 
 interface IngredientOption {
   id: string;
@@ -322,15 +322,7 @@ export default function AgentSession(props: Props) {
     // Cover the upload window too, so a second send can't race the first.
     setTurnActive(true);
     try {
-      const ids: string[] = [];
-      for (const a of atts) {
-        const blob = await downscaleImage(a.file);
-        const fd = new FormData();
-        fd.append("file", blob, "photo.jpg");
-        const res = await fetch("/api/upload", { method: "POST", body: fd });
-        if (!res.ok) throw new Error("Image upload failed");
-        ids.push(String((await res.json()).id));
-      }
+      const ids = await uploadImages(atts.map((a) => a.file));
       await runStream(
         ids.length > 0 ? { text, images: ids } : { text },
       );
