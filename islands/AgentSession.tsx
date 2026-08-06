@@ -421,21 +421,37 @@ export default function AgentSession(props: Props) {
     }
   }
   async function applyItem(id: string) {
-    const r = await postStaging({ action: "apply", item_ids: [id] });
+    // The workbench Apply saves the whole proposal, not just the recipe: the
+    // staged ingredient entities go with it, applied first so the recipe's
+    // lines resolve to the rows they create. Without this, an ingredient
+    // *edit* would be silently left behind — the recipe's link resolution
+    // only creates missing ingredients, it never applies changes to
+    // existing ones.
+    const ingredientIds = staging
+      .filter((it) =>
+        (it.kind === "create_ingredient" || it.kind === "edit_ingredient") &&
+        it.id !== id && !conflicts[it.id]
+      )
+      .map((it) => it.id);
+    const r = await postStaging({
+      action: "apply",
+      item_ids: [...ingredientIds, id],
+    });
     if (!r) return;
     // Applying a recipe from the workbench lands on the recipe itself —
-    // the session stays in the conversation list for later.
+    // the session stays in the conversation list for later. Stay here if
+    // anything conflicted, so the conflict is seen rather than abandoned.
     const done = (r.applied_results ?? []).find(
       (a: Any) => a.item_id === id,
     );
-    if (done?.result?.slug) {
+    if (done?.result?.slug && (r.conflicts?.length ?? 0) === 0) {
       globalThis.location.href = `/recipes/${done.result.slug}`;
       return;
     }
     setStaging(r.items);
     setConflicts((c) => {
       const next = { ...c };
-      delete next[id];
+      for (const a of r.applied ?? []) delete next[a];
       for (const conf of r.conflicts ?? []) {
         next[conf.item_id] = {
           conflict_paths: conf.conflict_paths,
