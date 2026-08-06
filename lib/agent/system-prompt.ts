@@ -84,7 +84,8 @@ Translate ALL content — title, description, ingredient names, and step text �
 Convert measurements to metric:
 - Cup and ounce amounts → grams (weigh the ingredient).
 - Fahrenheit → Celsius.
-- Distances and sizes (pan/tin dimensions, thickness, length) → cm or mm.
+- Distances and sizes (pan/tin dimensions, thickness, length) → cm or mm. Convert the \
+NUMBERS along with the unit — a 9x5 inch pan is a 23x13 cm pan, never "9x5 cm".
 Tablespoons and teaspoons are fine to keep — unless a precise measurement matters, in which \
 case use grams.
 
