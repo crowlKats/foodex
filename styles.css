@@ -522,6 +522,12 @@
   @apply bg-white dark:bg-stone-900;
 }
 
+/* The checkbox's visible box is a span, so the input rule above misses it —
+   without this it sits flush on the row tint (identical in dark mode). */
+.form-row .checkbox-box {
+  @apply bg-white dark:bg-stone-900;
+}
+
 /* Static `{{`/`}}` braces flanking a template-key input, so the field reads
    as the thing you type into steps without needing a caption. */
 .input-affix {
