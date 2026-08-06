@@ -2264,7 +2264,7 @@ function WorkbenchPane(p: WorkbenchProps) {
           </div>
         </div>
       </div>
-      <div class="flex-1 min-h-0 overflow-y-auto p-4">
+      <div class="flex-1 min-h-0 overflow-y-auto p-4 pb-16">
         <div
           class="max-w-3xl mx-auto space-y-4"
           onChange={(e) => {

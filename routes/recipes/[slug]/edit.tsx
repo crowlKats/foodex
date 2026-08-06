@@ -201,7 +201,7 @@ export default page(function RecipeEdit({ data }) {
       }
       <BackLink href={`/recipes/${slug}`} label="Back to Recipe" />
 
-      <form id="recipe-edit-form" method="POST" class="space-y-6">
+      <form id="recipe-edit-form" method="POST" class="space-y-6 pb-16">
         <FormActions title={`Edit: ${d.recipe.title}`} />
 
         <RecipeFields

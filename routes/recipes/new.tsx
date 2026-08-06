@@ -193,7 +193,7 @@ export default page(
       <div>
         <BackLink href="/recipes" label="Back to Recipes" />
 
-        <form method="POST" class="space-y-6 mt-4">
+        <form method="POST" class="space-y-6 mt-4 pb-16">
           <FormActions title="New Recipe" submitLabel="Create Recipe" />
           <p class="text-sm -mt-4">
             <a href="/recipes/import" class="link">
