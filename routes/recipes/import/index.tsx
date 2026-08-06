@@ -1,9 +1,7 @@
 import { handler, page } from "./$index.ts";
 import type { RecipeDraft } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
-import OcrUpload from "../../../islands/OcrUpload.tsx";
-import UrlImport from "../../../islands/UrlImport.tsx";
-import TextImport from "../../../islands/TextImport.tsx";
+import ImportStart from "../../../islands/ImportStart.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -45,24 +43,13 @@ export default page(function ImportIndexPage({ data }) {
     <div>
       <BackLink href="/recipes" label="Back to Recipes" />
 
-      <h1 class="text-2xl font-bold mt-4 mb-6">Import Recipe</h1>
+      <h1 class="text-2xl font-bold mt-4 mb-2">Import Recipe</h1>
+      <p class="text-sm text-stone-500 mb-6">
+        Paste a URL, recipe text, or photos — any combination. The recipe is
+        extracted and opened in the editor for you to review and save.
+      </p>
 
-      <div class="space-y-8">
-        <section>
-          <h2 class="text-lg font-semibold mb-3">From URL</h2>
-          <UrlImport />
-        </section>
-
-        <section>
-          <h2 class="text-lg font-semibold mb-3">From Image</h2>
-          <OcrUpload />
-        </section>
-
-        <section>
-          <h2 class="text-lg font-semibold mb-3">From Text</h2>
-          <TextImport />
-        </section>
-      </div>
+      <ImportStart />
 
       {data.drafts.length > 0 && (
         <div class="mt-8">

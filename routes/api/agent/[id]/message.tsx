@@ -10,6 +10,7 @@ import {
   runTurn,
   type TurnEvent,
 } from "../../../../lib/agent/loop.ts";
+import { resolveAttachedImages } from "../../../../lib/agent/attachments.ts";
 import { acquireTurn, releaseTurn } from "../../../../lib/agent/lock.ts";
 import { rateLimit } from "../../../../lib/rate-limit.ts";
 
@@ -33,6 +34,7 @@ export const handlers = handler({
 
     const body = await ctx.req.json().catch(() => ({})) as {
       text?: string;
+      images?: string[];
       mode?: string;
     };
 
@@ -47,15 +49,28 @@ export const handlers = handler({
         // just run the turn over the existing log.
       } else {
         const text = String(body.text ?? "").trim();
-        if (!text) {
+        const imageIds = Array.isArray(body.images)
+          ? body.images.map(String).filter(Boolean)
+          : [];
+        if (!text && imageIds.length === 0) {
           releaseTurn(session.id);
-          return json({ error: "text is required" }, 400);
+          return json({ error: "text or images is required" }, 400);
         }
+        const resolved = await resolveAttachedImages(
+          ctx.state.db.query,
+          session.household_id,
+          imageIds,
+        );
+        if ("error" in resolved) {
+          releaseTurn(session.id);
+          return json({ error: resolved.error }, 400);
+        }
+        const images = resolved.images;
         await appendEvent(ctx.state.db.query, session.id, {
           type: "user_message",
-          payload: { text },
+          payload: images.length > 0 ? { text, images } : { text },
         });
-        if (session.title === "New chat") {
+        if (session.title === "New chat" && text) {
           await setSessionTitle(
             ctx.state.db.query,
             session.id,

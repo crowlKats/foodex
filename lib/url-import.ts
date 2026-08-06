@@ -1,4 +1,4 @@
-import type { OcrRecipeData } from "./ocr.ts";
+import type { OcrRecipeData } from "./recipe-data.ts";
 
 /** Schema.org Recipe JSON-LD (partial, fields we care about). */
 interface SchemaRecipe {

@@ -6,8 +6,20 @@
 // prepended to the next user turn, computed from the point-in-time staging state.
 
 import type Anthropic from "@anthropic-ai/sdk";
-import type { AgentEvent, StagedKind } from "./events.ts";
+import type { AgentEvent, StagedKind, UserMessageImage } from "./events.ts";
 import { effective, foldStaging, type StagedItem } from "./staging.ts";
+
+/**
+ * Placeholder block for an attached image. The fold is pure and cannot read
+ * S3, so it emits these markers; the turn loop resolves them into base64
+ * image blocks just before calling the API (see resolveImageBlocks).
+ */
+export interface PendingImageBlock {
+  type: "foodex_image";
+  media_id: string;
+  key: string;
+  content_type: string;
+}
 
 /**
  * The change a single stage tool call made, as a before/after snapshot: the
@@ -23,7 +35,11 @@ export interface StagedDiff {
 }
 
 export type TimelineEntry =
-  | { kind: "user"; text: string }
+  | {
+    kind: "user";
+    text: string;
+    images?: { media_id: string; url: string }[];
+  }
   | { kind: "assistant"; content: Anthropic.ContentBlock[] }
   | {
     kind: "tool_result";
@@ -36,7 +52,7 @@ export type TimelineEntry =
   | { kind: "notice"; text: string }
   | {
     kind: "user_action";
-    action: "applied" | "discarded" | "edited" | "reverted";
+    action: "applied" | "discarded" | "edited" | "reverted" | "staged";
     items: string[];
   };
 
@@ -122,7 +138,7 @@ export function foldConversation(events: AgentEvent[]): Conversation {
   // Record a user action (apply/discard/edit/revert) in the chat, grouping a run
   // of the same action into one compact block.
   const pushAction = (
-    action: "applied" | "discarded" | "edited" | "reverted",
+    action: "applied" | "discarded" | "edited" | "reverted" | "staged",
     line: string,
   ) => {
     const last = timeline[timeline.length - 1];
@@ -149,9 +165,34 @@ export function foldConversation(events: AgentEvent[]): Conversation {
         if (notice.display) {
           timeline.push({ kind: "notice", text: notice.display });
         }
-        content.push({ type: "text", text: ev.payload.text });
+        const images: UserMessageImage[] = ev.payload.images ?? [];
+        for (const img of images) {
+          // The media id is stated in text so the model can reference the
+          // image (e.g. set it as a recipe's cover_image_id).
+          content.push({
+            type: "text",
+            text: `Attached image (media id: ${img.media_id}):`,
+          });
+          content.push(
+            {
+              type: "foodex_image",
+              media_id: img.media_id,
+              key: img.key,
+              content_type: img.content_type,
+            } satisfies PendingImageBlock as unknown as Anthropic.ContentBlockParam,
+          );
+        }
+        if (ev.payload.text) {
+          content.push({ type: "text", text: ev.payload.text });
+        }
         apiMessages.push({ role: "user", content });
-        timeline.push({ kind: "user", text: ev.payload.text });
+        timeline.push({
+          kind: "user",
+          text: ev.payload.text,
+          images: images.length > 0
+            ? images.map((im) => ({ media_id: im.media_id, url: im.url }))
+            : undefined,
+        });
         break;
       }
       case "assistant_message": {
@@ -231,6 +272,10 @@ export function foldConversation(events: AgentEvent[]): Conversation {
         });
         break;
       }
+      case "user_staged":
+        touchedSinceTurn.add(ev.payload.mutation.item_id);
+        pushAction("staged", lineFor(i, ev.payload.mutation.item_id));
+        break;
       case "user_edit":
         touchedSinceTurn.add(ev.payload.item_id);
         pushAction("edited", lineFor(i, ev.payload.item_id));

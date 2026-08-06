@@ -2,29 +2,10 @@ import { handler, page } from "./$new.ts";
 import { uniqueSlug } from "../../lib/slug.ts";
 import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
 import { saveRecipeChildren } from "../../lib/recipe-save.ts";
-import QuantityInput from "../../islands/QuantityInput.tsx";
-import IngredientForm from "../../islands/IngredientForm.tsx";
-import ToolForm from "../../islands/ToolForm.tsx";
-import StepForm from "../../islands/StepForm.tsx";
-import MediaUpload from "../../islands/MediaUpload.tsx";
+import RecipeFields from "../../islands/RecipeFields.tsx";
 import RecipePreview from "../../islands/RecipePreview.tsx";
-import MultiSearchSelect from "../../islands/MultiSearchSelect.tsx";
+import RecipeSubmitButton from "../../islands/RecipeSubmitButton.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
-import { FormField } from "../../components/FormField.tsx";
-import { SectionHeader } from "../../components/SectionHeader.tsx";
-import { Button } from "../../components/Button.tsx";
-import { Input, InputMultiline } from "../../components/Input.tsx";
-import { Select } from "../../components/Select.tsx";
-import { DurationInput } from "../../components/DurationInput.tsx";
-import RecipeOutputForm from "../../islands/RecipeOutputForm.tsx";
-import { RefForm } from "../../components/RefForm.tsx";
-import {
-  DIETARY_TAGS,
-  DIFFICULTY_LEVELS,
-  MEAL_TYPES,
-  SOURCE_TYPE_LABELS,
-  SOURCE_TYPES,
-} from "../../lib/recipe-tags.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -52,6 +33,7 @@ export const handlers = handler({
         ingredients: ingredientsRes.rows,
         allTools: allToolsRes.rows,
         allRecipes: allRecipesRes.rows,
+        error: null as string | null,
       },
     };
   },
@@ -172,15 +154,6 @@ export const handlers = handler({
           ],
         );
         await saveRecipeChildren(q, res.rows[0].id, form);
-
-        // Delete draft if this was created from one
-        const draftId = form.get("draft_id") as string;
-        if (draftId) {
-          await q(
-            "DELETE FROM recipe_drafts WHERE id = $1 AND household_id = $2",
-            [draftId, ctx.state.householdId],
-          );
-        }
       });
     } catch (err) {
       if (String(err).includes("unique")) {
@@ -215,7 +188,7 @@ export const handlers = handler({
 
 export default page(
   function NewRecipePage(
-    { data: { ingredients, allTools, allRecipes } },
+    { data: { ingredients, allTools, allRecipes, error } },
   ) {
     return (
       <div>
@@ -224,159 +197,32 @@ export default page(
         <div class="flex items-center gap-4 mt-4 mb-6">
           <h1 class="text-2xl font-bold">New Recipe</h1>
           <a href="/recipes/import" class="link text-sm">
-            or import from image
+            or import from URL, text or photos
           </a>
         </div>
 
         <form method="POST" class="space-y-6">
-          <div class="card">
-            <SectionHeader title="Cover Image" />
-            <MediaUpload name="cover_image_id" accept="image/*" />
-          </div>
+          {error && <div class="alert-error">{error}</div>}
 
-          <div class="card space-y-3">
-            <SectionHeader title="Details" />
-            <FormField label="Title">
-              <Input
-                type="text"
-                name="title"
-                required
-                class="w-full"
-              />
-            </FormField>
-            <FormField label="Description">
-              <InputMultiline
-                name="description"
-                rows={2}
-                class="w-full"
-              />
-            </FormField>
-            <QuantityInput />
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-              <DurationInput name="prep_time" label="Prep time" />
-              <DurationInput name="cook_time" label="Cook time" />
-              <DurationInput name="rest_time" label="Rest time" />
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <FormField label="Difficulty">
-                <Select name="difficulty" class="w-full">
-                  <option value="">—</option>
-                  {DIFFICULTY_LEVELS.map((d) => (
-                    <option key={d} value={d} class="capitalize">
-                      {d[0].toUpperCase() + d.slice(1)}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-              <FormField label="Meal Type">
-                <MultiSearchSelect
-                  name="meal_type"
-                  options={[...MEAL_TYPES]}
-                  placeholder="Search meal types..."
-                />
-              </FormField>
-              <FormField label="Dietary">
-                <MultiSearchSelect
-                  name="dietary"
-                  options={[...DIETARY_TAGS]}
-                  placeholder="Search dietary tags..."
-                />
-              </FormField>
-            </div>
-            <label class="flex items-center gap-2 mt-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="private"
-                class="size-4 accent-orange-600"
-              />
-              <span class="text-sm">
-                Private (only visible to household members)
-              </span>
-            </label>
-            <FormField label="Source">
-              <Select name="source_type" class="w-full" id="source_type">
-                <option value="">—</option>
-                {SOURCE_TYPES.map((s) => (
-                  <option key={s} value={s}>
-                    {SOURCE_TYPE_LABELS[s]}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormField label="Source Name">
-                <Input
-                  type="text"
-                  name="source_name"
-                  placeholder="e.g. Book title, website name, person's name"
-                  class="w-full"
-                />
-              </FormField>
-              <FormField label="Source URL">
-                <Input
-                  type="url"
-                  name="source_url"
-                  placeholder="https://..."
-                  class="w-full"
-                />
-              </FormField>
-            </div>
-          </div>
-
-          <div class="card">
-            <SectionHeader title="Ingredients" />
-            <IngredientForm
-              initialIngredients={[]}
-              ingredients={ingredients.map((g) => ({
-                id: String(g.id),
-                name: g.name,
-                unit: g.unit ?? "",
-              }))}
-            />
-          </div>
-
-          <div class="card">
-            <SectionHeader title="Tools" />
-            <ToolForm
-              initialTools={[]}
-              tools={allTools.map((m) => ({
-                id: String(m.id),
-                name: m.name,
-              }))}
-            />
-          </div>
-
-          <div class="card">
-            <SectionHeader title="Steps" />
-            <StepForm initialSteps={[]} />
-          </div>
-
-          <div class="card">
-            <SectionHeader title="Output Ingredient" />
-            <RecipeOutputForm
-              ingredients={ingredients.map((g) => ({
-                id: String(g.id),
-                name: g.name,
-                unit: g.unit ?? "",
-              }))}
-            />
-          </div>
-
-          <div class="card">
-            <SectionHeader title="Sub-recipe References" />
-            <RefForm
-              initialRefs={[]}
-              recipes={allRecipes.map((r) => ({
-                id: String(r.id),
-                title: r.title,
-              }))}
-            />
-          </div>
+          <RecipeFields
+            r={{ ingredients: [], steps: [] }}
+            ingredients={ingredients.map((g) => ({
+              id: String(g.id),
+              name: g.name,
+              unit: g.unit ?? "",
+            }))}
+            allTools={allTools.map((m) => ({
+              id: String(m.id),
+              name: m.name,
+            }))}
+            allRecipes={allRecipes.map((r) => ({
+              id: String(r.id),
+              title: r.title,
+            }))}
+          />
 
           <div class="flex gap-3">
-            <Button type="submit">
-              Create Recipe
-            </Button>
+            <RecipeSubmitButton label="Create Recipe" />
             <RecipePreview />
           </div>
         </form>

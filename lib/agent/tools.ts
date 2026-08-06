@@ -24,7 +24,8 @@ import { addStock, expiringSoon, loadStock } from "../pantry.ts";
 import { addPlanEntry, loadPlan, suggestRecipes } from "../plan.ts";
 import { getOrCreateList, projectShoppingList } from "../shopping-list.ts";
 import { isoVersion } from "./version.ts";
-import { fetchRaw, jinaSearch, jinaSummary } from "./fetch.ts";
+import { assertPublicUrl, fetchRaw, jinaSearch, jinaSummary } from "./fetch.ts";
+import { importRecipeFromUrl } from "../url-import.ts";
 
 export interface ToolCtx {
   q: QueryFn;
@@ -279,6 +280,20 @@ export const TOOLS: Anthropic.Tool[] = [
     name: "fetch_page_summary",
     description:
       "Fetch a URL and return a clean, readable markdown summary of the page.",
+    input_schema: {
+      type: "object",
+      properties: { url: { type: "string" } },
+      required: ["url"],
+    },
+  },
+  {
+    name: "fetch_recipe_structured",
+    description:
+      "Extract structured recipe data (schema.org JSON-LD, or a Foodex export) directly " +
+      "from a recipe page URL. Fast and exact when the site provides it — when importing " +
+      "from a URL try this FIRST, and fall back to fetch_url if it finds nothing. The " +
+      "result may be incomplete (no sections/tags/tools); verify and fill gaps before " +
+      "proposing.",
     input_schema: {
       type: "object",
       properties: { url: { type: "string" } },
@@ -682,6 +697,12 @@ export async function executeTool(
       case "fetch_page_summary": {
         const out = await jinaSummary(String(input.url ?? ""));
         return { content: out, is_error: false };
+      }
+      case "fetch_recipe_structured": {
+        const url = String(input.url ?? "");
+        assertPublicUrl(url);
+        const recipe = await importRecipeFromUrl(url);
+        return { content: { recipe }, is_error: false };
       }
 
       case "list_proposed": {

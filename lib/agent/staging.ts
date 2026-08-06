@@ -103,6 +103,20 @@ export function foldStaging(events: AgentEvent[]): Map<string, StagedItem> {
         }
         break;
       }
+      case "user_staged": {
+        const st = ev.payload.mutation;
+        items.set(st.item_id, {
+          id: st.item_id,
+          kind: st.kind,
+          full: st.full,
+          agent_full: st.full,
+          ops: [],
+          agent_ops: [],
+          last_seq: ev.seq,
+          status: "pending",
+        });
+        break;
+      }
       case "user_edit": {
         const it = items.get(ev.payload.item_id);
         if (!it) break;

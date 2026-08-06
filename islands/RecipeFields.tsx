@@ -4,12 +4,16 @@ import ToolForm from "./ToolForm.tsx";
 import StepForm from "./StepForm.tsx";
 import MediaUpload from "./MediaUpload.tsx";
 import RecipeOutputForm from "./RecipeOutputForm.tsx";
-import { Input, InputBar, InputMultiline } from "../components/Input.tsx";
+import DishSelect from "./DishSelect.tsx";
+import { Input, InputMultiline } from "../components/Input.tsx";
 import { SectionHeader } from "../components/SectionHeader.tsx";
 import { Select } from "../components/Select.tsx";
+import { DurationInput } from "../components/DurationInput.tsx";
+import { RefForm } from "../components/RefForm.tsx";
 import MultiSearchSelect from "./MultiSearchSelect.tsx";
 import {
   DIETARY_TAGS,
+  DIFFICULTY_LEVELS,
   MEAL_TYPES,
   SOURCE_TYPE_LABELS,
   SOURCE_TYPES,
@@ -25,8 +29,15 @@ interface CoverMedia {
   content_type: string;
 }
 
+interface DishProps {
+  dishes: { id: string; name: string }[];
+  initialDishId?: string;
+  initialDishName?: string;
+  initialManual?: boolean;
+}
+
 interface Props {
-  /** The recipe to seed the fields from (OcrRecipeData / AgentRecipe shape). */
+  /** The recipe to seed the fields from (AgentRecipe / OcrRecipeData shape). */
   r: Any;
   /** Reset key — bump to re-seed all fields (used after AI refine). */
   v?: number;
@@ -35,6 +46,10 @@ interface Props {
   ingredients: { id: string; name: string; unit: string }[];
   allTools: { id: string; name: string }[];
   allRecipes: { id: string; title: string }[];
+  /** media id → url, for step media thumbnails. */
+  mediaUrls?: Record<string, string>;
+  /** Render the dish picker (route editors have dish data, staging doesn't). */
+  dish?: DishProps;
 }
 
 function formatDuration(
@@ -47,7 +62,7 @@ function formatDuration(
   return { value: String(minutes), unit: "min" };
 }
 
-/** The recipe edit form fields, shared by the draft editor and staging edit. */
+/** The one recipe edit form, shared by every create/edit/import surface. */
 export default function RecipeFields(props: Props) {
   const { r, ingredients, allTools, allRecipes } = props;
   const v = props.v ?? 0;
@@ -55,6 +70,43 @@ export default function RecipeFields(props: Props) {
   const prep = formatDuration(r.prep_time);
   const cook = formatDuration(r.cook_time);
   const rest = formatDuration(r.rest_time);
+
+  const sections: Any[] = r.sections ?? [];
+  const sectionKeyToIdx = new Map<string, number>();
+  sections.forEach((s: Any, i: number) => sectionKeyToIdx.set(s.key ?? "", i));
+
+  const steps: Any[] = r.steps ?? [];
+  const stepIdToIdx = new Map<string, number>();
+  steps.forEach((s: Any, i: number) => {
+    if (s.id) stepIdToIdx.set(s.id, i);
+  });
+  const initialSteps = steps.map((s: Any, i: number) => {
+    const secKey = s.section ?? null;
+    const secIdx = secKey != null ? sectionKeyToIdx.get(secKey) ?? -1 : -1;
+    // Steps carrying an explicit dependency list keep their graph; shapes
+    // without one (plain extraction output) read as a sequential chain.
+    const after = s.after != null
+      ? (s.after as string[])
+        .map((id) => stepIdToIdx.get(id))
+        .filter((n): n is number => n != null && n !== i)
+      : (i > 0 ? [i - 1] : []);
+    return {
+      id: s.id,
+      title: s.title ?? "",
+      body: s.body ?? "",
+      media: (s.media ?? []).map((m: Any) =>
+        typeof m === "string" ? { id: m, url: props.mediaUrls?.[m] ?? "" } : m
+      ),
+      after,
+      section: secIdx >= 0 ? secIdx : null,
+    };
+  });
+  const branches = initialSteps.length > 0 &&
+    !initialSteps.every((s, i) =>
+      i === 0
+        ? s.after.length === 0
+        : (s.after.length === 1 && s.after[0] === i - 1)
+    );
 
   return (
     <div class="space-y-6">
@@ -93,91 +145,56 @@ export default function RecipeFields(props: Props) {
             value={r.description ?? ""}
           />
         </div>
+        {props.dish && (
+          <div>
+            <label class="block text-sm font-medium mb-1">Dish</label>
+            <DishSelect
+              key={`dish-${v}`}
+              dishes={props.dish.dishes}
+              initialDishId={props.dish.initialDishId ?? ""}
+              initialDishName={props.dish.initialDishName ?? ""}
+              initialManual={props.dish.initialManual ?? false}
+            />
+          </div>
+        )}
         <QuantityInput
           key={`qty-${v}`}
           initialType={r.quantity_type ?? "servings"}
           initialValue={r.quantity_value ?? 4}
           initialUnit={r.quantity_unit ?? "servings"}
+          initialValue2={r.quantity_value2 ?? undefined}
+          initialValue3={r.quantity_value3 ?? undefined}
         />
-        <div class="grid grid-cols-3 gap-3 mt-3">
-          <div>
-            <label class="block text-sm font-medium mb-1">Prep time</label>
-            <InputBar>
-              <Input
-                key={`prep-${v}`}
-                type="number"
-                name="prep_time"
-                min="0"
-                value={prep.value}
-              />
-              <Select
-                key={`prepu-${v}`}
-                name="prep_time_unit"
-                class="w-20"
-                size="xs"
-              >
-                <option value="min" selected={prep.unit === "min"}>min</option>
-                <option value="hr" selected={prep.unit === "hr"}>hr</option>
-              </Select>
-            </InputBar>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Cook time</label>
-            <InputBar>
-              <Input
-                key={`cook-${v}`}
-                type="number"
-                name="cook_time"
-                min="0"
-                value={cook.value}
-              />
-              <Select
-                key={`cooku-${v}`}
-                name="cook_time_unit"
-                class="w-20"
-                size="xs"
-              >
-                <option value="min" selected={cook.unit === "min"}>min</option>
-                <option value="hr" selected={cook.unit === "hr"}>hr</option>
-              </Select>
-            </InputBar>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Rest time</label>
-            <InputBar>
-              <Input
-                key={`rest-${v}`}
-                type="number"
-                name="rest_time"
-                min="0"
-                value={rest.value}
-              />
-              <Select
-                key={`restu-${v}`}
-                name="rest_time_unit"
-                class="w-20"
-                size="xs"
-              >
-                <option value="min" selected={rest.unit === "min"}>min</option>
-                <option value="hr" selected={rest.unit === "hr"}>hr</option>
-              </Select>
-            </InputBar>
-          </div>
+        <div class="grid grid-cols-3 gap-3 mt-3" key={`times-${v}`}>
+          <DurationInput
+            name="prep_time"
+            label="Prep time"
+            value={prep.value}
+            unit={prep.unit}
+          />
+          <DurationInput
+            name="cook_time"
+            label="Cook time"
+            value={cook.value}
+            unit={cook.unit}
+          />
+          <DurationInput
+            name="rest_time"
+            label="Rest time"
+            value={rest.value}
+            unit={rest.unit}
+          />
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label class="block text-sm font-medium mb-1">Difficulty</label>
             <Select key={`diff-${v}`} name="difficulty" class="w-full">
               <option value="">—</option>
-              <option value="easy" selected={r.difficulty === "easy"}>
-                Easy
-              </option>
-              <option value="medium" selected={r.difficulty === "medium"}>
-                Medium
-              </option>
-              <option value="hard" selected={r.difficulty === "hard"}>
-                Hard
-              </option>
+              {DIFFICULTY_LEVELS.map((l) => (
+                <option key={l} value={l} selected={r.difficulty === l}>
+                  {l[0].toUpperCase() + l.slice(1)}
+                </option>
+              ))}
             </Select>
           </div>
           <div>
@@ -260,6 +277,7 @@ export default function RecipeFields(props: Props) {
             amount: ing.amount != null ? String(ing.amount) : "",
             unit: ing.unit ?? "",
             ingredient_id: ing.ingredient_id ?? "",
+            always_on_hand: !!ing.always_on_hand,
           }))}
           ingredients={ingredients}
         />
@@ -267,41 +285,32 @@ export default function RecipeFields(props: Props) {
 
       <div class="card">
         <SectionHeader title="Tools" />
-        <ToolForm key={`tools-${v}`} initialTools={[]} tools={allTools} />
+        <ToolForm
+          key={`tools-${v}`}
+          initialTools={(r.tools ?? []).map((t: Any) => ({
+            tool_id: t.tool_id ?? "",
+            tool_name: t.tool_name ??
+              allTools.find((at) => at.id === t.tool_id)?.name ?? "",
+            usage_description: t.usage_description ?? "",
+            settings: t.settings ?? "",
+          }))}
+          tools={allTools}
+        />
       </div>
 
       <div class="card">
         <SectionHeader title="Steps" />
         <StepForm
           key={`steps-${v}`}
-          initialSteps={(r.steps ?? []).map((s: Any, i: number) => {
-            const secKey = s.section ?? null;
-            const secIdx = secKey != null
-              ? (r.sections ?? []).findIndex((sec: Any) => sec.key === secKey)
-              : -1;
-            return {
-              id: s.id,
-              title: s.title ?? "",
-              body: s.body ?? "",
-              media: (s.media ?? []).map((m: Any) =>
-                typeof m === "string" ? { id: m, url: "" } : m
-              ),
-              after: i > 0 ? [i - 1] : [],
-              section: secIdx >= 0 ? secIdx : null,
-            };
-          })}
-          initialSections={(() => {
-            const all = r.sections ?? [];
-            const keyToIdx = new Map<string, number>();
-            all.forEach((s: Any, i: number) => keyToIdx.set(s.key ?? "", i));
-            return all.map((s: Any) => ({
-              title: s.title ?? "",
-              key: s.key ?? "",
-              after: (s.after ?? [])
-                .map((k: string) => keyToIdx.get(k))
-                .filter((v: number | undefined): v is number => v != null),
-            }));
-          })()}
+          initialSteps={initialSteps}
+          initialSections={sections.map((s: Any) => ({
+            title: s.title ?? "",
+            key: s.key ?? "",
+            after: (s.after ?? [])
+              .map((k: string) => sectionKeyToIdx.get(k))
+              .filter((n: number | undefined): n is number => n != null),
+          }))}
+          initialMode={branches ? "graph" : "list"}
         />
       </div>
 
@@ -325,12 +334,13 @@ export default function RecipeFields(props: Props) {
 
       <div class="card">
         <SectionHeader title="Sub-recipe References" />
-        <Select name="refs[0][referenced_recipe_id]" class="w-full" size="sm">
-          <option value="">No sub-recipe</option>
-          {allRecipes.map((rec) => (
-            <option key={rec.id} value={rec.id}>{rec.title}</option>
-          ))}
-        </Select>
+        <RefForm
+          key={`refs-${v}`}
+          initialRefs={(r.refs ?? []).map((ref: Any) => ({
+            referenced_recipe_id: String(ref.referenced_recipe_id ?? ""),
+          }))}
+          recipes={allRecipes}
+        />
       </div>
     </div>
   );

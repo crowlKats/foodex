@@ -66,9 +66,18 @@ export interface ApplyResult {
 
 // ── Event payloads ─────────────────────────────────────────────────
 
+/** An image attached to a user message, denormalized so folds never hit the DB. */
+export interface UserMessageImage {
+  media_id: string;
+  key: string;
+  content_type: string;
+  /** App-relative serve URL, for rendering in the chat. */
+  url: string;
+}
+
 export interface UserMessageEvent {
   type: "user_message";
-  payload: { text: string };
+  payload: { text: string; images?: UserMessageImage[] };
 }
 
 export interface AssistantMessageEvent {
@@ -92,6 +101,15 @@ export interface ToolResultEvent {
     /** Resolved staging effect, present only for a successful staging write. */
     staged?: StagingMutation;
   };
+}
+
+/**
+ * A staging created directly by the user, without a model turn — e.g. a legacy
+ * recipe draft migrated into a session. Only `create` mutations.
+ */
+export interface UserStagedEvent {
+  type: "user_staged";
+  payload: { mutation: Extract<StagingMutation, { op: "create" }> };
 }
 
 export interface UserEditEvent {
@@ -123,6 +141,7 @@ export type AgentEventBody =
   | UserMessageEvent
   | AssistantMessageEvent
   | ToolResultEvent
+  | UserStagedEvent
   | UserEditEvent
   | UserRevertEvent
   | UserDiscardEvent
