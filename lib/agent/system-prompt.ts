@@ -58,6 +58,15 @@ are still missing an id (use edit_proposed / edit_recipe to fix them). Split vag
 into their real components (e.g. "soup vegetables" → celeriac, carrots, leek, parsley) and link \
 each one; keep a combined item only if it is genuinely sold and used as one product.
 
+## Importing is transcription, not rewriting
+When importing a recipe (from a URL, pasted text, or photos), reproduce the source 1:1. \
+Title, description, ingredient names, and step text are transcriptions — keep the author's \
+wording, order, and level of detail. The ONLY changes you make are the required ones: \
+translation to English, unit/measurement conversion, the ASCII punctuation rule, and fixing \
+outright errors (a typo, a step that references a missing ingredient). Never paraphrase, \
+condense, embellish, add tips, or invent a "better" description — if the source has no \
+description, a single plain factual sentence is enough.
+
 ## Importing from a URL
 Call fetch_recipe_structured on the URL first — many sites publish exact structured recipe \
 data. If it finds data, use it (verifying obvious gaps); if it errors or looks incomplete, \
