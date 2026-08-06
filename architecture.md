@@ -172,8 +172,9 @@
   through resolution (the alias always wins); `fx_dish_create` (migration
   064, used by the edit form's dish picker) creates the name's own dish,
   repoints the alias to it, and moves matching auto-tracked recipes along
-- **recipe_ingredients** — recipe_id, ingredient_id (nullable), name, amount,
-  unit, key, sort_order
+- **recipe_ingredients** — recipe_id, ingredient_id (required; every line
+  links to a real ingredient, find-or-created by name on save — migration
+  067), name, amount, unit, key, sort_order
 - **recipe_steps** — recipe_id, title, body (markdown + template syntax),
   sort_order
 - **recipe_step_media** — step_id, media_id, sort_order
@@ -192,7 +193,8 @@
 - **households** — name, created_by
 - **household_members** — household_id, user_id, role (owner|member)
 - **household_invites** — household_id, code, expires_at
-- **pantry_items** — household_id, ingredient_id (nullable), name, amount, unit,
+- **pantry_items** — household_id, ingredient_id (required since migration
+  068, like recipe lines), name, amount, unit,
   expires_at, staple. Current *balance*; derived from pantry_transactions and
   only ever written through `lib/pantry.ts`
 - **pantry_transactions** — household_id, pantry_item_id, ingredient_id, name,

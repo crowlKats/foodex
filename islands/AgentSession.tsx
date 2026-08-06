@@ -1549,7 +1549,12 @@ function ItemPreview({ item }: { item: SerializedStagedItem }) {
               <li key={i}>
                 {[g.amount, g.unit, g.name].filter(Boolean).join(" ")}
                 {!g.ingredient_id && (
-                  <span class="text-red-500 text-xs ml-1">(unlinked)</span>
+                  <span
+                    class="text-amber-600 dark:text-amber-400 text-xs ml-1"
+                    title="Not linked to an ingredient yet — applying finds or creates one by name"
+                  >
+                    (auto-link on apply)
+                  </span>
                 )}
               </li>
             ))}
@@ -1903,7 +1908,12 @@ function StagedItemDiff(
                     </span>
                   )}
                 {r.s !== "changed" && r.av && !r.av.ingredient_id && (
-                  <span class="text-red-500 text-xs ml-1">(unlinked)</span>
+                  <span
+                    class="text-amber-600 dark:text-amber-400 text-xs ml-1"
+                    title="Not linked to an ingredient yet — applying finds or creates one by name"
+                  >
+                    (auto-link on apply)
+                  </span>
                 )}
               </li>
             ))}

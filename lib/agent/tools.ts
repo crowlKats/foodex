@@ -20,6 +20,7 @@ import {
 } from "./staging.ts";
 import { loadAgentRecipe } from "./recipe.ts";
 import { loadAgentIngredient } from "./ingredient.ts";
+import { ensureIngredientIds } from "../ingredient-resolve.ts";
 import { addStock, expiringSoon, loadStock } from "../pantry.ts";
 import { addPlanEntry, loadPlan, suggestRecipes } from "../plan.ts";
 import { getOrCreateList, projectShoppingList } from "../shopping-list.ts";
@@ -645,6 +646,15 @@ export async function executeTool(
         if (!name) return err("name is required");
         const list = await getOrCreateList({ query: q }, householdId);
         const amount = Number(input.amount);
+        // Demands always link to a real ingredient (migration 068).
+        const link = {
+          name,
+          ingredient_id: typeof input.ingredient_id === "string"
+            ? input.ingredient_id
+            : null,
+          unit: typeof input.unit === "string" ? input.unit : null,
+        };
+        await ensureIngredientIds(q, [link]);
         await q(
           `INSERT INTO shopping_list_demands (
              shopping_list_id, ingredient_id, name, amount, unit, note
@@ -652,9 +662,7 @@ export async function executeTool(
            VALUES ($1, $2, $3, $4, $5, 'Added by the assistant')`,
           [
             list.id,
-            typeof input.ingredient_id === "string"
-              ? input.ingredient_id
-              : null,
+            link.ingredient_id,
             name,
             Number.isFinite(amount) ? amount : null,
             typeof input.unit === "string" ? input.unit : null,

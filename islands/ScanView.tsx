@@ -338,7 +338,6 @@ export default function ScanView(props: Props) {
     saving.value = true;
     saveError.value = "";
 
-    const isNewIngredient = !selectedIngredient.value.id;
     const payload: Record<string, unknown> = {
       action: "add",
       household_id: householdId,
@@ -349,7 +348,6 @@ export default function ScanView(props: Props) {
       expires_at: itemExpiresAt.value || null,
     };
 
-    if (isNewIngredient) payload.create_ingredient = true;
     if (product.value?.brand) payload.brand = product.value.brand;
     if (itemStoreId.value && itemPrice.value) {
       payload.store_id = itemStoreId.value;

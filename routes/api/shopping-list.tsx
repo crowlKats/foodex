@@ -1,4 +1,5 @@
 import { handler } from "./$shopping-list.ts";
+import { ensureIngredientIds } from "../../lib/ingredient-resolve.ts";
 import {
   buyLine,
   getOrCreateList,
@@ -36,6 +37,14 @@ export const handlers = handler({
       };
 
       if (body.action === "add_demand") {
+        // Demands always link to a real ingredient (migration 068): a
+        // free-text name finds or creates the entity.
+        const link = {
+          name: body.name,
+          ingredient_id: body.ingredient_id ?? null,
+          unit: body.unit ?? null,
+        };
+        await ensureIngredientIds(query, [link]);
         const res = await query<{ id: string }>(
           `INSERT INTO shopping_list_demands (
              shopping_list_id, ingredient_id, name, amount, unit, note, created_by
@@ -44,7 +53,7 @@ export const handlers = handler({
            RETURNING id`,
           [
             listId,
-            body.ingredient_id ?? null,
+            link.ingredient_id,
             body.name,
             body.amount ?? null,
             body.unit ?? null,

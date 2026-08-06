@@ -34,7 +34,8 @@ export interface ApplyContext {
   /**
    * Resolve a recipe ingredient's `ingredient_id` to a real ingredients.id.
    * Handles existing ids and references to staged ingredient items (which are
-   * created as a dependency), returning null if it can't be linked.
+   * created as a dependency). May return null: the save path then
+   * find-or-creates the ingredient by the line's name (ingredient-resolve.ts).
    */
   resolveIngredientId?: (ref: string | null) => Promise<string | null>;
 }

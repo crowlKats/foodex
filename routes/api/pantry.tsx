@@ -1,19 +1,19 @@
 import { handler } from "./$pantry.ts";
 import type { QueryFn } from "../../db/mod.ts";
+import { ensureIngredientIds } from "../../lib/ingredient-resolve.ts";
 import { addStock, mergeStock } from "../../lib/pantry.ts";
 import { PantryAction, parseJsonBody } from "../../lib/validation.ts";
 
 /**
  * Link a pantry entry to a real ingredient, creating the entity when the user
- * typed a new name. Unlinked rows only ever match by string, so linking here is
- * what lets stock survive a rename and match a recipe reliably.
+ * typed a new name. Every pantry row links (migration 068) — that is what lets
+ * stock survive a rename and match a recipe reliably.
  */
 async function resolveIngredient(
   db: { query: QueryFn },
   body: {
     /** Null when the caller typed a free-text name instead of picking one. */
     ingredient_id?: string | null;
-    create_ingredient?: boolean;
     name: string;
     unit?: string | null;
     brand?: string;
@@ -22,25 +22,13 @@ async function resolveIngredient(
     amount?: number | null;
   },
 ): Promise<string | null> {
-  let ingredientId = body.ingredient_id ?? null;
-
-  if (!ingredientId && body.name.trim()) {
-    // Reuse an existing ingredient with the same name before creating one —
-    // otherwise every hand-typed "Flour" becomes a new unlinked entity.
-    const existing = await db.query<{ id: string }>(
-      "SELECT id FROM ingredients WHERE lower(name) = lower($1) LIMIT 1",
-      [body.name.trim()],
-    );
-    if (existing.rows.length > 0) {
-      ingredientId = existing.rows[0].id;
-    } else if (body.create_ingredient) {
-      const created = await db.query<{ id: string }>(
-        "INSERT INTO ingredients (name, unit) VALUES ($1, $2) RETURNING id",
-        [body.name.trim(), body.unit ?? null],
-      );
-      ingredientId = created.rows[0].id;
-    }
-  }
+  const link = {
+    name: body.name,
+    ingredient_id: body.ingredient_id ?? null,
+    unit: body.unit ?? null,
+  };
+  await ensureIngredientIds(db.query, [link]);
+  const ingredientId = link.ingredient_id ?? null;
 
   if (!ingredientId) return null;
 

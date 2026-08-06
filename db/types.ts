@@ -57,7 +57,8 @@ export interface RecipeWithCoverMedia extends Recipe {
 export interface RecipeIngredient {
   id: string;
   recipe_id: string;
-  ingredient_id: string | null;
+  /** Required since migration 067 — a line always links to a real ingredient. */
+  ingredient_id: string;
   name: string;
   amount: number | null;
   unit: string | null;
@@ -223,7 +224,8 @@ export interface HouseholdInvite {
 export interface PantryItem {
   id: string;
   household_id: string;
-  ingredient_id: string | null;
+  /** Required since migration 068 — stock always links to a real ingredient. */
+  ingredient_id: string;
   name: string;
   amount: number | null;
   unit: string | null;
@@ -239,6 +241,7 @@ export interface PantryTransaction {
   id: string;
   household_id: string;
   pantry_item_id: string | null;
+  /** Null only on rows that are not stock movements (consumption claim markers). */
   ingredient_id: string | null;
   name: string;
   amount: number | null;
@@ -267,7 +270,8 @@ export interface ShoppingList {
 export interface ShoppingListDemand {
   id: string;
   shopping_list_id: string;
-  ingredient_id: string | null;
+  /** Required since migration 068. */
+  ingredient_id: string;
   name: string;
   amount: number | null;
   unit: string | null;
@@ -281,7 +285,8 @@ export interface ShoppingListPurchase {
   id: string;
   shopping_list_id: string;
   match_key: string;
-  ingredient_id: string | null;
+  /** Required since migration 068. */
+  ingredient_id: string;
   name: string;
   amount: number | null;
   unit: string | null;

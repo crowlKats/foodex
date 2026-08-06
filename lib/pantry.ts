@@ -7,6 +7,7 @@
  * reversible, and "where did the milk go" answerable.
  */
 import type { QueryFn } from "../db/mod.ts";
+import { ensureIngredientIds } from "./ingredient-resolve.ts";
 import {
   computeAvailability,
   type IngredientRef,
@@ -114,6 +115,16 @@ export async function addStock(
   const unit = input.unit ?? null;
   const expiresAt = input.expiresAt ?? null;
 
+  // Stock always links to a real ingredient (migration 068): a free-text name
+  // resolves to an existing entity or creates one, same rule as recipe lines.
+  const link = {
+    name: input.name,
+    ingredient_id: input.ingredientId ?? null,
+    unit,
+  };
+  await ensureIngredientIds(db.query, [link]);
+  const ingredientId = link.ingredient_id ?? null;
+
   const tx = await db.query<{ id: string }>(
     `INSERT INTO pantry_transactions (
        household_id, ingredient_id, name, amount, unit, kind,
@@ -126,7 +137,7 @@ export async function addStock(
      RETURNING id`,
     [
       input.householdId,
-      input.ingredientId ?? null,
+      ingredientId,
       input.name,
       amount,
       unit,
@@ -150,7 +161,7 @@ export async function addStock(
 
   const stock = await loadStock(db, input.householdId);
   const ref: IngredientRef = {
-    ingredient_id: input.ingredientId ?? null,
+    ingredient_id: ingredientId,
     name: input.name,
     unit,
   };
@@ -181,7 +192,7 @@ export async function addStock(
        RETURNING id`,
       [
         input.householdId,
-        input.ingredientId ?? null,
+        ingredientId,
         input.name,
         amount,
         unit,
@@ -381,6 +392,14 @@ export async function reverseSource(
     if (!row) {
       // Cooking emptied the row entirely; un-cooking has to put it back.
       if (delta > EPSILON) {
+        // Ledger rows written before migration 068 may still be unlinked;
+        // the restored pantry row must not be.
+        const link = {
+          name: tx.name,
+          ingredient_id: tx.ingredient_id,
+          unit: tx.unit,
+        };
+        await ensureIngredientIds(db.query, [link]);
         await db.query(
           `INSERT INTO pantry_items (
              household_id, ingredient_id, name, amount, unit, expires_at
@@ -388,7 +407,7 @@ export async function reverseSource(
            VALUES ($1, $2, $3, $4, $5, $6)`,
           [
             householdId,
-            tx.ingredient_id,
+            link.ingredient_id,
             tx.name,
             delta,
             tx.unit,

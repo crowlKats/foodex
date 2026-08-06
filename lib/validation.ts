@@ -51,11 +51,10 @@ export const PantryAction = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("add"),
     // Free-text adds send an explicit null when no catalog ingredient is
-    // selected; the add path handles that fine (`resolveIngredient` returns
-    // null), so the schema has to accept it too.
+    // selected; the server then finds or creates the entity — every pantry
+    // row links to a real ingredient (migration 068).
     ingredient_id: optionalUuid,
-    create_ingredient: z.boolean().optional(),
-    name: z.string(),
+    name: nonEmptyString,
     unit: z.string().nullable().optional(),
     brand: z.string().optional(),
     store_id: uuid.optional(),

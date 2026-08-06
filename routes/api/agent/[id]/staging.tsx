@@ -170,7 +170,9 @@ export const handlers = handler({
 
             // Resolve a recipe ingredient's link: a real existing id is kept;
             // a reference to a staged ingredient item creates that ingredient
-            // now (a dependency) and links to it; anything else is left unlinked.
+            // now (a dependency) and links to it; anything else resolves to
+            // null here and is find-or-created by name inside
+            // saveRecipeChildren — a recipe line never lands unlinked.
             const resolvedRefs = new Map<string, string | null>();
             const resolveIngredientId = async (
               ref: string | null,

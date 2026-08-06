@@ -8,6 +8,7 @@
  * planned meal or buying half the flour immediately produces the right list.
  */
 import type { QueryFn } from "../db/mod.ts";
+import { ensureIngredientIds } from "./ingredient-resolve.ts";
 import {
   computeAvailability,
   type IngredientRef,
@@ -401,6 +402,16 @@ export async function buyLine(
     userId?: string | null;
   },
 ): Promise<{ ok: boolean; purchaseId: string | null }> {
+  // Purchases always link to a real ingredient (migration 068). addStock
+  // below resolves too, but the purchase row itself needs the id.
+  const link = {
+    name: opts.name,
+    ingredient_id: opts.ingredientId ?? null,
+    unit: opts.unit ?? null,
+  };
+  await ensureIngredientIds(db.query, [link]);
+  const ingredientId = link.ingredient_id ?? null;
+
   const purchase = await db.query<{ id: string }>(
     `INSERT INTO shopping_list_purchases (
        shopping_list_id, match_key, ingredient_id, name, amount, unit,
@@ -412,7 +423,7 @@ export async function buyLine(
     [
       opts.listId,
       opts.matchKey,
-      opts.ingredientId ?? null,
+      ingredientId,
       opts.name,
       opts.amount ?? null,
       opts.unit ?? null,
@@ -427,7 +438,7 @@ export async function buyLine(
   const purchaseId = purchase.rows[0].id;
   await addStock(db, {
     householdId: opts.householdId,
-    ingredientId: opts.ingredientId ?? null,
+    ingredientId,
     name: opts.name,
     amount: opts.amount ?? null,
     unit: opts.unit ?? null,

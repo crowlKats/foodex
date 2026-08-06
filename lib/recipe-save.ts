@@ -1,5 +1,6 @@
 import { bulkInsert } from "./bulk-insert.ts";
 import { parseFormArray } from "./form.ts";
+import { ensureIngredientIds } from "./ingredient-resolve.ts";
 import type { QueryFn } from "../db/mod.ts";
 
 /**
@@ -11,22 +12,22 @@ export async function saveRecipeChildren(
   recipeId: string,
   form: FormData,
 ): Promise<void> {
-  // Ingredients
-  const ingredients = parseFormArray(form, "ingredients");
-  const ingRows = ingredients
-    .map((ing, i) => {
-      if (!ing.name?.trim()) return null;
-      return [
-        recipeId,
-        ing.ingredient_id?.trim() || null,
-        ing.key?.trim() || null,
-        ing.name.trim(),
-        ing.amount ? parseFloat(ing.amount) : null,
-        ing.unit?.trim() || null,
-        i,
-      ];
-    })
-    .filter((r) => r != null);
+  // Ingredients. Every line must link to a real ingredient entity — free-text
+  // names (manual form, imports) are resolved to an existing ingredient or
+  // create one here, inside the caller's transaction.
+  const ingredients = parseFormArray(form, "ingredients")
+    .map((ing, i) => ({ ing, i }))
+    .filter(({ ing }) => ing.name?.trim());
+  await ensureIngredientIds(q, ingredients.map(({ ing }) => ing));
+  const ingRows = ingredients.map(({ ing, i }) => [
+    recipeId,
+    ing.ingredient_id!.trim(),
+    ing.key?.trim() || null,
+    ing.name.trim(),
+    ing.amount ? parseFloat(ing.amount) : null,
+    ing.unit?.trim() || null,
+    i,
+  ]);
 
   if (ingRows.length > 0) {
     await bulkInsert(q, "recipe_ingredients", [

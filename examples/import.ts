@@ -10,6 +10,7 @@
 
 import { transaction } from "../db/mod.ts";
 import { bulkInsert } from "../lib/bulk-insert.ts";
+import { ensureIngredientIds } from "../lib/ingredient-resolve.ts";
 import { slugify } from "../utils.ts";
 
 interface ExampleIngredient {
@@ -142,20 +143,15 @@ async function importOne(
     );
     const recipeId = recipeRes.rows[0].id;
 
-    // Resolve ingredient names → ingredient_id (best effort, case-insensitive)
-    const ingredientNames = recipe.ingredients.map((i) => i.name.toLowerCase());
-    const ingLookup = new Map<string, string>();
-    if (ingredientNames.length > 0) {
-      const ingRes = await q<{ id: string; name: string }>(
-        "SELECT id, name FROM ingredients WHERE lower(name) = ANY($1)",
-        [ingredientNames],
-      );
-      for (const row of ingRes.rows) {
-        ingLookup.set(row.name.toLowerCase(), row.id);
-      }
-    }
-
+    // Every line must link to a real ingredient: resolve names to existing
+    // entities or create them (same rule as the app's save path).
     if (recipe.ingredients.length > 0) {
+      const ingRefs = recipe.ingredients.map((ing) => ({
+        name: ing.name,
+        unit: ing.unit || null,
+        ingredient_id: null as string | null,
+      }));
+      await ensureIngredientIds(q, ingRefs);
       await bulkInsert(
         q,
         "recipe_ingredients",
@@ -170,7 +166,7 @@ async function importOne(
         ],
         recipe.ingredients.map((ing, i) => [
           recipeId,
-          ingLookup.get(ing.name.toLowerCase()) ?? null,
+          ingRefs[i].ingredient_id,
           ing.key,
           ing.name,
           ing.amount,

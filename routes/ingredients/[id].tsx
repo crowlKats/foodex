@@ -74,6 +74,7 @@ export const handlers = handler({
         otherIngredients: otherIngredientsRes.rows,
         sourceRecipes: sourceRecipesRes.rows,
         loggedIn: ctx.state.user != null,
+        error: ctx.url.searchParams.get("error"),
       },
     };
   },
@@ -95,6 +96,24 @@ export const handlers = handler({
     const method = form.get("_method");
 
     if (method === "DELETE") {
+      // Recipes, pantry stock, ledger history and shopping data all require
+      // their ingredient (ON DELETE RESTRICT since migrations 067/068): one
+      // that is still referenced can only be merged away.
+      const used = await ctx.state.db.query<{ n: number }>(
+        `SELECT (SELECT count(*) FROM recipe_ingredients WHERE ingredient_id = $1)
+              + (SELECT count(*) FROM pantry_items WHERE ingredient_id = $1)
+              + (SELECT count(*) FROM pantry_transactions WHERE ingredient_id = $1)
+              + (SELECT count(*) FROM shopping_list_demands WHERE ingredient_id = $1)
+              + (SELECT count(*) FROM shopping_list_purchases WHERE ingredient_id = $1)
+              AS n`,
+        [id],
+      );
+      if (Number(used.rows[0].n) > 0) {
+        return new Response(null, {
+          status: 303,
+          headers: { Location: `/ingredients/${id}?error=in-use` },
+        });
+      }
       await ctx.state.db.query("DELETE FROM ingredients WHERE id = $1", [id]);
       return new Response(null, {
         status: 303,
@@ -173,6 +192,18 @@ export const handlers = handler({
            WHERE ingredient_id = $2
              AND store_id NOT IN (SELECT store_id FROM ingredient_prices WHERE ingredient_id = $1)`,
           [targetId, id],
+        );
+
+        // The guarded moves above skip rows that would collide with the
+        // target; under ON DELETE RESTRICT those leftovers would block the
+        // delete. They duplicate data the target already has, so drop them.
+        await q(
+          "DELETE FROM shopping_list_purchases WHERE ingredient_id = $1",
+          [id],
+        );
+        await q(
+          "DELETE FROM household_ingredient_stores WHERE ingredient_id = $1",
+          [id],
         );
 
         // Delete the source ingredient (cascades remaining brands/prices)
@@ -290,12 +321,21 @@ export default page(
         otherIngredients,
         sourceRecipes,
         loggedIn,
+        error,
       },
     },
   ) {
     return (
       <div>
         <BackLink href="/ingredients" label="Back to Ingredients" />
+
+        {error === "in-use" && (
+          <div class="mt-4 p-3 rounded-md bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 text-sm">
+            This ingredient can't be deleted while recipes, the pantry or the
+            shopping list still reference it. Merge it into another ingredient
+            instead.
+          </div>
+        )}
 
         <h1 class="text-2xl font-bold mt-4 mb-6">
           {ingredient.name}
