@@ -569,8 +569,22 @@ export default function AgentSession(props: Props) {
       setFocusedId(id);
       setMobileView("editor");
     } else if (shell) {
-      // Staged ingredients are edited inline in the workbench pane.
+      // Staged ingredients are edited inline in the workbench pane, on the
+      // editor's Ingredients tab — switch to it and scroll the card into view.
       setMobileView("editor");
+      const radio = document.getElementById(
+        "tab-ingredients",
+      ) as HTMLInputElement | null;
+      if (radio && !radio.checked) {
+        radio.checked = true;
+        radio.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      setTimeout(() => {
+        document.getElementById("staged-ingredients")?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
     } else {
       setPreviewOpen(false);
       setEditingId(id);
@@ -2124,6 +2138,9 @@ function WorkbenchPane(p: WorkbenchProps) {
   // events so the memoized form vnode never has to re-render. Extras like
   // the staged-ingredients card dock onto their matching tab.
   const [activeTab, setActiveTab] = useState("basics");
+  // The staged-changes overview: every staged item with a diff against the
+  // library version, shown above the editor.
+  const [showChanges, setShowChanges] = useState(false);
   const seenVersion = useRef(item.version);
 
   // When the item advances underneath the form (an agent edit or a save
@@ -2244,6 +2261,17 @@ function WorkbenchPane(p: WorkbenchProps) {
               readable at a glance. */
           }
           <div class="ml-auto flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant={showChanges ? "primary" : "outline"}
+              size="sm"
+              icon={IconEye}
+              title="Show what every staged item changes"
+              onClick={() => setShowChanges(!showChanges)}
+            >
+              Changes
+            </Button>
+            <div class="w-0.5 h-5 bg-stone-200 dark:bg-stone-700" />
             {item.user_edited && (
               <Button
                 type="button"
@@ -2345,12 +2373,26 @@ function WorkbenchPane(p: WorkbenchProps) {
               </Button>
             </div>
           )}
+          {showChanges && (
+            <StagedChangesPanel
+              focusedId={item.id}
+              recipeItems={p.recipeItems}
+              ingredientItems={p.ingredientItems}
+              onFocus={p.onFocus}
+            />
+          )}
           {fields}
           {activeTab === "ingredients" && p.ingredientItems.length > 0 && (
-            <div class="subgroup">
-              <span class="subgroup-label">New ingredients</span>
+            <div id="staged-ingredients" class="subgroup">
+              <span class="subgroup-label">
+                {p.ingredientItems.some((it) =>
+                    it.kind === "edit_ingredient"
+                  )
+                  ? "Staged ingredients"
+                  : "New ingredients"}
+              </span>
               <p class="text-xs text-stone-500 dark:text-stone-400 mb-3 text-pretty">
-                Added to the ingredient library when this recipe is saved.
+                Applied to the ingredient library when this recipe is saved.
               </p>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {p.ingredientItems.map((ing) => (
@@ -2367,6 +2409,73 @@ function WorkbenchPane(p: WorkbenchProps) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The staging overview: every staged item in the session with what it
+ * changes — edits as a field diff against the library version, creates as a
+ * pointer to the editor. Answers "what will applying this actually do?".
+ */
+function StagedChangesPanel(
+  { focusedId, recipeItems, ingredientItems, onFocus }: {
+    focusedId: string;
+    recipeItems: SerializedStagedItem[];
+    ingredientItems: SerializedStagedItem[];
+    onFocus: (id: string) => void;
+  },
+) {
+  const items = [...recipeItems, ...ingredientItems];
+  return (
+    <div class="card space-y-3">
+      <span class="text-xs font-medium uppercase tracking-wide text-stone-500">
+        Staged changes ({items.length})
+      </span>
+      {items.map((it) => {
+        const isRecipe = it.kind === "create_recipe" ||
+          it.kind === "edit_recipe";
+        return (
+          <div key={it.id} class="space-y-1">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-xs uppercase tracking-wide text-stone-500 shrink-0">
+                {KIND_LABEL[it.kind] ?? it.kind}
+              </span>
+              {isRecipe && it.id !== focusedId
+                ? (
+                  <button
+                    type="button"
+                    class="font-medium truncate hover:text-orange-600 underline decoration-stone-300 underline-offset-2"
+                    title="Open in the editor"
+                    onClick={() => onFocus(it.id)}
+                  >
+                    {stagedName(it)}
+                  </button>
+                )
+                : <span class="font-medium truncate">{stagedName(it)}</span>}
+              {it.user_edited && (
+                <span class="text-xs text-orange-600 shrink-0">edited</span>
+              )}
+            </div>
+            {it.base_data
+              ? (
+                <StagedItemDiff
+                  before={it.base_data}
+                  after={it.effective}
+                  kind={it.kind}
+                  compact
+                />
+              )
+              : it.kind === "create_recipe"
+              ? (
+                <p class="text-xs text-stone-500">
+                  New recipe — everything is new; review it in the editor.
+                </p>
+              )
+              : <ItemPreview item={it} />}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -2405,9 +2514,11 @@ function StagedIngredientRow(
       <div class="flex gap-2 items-center min-w-0">
         <span
           class="text-xs text-stone-400 font-mono shrink-0 w-8"
-          title="Created in the ingredient library when the recipe is saved"
+          title={item.kind === "edit_ingredient"
+            ? "Changes an existing library ingredient when the recipe is saved"
+            : "Created in the ingredient library when the recipe is saved"}
         >
-          new
+          {item.kind === "edit_ingredient" ? "edit" : "new"}
         </span>
         <Input
           class="w-full"
