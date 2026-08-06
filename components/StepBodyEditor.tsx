@@ -36,13 +36,7 @@ import { useSignal } from "@preact/signals";
 import type { ComponentChildren, JSX } from "preact";
 import { parseTemplate } from "../lib/recipe-template/parser.ts";
 import { registerErrorTracker } from "../lib/recipe-errors.ts";
-import type {
-  Expr,
-  StepRefGlobalNode,
-  StepRefSectionNode,
-  TemplateAst,
-  TemplateNode,
-} from "../lib/recipe-template/ast.ts";
+import type { TemplateAst } from "../lib/recipe-template/ast.ts";
 
 /** A declared ingredient, as the sibling ingredient form has it. */
 import {
