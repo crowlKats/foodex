@@ -412,7 +412,9 @@ export default function BulkImport() {
             onClick={() => viewer.value = null}
           >
             <div
-              class="shrink-0 flex items-center gap-3 px-4 py-2 text-sm text-white"
+              // Fixed height: the merge button only exists from photo 2 on,
+              // and must not change the header's (and image's) vertical size.
+              class="shrink-0 flex items-center gap-3 px-4 h-14 text-sm text-white"
               onClick={(e) => e.stopPropagation()}
             >
               {
