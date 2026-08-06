@@ -411,7 +411,7 @@
    rather than straddling it — straddling needs a background matching whatever
    is behind, which only held while these lived inside a card. */
 .subgroup {
-  @apply border-t-2 border-stone-200 dark:border-stone-800 pt-3 mt-4;
+  @apply border-t-2 border-stone-200 dark:border-stone-800 pt-5 mt-8;
 }
 
 /* A rule is a separator, so the first band in a panel doesn't need one —
@@ -446,7 +446,6 @@
     border-b-2 border-transparent text-stone-500 dark:text-stone-400
     cursor-pointer select-none hover:text-stone-900 dark:hover:text-stone-100;
 }
-
 
 .edit-panel {
   display: none;

@@ -2253,21 +2253,22 @@ function WorkbenchPane(p: WorkbenchProps) {
           )}
           {fields}
           {activeTab === "ingredients" && p.ingredientItems.length > 0 && (
-            <div class="card space-y-2">
-              <div class="text-sm font-semibold">Staged ingredients</div>
-              <p class="text-xs text-stone-500">
-                New ingredients this recipe needs — created along with it when
-                you save.
+            <div class="subgroup">
+              <span class="subgroup-label">New ingredients</span>
+              <p class="text-xs text-stone-500 dark:text-stone-400 mb-3 text-pretty">
+                Added to the ingredient library when this recipe is saved.
               </p>
-              {p.ingredientItems.map((ing) => (
-                <StagedIngredientRow
-                  key={`${ing.id}:${ing.version}`}
-                  item={ing}
-                  disabled={p.turnActive}
-                  onSave={(data) => p.onSave(ing.id, data)}
-                  onDiscard={() => p.onDiscard(ing.id)}
-                />
-              ))}
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {p.ingredientItems.map((ing) => (
+                  <StagedIngredientRow
+                    key={`${ing.id}:${ing.version}`}
+                    item={ing}
+                    disabled={p.turnActive}
+                    onSave={(data) => p.onSave(ing.id, data)}
+                    onDiscard={() => p.onDiscard(ing.id)}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -2276,6 +2277,11 @@ function WorkbenchPane(p: WorkbenchProps) {
   );
 }
 
+/**
+ * One staged ingredient entity, styled to match the recipe ingredient rows
+ * above it. Edits persist on their own — the name saves when it loses focus,
+ * the unit saves on selection — so the row needs no Save button.
+ */
 function StagedIngredientRow(
   { item, disabled, onSave, onDiscard }: {
     item: SerializedStagedItem;
@@ -2286,40 +2292,60 @@ function StagedIngredientRow(
 ) {
   const [data, setData] = useState<Any>(structuredClone(item.effective));
   const [saving, setSaving] = useState(false);
-  const changed = JSON.stringify(data) !== JSON.stringify(item.effective);
+
+  async function persist(next: Any) {
+    if (
+      disabled || saving ||
+      JSON.stringify(next) === JSON.stringify(item.effective)
+    ) return;
+    setSaving(true);
+    try {
+      await onSave(next);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
-    <div class="form-row flex items-end gap-2">
-      <div class="flex-1 min-w-0">
-        <IngredientEditor data={data} setData={setData} disabled={disabled} />
-      </div>
-      <div class="flex items-center gap-1 shrink-0">
-        {changed && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled || saving}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                await onSave(data);
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            {saving ? "…" : "Save"}
-          </Button>
-        )}
+    <div class="form-row space-y-2">
+      <div class="flex gap-2 items-center min-w-0">
+        <span
+          class="text-xs text-stone-400 font-mono shrink-0 w-8"
+          title="Created in the ingredient library when the recipe is saved"
+        >
+          new
+        </span>
+        <Input
+          class="w-full"
+          size="sm"
+          placeholder="Ingredient name"
+          value={data.name ?? ""}
+          disabled={disabled}
+          onValueChange={(v) => setData({ ...data, name: v })}
+          onBlur={() => persist(data)}
+        />
         <Button
           type="button"
           variant="danger-ghost"
           icon={IconTrash}
           title="Discard"
+          class="shrink-0"
           disabled={disabled}
           onClick={onDiscard}
         />
+      </div>
+      <div class="flex items-center gap-2 sm:pl-10">
+        <UnitDropdown
+          class="w-40"
+          value={data.unit ?? ""}
+          disabled={disabled}
+          onChange={(v) => {
+            const next = { ...data, unit: v || null };
+            setData(next);
+            persist(next);
+          }}
+        />
+        {saving && <span class="text-xs text-stone-400">Saving…</span>}
       </div>
     </div>
   );
