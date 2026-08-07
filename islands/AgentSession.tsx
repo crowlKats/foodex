@@ -16,6 +16,7 @@ import { IconPencil } from "@tabler/icons-preact";
 import { IconPlus } from "@tabler/icons-preact";
 import { IconSearch } from "@tabler/icons-preact";
 import { IconEye } from "@tabler/icons-preact";
+import { IconListCheck } from "@tabler/icons-preact";
 import { IconWorld } from "@tabler/icons-preact";
 import { IconTool } from "@tabler/icons-preact";
 import { IconPhoto } from "@tabler/icons-preact";
@@ -28,6 +29,7 @@ import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import RecipeFields from "./RecipeFields.tsx";
+import RecipePreview from "./RecipePreview.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import { Checkbox } from "../components/Checkbox.tsx";
 import { formDataToRecipeData } from "../lib/recipe-form-data.ts";
@@ -2189,7 +2191,12 @@ function WorkbenchPane(p: WorkbenchProps) {
   // would clobber in-progress typing.
   const fields = useMemo(
     () => (
-      <form ref={formRef} onInput={markDirty} onChange={markDirty}>
+      <form
+        id="workbench-recipe-form"
+        ref={formRef}
+        onInput={markDirty}
+        onChange={markDirty}
+      >
         <RecipeFields
           r={structuredClone(item.effective)}
           v={epoch}
@@ -2277,11 +2284,12 @@ function WorkbenchPane(p: WorkbenchProps) {
               readable at a glance. */
           }
           <div class="ml-auto flex items-center gap-2 shrink-0">
+            <RecipePreview formId="workbench-recipe-form" size="sm" />
             <Button
               type="button"
               variant={showChanges ? "primary" : "outline"}
               size="sm"
-              icon={IconEye}
+              icon={IconListCheck}
               title="Show what every staged item changes"
               onClick={() => setShowChanges(!showChanges)}
             >

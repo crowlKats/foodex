@@ -5,7 +5,7 @@ import type { SectionInfo } from "../lib/step-sections.ts";
 import { recipeErrorCount } from "../lib/recipe-errors.ts";
 import { IconEye } from "@tabler/icons-preact";
 import { IconX } from "@tabler/icons-preact";
-import { Button } from "../components/Button.tsx";
+import { Button, type ButtonSize } from "../components/Button.tsx";
 
 interface RenderStep {
   title: string;
@@ -28,13 +28,21 @@ interface PreviewData {
   tray?: { value: number; value2?: number; value3?: number };
 }
 
-export default function RecipePreview() {
+interface Props {
+  /** Id of the recipe form to read; defaults to the enclosing <form>. */
+  formId?: string;
+  size?: ButtonSize;
+}
+
+export default function RecipePreview({ formId, size }: Props = {}) {
   const open = useSignal(false);
   const data = useSignal<PreviewData | null>(null);
   const message = useSignal<string | null>(null);
 
   function collectFromForm(button: HTMLElement): PreviewData | null {
-    const form = button.closest("form") as HTMLFormElement | null;
+    const form = formId
+      ? document.getElementById(formId) as HTMLFormElement | null
+      : button.closest("form") as HTMLFormElement | null;
     if (!form) {
       message.value = "No form found.";
       return null;
@@ -113,6 +121,7 @@ export default function RecipePreview() {
         type="button"
         onClick={show}
         variant="outline"
+        size={size}
         icon={IconEye}
         disabled={recipeErrorCount.value > 0}
         title={recipeErrorCount.value > 0
