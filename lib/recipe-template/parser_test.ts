@@ -147,6 +147,32 @@ Deno.test("parseTemplate: @timer(abc) is invalid", () => {
   assertEquals(ast.nodes[0].kind, "invalid_directive");
 });
 
+Deno.test("parseTemplate: @timer(4-6m) is a range to the lower bound", () => {
+  const ast = parseTemplate("@timer(4-6m)");
+  const t = ast.nodes[0];
+  assert(t.kind === "timer");
+  assertEquals(t.duration, "4-6m");
+  assertEquals(t.seconds, 240);
+  assertEquals(t.secondsMax, 360);
+});
+
+Deno.test("parseTemplate: @timer(1h-1h30m) full-duration range", () => {
+  const ast = parseTemplate("@timer(1h-1h30m)");
+  const t = ast.nodes[0];
+  assert(t.kind === "timer");
+  assertEquals(t.seconds, 3600);
+  assertEquals(t.secondsMax, 5400);
+});
+
+Deno.test("parseTemplate: bad timer ranges are invalid", () => {
+  // Descending, equal, bare-number lower with a compound upper (ambiguous
+  // unit), and a unitless upper are all rejected.
+  for (const src of ["6-4m", "5-5m", "4-1h30m", "4-6"]) {
+    const ast = parseTemplate(`@timer(${src})`);
+    assertEquals(ast.nodes[0].kind, "invalid_directive", src);
+  }
+});
+
 // ── Recipe references ──────────────────────────────────────────────────────
 
 Deno.test("parseTemplate: @recipe(some-slug)", () => {

@@ -71,8 +71,10 @@ export interface RenderContext {
   recipeRefs?: Map<string, RecipeRefInfo>;
   /** Map of `slug -> {title,slug}` for resolved dishes (`@dish(...)`). */
   dishRefs?: Map<string, RecipeRefInfo>;
-  /** Click handler for timer buttons; pass `null` to render a static button. */
-  onTimerStart?: (seconds: number, label: string) => void;
+  /** Click handler for timer buttons; pass `null` to render a static button.
+   *  `maxSeconds` is set for range timers (`@timer(4-6m)`): the countdown
+   *  runs to `seconds` and the rest is offered as a one-tap extension. */
+  onTimerStart?: (seconds: number, label: string, maxSeconds?: number) => void;
 }
 
 /** Render the parsed template AST to a Preact VNode tree. */
@@ -249,15 +251,18 @@ function renderSectionStepRef(
 
 function renderTimer(node: TimerNode, ctx: RenderContext): ComponentChildren {
   const seconds = node.seconds;
-  const label = formatDurationLabel(seconds);
+  const label = node.secondsMax != null
+    ? formatRangeLabel(seconds, node.secondsMax)
+    : formatDurationLabel(seconds);
   const onClick = ctx.onTimerStart
-    ? () => ctx.onTimerStart!(seconds, label)
+    ? () => ctx.onTimerStart!(seconds, label, node.secondsMax)
     : undefined;
   return (
     <button
       type="button"
       class="recipe-timer-btn"
       data-seconds={seconds}
+      data-seconds-max={node.secondsMax}
       data-label={label}
       onClick={onClick}
     >
@@ -328,6 +333,16 @@ function rawOf(expr: Expr): string {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/** "4-6 min" when both bounds share one unit, else "4 min - 1h 30 min". */
+function formatRangeLabel(lowSeconds: number, highSeconds: number): string {
+  const low = formatDurationLabel(lowSeconds);
+  const high = formatDurationLabel(highSeconds);
+  const lm = low.match(/^(\d+)(h| min|s)$/);
+  const hm = high.match(/^(\d+)(h| min|s)$/);
+  if (lm && hm && lm[2] === hm[2]) return `${lm[1]}-${hm[1]}${hm[2]}`;
+  return `${low} - ${high}`;
+}
 
 function formatDurationLabel(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);

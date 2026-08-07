@@ -39,7 +39,7 @@ export interface RecipeStepsProps {
   tray?: TrayDims;
   recipeRefs?: Map<string, RecipeRefInfo>;
   dishRefs?: Map<string, RecipeRefInfo>;
-  onTimerStart?: (seconds: number, label: string) => void;
+  onTimerStart?: (seconds: number, label: string, maxSeconds?: number) => void;
 }
 
 /** Renders the full set of steps with sections, annotations, and media. */
@@ -134,7 +134,7 @@ export function RecipeStepBody(props: {
   tray?: TrayDims;
   recipeRefs?: Map<string, RecipeRefInfo>;
   dishRefs?: Map<string, RecipeRefInfo>;
-  onTimerStart?: (seconds: number, label: string) => void;
+  onTimerStart?: (seconds: number, label: string, maxSeconds?: number) => void;
 }): VNode {
   const layout = computeSectionLayout(props.steps, props.sections);
   const ctx: RenderContext = {

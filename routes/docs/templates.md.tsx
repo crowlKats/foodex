@@ -87,6 +87,8 @@ Examples:
 - \`@timer(30s)\`: 30 seconds
 - \`@timer(2h)\`: 2 hours
 
+Ranges are supported with a hyphen: \`@timer(4-6m)\` renders as "4-6 min" and counts down to the LOWER bound, so you check early; when it fires, the panel offers a one-tap "+2:00 more" extension up to the upper bound. A bare first number borrows the second's unit (\`4-6m\`); with compound durations spell out both sides (\`1h-1h30m\`). The first duration must be shorter than the second.
+
 Timers render as inline buttons in the step text. Clicking a timer starts a live countdown in a floating panel. Multiple timers can run concurrently. When a timer finishes, an audio alarm repeats until dismissed, and a browser notification is shown (if permitted).
 
 Use in step bodies: "Bake at 180°C for @timer(25m) until golden brown." or "Let the dough rest for @timer(1h)."

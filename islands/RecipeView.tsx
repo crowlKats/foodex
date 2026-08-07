@@ -35,6 +35,9 @@ interface ActiveTimer {
   done: boolean;
   /** Cooking timers get paused constantly: something boils over, the phone rings. */
   paused: boolean;
+  /** Range timer (`@timer(4-6m)`): seconds left up to the upper bound,
+   *  offered as a one-tap extension when the countdown fires. */
+  extendSeconds?: number;
 }
 
 interface RecipeStep {
@@ -625,7 +628,7 @@ export default function RecipeView(
     }
   }
 
-  function startTimer(seconds: number, label: string) {
+  function startTimer(seconds: number, label: string, maxSeconds?: number) {
     const id = ++timerIdCounter.current;
     timers.value = [
       ...timers.value,
@@ -636,11 +639,31 @@ export default function RecipeView(
         remaining: seconds,
         done: false,
         paused: false,
+        extendSeconds: maxSeconds != null && maxSeconds > seconds
+          ? maxSeconds - seconds
+          : undefined,
       },
     ];
     if (Notification.permission === "default") {
       Notification.requestPermission();
     }
+  }
+
+  /** "4-6 min" range timer that fired at 4: run the remaining 2 minutes. */
+  function extendTimer(id: number) {
+    stopAlarm(id);
+    timers.value = timers.value.map((t) =>
+      t.id === id && t.done && t.extendSeconds
+        ? {
+          ...t,
+          totalSeconds: t.extendSeconds,
+          remaining: t.extendSeconds,
+          done: false,
+          paused: false,
+          extendSeconds: undefined,
+        }
+        : t
+    );
   }
 
   function dismissTimer(id: number) {
@@ -1479,6 +1502,16 @@ export default function RecipeView(
                     ? `${formatTimer(t.remaining)} (paused)`
                     : formatTimer(t.remaining)}
                 </div>
+                {t.done && t.extendSeconds != null && (
+                  <button
+                    type="button"
+                    class="text-xs font-medium text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                    title="Keep going to the range's upper bound"
+                    onClick={() => extendTimer(t.id)}
+                  >
+                    +{formatTimer(t.extendSeconds)} more
+                  </button>
+                )}
               </div>
               {!t.done && (
                 <button

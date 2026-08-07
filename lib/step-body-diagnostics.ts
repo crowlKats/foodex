@@ -114,10 +114,19 @@ function collect(source: string, ctx: StepBodyContext): CollectResult {
   const ast = parseTemplate(source);
   const tokens: HighlightToken[] = [];
   const diagnostics: StepBodyDiagnostic[] = [];
-  for (const node of ast.nodes) {
+  for (let i = 0; i < ast.nodes.length; i++) {
+    const node = ast.nodes[i];
     emitNode(node, ctx, tokens, diagnostics);
     if (node.kind === "text") {
       lintLiteralAmounts(node.value, node.start, ctx, tokens, diagnostics);
+      lintTimerlessDurations(
+        node.value,
+        node.start,
+        ast.nodes[i - 1],
+        ast.nodes[i + 1],
+        tokens,
+        diagnostics,
+      );
     }
   }
   return { tokens, diagnostics };
@@ -181,6 +190,63 @@ function lintLiteralAmounts(
         },
       });
     }
+  }
+}
+
+/**
+ * Flag a stated duration with no timer next to it: "cook for 4-6 minutes"
+ * can carry a one-tap countdown, and after an import it never does.
+ *
+ * Only durations introduced by "for/about/another/..." are flagged, which
+ * skips clock-time phrasing ("30 minutes before serving") and prose that
+ * merely mentions time. A match directly adjacent to an existing @timer
+ * stays quiet. A range becomes a range timer ("4-6 minutes" → @timer(4-6m)),
+ * which counts down to the lower bound so the cook checks early.
+ *
+ * A warning, not an error: the text is fine, it just misses a convenience.
+ */
+function lintTimerlessDurations(
+  text: string,
+  offset: number,
+  prev: TemplateNode | undefined,
+  next: TemplateNode | undefined,
+  tokens: HighlightToken[],
+  diagnostics: StepBodyDiagnostic[],
+): void {
+  const re =
+    /\b(for|about|around|approximately|another)\s+(\d+)(?:\s*(?:[-–]|to)\s*(\d+))?\s*(minutes?|mins?|hours?|hrs?|seconds?|secs?)\b/gi;
+  for (const m of text.matchAll(re)) {
+    const idx = m.index ?? 0;
+    // Adjacent to a timer node on either side: already covered.
+    if (idx + m[0].length >= text.length - 2 && next?.kind === "timer") {
+      continue;
+    }
+    if (idx <= 2 && prev?.kind === "timer") continue;
+    const unit = m[4].toLowerCase().startsWith("h")
+      ? "h"
+      : m[4].toLowerCase().startsWith("s")
+      ? "s"
+      : "m";
+    // A range must ascend for @timer(a-b); anything else gets a plain timer.
+    const timer = m[3] && parseInt(m[2]) < parseInt(m[3])
+      ? `@timer(${m[2]}-${m[3]}${unit})`
+      : `@timer(${m[2]}${unit})`;
+    const start = offset + idx;
+    const end = start + m[0].length;
+    tokens.push({ start, end, label: "tpl-warning", priority: 5 });
+    diagnostics.push({
+      start,
+      end,
+      severity: "warning",
+      message: `\`${m[0]}\` states a duration without a timer. Replace it ` +
+        `with \`${timer}\` so the countdown starts with a tap.`,
+      fix: {
+        start,
+        end,
+        replacement: `${m[1]} ${timer}`,
+        label: `Use ${timer}`,
+      },
+    });
   }
 }
 

@@ -12,6 +12,7 @@ export const MEAL_TYPES = [
 export const DIETARY_TAGS = [
   "vegetarian",
   "vegan",
+  "pescetarian",
   "gluten-free",
   "dairy-free",
   "nut-free",

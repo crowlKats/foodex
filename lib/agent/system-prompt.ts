@@ -88,8 +88,9 @@ Title, description, ingredient names, and step text are transcriptions: keep the
 wording, order, and level of detail. The ONLY changes you make are the required ones: \
 translation to English, unit/measurement conversion (including dropping amounts duplicated \
 in a second unit), the ASCII punctuation rule, merging repeated ingredient rows into one \
-total-amount row (see the ingredient rules), and fixing outright errors (a typo, a step \
-that references a missing ingredient). Never paraphrase, \
+total-amount row (see the ingredient rules), adding @timer() directives to stated \
+durations, and fixing outright errors (a typo, a step that references a missing \
+ingredient). Never paraphrase, \
 condense, embellish, add tips, or invent a "better" description. If the source has no \
 description, a single plain factual sentence is enough.
 

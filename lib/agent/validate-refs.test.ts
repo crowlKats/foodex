@@ -106,6 +106,24 @@ Deno.test("stepDiagnostics: a key unrelated to its name warns", () => {
   assertEquals(d.warnings[0].includes("pasta_cooking_water"), true);
 });
 
+Deno.test("stepDiagnostics: a stated duration without a timer warns", () => {
+  const bare = recipe(["flour"], [
+    "Cook for 4-6 minutes until fragrant.",
+  ]);
+  const d = stepDiagnostics(bare);
+  assertEquals(d.errors, []);
+  assertEquals(d.warnings.length, 1);
+  assertEquals(d.warnings[0].includes("@timer(4-6m)"), true);
+
+  // A duration already carried by a timer stays quiet, as does vague
+  // timing with no number.
+  const covered = recipe(["flour"], [
+    "Cook for @timer(4-6m) until fragrant.",
+    "Stir for a few minutes until glossy.",
+  ]);
+  assertEquals(stepDiagnostics(covered).warnings, []);
+});
+
 Deno.test("stepDiagnostics: {{ tray }} is a known ref, but not in math", () => {
   const ok = recipe(["flour"], ["Pour into a {{ tray }} tray."]);
   assertEquals(stepDiagnostics(ok).errors, []);

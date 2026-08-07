@@ -279,24 +279,60 @@ class TemplateParser {
     // A duration is only valid if it matches the shape `<n>(h|m|s)…` AND
     // the parsed total is strictly greater than zero. `@timer(1)` (no unit)
     // and `@timer(0s)` (zero) are both "not a length of time", so we collapse
-    // them into a single diagnostic.
-    const shapeOk = /^\d+[hms](?:\d+[hms])*$/.test(arg);
-    const seconds = shapeOk ? parseDurationStrict(arg) : null;
-    if (!shapeOk || seconds == null) {
-      return {
-        kind: "invalid_directive",
-        raw: this.src.slice(start, start + totalLen),
-        message: arg.length === 0
+    // them into a single diagnostic. A range (`4-6m`, `1h-1h30m`) counts down
+    // to its lower bound; the upper bound is offered as an extension.
+    const invalid = (message?: string): InvalidDirectiveNode => ({
+      kind: "invalid_directive",
+      raw: this.src.slice(start, start + totalLen),
+      message: message ??
+        (arg.length === 0
           ? "`@timer(...)` needs a length of time inside. Try " +
             "`@timer(15m)` for 15 minutes, `@timer(1h30m)` for an hour " +
-            "and a half, or `@timer(90s)` for 90 seconds."
+            "and a half, or `@timer(4-6m)` for a 4 to 6 minute range."
           : `\`${arg}\` isn't a valid length of time. Try ` +
             "`15m` (15 minutes), `1h30m` (1 hour 30 minutes), " +
-            "or `90s` (90 seconds).",
+            "`90s` (90 seconds), or a range like `4-6m`."),
+      start,
+      length: totalLen,
+    });
+    const durationShape = /^\d+[hms](?:\d+[hms])*$/;
+
+    const dash = arg.indexOf("-");
+    if (dash >= 0) {
+      let low = arg.slice(0, dash);
+      const high = arg.slice(dash + 1);
+      if (!durationShape.test(high)) return invalid();
+      // A bare-number lower bound borrows the unit of a single-part upper
+      // bound: `4-6m` means 4m to 6m. With a compound upper bound the unit
+      // would be ambiguous, so both sides must be full durations.
+      if (/^\d+$/.test(low)) {
+        const single = high.match(/^\d+([hms])$/);
+        if (!single) return invalid();
+        low += single[1];
+      }
+      if (!durationShape.test(low)) return invalid();
+      const lowSeconds = parseDurationStrict(low);
+      const highSeconds = parseDurationStrict(high);
+      if (lowSeconds == null || highSeconds == null) return invalid();
+      if (lowSeconds >= highSeconds) {
+        return invalid(
+          `\`${arg}\` is not a valid range: the first duration must be ` +
+            "shorter than the second, like `4-6m` or `1h-1h30m`.",
+        );
+      }
+      return {
+        kind: "timer",
+        duration: arg,
+        durationRange: { start: argStart, length: arg.length },
+        seconds: lowSeconds,
+        secondsMax: highSeconds,
         start,
         length: totalLen,
       };
     }
+
+    const seconds = durationShape.test(arg) ? parseDurationStrict(arg) : null;
+    if (seconds == null) return invalid();
     return {
       kind: "timer",
       duration: arg,

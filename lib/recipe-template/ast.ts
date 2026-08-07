@@ -54,12 +54,16 @@ export interface StepRefSectionNode extends Pos {
 
 export interface TimerNode extends Pos {
   kind: "timer";
-  /** Raw duration string, e.g. `15m`, `1h30m`. */
+  /** Raw duration string, e.g. `15m`, `1h30m`, or a range like `4-6m`. */
   duration: string;
   durationRange: Pos;
-  /** Pre-computed total seconds. Malformed/zero durations become an
+  /** Pre-computed total seconds; for a range, the LOWER bound (the countdown
+   *  runs to it so the cook checks early). Malformed/zero durations become an
    *  `InvalidDirectiveNode` at parse time, so this is always positive. */
   seconds: number;
+  /** Upper bound of a range timer, in seconds; unset for a plain timer.
+   *  Always strictly greater than `seconds`. */
+  secondsMax?: number;
 }
 
 export interface RecipeRefNode extends Pos {

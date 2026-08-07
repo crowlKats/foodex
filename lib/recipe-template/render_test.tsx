@@ -60,6 +60,13 @@ Deno.test("render: timer button is a real VNode with data attrs", () => {
   assertStringIncludes(html, "15 min");
 });
 
+Deno.test("render: range timer carries both bounds and a range label", () => {
+  const html = renderToHtml("cook for @timer(4-6m)");
+  assertStringIncludes(html, 'data-seconds="240"');
+  assertStringIncludes(html, 'data-seconds-max="360"');
+  assertStringIncludes(html, "4-6 min");
+});
+
 Deno.test("render: paragraph + list", () => {
   const html = renderToHtml("First paragraph.\n\n- one\n- two\n");
   assertStringIncludes(html, "First paragraph.");
