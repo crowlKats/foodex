@@ -29,6 +29,7 @@ import { Select } from "../components/Select.tsx";
 import { UNIT_GROUPS } from "../lib/units.ts";
 import RecipeFields from "./RecipeFields.tsx";
 import { Markdown } from "../components/Markdown.tsx";
+import { Checkbox } from "../components/Checkbox.tsx";
 import { formDataToRecipeData } from "../lib/recipe-form-data.ts";
 import { uploadImages } from "../lib/image-downscale.ts";
 
@@ -1372,9 +1373,8 @@ function ApplyDrawer(p: PreviewModalProps) {
             const eff = it.effective as Any;
 
             const checkbox = !conflict && (
-              <input
-                type="checkbox"
-                class="size-4 accent-orange-600 shrink-0"
+              <Checkbox
+                class="shrink-0"
                 checked={p.isChecked(it.id)}
                 disabled={p.turnActive}
                 onChange={() => p.onToggle(it.id)}

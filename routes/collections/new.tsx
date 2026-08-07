@@ -5,6 +5,7 @@ import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input, InputMultiline } from "../../components/Input.tsx";
+import { Checkbox } from "../../components/Checkbox.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import RecipePicker from "../../islands/RecipePicker.tsx";
 
@@ -123,17 +124,11 @@ export default page(
             <FormField label="Description">
               <InputMultiline name="description" rows={2} class="w-full" />
             </FormField>
-            <label class="flex items-center gap-2 mt-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="private"
-                class="size-4 accent-orange-600"
-              />
-              <span class="text-sm">
-                Private (only visible to household members and shared
-                households)
-              </span>
-            </label>
+            <Checkbox
+              name="private"
+              class="mt-3"
+              label="Private (only visible to household members and shared households)"
+            />
           </div>
 
           <div class="card">

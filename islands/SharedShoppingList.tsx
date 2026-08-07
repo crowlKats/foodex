@@ -1,5 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { formatAmount } from "../lib/format.ts";
+import { Checkbox } from "../components/Checkbox.tsx";
 
 interface SharedLine {
   key: string;
@@ -70,14 +71,17 @@ export default function SharedShoppingList({ initialLines, token }: Props) {
         class="card flex items-center gap-3 py-3 px-4 cursor-pointer"
         onClick={() => toggle(line)}
       >
-        <input
-          type="checkbox"
-          checked={line.bought}
-          disabled={busy.value === line.key}
-          class="size-5 cursor-pointer accent-orange-600 shrink-0"
-          onChange={() => toggle(line)}
-          onClick={(e) => e.stopPropagation()}
-        />
+        {
+          /* The whole row also toggles; keep checkbox clicks from reaching
+            it so one tap doesn't toggle twice. */
+        }
+        <div class="shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={line.bought}
+            disabled={busy.value === line.key}
+            onChange={() => toggle(line)}
+          />
+        </div>
         <div class="flex-1 min-w-0">
           <div
             class={`text-base font-medium ${line.bought ? "line-through" : ""}`}
