@@ -23,5 +23,7 @@ export default middleware(function (ctx) {
     });
   }
   if (!ctx.state.isAdmin) throw new HttpError(404);
-  return ctx.next({ ...ctx.state, adminUser: user });
+  // Under sudo, ctx.state.user is the impersonated target; admin actions are
+  // still the real admin's, so gate and attribute on who is actually here.
+  return ctx.next({ ...ctx.state, adminUser: user.sudoBy ?? user });
 });

@@ -70,6 +70,7 @@ const SOURCE_BADGE: Record<string, string> = {
     "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   admin:
     "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  system: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
 };
 
 export default page(function AdminAuditPage(

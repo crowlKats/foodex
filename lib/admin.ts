@@ -4,7 +4,7 @@
  * off; a comma-separated ADMIN_EMAILS env var names the operators instead.
  * Matching is by the verified email on the user row, case-insensitively.
  */
-const adminEmails = new Set(
+export const adminEmails: ReadonlySet<string> = new Set(
   (Deno.env.get("ADMIN_EMAILS") ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())

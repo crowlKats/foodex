@@ -271,6 +271,30 @@ export default page(function AdminUserDetailPage(
               )}
           </div>
 
+          {!isSelf && (
+            <div class="card">
+              <SectionHeader title="Support access" />
+              <p class="text-sm text-stone-500 my-3">
+                Sudo lets you use the whole app as{" "}
+                {user.name ?? "this user"}, including their household and
+                private data, until you exit. Every change is recorded in the
+                audit log under your name.
+              </p>
+              <form method="POST" action="/admin/sudo">
+                <input type="hidden" name="_method" value="ENTER" />
+                <input type="hidden" name="user_id" value={user.id} />
+                <ConfirmButton
+                  message={`Act as ${
+                    user.name ?? "this user"
+                  } across the app? A banner will show until you exit.`}
+                  variant="outline"
+                >
+                  Sudo as {user.name ?? "user"}
+                </ConfirmButton>
+              </form>
+            </div>
+          )}
+
           <div class="card border-red-300 dark:border-red-900">
             <SectionHeader title="Danger zone" />
             <p class="text-sm text-stone-500 mt-3">

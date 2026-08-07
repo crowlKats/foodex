@@ -12,6 +12,7 @@ import {
   householdRequirementResponse,
 } from "../lib/auth.ts";
 import { loadSessionState } from "../lib/session.ts";
+import { cleanupStaleAccounts } from "../lib/retention.ts";
 import { deleteFile } from "../lib/s3.ts";
 
 export interface State extends ParentState {
@@ -32,6 +33,7 @@ export default middleware(async function (ctx) {
     // Opportunistic cleanup (~1% of authenticated requests)
     query("DELETE FROM sessions WHERE expires_at < now()").catch(() => {});
     cleanupOrphanedMedia(deleteFile).catch(() => {});
+    cleanupStaleAccounts().catch(() => {});
   }
 
   const state = {

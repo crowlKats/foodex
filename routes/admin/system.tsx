@@ -19,7 +19,8 @@ const features = {
 };
 
 const ORPHAN_MEDIA_WHERE = `
-  id NOT IN (
+  created_at < now() - interval '7 days'
+  AND id NOT IN (
     SELECT cover_image_id FROM recipes WHERE cover_image_id IS NOT NULL
   )
   AND id NOT IN (SELECT media_id FROM recipe_step_media)
@@ -190,7 +191,9 @@ export default page(function AdminSystemPage(
             <p class="text-sm text-stone-500 my-3">
               {media.count} file{media.count === 1 ? "" : "s"},{" "}
               {formatBytes(media.bytes)} total. {media.orphans}{" "}
-              orphaned (not referenced by any recipe, step, or draft).
+              orphaned for over a week (not referenced by any recipe, step, or
+              draft). Orphans are also purged automatically on regular traffic;
+              fresher ones get a week's grace for in-flight edits.
             </p>
             <form method="POST">
               <input type="hidden" name="_method" value="CLEANUP_MEDIA" />

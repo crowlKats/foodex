@@ -36,13 +36,19 @@ export async function transaction<T>(
   }
 }
 
-/** Delete media rows (and S3 objects) not referenced by any recipe. */
+/**
+ * Delete media rows (and S3 objects) not referenced by any recipe. Only
+ * orphans older than a week are reaped: an upload is unreferenced until the
+ * recipe or draft it belongs to is saved, and the grace period keeps
+ * in-flight edits from losing their images.
+ */
 export async function cleanupOrphanedMedia(
   deleteFn: (key: string) => Promise<void>,
 ): Promise<number> {
   const res = await pool.query(
     `DELETE FROM media
-     WHERE id NOT IN (
+     WHERE created_at < now() - interval '7 days'
+     AND id NOT IN (
        SELECT cover_image_id FROM recipes WHERE cover_image_id IS NOT NULL
      )
      AND id NOT IN (

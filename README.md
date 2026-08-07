@@ -141,6 +141,12 @@ dishes, collections, households) are recorded in an audit log, tagged with the
 surface that made them: the app, the assistant, or the admin panel. Admins can
 browse it at `/admin/audit`.
 
+Admins can also **sudo** as a user from that user's admin page: the whole app
+then behaves as if that user were signed in (their household, their private
+data) until sudo is exited via the banner shown on every page. Audit entries
+made under sudo are attributed to the admin, labeled with who they were acting
+as.
+
 ### Invite-only mode
 
 Set `INVITE_ONLY=true` to stop accounts from creating households themselves.
@@ -150,6 +156,19 @@ names it. Household members can still invite others into their household with
 regular invites, so the platform is limited to people someone chose to let in.
 Signing in stays open, but without a household an account can't reach anything
 household-scoped.
+
+### Retention
+
+Two cleanups run automatically on regular traffic, alongside the existing
+session pruning:
+
+- Accounts that still have no household a week after signing up (abandoned
+  onboarding or an unaccepted invite) are deleted. Admin accounts are exempt.
+- Media that has been unreferenced by any recipe, step, or draft for over a week
+  is purged, including the S3 objects. The grace period protects uploads
+  belonging to edits still in progress.
+
+Automated deletions appear in the audit log under the `system` actor.
 
 ### Setup
 

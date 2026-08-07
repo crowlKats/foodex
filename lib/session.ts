@@ -30,22 +30,34 @@ export function emptySession(): SessionState {
   };
 }
 
+interface UserRow {
+  id: string;
+  name: string;
+  email: string | null;
+  avatar_url: string | null;
+  unit_system: string | null;
+  household_id: string | null;
+}
+
+function toUser(row: UserRow): User {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    avatar_url: row.avatar_url,
+    unit_system: (row.unit_system ?? "metric") as UnitSystem,
+  };
+}
+
 export async function loadSessionState(req: Request): Promise<SessionState> {
   const state = emptySession();
   const sessionId = getSessionIdFromRequest(req);
   if (!sessionId) return state;
 
   // Single query: user + household.
-  const result = await query<{
-    id: string;
-    name: string;
-    email: string | null;
-    avatar_url: string | null;
-    unit_system: string | null;
-    household_id: string | null;
-  }>(
+  const result = await query<UserRow & { sudo_user_id: string | null }>(
     `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system,
-            h.id as household_id
+            s.sudo_user_id, h.id as household_id
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      LEFT JOIN household_members hm ON hm.user_id = u.id
@@ -57,23 +69,38 @@ export async function loadSessionState(req: Request): Promise<SessionState> {
   if (result.rows.length === 0) return state;
 
   const row = result.rows[0];
-  const unitSystem = (row.unit_system ?? "metric") as UnitSystem;
-  state.user = {
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    avatar_url: row.avatar_url,
-    unit_system: unitSystem,
-  };
-  state.unitSystem = unitSystem;
+  state.user = toUser(row);
+  state.unitSystem = state.user.unit_system;
   state.householdId = row.household_id;
   state.isAdmin = isAdminEmail(row.email);
+
+  // Sudo: swap in the target's identity and household. Only honored while
+  // the session's real user is still an admin, so revoking admin access also
+  // kills any impersonation that session had going.
+  if (state.isAdmin && row.sudo_user_id && row.sudo_user_id !== row.id) {
+    const targetRes = await query<UserRow>(
+      `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system,
+              h.id as household_id
+       FROM users u
+       LEFT JOIN household_members hm ON hm.user_id = u.id
+       LEFT JOIN households h ON h.id = hm.household_id
+       WHERE u.id = $1
+       LIMIT 1`,
+      [row.sudo_user_id],
+    );
+    if (targetRes.rows.length > 0) {
+      const target = targetRes.rows[0];
+      state.user = { ...toUser(target), sudoBy: state.user };
+      state.unitSystem = state.user.unit_system;
+      state.householdId = target.household_id;
+    }
+  }
   // The list is a projection now, so the badge is derived rather than a row
   // count. Kept to one query; this runs on every request.
-  if (row.household_id) {
+  if (state.householdId) {
     state.shoppingListCount = await countOutstandingLines(
       { query },
-      row.household_id,
+      state.householdId,
     );
   }
   return state;

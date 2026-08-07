@@ -24,6 +24,24 @@ export default layout(function AppLayout({ Component, state, url }) {
         isAdmin={state.isAdmin}
         currentPath={url.pathname}
       />
+      {state.user?.sudoBy && (
+        <div class="bg-red-600 text-white text-sm px-4 py-1.5 flex items-center gap-3">
+          <span class="flex-1">
+            <strong>Sudo:</strong> acting as{" "}
+            {state.user.name}. Changes are recorded under{" "}
+            {state.user.sudoBy.name}'s name.
+          </span>
+          <form method="POST" action="/admin/sudo">
+            <input type="hidden" name="_method" value="EXIT" />
+            <button
+              type="submit"
+              class="underline font-semibold cursor-pointer whitespace-nowrap"
+            >
+              Exit sudo
+            </button>
+          </form>
+        </div>
+      )}
       {
         /*
         Vertical only: `overscroll-none` also sets overscroll-behavior-x, and
