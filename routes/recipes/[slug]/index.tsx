@@ -31,10 +31,13 @@ import { SOURCE_TYPE_LABELS } from "../../../lib/recipe-tags.ts";
 export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
-    const recipeRes = await ctx.state.db.query<RecipeWithCover>(
-      `SELECT r.*, m.url as cover_image_url
+    const recipeRes = await ctx.state.db.query<
+      RecipeWithCover & { household_name: string | null }
+    >(
+      `SELECT r.*, m.url as cover_image_url, h.name as household_name
        FROM recipes r
        LEFT JOIN media m ON m.id = r.cover_image_id
+       LEFT JOIN households h ON h.id = r.household_id
        WHERE r.slug = $1`,
       [slug],
     );
@@ -591,6 +594,9 @@ export default page(function RecipeViewPage({
           )}
         </span>
       </div>
+      {recipe.household_name && (
+        <p class="text-sm text-stone-500 mt-1">by {recipe.household_name}</p>
+      )}
       {forkedFrom && (
         <p class="text-sm text-stone-500 mt-1">
           Forked from{" "}
