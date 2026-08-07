@@ -1,7 +1,7 @@
 -- Plan by dish: a plan entry may name a dish ("Carbonara on Thursday") and
 -- defer the recipe choice to cook time. Until a recipe is pinned the entry
 -- contributes nothing to the shopping list (every demand reader inner-joins
--- on recipe_id, so unpinned entries drop out on their own) — speculative
+-- on recipe_id, so unpinned entries drop out on their own): speculative
 -- ingredients from an unchosen variant must never be bought.
 --
 -- target_servings carries the intent for dish entries; scale stays relative

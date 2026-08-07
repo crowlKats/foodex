@@ -54,7 +54,7 @@ export interface StepBodyEditorProps {
   value: string;
   onValueChange(value: string): void;
   /**
-   * Called fresh on every highlight pass. Must be cheap — re-runs on every
+   * Called fresh on every highlight pass. Must be cheap; re-runs on every
    * keystroke. Memoize the returned object if it doesn't change.
    */
   getContext(): StepBodyContext;
@@ -81,7 +81,7 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
       );
       diagnosticsRef.current = d;
       diagnostics.value = d;
-      // Only errors gate Save — a warning is about quality, not validity.
+      // Only errors gate Save; a warning is about quality, not validity.
       trackerRef.current?.update(
         d.filter((x) => x.severity !== "warning").length,
       );
@@ -105,7 +105,7 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
   /**
    * Tooltip state. Anchored to the *start* of the diagnostic range (not the
    * cursor) so it's stable while the user moves around within the same
-   * error — feels much more like a code-editor hover popover.
+   * error, which feels much more like a code-editor hover popover.
    */
   const tooltip = useSignal<
     { left: number; top: number; message: string; key: number } | null
@@ -198,7 +198,7 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
   /**
    * Insert `{{ key }}` at the caret. Typing `50g butter` is faster and more
    * natural than typing `{{ butter }}`, which made the broken path the easy
-   * one — this is the counterweight.
+   * one. This is the counterweight.
    */
   function insertToken(key: string) {
     const at = caretRef.current ?? value.length;
@@ -212,7 +212,7 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
     caretRef.current = at + lead.length + token.length;
   }
 
-  // Close popup on Escape — the backdrop handles outside-click directly.
+  // Close popup on Escape; the backdrop handles outside-click directly.
   useEffect(() => {
     if (!popupOpen.value) return;
     const onKey = (e: KeyboardEvent) => {
@@ -223,7 +223,7 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
   }, [popupOpen.value]);
 
   // `getContext` reads the sibling ingredient form out of the DOM, so it can
-  // only run on the client — everything else that calls it does so from the
+  // only run on the client. Everything else that calls it does so from the
   // highlight pass, which never runs during SSR.
   const insertable = typeof document === "undefined"
     ? []
@@ -279,7 +279,7 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
             }`}
             aria-label={`${diagnostics.value.length} problem${
               diagnostics.value.length === 1 ? "" : "s"
-            } — click to view`}
+            }, click to view`}
             aria-expanded={popupOpen.value}
             onMouseDown={(e) => {
               // Prevent the contenteditable from stealing focus before our
@@ -351,7 +351,7 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
                               value.slice(fix.end),
                           );
                           // Offsets after this point have shifted, so the rest
-                          // of the list is stale — close rather than mislead.
+                          // of the list is stale; close rather than mislead.
                           popupOpen.value = false;
                         }}
                       >
@@ -389,7 +389,7 @@ export function StepBodyEditor(props: StepBodyEditorProps): JSX.Element {
               key={ing.key}
               type="button"
               class="step-body-insert-chip"
-              title={`Insert {{ ${ing.key} }} — scales with the recipe`}
+              title={`Insert {{ ${ing.key} }} (scales with the recipe)`}
               // Keep the caret where it was; the chip must not steal focus.
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => insertToken(ing.key)}
@@ -540,7 +540,7 @@ function offsetToRect(root: HTMLElement, offset: number): DOMRect | null {
       remaining -= len;
     }
   }
-  // Offset past end — anchor to the end of the last text node, else root.
+  // Offset past end: anchor to the end of the last text node, else root.
   const last = root.lastChild;
   if (last && last.nodeType === Node.TEXT_NODE) {
     const t = last as Text;
@@ -552,7 +552,7 @@ function offsetToRect(root: HTMLElement, offset: number): DOMRect | null {
 /**
  * Get the caret position at `offset` within text node `node`.
  *
- * The preferred measurement is a *collapsed* range — its bounding rect is
+ * The preferred measurement is a *collapsed* range: its bounding rect is
  * the caret rect, which spans the full line-box height. That's exactly the
  * shape we want for anchoring a tooltip at the *bottom of the line* under
  * the diagnostic. Measuring a 1-character range instead returns the glyph

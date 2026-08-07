@@ -122,7 +122,7 @@ export default function IngredientForm(
         <p>
           Staples like water or salt are marked{" "}
           <span class="font-medium">Always on hand</span>{" "}
-          on the ingredient itself — they scale, but are never bought or counted
+          on the ingredient itself: they scale, but are never bought or counted
           as missing.
         </p>
       </div>
@@ -179,7 +179,7 @@ export default function IngredientForm(
               </InputBar>
               <div
                 class="flex min-w-0 [&>:not(:first-child)]:-ml-0.5"
-                title="Template key — how you refer to this ingredient in steps"
+                title="Template key: how you refer to this ingredient in steps"
               >
                 <span class="input-affix">{"{{"}</span>
                 <Input

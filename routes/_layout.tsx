@@ -7,7 +7,7 @@ import PwaInstallPrompt from "../islands/PwaInstallPrompt.tsx";
 
 export default layout(function AppLayout({ Component, state, url }) {
   // Full-bleed (no max-width wrapper, no page scroll) for the scanner and the
-  // agent chat session — they manage their own full-height layout.
+  // agent chat session; they manage their own full-height layout.
   const fullBleed = url.pathname === "/scan" ||
     /^\/agent\/[^/]+$/.test(url.pathname);
   return (

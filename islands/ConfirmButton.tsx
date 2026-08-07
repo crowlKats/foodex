@@ -13,7 +13,7 @@ interface ConfirmButtonProps {
   children: ComponentChildren;
   onClick?: () => void;
   /**
-   * Id of the form to submit, for when the button can't sit inside it —
+   * Id of the form to submit, for when the button can't sit inside it:
    * forms don't nest, so a destructive action rendered within another form
    * has to point at its own.
    */

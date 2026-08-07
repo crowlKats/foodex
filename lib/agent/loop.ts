@@ -1,8 +1,8 @@
 // The agentic turn loop. The triggering event (user_message or
 // conflict_resolve_request) must already be appended before calling runTurn.
 //
-// Each round: fold the log into Anthropic messages, call the model, and — if it
-// used tools — execute them (DB reads only), then persist the assistant message
+// Each round: fold the log into Anthropic messages, call the model, and (if it
+// used tools) execute them (DB reads only), then persist the assistant message
 // and all tool results together in one transaction so the log is never left with
 // a tool_use that has no tool_result.
 
@@ -18,9 +18,9 @@ import { getFile } from "../s3.ts";
 
 // A fast, low-cost model with no extended thinking: recipe staging is largely a
 // mechanical data transform, not deep reasoning. (Haiku 4.5 does not support
-// adaptive thinking / effort — omit them entirely.)
+// adaptive thinking / effort; omit them entirely.)
 const MODEL = "claude-haiku-4-5";
-// Turns that carry photos use the stronger vision model instead — deciphering
+// Turns that carry photos use the stronger vision model instead: deciphering
 // hand-written pages is what the old OCR pipeline used it for, and Haiku gives
 // up (and starts asking the user) on handwriting Sonnet reads fine.
 const VISION_MODEL = "claude-sonnet-4-6";

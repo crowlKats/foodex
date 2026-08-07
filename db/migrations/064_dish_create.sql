@@ -1,5 +1,5 @@
 -- Splitting a dish back out. fx_resolve_dish honors aliases before anything
--- else — that is what makes merges permanent — but it also means a
+-- else (that is what makes merges permanent), but it also means a
 -- merged-away name can never become its own dish again through resolution
 -- alone. The 062 backfill unioned fork families on the assumption that a
 -- renamed fork still makes its root's dish, which is wrong whenever the

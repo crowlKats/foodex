@@ -33,7 +33,7 @@ interface ActiveTimer {
   totalSeconds: number;
   remaining: number;
   done: boolean;
-  /** Cooking timers get paused constantly — something boils over, the phone rings. */
+  /** Cooking timers get paused constantly: something boils over, the phone rings. */
   paused: boolean;
 }
 
@@ -54,7 +54,7 @@ interface RecipeIngredient {
   base_cost?: number; // cost at the recipe's default quantity
   currency?: string;
   density?: number | null;
-  /** Water and the like — scales, but is never bought or counted missing. */
+  /** Water and the like: scales, but is never bought or counted missing. */
   always_on_hand?: boolean;
 }
 
@@ -142,7 +142,7 @@ export default function RecipeView(
 
   /**
    * Both the "in pantry" dot and the shopping button read the same answer from
-   * lib/inventory.ts. They used to disagree — the dot ignored amounts, so a
+   * lib/inventory.ts. They used to disagree: the dot ignored amounts, so a
    * recipe could claim every ingredient was in the pantry while the button
    * below it worked out you were 400 g short.
    */
@@ -151,7 +151,7 @@ export default function RecipeView(
   }
 
   function isInPantry(ing: RecipeIngredient, ratio: number): boolean {
-    // Water is measured, not shopped for — it never counts against you.
+    // Water is measured, not shopped for; it never counts against you.
     if (ing.always_on_hand) return true;
     return isAvailable(availabilityOf(ing, ratio));
   }
@@ -215,7 +215,7 @@ export default function RecipeView(
     };
   }
 
-  // Re-rendering happens automatically through signals reads in the JSX —
+  // Re-rendering happens automatically through signals reads in the JSX:
   // changing target* signals triggers the `getCurrentRatio()` re-read in the
   // `<RecipeSteps>` render path.
   function update() {
@@ -404,7 +404,7 @@ export default function RecipeView(
     return computeScaleRatio(baseQuantity, getTarget());
   }
 
-  // The (retargeted) tray for {{ tray }} refs — only dimensions recipes.
+  // The (retargeted) tray for {{ tray }} refs; only dimensions recipes.
   function getTray() {
     if (baseQuantity.type !== "dimensions") return undefined;
     return {
@@ -429,8 +429,8 @@ export default function RecipeView(
    * Planning the meal is what puts it on the shopping list.
    *
    * The entry stores the scale rather than a snapshot of missing amounts, so
-   * the list stays correct when the pantry changes or the servings are edited —
-   * the old version froze pantry-adjusted numbers that nothing could recompute.
+   * the list stays correct when the pantry changes or the servings are edited.
+   * The old version froze pantry-adjusted numbers that nothing could recompute.
    */
   async function addToPlan(plannedFor: string | null) {
     const res = await fetch("/api/plan", {
@@ -457,7 +457,7 @@ export default function RecipeView(
     const needed = neededAmount(ing, ratio);
     const key = ingredientKey(ing);
     if (needed === 0) {
-      // Already covered by the pantry — nothing to add, but say so rather than
+      // Already covered by the pantry: nothing to add, but say so rather than
       // leaving the click looking like it did nothing.
       addedToList.value = { key, label: "already in pantry" };
       setTimeout(() => {
@@ -593,7 +593,7 @@ export default function RecipeView(
     );
   }
 
-  // Tick active timers every second — stable interval that survives re-renders
+  // Tick active timers every second: stable interval that survives re-renders
   useEffect(() => {
     const interval = setInterval(() => {
       if (timers.value.length === 0) return;
@@ -685,7 +685,7 @@ export default function RecipeView(
     return stepIdxs.every((i) => done.has(i));
   }
 
-  /** Get steps whose deps are all done — including section-level gating. */
+  /** Get steps whose deps are all done, including section-level gating. */
   function availableSteps(): number[] {
     const done = cookingDone.value;
     const available: number[] = [];
@@ -802,7 +802,7 @@ export default function RecipeView(
   /**
    * Cross-reference links are plain anchors into the recipe page underneath the
    * overlay, so in cooking mode they changed the URL and did nothing visible.
-   * Here they move the carousel instead — which matters more in cooking mode
+   * Here they move the carousel instead, which matters more in cooking mode
    * than on the page, since you can't just glance up at the referenced step.
    */
   function handleCookingClick(e: MouseEvent) {
@@ -918,8 +918,8 @@ export default function RecipeView(
 
   /**
    * The last step used to dead-end on a greyed-out Next. Finishing the final
-   * step is the single best moment to offer "I cooked this" — the action that
-   * deducts from the pantry — and it was the one moment it wasn't offered.
+   * step is the single best moment to offer "I cooked this" (the action that
+   * deducts from the pantry), and it was the one moment it wasn't offered.
    */
   function renderCookingFinish() {
     if (!loggedIn || !householdId) {
@@ -942,7 +942,7 @@ export default function RecipeView(
           class="cooking-mode-nav-btn btn-primary"
           onClick={exitCookingMode}
         >
-          Deducted from your pantry — close
+          Deducted from your pantry. Close
         </button>
       );
     }
@@ -957,9 +957,7 @@ export default function RecipeView(
           setTimeout(exitCookingMode, 2500);
         }}
       >
-        {cookedStatus.value === "loading"
-          ? "Updating…"
-          : "Done — I cooked this"}
+        {cookedStatus.value === "loading" ? "Updating…" : "Done: I cooked this"}
       </button>
     );
   }
@@ -1053,7 +1051,7 @@ export default function RecipeView(
           <div class="card">
             {pantryItems.length > 0 && (() => {
               // Counted at the current scale, with the same rule the shopping
-              // button uses — double the servings and the badge reacts.
+              // button uses: double the servings and the badge reacts.
               const ratio = getCurrentRatio();
               const inPantry = ingredients.filter((ing) =>
                 isInPantry(ing, ratio)
@@ -1135,7 +1133,7 @@ export default function RecipeView(
                               }`}
                               title={covered
                                 ? availability.staple
-                                  ? "Staple — always on hand"
+                                  ? "Staple: always on hand"
                                   : "In pantry"
                                 : `In pantry, but ${
                                   formatAmount(
@@ -1369,7 +1367,7 @@ export default function RecipeView(
                   {t.done
                     ? "Done!"
                     : t.paused
-                    ? `${formatTimer(t.remaining)} — paused`
+                    ? `${formatTimer(t.remaining)} (paused)`
                     : formatTimer(t.remaining)}
                 </div>
               </div>
@@ -1666,7 +1664,7 @@ export default function RecipeView(
                       state: "active",
                     });
                   }
-                  // Loose steps (no section) — each available one becomes its own column
+                  // Loose steps (no section): each available one becomes its own column
                   available.forEach((idx) => {
                     if (steps[idx].section_id == null) {
                       columns.push({

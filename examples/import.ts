@@ -176,7 +176,7 @@ async function importOne(
       );
     }
 
-    // Sections — insert before steps so we can reference section_id
+    // Sections: insert before steps so we can reference section_id
     const sectionKeyToId = new Map<string, string>();
     if (recipe.sections && recipe.sections.length > 0) {
       const secRes = await bulkInsert(
@@ -294,7 +294,7 @@ async function main() {
   const householdId = await pickHousehold();
   for (const { name, recipe } of examples) {
     const slug = await importOne(householdId, name, recipe);
-    console.log(`✓ /recipes/${slug}  — ${recipe.title}`);
+    console.log(`✓ /recipes/${slug}  - ${recipe.title}`);
   }
   Deno.exit(0);
 }

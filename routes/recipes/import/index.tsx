@@ -45,7 +45,7 @@ export default page(function ImportIndexPage({ data }) {
 
       <h1 class="text-2xl font-bold mt-4 mb-2">Import Recipe</h1>
       <p class="text-sm text-stone-500 mb-6">
-        Paste a URL, recipe text, or photos — any combination. The recipe is
+        Paste a URL, recipe text, or photos (any combination). The recipe is
         extracted and opened in the editor for you to review and save.{" "}
         <a href="/recipes/import/bulk" class="link">
           Importing a whole book? Bulk import →

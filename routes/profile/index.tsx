@@ -121,7 +121,7 @@ export default page(
         {
           /*
           The mobile tab bar only fits the six core destinations, and the top
-          bar has room for icons — so Assistant, Ingredients, Stores and Tools
+          bar has room for icons, so Assistant, Ingredients, Stores and Tools
           had no route at all on a phone. The avatar leads here, so this is
           where the rest of the app lives.
         */

@@ -75,7 +75,7 @@ export default function ShoppingListView(
 
   /**
    * Every mutation returns the recomputed projection, so the client never
-   * recalculates "what's left to buy" itself — buying one thing can change
+   * recalculates "what's left to buy" itself; buying one thing can change
    * several lines at once.
    */
   async function apiCall(body: Record<string, unknown>) {
@@ -94,7 +94,7 @@ export default function ShoppingListView(
 
   /**
    * The nav badge is server-rendered, so without this it kept the count the
-   * page loaded with until the next navigation — reading "12" beside eleven
+   * page loaded with until the next navigation, reading "12" beside eleven
    * remaining rows.
    */
   function syncNavBadge(current: ShoppingLine[]) {
@@ -225,11 +225,11 @@ export default function ShoppingListView(
             // Ticking a line is a purchase, not just a tick: it books the stock
             // into the pantry, which later gets deducted when you cook. Say so.
             aria-label={bought
-              ? `Un-buy ${line.name} — removes it from the pantry again`
-              : `Bought ${line.name} — adds it to your pantry`}
+              ? `Un-buy ${line.name}: removes it from the pantry again`
+              : `Bought ${line.name}: adds it to your pantry`}
             title={bought
               ? "Bought. Un-ticking takes it back out of the pantry."
-              : "Tick when you've bought it — it goes into your pantry"}
+              : "Tick when you've bought it. It goes into your pantry."}
             onChange={() => toggleBought(line)}
           />
         </div>
@@ -250,7 +250,7 @@ export default function ShoppingListView(
               : line.name}
           </div>
           {
-            /* One meta line rather than a stack — this list is read one-handed
+            /* One meta line rather than a stack: this list is read one-handed
               in a shop, so every row that grows pushes another off screen. */
           }
           {(() => {
@@ -273,7 +273,7 @@ export default function ShoppingListView(
             if (!bought && line.unconvertible) {
               notes.push(
                 <span class="text-amber-600 dark:text-amber-400">
-                  Units don't match — check this one yourself
+                  Units don't match; check this one yourself
                 </span>,
               );
             }
@@ -361,7 +361,7 @@ export default function ShoppingListView(
       const primary = line.sources[0];
       // Manual demands added from a recipe page carry that recipe's name as
       // their label. Filing every manual row under one "Added by hand" heading
-      // threw that away — in the view whose whole point is grouping by meal.
+      // threw that away, in the view whose whole point is grouping by meal.
       const key = primary?.kind === "plan"
         ? `plan:${primary.id}`
         : primary?.label
@@ -435,7 +435,7 @@ export default function ShoppingListView(
                 class="size-3.5 cursor-pointer accent-orange-600"
                 aria-label={`Buy everything from ${
                   store ? store.name : "no store"
-                } — adds it all to your pantry`}
+                }: adds it all to your pantry`}
                 title="Check everything from this store"
                 onChange={async () => {
                   for (const line of groupLines) {
@@ -474,7 +474,7 @@ export default function ShoppingListView(
   /**
    * Store and price columns only earn their width once the household has
    * somewhere to shop. With no stores they were an empty `<select>` on every
-   * row — twelve inert dropdowns on the app's most density-sensitive screen.
+   * row: twelve inert dropdowns on the app's most density-sensitive screen.
    */
   const showStoreCol = stores.length > 0 &&
     lines.value.some((l) => getStoresForLine(l.ingredient_id).length > 0);

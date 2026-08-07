@@ -12,7 +12,7 @@
  *      only the outer `*…*` italic delimiters remain.
  *
  *   2. `parseExpression` parses the contents of `{{ … }}` as an arithmetic
- *      expression — numbers, variables, ingredient properties (`foo.name`),
+ *      expression: numbers, variables, ingredient properties (`foo.name`),
  *      function calls, binary and unary operators.
  *
  * Parse errors never throw: they become `Invalid*` nodes that carry the
@@ -85,7 +85,7 @@ class TemplateParser {
     };
 
     while (this.pos < this.src.length) {
-      // `{{` — interpolation
+      // `{{`: interpolation
       if (this.src.startsWith("{{", this.pos)) {
         flushText();
         const node = this.parseInterpolation();
@@ -93,7 +93,7 @@ class TemplateParser {
         textStart = this.pos;
         continue;
       }
-      // `@step(`, `@timer(`, `@recipe(` — recipe directives
+      // `@step(`, `@timer(`, `@recipe(`: recipe directives
       if (this.src[this.pos] === "@") {
         const dirStart = this.pos;
         const dir = this.tryParseDirective();
@@ -103,7 +103,7 @@ class TemplateParser {
           textStart = this.pos;
           continue;
         }
-        // Not a recognised directive — fall through and treat `@` as text.
+        // Not a recognised directive; fall through and treat `@` as text.
         this.pos = dirStart;
       }
       textBuf += this.src[this.pos];
@@ -122,7 +122,7 @@ class TemplateParser {
     // expression grammar, so a simple forward scan is correct.
     const closeIdx = this.src.indexOf("}}", this.pos);
     if (closeIdx < 0) {
-      // Unterminated — consume to EOF as an invalid directive.
+      // Unterminated; consume to EOF as an invalid directive.
       const raw = this.src.slice(start);
       this.pos = this.src.length;
       return {
@@ -155,7 +155,7 @@ class TemplateParser {
       expr = {
         kind: "invalid_expr",
         raw: "",
-        message: "`{{ }}` is empty — put an ingredient name or a " +
+        message: "`{{ }}` is empty. Put an ingredient name or a " +
           "calculation inside, like `{{ flour }}` or `{{ ratio * 2 }}`.",
         start: exprStart,
         length: 0,
@@ -194,14 +194,14 @@ class TemplateParser {
     const argStart = this.pos + m[0].length;
     const closeIdx = this.src.indexOf(")", argStart);
     if (closeIdx < 0) {
-      // Unterminated directive — consume up to EOF.
+      // Unterminated directive; consume up to EOF.
       const raw = this.src.slice(start);
       this.pos = this.src.length;
       return {
         kind: "invalid_directive",
         raw,
         message:
-          `You started \`@${name}(\` but never closed it — add a \`)\` to finish.`,
+          `You started \`@${name}(\` but never closed it. Add a \`)\` to finish.`,
         start,
         length: raw.length,
       };
@@ -262,7 +262,7 @@ class TemplateParser {
       kind: "invalid_directive",
       raw: this.src.slice(start, start + totalLen),
       message:
-        "`@step(...)` should point at another step — either by its number " +
+        "`@step(...)` should point at another step, either by its number " +
         "(like `@step(3)` for step 3) or by section (like `@step(sauce.2)` " +
         "for step 2 of the sauce section).",
       start,
@@ -317,8 +317,8 @@ class TemplateParser {
       return {
         kind: "invalid_directive",
         raw: this.src.slice(start, start + totalLen),
-        message: "`@recipe(...)` needs the slug of another recipe — " +
-          "that's the part at the end of the recipe's web address. " +
+        message: "`@recipe(...)` needs the slug of another recipe: " +
+          "the part at the end of the recipe's web address. " +
           "It uses lowercase letters, numbers, `-` and `_` " +
           "(e.g. `@recipe(tomato-sauce)`).",
         start,
@@ -344,8 +344,8 @@ class TemplateParser {
       return {
         kind: "invalid_directive",
         raw: this.src.slice(start, start + totalLen),
-        message: "`@dish(...)` needs the slug of a dish — " +
-          "that's the part at the end of the dish's web address. " +
+        message: "`@dish(...)` needs the slug of a dish: " +
+          "the part at the end of the dish's web address. " +
           "It uses lowercase letters, numbers, `-` and `_` " +
           "(e.g. `@dish(pizza-dough)`).",
         start,
@@ -394,7 +394,7 @@ class ExpressionParser {
   parseTopLevel(): Expr {
     const expr = this.parseExpr();
     if (this.idx < this.tokens.length) {
-      // Trailing junk after a valid expression — wrap into an invalid node
+      // Trailing junk after a valid expression: wrap into an invalid node
       // covering the trailing range, but keep the partial expression as the
       // primary parse result.
       const first = this.tokens[this.idx];
@@ -539,7 +539,7 @@ class ExpressionParser {
           tok.start,
           (this.tokens[this.idx - 1].start + this.tokens[this.idx - 1].length) -
             tok.start,
-          "After a `.` you need to say which part you want — " +
+          "After a `.` you need to say which part you want: " +
             "either `.amount` (just the number) or `.name` " +
             "(the ingredient's name).",
         );
@@ -576,7 +576,7 @@ class ExpressionParser {
       return { kind: "variable", name, start: tok.start, length: tok.length };
     }
 
-    // Unexpected token — consume it and produce an invalid expression.
+    // Unexpected token: consume it and produce an invalid expression.
     this.advance();
     return this.invalid(
       tok.start,
@@ -591,7 +591,7 @@ class ExpressionParser {
       kind: "invalid_expr",
       raw: "",
       message:
-        "This calculation stops too soon — there should be something here.",
+        "This calculation stops too soon; there should be something here.",
       start: lastEnd,
       length: 0,
     };
@@ -692,7 +692,7 @@ function tokenize(src: string, offset: number): Token[] {
       i = j;
       continue;
     }
-    // Unknown character — emit a single error token and continue so the parser
+    // Unknown character: emit a single error token and continue so the parser
     // can recover.
     out.push({
       type: "error",

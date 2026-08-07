@@ -39,7 +39,7 @@ export const handlers = handler({
     try {
       url = await uploadFile(key, bytes, file.type);
     } catch (e) {
-      // Surface storage failures as JSON (misconfigured/unreachable S3) —
+      // Surface storage failures as JSON (misconfigured/unreachable S3);
       // an uncaught throw would render the HTML error page instead.
       console.error("upload: storage write failed:", e);
       return Response.json({ error: "Storage upload failed" }, { status: 502 });

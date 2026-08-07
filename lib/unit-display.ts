@@ -4,7 +4,7 @@ export type UnitSystem = "metric" | "imperial";
 
 /** Preferred display unit for each base unit, keyed by system. */
 const DISPLAY_UNITS: Record<UnitSystem, Record<string, string>> = {
-  metric: {}, // no conversion needed — metric is the storage default
+  metric: {}, // no conversion needed; metric is the storage default
   imperial: {
     g: "oz",
     kg: "lb",

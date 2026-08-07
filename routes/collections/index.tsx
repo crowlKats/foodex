@@ -105,7 +105,7 @@ export default page(
                   </ButtonLink>
                 }
               >
-                Collections group recipes however you like — a weeknight set, a
+                Collections group recipes however you like: a weeknight set, a
                 Christmas menu, everything you've cooked out of one book. They
                 can be shared with a link.
               </EmptyState>

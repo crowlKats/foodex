@@ -74,7 +74,7 @@ export default function DishCompare(
       <p class="text-xs text-stone-400 mb-3">
         {active
           ? `Amounts rescaled to ${formatAmount(target)} servings per version.`
-          : "Amounts are each recipe's own batch size — check the yield row before comparing quantities directly."}
+          : "Amounts are each recipe's own batch size; check the yield row before comparing quantities directly."}
       </p>
       <div class="overflow-x-auto">
         <table class="text-sm w-full border-collapse">

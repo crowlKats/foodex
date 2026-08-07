@@ -12,7 +12,7 @@ DELETE FROM recipe_ingredients
 WHERE ingredient_id IS NULL AND fx_norm_name(name) = '';
 
 -- Link to an existing ingredient with the same normalized name. When several
--- entities share a name, prefer the oldest — the same pick a merge would make.
+-- entities share a name, prefer the oldest (the same pick a merge would make).
 UPDATE recipe_ingredients ri
 SET ingredient_id = pick.id
 FROM (
@@ -41,7 +41,7 @@ WHERE ri.ingredient_id IS NULL
 ALTER TABLE recipe_ingredients ALTER COLUMN ingredient_id SET NOT NULL;
 
 -- SET NULL is impossible on a NOT NULL column: deleting an ingredient that
--- recipes still use is now blocked — merge it into another instead.
+-- recipes still use is now blocked; merge it into another instead.
 ALTER TABLE recipe_ingredients
   DROP CONSTRAINT recipe_ingredients_ingredient_id_fkey,
   ADD CONSTRAINT recipe_ingredients_ingredient_id_fkey

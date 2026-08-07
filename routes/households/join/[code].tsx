@@ -7,7 +7,7 @@ import { loginUrl } from "../../../lib/auth.ts";
  * An invitee usually has no account yet, so the link lands on sign-in first.
  * Carry the invite along so they come back here afterwards instead of being
  * dropped on the generic onboarding page with nothing but a "paste your invite
- * code" box — the code is in the URL they already clicked.
+ * code" box; the code is in the URL they already clicked.
  */
 function loginUrlForInvite(code: string): string {
   return loginUrl(`/households/join/${encodeURIComponent(code)}`);

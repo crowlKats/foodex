@@ -21,7 +21,7 @@ CREATE UNIQUE INDEX idx_dishes_norm_name ON dishes (fx_norm_name(name));
 
 -- Every normalized name that resolves to a dish. The dish's own name is also
 -- an alias row, so resolution is a single lookup. Aliases survive dish merges
--- (unlike ingredient merges, which delete the loser outright) — that is what
+-- (unlike ingredient merges, which delete the loser outright); that is what
 -- makes convergence stick.
 CREATE TABLE dish_aliases (
   dish_id UUID NOT NULL REFERENCES dishes(id) ON DELETE CASCADE,
@@ -53,7 +53,7 @@ $$ LANGUAGE sql IMMUTABLE;
 
 -- Resolve a recipe title to a dish id, creating the dish (and its alias) on
 -- first use. Races on concurrent creation are absorbed by the ON CONFLICT
--- clauses; a lost race can strand an empty dishes row, which is harmless —
+-- clauses; a lost race can strand an empty dishes row, which is harmless:
 -- dishes with no recipes are never rendered.
 CREATE OR REPLACE FUNCTION fx_resolve_dish(p_title TEXT) RETURNS UUID AS $$
 DECLARE

@@ -2,7 +2,7 @@ import type { ComponentChildren } from "preact";
 import RecipeSubmitButton from "../../islands/RecipeSubmitButton.tsx";
 import RecipePreview from "../../islands/RecipePreview.tsx";
 
-/** A labelled band inside a card — groups related fields without a new card. */
+/** A labelled band inside a card; groups related fields without a new card. */
 export function SubGroup(
   { label, children }: { label: string; children: ComponentChildren },
 ) {

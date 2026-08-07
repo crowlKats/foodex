@@ -1,5 +1,5 @@
 // Fine-grained metric units where fractional display is noise (e.g. 167 g, not
-// 166.7 g). Count-based units like pcs/clove/slice are deliberately excluded —
+// 166.7 g). Count-based units like pcs/clove/slice are deliberately excluded:
 // they can be genuinely fractional (0.25 pcs of nutmeg, half a clove).
 const WHOLE_UNITS = new Set([
   "g",
@@ -12,7 +12,7 @@ const WHOLE_UNITS = new Set([
 
 /**
  * Units you count out rather than measure. Scaling a 4-serving recipe to 6
- * genuinely wants one and a half onions, but "1.5 onion" reads like a bug —
+ * genuinely wants one and a half onions, but "1.5 onion" reads like a bug, so
  * these render as vulgar fractions instead. Includes the empty unit, which is
  * how bare countables ("1 yellow onion", "3 garlic cloves") are stored.
  */
@@ -51,9 +51,9 @@ function formatCountable(n: number): string {
 }
 
 /**
- * Format a numeric amount for display — never shows unnecessary trailing zeros.
+ * Format a numeric amount for display; never shows unnecessary trailing zeros.
  * Rounds to 2 decimal places max. Fine-grained metric units (g, ml…) round by
- * magnitude: integer at 10+, 1 decimal under 10, 2 decimals under 1 — so small
+ * magnitude: integer at 10+, 1 decimal under 10, 2 decimals under 1, so small
  * amounts like 0.7 g or 0.25 ml keep their precision instead of collapsing to 0/1.
  * Countable units get vulgar fractions: 1.5 onion renders as 1½.
  */
@@ -64,19 +64,19 @@ export function formatAmount(n: number, unit?: string): string {
     const factor = 10 ** decimals;
     return String(Math.round(n * factor) / factor);
   }
-  // Only when the unit is known — an omitted unit could be anything.
+  // Only when the unit is known; an omitted unit could be anything.
   if (unit !== undefined && COUNT_UNITS.has(unit)) return formatCountable(n);
   const rounded = Math.round(n * 100) / 100;
   return String(rounded);
 }
 
-/** Format a currency value — always 2 decimal places, no trailing-zero issue. */
+/** Format a currency value: always 2 decimal places, no trailing-zero issue. */
 export function formatCurrency(n: number): string {
   return n.toFixed(2);
 }
 
 /**
- * Clean a number for use in an input field value — strips trailing .0 but
+ * Clean a number for use in an input field value: strips trailing .0 but
  * preserves meaningful decimals like .5.
  */
 export function formatInputValue(n: number | null | undefined): string {

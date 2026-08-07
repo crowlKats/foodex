@@ -72,7 +72,7 @@ export interface ShoppingLine {
   quantityUnknown: boolean;
   /** A demand or a stock row used an incompatible unit and was left out. */
   unconvertible: boolean;
-  /** Covered by a staple — shown, but never demanded. */
+  /** Covered by a staple: shown, but never demanded. */
   staple: boolean;
   sources: (DemandSource & { amount: number | null; unit: string | null })[];
   /** Set once someone ticks the line off. Its presence *is* "checked". */
@@ -90,7 +90,7 @@ export interface ProjectOptions {
 /**
  * Fold demand against stock into the lines to actually buy.
  *
- * Pure so the arithmetic is testable without a database — the shape of a
+ * Pure so the arithmetic is testable without a database; the shape of a
  * shopping list is exactly the kind of thing that should never need one.
  */
 export function projectLines(
@@ -147,7 +147,7 @@ export function projectLines(
     const availability = computeAvailability(ref, stock);
     const purchase = purchaseByKey.get(key) ?? null;
 
-    // Nothing to buy and nothing bought — the pantry already covers it.
+    // Nothing to buy and nothing bought: the pantry already covers it.
     if (
       !purchase && availability.needed === 0 && !availability.quantityUnknown
     ) {
@@ -180,7 +180,7 @@ export function projectLines(
 
 /**
  * The unit of the largest single requirement in a group, compared in base
- * units — 1 kg outranks 200 g, even though 200 is the bigger number.
+ * units: 1 kg outranks 200 g, even though 200 is the bigger number.
  */
 function dominantUnit(group: readonly Demand[]): string {
   let best = "";
@@ -383,7 +383,7 @@ export async function projectShoppingList(
  *
  * The purchase row is the "checked" state *and* the idempotency key. Checking
  * the same line twice inserts nothing the second time, and un-checking reverses
- * exactly what was added — the old flag-based version double-counted stock
+ * exactly what was added; the old flag-based version double-counted stock
  * every time someone un-checked and re-checked an item.
  */
 export async function buyLine(

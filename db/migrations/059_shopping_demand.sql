@@ -73,7 +73,7 @@ CREATE TABLE household_ingredient_stores (
 -- Outstanding items become manual demands. Their recipe attribution is dropped
 -- rather than guessed at: the old rows stored pantry-adjusted amounts with no
 -- record of the scale they were computed at, so there is no faithful way to
--- turn them back into planned meals. Checked items are discarded — they were
+-- turn them back into planned meals. Checked items are discarded: they were
 -- already added to the pantry when they were ticked off.
 WITH current_list AS (
   SELECT DISTINCT ON (household_id) household_id, id

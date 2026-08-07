@@ -172,7 +172,7 @@ export const handlers = handler({
             // a reference to a staged ingredient item creates that ingredient
             // now (a dependency) and links to it; anything else resolves to
             // null here and is find-or-created by name inside
-            // saveRecipeChildren — a recipe line never lands unlinked.
+            // saveRecipeChildren; a recipe line never lands unlinked.
             const resolvedRefs = new Map<string, string | null>();
             const resolveIngredientId = async (
               ref: string | null,
@@ -191,7 +191,7 @@ export const handlers = handler({
               }
 
               // 2. A staged ingredient that was ALREADY applied (e.g. earlier in
-              // this same "apply all" — the agent stages ingredients before the
+              // this same "apply all"; the agent stages ingredients before the
               // recipe): recover the real id it was created with from the log.
               if (out === null) {
                 for (const ev of events) {

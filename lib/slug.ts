@@ -3,8 +3,8 @@ import type { QueryFn } from "../db/mod.ts";
 
 /**
  * Derive a free recipe slug from a title, suffixing `-2`, `-3`, … past any
- * existing recipe. Every path that inserts or renames a recipe must use this
- * — a duplicate title is a normal event (another household's version of the
+ * existing recipe. Every path that inserts or renames a recipe must use this;
+ * a duplicate title is a normal event (another household's version of the
  * same dish), never an error.
  */
 export async function uniqueSlug(

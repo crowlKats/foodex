@@ -14,7 +14,7 @@
  */
 import { convertAmount } from "./unit-convert.ts";
 
-/** A row of household stock — a `pantry_items` row, or anything shaped like one. */
+/** A row of household stock: a `pantry_items` row, or anything shaped like one. */
 export interface StockRow {
   id?: string;
   ingredient_id?: string | null;
@@ -40,7 +40,7 @@ export interface IngredientRef {
 /**
  * Identity used to decide whether two rows are "the same thing".
  *
- * A linked ingredient wins over the name — two rows pointing at the same
+ * A linked ingredient wins over the name: two rows pointing at the same
  * ingredient entity are the same thing even if one says "Flour" and the other
  * "flour, plain". Unlinked rows fall back to their normalized name, which is
  * why linking matters: it is the only identity that survives a rename.
@@ -103,7 +103,7 @@ export interface Availability {
   required: number | null;
   /** At least one stock row matched, regardless of amounts. */
   present: boolean;
-  /** Covered by a staple — treated as unlimited. */
+  /** Covered by a staple; treated as unlimited. */
   staple: boolean;
   /** A matching row had no amount recorded, so `have` understates reality. */
   quantityUnknown: boolean;
@@ -115,7 +115,7 @@ export interface AvailabilityOptions {
   /** Recipe scale factor applied to the reference amount. */
   scale?: number;
   /**
-   * Stock already spoken for by other demands — another planned meal, or an
+   * Stock already spoken for by other demands: another planned meal, or an
    * earlier line on the shopping list. Subtracted from what's on hand so the
    * same 200 g of flour is never credited to two meals at once.
    */
@@ -180,7 +180,7 @@ export function computeAvailability(
 }
 
 /**
- * Whether an ingredient counts as "we have this" for at-a-glance summaries —
+ * Whether an ingredient counts as "we have this" for at-a-glance summaries:
  * the recipe badge and the cookable filter.
  *
  * Deliberately amount-aware: a matched row with a known amount that falls short
@@ -211,7 +211,7 @@ export function groupByIngredient<T extends StockRow>(
   return groups;
 }
 
-/** Other rows representing the same ingredient — merge candidates. */
+/** Other rows representing the same ingredient: merge candidates. */
 export function findDuplicates<T extends StockRow>(
   row: T,
   rows: readonly T[],
@@ -230,7 +230,7 @@ export interface SummedAmount {
 }
 
 /**
- * Total a set of rows into one unit — the unit of the largest contributor, so
+ * Total a set of rows into one unit: the unit of the largest contributor, so
  * "500 g + 0.5 kg" reports as one kilogram rather than two separate lines.
  */
 export function sumAmounts(
@@ -305,7 +305,7 @@ export function planConsumption(
   for (const row of selectStock(ref, rows)) {
     if (remaining <= 0) break;
     if (row.staple) {
-      // Staples are unlimited by definition — nothing to deduct.
+      // Staples are unlimited by definition; nothing to deduct.
       remaining = 0;
       break;
     }

@@ -1,5 +1,5 @@
 /**
- * Planned meals — the layer both the pantry and the shopping list hang off.
+ * Planned meals: the layer both the pantry and the shopping list hang off.
  *
  * A plan entry records the intention ("Pancakes, double batch, Thursday") and
  * survives long enough to be useful: the shopping list reads outstanding
@@ -316,7 +316,7 @@ export async function pinPlanEntry(
 
 export interface CookResult {
   ok: boolean;
-  /** What the pantry could not cover — reported, never silently swallowed. */
+  /** What the pantry could not cover; reported, never silently swallowed. */
   shortfalls: ConsumeShortfall[];
   /** Set when the recipe produces an ingredient that went into the pantry. */
   produced: { name: string; amount: number | null; unit: string | null } | null;
@@ -446,7 +446,7 @@ export async function uncookPlanEntry(
   return reversed;
 }
 
-/** Cook a recipe that was never planned — records the entry, then cooks it. */
+/** Cook a recipe that was never planned: records the entry, then cooks it. */
 export async function cookNow(
   db: { query: QueryFn },
   input: AddPlanEntryInput,
@@ -539,7 +539,7 @@ export async function suggestRecipes(
        )
        -- Already on the plan is not a suggestion. Beyond offering a second
        -- entry for a meal you've planned, suggestions are evaluated at scale
-       -- 1 while the plan entry uses the batch you actually set — so the two
+       -- 1 while the plan entry uses the batch you actually set, so the two
        -- sat side by side on /plan disagreeing about the same recipe.
        AND NOT EXISTS (
          SELECT 1 FROM plan_entries pe

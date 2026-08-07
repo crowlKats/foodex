@@ -6,7 +6,7 @@ import { PantryAction, parseJsonBody } from "../../lib/validation.ts";
 
 /**
  * Link a pantry entry to a real ingredient, creating the entity when the user
- * typed a new name. Every pantry row links (migration 068) — that is what lets
+ * typed a new name. Every pantry row links (migration 068); that is what lets
  * stock survive a rename and match a recipe reliably.
  */
 async function resolveIngredient(

@@ -2,7 +2,7 @@
 //
 // A modification is stored as a base snapshot plus an ordered list of patch ops.
 // Ops key on stable identifiers (ingredient key, step id, section key, tool id,
-// referenced recipe id, tag value) — NEVER array indices, so they survive
+// referenced recipe id, tag value), NEVER array indices, so they survive
 // concurrent reordering. `applyPatch` folds ops onto the base; `changedPaths` /
 // `overlappingChangedPaths` power the path-level 3-way merge used at apply time.
 
@@ -58,7 +58,7 @@ export interface MergeSchema {
 /**
  * Recipes: every child collection is keyed by a stable identifier. `meal_types`
  * and `dietary_tags` are modelled as scalar array fields (a whole-array `set`),
- * not keyed collections — tag edits are add/remove over a small fixed enum.
+ * not keyed collections; tag edits are add/remove over a small fixed enum.
  */
 export const RECIPE_SCHEMA: MergeSchema = {
   collections: {

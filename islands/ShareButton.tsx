@@ -16,7 +16,7 @@ export default function ShareButton({ url, title }: ShareButtonProps) {
       try {
         await navigator.share({ title, url });
       } catch {
-        // User dismissed the share sheet, or the share failed — nothing to do.
+        // User dismissed the share sheet, or the share failed; nothing to do.
       }
       return;
     }

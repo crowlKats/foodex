@@ -13,43 +13,43 @@ household.
 
 - **Create, edit, clone, and delete** recipes with cover images, descriptions,
   prep/cook times, and step-by-step instructions with embedded photos.
-- **Dynamic scaling** — adjust servings (or weight/volume/tray dimensions) and
+- **Dynamic scaling**: adjust servings (or weight/volume/tray dimensions) and
   all ingredient amounts update in real time. Steps use a template syntax
   (`{{ flour }}`, `{{ sugar.amount * 2 }}`) that re-evaluates on the fly.
-- **Sub-recipes** — reference other recipes with `@recipe(slug)` and cross-link
+- **Sub-recipes**: reference other recipes with `@recipe(slug)` and cross-link
   steps with `@step(N)`.
-- **Tags** — categorize by meal type (breakfast, lunch, dinner, snack, dessert,
+- **Tags**: categorize by meal type (breakfast, lunch, dinner, snack, dessert,
   appetizer, side, drink) and dietary labels (vegetarian, vegan, gluten-free,
   dairy-free, nut-free, low-carb, keto, paleo).
-- **Privacy** — mark recipes as private so only your household members can see
+- **Privacy**: mark recipes as private so only your household members can see
   them.
-- **Cost estimates** — ingredient costs calculated from store prices, shown
+- **Cost estimates**: ingredient costs calculated from store prices, shown
   per-ingredient and as a recipe total.
 - **Full-text search** across titles, ingredients, and step content.
-- **Favorites** — bookmark recipes for quick access and filter your list to
+- **Favorites**: bookmark recipes for quick access and filter your list to
   favorites only.
-- **Cookable filter** — show only recipes you can make right now based on what's
+- **Cookable filter**: show only recipes you can make right now based on what's
   in your pantry.
 
 ### Import & AI Generation
 
-- **Import from image** — upload photos of cookbook pages, handwritten notes, or
+- **Import from image**: upload photos of cookbook pages, handwritten notes, or
   screenshots. AI (Claude) extracts the title, ingredients, steps, times, and
   even crops a cover photo. Supports any language with automatic English
   translation.
-- **Generate from pantry** — AI suggests a recipe based on what you have on
-  hand. Set a maximum total time and provide custom instructions (e.g.
-  "something Italian", "a dessert", "no spicy food"). The generated recipe lands
-  in the same review form as imports so you can edit before saving.
+- **Generate from pantry**: AI suggests a recipe based on what you have on hand.
+  Set a maximum total time and provide custom instructions (e.g. "something
+  Italian", "a dessert", "no spicy food"). The generated recipe lands in the
+  same review form as imports so you can edit before saving.
 
 ### Pantry
 
 - Track what ingredients your household has on hand, with optional amounts and
   units.
-- **Pantry indicators on recipes** — when viewing a recipe, ingredients you
+- **Pantry indicators on recipes**: when viewing a recipe, ingredients you
   already have are highlighted, and the "Add to shopping list" button
   automatically subtracts pantry stock.
-- **Auto-restock** — when you check off a shopping list item (bought), it's
+- **Auto-restock**: when you check off a shopping list item (bought), it's
   automatically added to your pantry.
 
 ### Shopping List
@@ -58,17 +58,17 @@ household.
 - Add items from recipes (all at once or individually) or manually.
 - **Two view modes**: group by recipe or group by store.
 - Assign items to stores and see per-store and overall cost totals.
-- Check off items as you shop — checked items can be cleared in bulk.
+- Check off items as you shop; checked items can be cleared in bulk.
 - Merged view: when the same ingredient appears from multiple recipes, amounts
   are combined in the store view.
 
 ### Ingredients
 
 - Global ingredient catalog with units and full-text search.
-- **Pricing** — record prices per store with amounts (e.g. "$2.50 per 500g").
+- **Pricing**: record prices per store with amounts (e.g. "$2.50 per 500g").
   Cheapest price shown on the list.
-- **Brands** — track multiple brands per ingredient.
-- **Merge** — combine duplicate ingredients, automatically reparenting all
+- **Brands**: track multiple brands per ingredient.
+- **Merge**: combine duplicate ingredients, automatically reparenting all
   recipe, pantry, and shopping list references.
 
 ### Stores

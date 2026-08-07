@@ -77,7 +77,7 @@ CREATE TABLE sessions (
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 
--- magic_link_tokens (TEXT PK stays, no user_id — has email)
+-- magic_link_tokens (TEXT PK stays, no user_id; has email)
 CREATE TABLE magic_link_tokens (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL,

@@ -1,5 +1,5 @@
 -- A magic link is often the second half of a journey that started somewhere
--- else — most visibly a household invite link, which sends a signed-out
+-- else, most visibly a household invite link, which sends a signed-out
 -- invitee through sign-in first.
 --
 -- The destination has to live on the token rather than in the link's query

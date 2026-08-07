@@ -12,7 +12,7 @@ export const handlers = handler(async (ctx) => ({
 
 /**
  * Without this route a missing recipe rendered as the string "Not Found" in
- * monospace on a bare viewport — no nav, no styling, indistinguishable from a
+ * monospace on a bare viewport: no nav, no styling, indistinguishable from a
  * crash. Recipes and shopping lists are both shareable, so stale and mistyped
  * URLs reach real users.
  *

@@ -1,6 +1,6 @@
 // Database row types matching the PostgreSQL schema.
 // These represent the shape of rows returned by queries, not necessarily
-// full table schemas — JOIN queries produce composite types.
+// full table schemas; JOIN queries produce composite types.
 
 export interface Recipe {
   id: string;
@@ -57,7 +57,7 @@ export interface RecipeWithCoverMedia extends Recipe {
 export interface RecipeIngredient {
   id: string;
   recipe_id: string;
-  /** Required since migration 067 — a line always links to a real ingredient. */
+  /** Required since migration 067: a line always links to a real ingredient. */
   ingredient_id: string;
   name: string;
   amount: number | null;
@@ -224,13 +224,13 @@ export interface HouseholdInvite {
 export interface PantryItem {
   id: string;
   household_id: string;
-  /** Required since migration 068 — stock always links to a real ingredient. */
+  /** Required since migration 068: stock always links to a real ingredient. */
   ingredient_id: string;
   name: string;
   amount: number | null;
   unit: string | null;
   expires_at: string | null;
-  /** Always on hand — counts as available in any amount, never deducted. */
+  /** Always on hand: counts as available in any amount, never deducted. */
   staple: boolean;
   created_at: string;
   updated_at: string;
@@ -406,7 +406,7 @@ export interface RecipeDraft {
 
 // ── Agentic recipe chat ────────────────────────────────────────────
 // Sessions are per-user. The staging area and conversation are both pure
-// projections (folds) over the ordered agent_events log — see lib/agent/.
+// projections (folds) over the ordered agent_events log; see lib/agent/.
 
 export interface AgentSession {
   id: string;

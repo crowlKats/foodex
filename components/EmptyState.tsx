@@ -1,7 +1,7 @@
 import type { ComponentChildren } from "preact";
 
 interface EmptyStateProps {
-  /** What's empty, as a statement — "No stores yet". */
+  /** What's empty, as a statement: "No stores yet". */
   title: string;
   /** Why it's empty and what the thing is for. */
   children: ComponentChildren;

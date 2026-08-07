@@ -43,7 +43,7 @@ Deno.test("render: italic with `*` inside `{{ foo * 2 }}` does not break", () =>
   assertStringIncludes(html, "<em");
   assertStringIncludes(html, "</em>");
   assertStringIncludes(html, "6");
-  // The italic must wrap the result — i.e. `<em>bar 6 baz</em>`.
+  // The italic must wrap the result, i.e. `<em>bar 6 baz</em>`.
   assertStringIncludes(html, "bar");
   assertStringIncludes(html, "baz");
 });

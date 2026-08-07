@@ -3,7 +3,7 @@ import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 
 /**
- * "Plan this dish" — creates a dish-planned entry (no recipe pinned yet) and
+ * "Plan this dish": creates a dish-planned entry (no recipe pinned yet) and
  * jumps to the plan, where the recipe is chosen at cook time.
  */
 export default function PlanDishButton({ dishId }: { dishId: string }) {

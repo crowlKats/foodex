@@ -202,7 +202,7 @@ export default page(function RecipeEdit({ data }) {
   return (
     <div>
       {
-        /* Up one level, to the recipe this is editing — which carries its own
+        /* Up one level, to the recipe this is editing, which carries its own
           link back to the list. */
       }
       <BackLink href={`/recipes/${slug}`} label="Back to Recipe" />
@@ -245,7 +245,7 @@ export default page(function RecipeEdit({ data }) {
               Deleting removes the recipe and its steps for everyone in the
               household. This cannot be undone.
             </p>
-            {/* Targets the sibling form below — forms can't nest. */}
+            {/* Targets the sibling form below; forms can't nest. */}
             <ConfirmButton
               form="delete-recipe-form"
               message="Delete this recipe? This cannot be undone."

@@ -1,7 +1,7 @@
 // Every recipe line must reference a real ingredient entity (migration 067
 // made the column NOT NULL). This helper upholds that at write time: rows that
-// arrive without a link — free text on the recipe form, imports the agent
-// didn't link — get matched to an existing ingredient by normalized name, or a
+// arrive without a link (free text on the recipe form, imports the agent
+// didn't link) get matched to an existing ingredient by normalized name, or a
 // new entity is created from the line's name and unit.
 
 import type { QueryFn } from "../db/mod.ts";
@@ -30,7 +30,7 @@ export async function ensureIngredientIds(
   if (unresolved.length === 0) return;
 
   // One lookup for all names; when several entities share a normalized name,
-  // prefer the oldest — the same pick migration 067 made when backfilling.
+  // prefer the oldest: the same pick migration 067 made when backfilling.
   const norms = [...new Set(unresolved.map((r) => normalizeName(r.name)))];
   const existing = await q<{ id: string; norm: string }>(
     `SELECT DISTINCT ON (fx_norm_name(name)) fx_norm_name(name) AS norm, id

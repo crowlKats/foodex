@@ -32,7 +32,7 @@ export interface StepBodyIngredient {
 export interface StepBodyContext {
   /** Ingredient keys defined elsewhere in the form (e.g. `flour`, `sugar`). */
   ingredientKeys: Set<string>;
-  /** Number of steps total — used to validate `@step(N)` references. */
+  /** Number of steps total, used to validate `@step(N)` references. */
   totalSteps: number;
   /** Map of section key → number of steps in that section. */
   sectionStepCounts: Map<string, number>;
@@ -55,13 +55,13 @@ export interface StepBodyDiagnostic {
   fix?: { start: number; end: number; replacement: string; label: string };
   /**
    * Warnings don't block saving and don't turn the field red. A typed-out
-   * amount is valid template source — it just quietly stops scaling.
+   * amount is valid template source; it just quietly stops scaling.
    */
   severity?: "error" | "warning";
 }
 
 /**
- * Levenshtein distance, capped — we only care whether two keys are within a
+ * Levenshtein distance, capped. We only care whether two keys are within a
  * typo or two of each other, so there's no need to fill the whole matrix.
  */
 function editDistance(a: string, b: string, max: number): number {
@@ -85,7 +85,7 @@ function editDistance(a: string, b: string, max: number): number {
  * The closest declared key to `name`, if one is near enough to be a typo.
  *
  * The panel used to say "check that the spelling matches" while holding the
- * full list of valid keys — `buttr` is one edit from `butter`.
+ * full list of valid keys (`buttr` is one edit from `butter`).
  */
 function nearestKey(name: string, keys: Iterable<string>): string | null {
   const lower = name.toLowerCase();
@@ -128,7 +128,7 @@ function escapeRegExp(s: string): string {
 }
 
 /**
- * Flag a typed-out amount that names a declared ingredient — `50g butter`
+ * Flag a typed-out amount that names a declared ingredient: `50g butter`
  * where `butter` is declared as 50 g.
  *
  * The editor already catches misspelled keys beautifully, but a correctly
@@ -153,7 +153,7 @@ function lintLiteralAmounts(
   for (const ing of ingredients) {
     const name = ing.name.trim();
     if (!name || !ing.key) continue;
-    // `<number> [unit] <name>` — the unit is optional so bare countables
+    // `<number> [unit] <name>`: the unit is optional so bare countables
     // ("2 onions") are caught too. Trailing "s" allows the plural.
     const unitPart = ing.unit.trim()
       ? `(?:\\s*${escapeRegExp(ing.unit.trim())}\\b)?`
@@ -171,7 +171,7 @@ function lintLiteralAmounts(
         end,
         severity: "warning",
         message: `\`${m[0]}\` is typed out, so it won't scale with the ` +
-          `recipe — double the servings and this still says ` +
+          `recipe. Double the servings and this still says ` +
           `\`${m[0]}\`. Use \`{{ ${ing.key} }}\` instead.`,
         fix: {
           start,
@@ -236,7 +236,7 @@ function emitStepRef(
       ctx.totalSteps === 0
         ? "There aren't any steps in this recipe yet, " +
           "so there's nothing to link to."
-        : `There's no step ${node.number} — this recipe has ${ctx.totalSteps} ` +
+        : `There's no step ${node.number}; this recipe has ${ctx.totalSteps} ` +
           `step${ctx.totalSteps === 1 ? "" : "s"} in total.`,
     );
     return;
@@ -258,7 +258,7 @@ function emitSectionStepRef(
       node.start,
       node.length,
       `There's no section called \`${node.sectionKey}\`. ` +
-        "Check the section name above — it should match exactly " +
+        "Check the section name above; it should match exactly " +
         "(lowercase, no spaces).",
     );
     return;
@@ -511,7 +511,7 @@ function pushInvalid(
 }
 
 /**
- * "There's no ingredient called `buttr`" — with the near-match named, and
+ * "There's no ingredient called `buttr`", with the near-match named, and
  * offered as a one-click fix, since the list of valid keys is right there.
  */
 function pushUnknownKey(

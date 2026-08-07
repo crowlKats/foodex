@@ -2,7 +2,7 @@
  * Who's asking, and the handful of per-request facts every page needs.
  *
  * Lives outside `routes/_middleware.tsx` because the error page is dispatched
- * with a fresh context and doesn't inherit the middleware's state — without
+ * with a fresh context and doesn't inherit the middleware's state; without
  * this it would render a signed-out nav to a signed-in user on every 404.
  */
 import { query } from "../db/mod.ts";
@@ -65,7 +65,7 @@ export async function loadSessionState(req: Request): Promise<SessionState> {
   state.unitSystem = unitSystem;
   state.householdId = row.household_id;
   // The list is a projection now, so the badge is derived rather than a row
-  // count. Kept to one query — this runs on every request.
+  // count. Kept to one query; this runs on every request.
   if (row.household_id) {
     state.shoppingListCount = await countOutstandingLines(
       { query },

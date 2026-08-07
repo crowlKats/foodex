@@ -1,7 +1,7 @@
 /**
  * Evaluator for the expression AST.
  *
- * Returns `{ value, error }` rather than throwing — invalid AST branches or
+ * Returns `{ value, error }` rather than throwing: invalid AST branches or
  * missing variables yield NaN with a diagnostic message attached, leaving it
  * up to the caller to render an error placeholder.
  */
@@ -54,8 +54,8 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): EvalResult {
       const key = `${expr.object}_${expr.property}`;
       if (key in ctx.variables) return ok(ctx.variables[key]);
       return err(
-        `Can't get '${expr.property}' from '${expr.object}' — ` +
-          "use '.amount' or '.name'.",
+        `Can't get '${expr.property}' from '${expr.object}'. ` +
+          "Use '.amount' or '.name'.",
       );
     }
 
@@ -88,8 +88,8 @@ export function evaluateExpr(expr: Expr, ctx: EvalContext): EvalResult {
       const fn = BUILTINS[expr.name];
       if (!fn) {
         return err(
-          `No function called '${expr.name}' — ` +
-            "available: round, ceil, floor, min, max, abs.",
+          `No function called '${expr.name}'. ` +
+            "Available: round, ceil, floor, min, max, abs.",
         );
       }
       const args: number[] = [];

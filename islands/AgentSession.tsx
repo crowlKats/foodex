@@ -188,7 +188,7 @@ export default function AgentSession(props: Props) {
     setLive({ segments: [] });
 
     // Watchdog: the server sends a ping every 15s. If ~40s pass with no data at
-    // all, the connection is dead — abort so we never hang on the spinner.
+    // all, the connection is dead; abort so we never hang on the spinner.
     const ctrl = new AbortController();
     let watchdog: ReturnType<typeof setTimeout> | undefined;
     const bump = () => {
@@ -304,7 +304,7 @@ export default function AgentSession(props: Props) {
         refetchStaging();
         break;
       case "title": {
-        // The header lives outside this island — update it (and the tab) live.
+        // The header lives outside this island; update it (and the tab) live.
         const h1 = document.getElementById("agent-chat-title");
         if (h1) h1.textContent = ev.title;
         document.title = ev.title;
@@ -424,7 +424,7 @@ export default function AgentSession(props: Props) {
     // The workbench Apply saves the whole proposal, not just the recipe: the
     // staged ingredient entities go with it, applied first so the recipe's
     // lines resolve to the rows they create. Without this, an ingredient
-    // *edit* would be silently left behind — the recipe's link resolution
+    // *edit* would be silently left behind: the recipe's link resolution
     // only creates missing ingredients, it never applies changes to
     // existing ones.
     const ingredientIds = staging
@@ -438,8 +438,8 @@ export default function AgentSession(props: Props) {
       item_ids: [...ingredientIds, id],
     });
     if (!r) return;
-    // Applying a recipe from the workbench lands on the recipe itself —
-    // the session stays in the conversation list for later. Stay here if
+    // Applying a recipe from the workbench lands on the recipe itself.
+    // The session stays in the conversation list for later. Stay here if
     // anything conflicted, so the conflict is seen rather than abandoned.
     const done = (r.applied_results ?? []).find(
       (a: Any) => a.item_id === id,
@@ -558,8 +558,8 @@ export default function AgentSession(props: Props) {
     recipeItems[recipeItems.length - 1] ?? null;
   const workbench = focusedRecipe != null;
 
-  // Editor-shell layout: the workbench, or — while a seeded import turn is
-  // still extracting — its placeholder pane, so an import never opens as a
+  // Editor-shell layout: the workbench, or (while a seeded import turn is
+  // still extracting) its placeholder pane, so an import never opens as a
   // bare chat window.
   const shell = workbench || importing;
 
@@ -586,7 +586,7 @@ export default function AgentSession(props: Props) {
       setMobileView("editor");
     } else if (shell) {
       // Staged ingredients are edited inline in the workbench pane, on the
-      // editor's Ingredients tab — switch to it and scroll the card into view.
+      // editor's Ingredients tab; switch to it and scroll the card into view.
       setMobileView("editor");
       const radio = document.getElementById(
         "tab-ingredients",
@@ -660,7 +660,7 @@ export default function AgentSession(props: Props) {
             <IconLoader2 class="size-10 text-orange-600 animate-spin" />
             <p class="text-sm font-medium">Preparing your recipe…</p>
             <p class="text-xs text-stone-500 max-w-xs text-center">
-              It will appear here for review as soon as it's ready — progress
+              It will appear here for review as soon as it's ready. Progress
               shows in the chat panel.
             </p>
           </div>
@@ -677,7 +677,7 @@ export default function AgentSession(props: Props) {
           />
         )}
         {
-          /* Chat column — side panel in shell mode, otherwise pushed to a
+          /* Chat column: side panel in shell mode, otherwise pushed to a
           third as the drawer grows in from the right. */
         }
         <div
@@ -1345,7 +1345,7 @@ function ApplyDrawer(p: PreviewModalProps) {
           </Button>
           {p.turnActive && (
             <span class="text-xs text-stone-400">
-              Assistant is working — editing paused.
+              Assistant is working; editing paused.
             </span>
           )}
           <Button
@@ -1430,7 +1430,7 @@ function ApplyDrawer(p: PreviewModalProps) {
               <div class="text-sm space-y-2">
                 <p class="flex items-center gap-1 text-red-600">
                   <IconAlertTriangle class="size-4" />{" "}
-                  Merge conflict — the underlying item changed since this was
+                  Merge conflict: the underlying item changed since this was
                   proposed.
                 </p>
                 {conflict.conflict_paths.length > 0 && (
@@ -1581,7 +1581,7 @@ function ItemPreview({ item }: { item: SerializedStagedItem }) {
                 {!g.ingredient_id && (
                   <span
                     class="text-amber-600 dark:text-amber-400 text-xs ml-1"
-                    title="Not linked to an ingredient yet — applying finds or creates one by name"
+                    title="Not linked to an ingredient yet; applying finds or creates one by name"
                   >
                     (auto-link on apply)
                   </span>
@@ -1689,7 +1689,7 @@ function diffTokens(a: string[], b: string[]): TextSeg[] {
 function TextDiff({ before, after }: { before: string; after: string }) {
   const a = tokenize(before);
   const b = tokenize(after);
-  // Guard against pathological inputs — fall back to whole-value old → new.
+  // Guard against pathological inputs: fall back to whole-value old → new.
   if (a.length > 600 || b.length > 600) {
     return (
       <span>
@@ -1803,7 +1803,7 @@ function StagedItemDiff(
   const stepText = (s: Any) =>
     [s.title ? `${s.title}:` : "", s.body].filter(Boolean).join(" ");
   // The ingredient_id link isn't in the display text, so include it in the diff
-  // signal — otherwise linking an ingredient reads as "no change".
+  // signal; otherwise linking an ingredient reads as "no change".
   const ingSig = (g: Any) => `${ingText(g)} ${g.ingredient_id ?? ""}`;
 
   // Collections are diffed by stable key (ingredient key, step id), never index.
@@ -1940,7 +1940,7 @@ function StagedItemDiff(
                 {r.s !== "changed" && r.av && !r.av.ingredient_id && (
                   <span
                     class="text-amber-600 dark:text-amber-400 text-xs ml-1"
-                    title="Not linked to an ingredient yet — applying finds or creates one by name"
+                    title="Not linked to an ingredient yet; applying finds or creates one by name"
                   >
                     (auto-link on apply)
                   </span>
@@ -2150,7 +2150,7 @@ function WorkbenchPane(p: WorkbenchProps) {
   const [dirty, setDirty] = useState(false);
   const [stale, setStale] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Which editor tab is showing — tracked via the bubbling radio change
+  // Which editor tab is showing, tracked via the bubbling radio change
   // events so the memoized form vnode never has to re-render. Extras like
   // the staged-ingredients card dock onto their matching tab.
   const [activeTab, setActiveTab] = useState("basics");
@@ -2160,7 +2160,7 @@ function WorkbenchPane(p: WorkbenchProps) {
   const seenVersion = useRef(item.version);
 
   // When the item advances underneath the form (an agent edit or a save
-  // round-trip), reload it — unless the user has unsaved edits, in which case
+  // round-trip), reload it, unless the user has unsaved edits, in which case
   // surface a banner instead of clobbering their work.
   useEffect(() => {
     if (item.version === seenVersion.current) return;
@@ -2178,14 +2178,14 @@ function WorkbenchPane(p: WorkbenchProps) {
     setEpoch((e) => e + 1);
   }
 
-  // Tab radios live inside the form — switching tabs is not an edit.
+  // Tab radios live inside the form; switching tabs is not an edit.
   const markDirty = (e: Event) => {
     if ((e.target as HTMLInputElement)?.name === "_tab") return;
     setDirty(true);
   };
 
   // The form vnode is memoized so the constant chat re-renders (stream deltas)
-  // never re-diff it — Preact re-syncs `value` attrs on every diff, which
+  // never re-diff it: Preact re-syncs `value` attrs on every diff, which
   // would clobber in-progress typing.
   const fields = useMemo(
     () => (
@@ -2213,7 +2213,7 @@ function WorkbenchPane(p: WorkbenchProps) {
     try {
       const converted = formDataToRecipeData(new FormData(form));
       const eff = item.effective as Any;
-      // Keep the existing cover — the staged form has no cover field.
+      // Keep the existing cover; the staged form has no cover field.
       const merged: Record<string, unknown> = {
         ...structuredClone(eff),
         ...converted,
@@ -2273,7 +2273,7 @@ function WorkbenchPane(p: WorkbenchProps) {
           )}
           {
             /* Grouped left to right: destructive icons, then the save
-              actions, then the panel toggle — thin rules keep the groups
+              actions, then the panel toggle; thin rules keep the groups
               readable at a glance. */
           }
           <div class="ml-auto flex items-center gap-2 shrink-0">
@@ -2371,7 +2371,7 @@ function WorkbenchPane(p: WorkbenchProps) {
             <div class="card border-red-400 text-sm space-y-2">
               <p class="flex items-center gap-1 text-red-600">
                 <IconAlertTriangle class="size-4" />{" "}
-                Merge conflict — the underlying item changed since this was
+                Merge conflict: the underlying item changed since this was
                 proposed.
               </p>
               {conflict.conflict_paths.length > 0 && (
@@ -2431,7 +2431,7 @@ function WorkbenchPane(p: WorkbenchProps) {
 
 /**
  * The staging overview: every staged item in the session with what it
- * changes — edits as a field diff against the library version, creates as a
+ * changes: edits as a field diff against the library version, creates as a
  * pointer to the editor. Answers "what will applying this actually do?".
  */
 function StagedChangesPanel(
@@ -2485,7 +2485,7 @@ function StagedChangesPanel(
               : it.kind === "create_recipe"
               ? (
                 <p class="text-xs text-stone-500">
-                  New recipe — everything is new; review it in the editor.
+                  New recipe: everything is new; review it in the editor.
                 </p>
               )
               : <ItemPreview item={it} />}
@@ -2498,8 +2498,8 @@ function StagedChangesPanel(
 
 /**
  * One staged ingredient entity, styled to match the recipe ingredient rows
- * above it. Edits persist on their own — the name saves when it loses focus,
- * the unit saves on selection — so the row needs no Save button.
+ * above it. Edits persist on their own (the name saves when it loses focus,
+ * the unit saves on selection), so the row needs no Save button.
  */
 function StagedIngredientRow(
   { item, disabled, onSave, onDiscard }: {

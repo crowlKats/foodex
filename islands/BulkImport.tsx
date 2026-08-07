@@ -50,11 +50,11 @@ const CONCURRENCY = 2;
 /**
  * Bulk import: photograph a whole recipe book, drop every page here, group
  * consecutive pages into recipes, and each group becomes its own assistant
- * import session — extracted in the background and listed for review.
+ * import session, extracted in the background and listed for review.
  */
 export default function BulkImport() {
   const photos = useSignal<Photo[]>([]);
-  /** merged[i] — photo i belongs to the same recipe as the photo before it. */
+  /** merged[i]: photo i belongs to the same recipe as the photo before it. */
   const merged = useSignal<boolean[]>([]);
   const context = useSignal("");
   const dragging = useSignal(false);
@@ -164,7 +164,7 @@ export default function BulkImport() {
     if (!res.ok || !res.body) throw new Error(`Turn failed (${res.status})`);
     const reader = res.body.getReader();
     while (!(await reader.read()).done) {
-      // Progress events are irrelevant here — only completion matters.
+      // Progress events are irrelevant here; only completion matters.
     }
   }
 
@@ -395,7 +395,7 @@ export default function BulkImport() {
           </Button>
           {started.value && !running.value && (
             <p class="text-sm text-stone-500">
-              Done. Review each recipe via the links above — every one is a
+              Done. Review each recipe via the links above. Every one is a
               regular assistant session, so you can also find them later under
               Assistant.
             </p>
@@ -418,7 +418,7 @@ export default function BulkImport() {
               onClick={(e) => e.stopPropagation()}
             >
               {
-                /* Fixed widths — toggling the merge button or paging through
+                /* Fixed widths: toggling the merge button or paging through
                   photos must not nudge its neighbours. */
               }
               <span class="font-medium w-28 tabular-nums">

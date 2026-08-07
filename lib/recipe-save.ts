@@ -12,7 +12,7 @@ export async function saveRecipeChildren(
   recipeId: string,
   form: FormData,
 ): Promise<void> {
-  // Ingredients. Every line must link to a real ingredient entity — free-text
+  // Ingredients. Every line must link to a real ingredient entity; free-text
   // names (manual form, imports) are resolved to an existing ingredient or
   // create one here, inside the caller's transaction.
   const ingredients = parseFormArray(form, "ingredients")
@@ -69,7 +69,7 @@ export async function saveRecipeChildren(
   // Sections (insert before steps so steps can reference section_id)
   const sectionEntries = parseFormArray(form, "sections");
   const sectionFormIdxToDbId = new Map<number, string>();
-  // afters by section form index — collected here, inserted after sections exist
+  // afters by section form index: collected here, inserted after sections exist
   const sectionAfters: { idx: number; after: number[] }[] = [];
   if (sectionEntries.length > 0) {
     const sectionRows: unknown[][] = [];
@@ -195,7 +195,7 @@ export async function saveRecipeChildren(
     }
 
     // Step dependencies from explicit "after" indices.
-    // Drop any cross-section deps — those should be section-level, not step-level.
+    // Drop any cross-section deps; those should be section-level, not step-level.
     const stepIdToSection = new Map<string, string | null>();
     for (let si = 0; si < stepRes.rows.length; si++) {
       stepIdToSection.set(

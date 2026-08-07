@@ -9,7 +9,7 @@ import { uploadImages } from "../lib/image-downscale.ts";
 /**
  * The chatless import entry: paste a URL, recipe text, and/or photos. Submitting
  * seeds an assistant session with one import message and lands on the session's
- * editor view, where the extracted recipe fills in — no chat interaction needed.
+ * editor view, where the extracted recipe fills in; no chat interaction needed.
  */
 export default function ImportStart() {
   const url = useSignal("");

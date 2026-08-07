@@ -87,7 +87,7 @@ export function computeSectionAnnotations(
       .filter((t): t is string => !!t);
     const parallelTitles: string[] = [];
     for (let j = 0; j < i; j++) {
-      if (transAfter[i].has(j)) continue; // hard dep — not parallel
+      if (transAfter[i].has(j)) continue; // hard dep, not parallel
       if (transAfter[j].has(i)) continue;
       parallelTitles.push(sections[j].title);
     }

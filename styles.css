@@ -52,7 +52,7 @@
   @apply opacity-50 cursor-not-allowed;
   filter: grayscale(0.6);
   /* Prevents hover styles from kicking in on a disabled button. The `title`
-     attribute won't surface in this state — we surface the reason inline
+     attribute won't surface in this state, so we surface the reason inline
      near the button (see DraftEditor's "N errors" indicator). */
   pointer-events: none;
 }
@@ -137,7 +137,7 @@
     color: oklch(0.78 0.18 25);
     border-color: oklch(0.55 0.2 25);
   }
-  /* Amber when nothing is actually broken — only scaling warnings. */
+  /* Amber when nothing is actually broken, only scaling warnings. */
   .step-body-error-badge-warning {
     color: oklch(0.5 0.14 75);
     background-color: oklch(0.97 0.05 85);
@@ -259,7 +259,7 @@
     color: oklch(0.8 0.17 45);
   }
 
-  /* Code-editor-style hover popover. Dark in both themes — matches the
+  /* Code-editor-style hover popover. Dark in both themes; matches the
      "diagnostic" look users expect from editor tooltips. */
   .step-body-tooltip {
     @apply z-50 max-w-md text-xs leading-snug font-sans;
@@ -305,7 +305,7 @@
     background-color: oklch(0.95 0.04 230);
     color: oklch(0.4 0.12 240);
   }
-  /* Numbers and operators get color only — no background. Variables and
+  /* Numbers and operators get color only, no background. Variables and
      property accesses keep the subtle background so the eye still anchors
      on the "main subject" of an interpolation. */
   ::highlight(tpl-number) {
@@ -361,7 +361,7 @@
     color: oklch(0.85 0.12 25);
     text-decoration: underline wavy oklch(0.7 0.22 25);
   }
-  /* Valid source that quietly won't scale — a warning, not an error. */
+  /* Valid source that quietly won't scale: a warning, not an error. */
   ::highlight(tpl-warning) {
     text-decoration: underline wavy oklch(0.72 0.16 75);
   }
@@ -402,19 +402,19 @@
 
 /* Title and its actions on one row above the tabs, spaced like the `h1` on
    every other detail page. Deliberately not sticky, and with no rule of its
-   own — the tablist draws one directly below it. */
+   own; the tablist draws one directly below it. */
 .form-actions {
   @apply flex items-center justify-between gap-3 mt-4 mb-6;
 }
 
 /* A labelled band grouping related fields. The label sits under the rule
-   rather than straddling it — straddling needs a background matching whatever
+   rather than straddling it; straddling needs a background matching whatever
    is behind, which only held while these lived inside a card. */
 .subgroup {
   @apply border-t-2 border-stone-200 dark:border-stone-800 pt-5 mt-8;
 }
 
-/* A rule is a separator, so the first band in a panel doesn't need one —
+/* A rule is a separator, so the first band in a panel doesn't need one;
    it would just double the border the tablist already draws above it. */
 .subgroup:first-child {
   @apply border-t-0 pt-0 mt-0;
@@ -427,7 +427,7 @@
 
 /* ── Checkboxes ── */
 /* The native input keeps the semantics (form value, keyboard, a11y) but is
-   visually replaced by a sharp-cornered box that fills orange when checked —
+   visually replaced by a sharp-cornered box that fills orange when checked;
    the OS-native widget was the one control that ignored the app's border-2
    look. See `components/Checkbox.tsx`. */
 .checkbox {
@@ -475,7 +475,7 @@
 
 /* Weight is constant across states on purpose: bolding the active tab
    changes that label's width and shoves every tab after it sideways on each
-   click. Colour and the underline carry the active state instead — the same
+   click. Colour and the underline carry the active state instead, for the same
    reason `.nav-link` stays `font-medium` and only swaps colour. */
 .edit-tab {
   @apply flex items-center gap-1.5 text-sm font-medium px-4 py-2 -mb-0.5
@@ -505,7 +505,7 @@
 /* ── Nested rows ── */
 /* A repeated item inside a card (an ingredient, a tool, a step). A `.card`
    nested in a `.card` is invisible, so a row gets its own surface between the
-   card and its fields — three steps are what make a long list scannable.
+   card and its fields; three steps are what make a long list scannable.
    Light mode steps down from the white card; dark mode steps *up* from it,
    since dropping to the page black would punch a hole in the card. */
 .form-row {
@@ -522,7 +522,7 @@
   @apply bg-white dark:bg-stone-900;
 }
 
-/* The checkbox's visible box is a span, so the input rule above misses it —
+/* The checkbox's visible box is a span, so the input rule above misses it;
    without this it sits flush on the row tint (identical in dark mode). */
 .form-row .checkbox-box {
   @apply bg-white dark:bg-stone-900;
@@ -537,7 +537,7 @@
 }
 
 /* Selected chips docked to the bottom edge of their input, sharing its border
-   so the pair reads as one control — the vertical counterpart to `InputBar`,
+   so the pair reads as one control: the vertical counterpart to `InputBar`,
    which joins an input to its unit select the same way. */
 .chip-tray {
   @apply flex flex-wrap gap-1.5 -mt-0.5 px-2 py-1.5 border-2 border-stone-300
@@ -545,7 +545,7 @@
 }
 
 /* ── Count badges ── */
-/* Square, like every other surface in the app — a pill badge was the one
+/* Square, like every other surface in the app; a pill badge was the one
    rounded thing sitting next to sharp-cornered cards, buttons and inputs.
    A matching min-width and min-height make a single digit an actual square
    and stop wider counts from looking squashed; centring is what holds the
@@ -701,7 +701,7 @@
 
 /*
  * A flex column with an `my-auto` child centres short steps in the viewport
- * while still scrolling long ones — plain `justify-center` would clip the top
+ * while still scrolling long ones; plain `justify-center` would clip the top
  * of anything taller than the screen.
  */
 .cooking-mode-body {

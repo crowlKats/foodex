@@ -6,7 +6,7 @@ import { householdSetupUrl, loginUrl } from "../../../lib/auth.ts";
 
 /**
  * A share link is normally the recipient's first contact with the app, so both
- * detours it can trigger — signing in, then creating a household — have to lead
+ * detours it can trigger (signing in, then creating a household) have to lead
  * back here rather than dropping them on a landing page.
  */
 function shareJoinPath(token: string): string {

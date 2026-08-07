@@ -5,7 +5,7 @@
 //  - Agent staging writes are executed server-side; the *resolved* effect (with
 //    server-captured base_data, resolved ids, etc.) is recorded in the tool_result
 //    event's `staged` field. The staging reducer folds over those, NOT over the raw
-//    tool_use inputs — so it never has to re-resolve anything.
+//    tool_use inputs, so it never has to re-resolve anything.
 //  - `observations` on a tool_result records which targets the agent saw and at what
 //    version, so the read-before-write guard (see tools.ts) can derive the observed
 //    version straight from the log without re-parsing tool content.
@@ -104,8 +104,8 @@ export interface ToolResultEvent {
 }
 
 /**
- * A staging created directly by the user, without a model turn — e.g. a legacy
- * recipe draft migrated into a session. Only `create` mutations.
+ * A staging created directly by the user, without a model turn (e.g. a legacy
+ * recipe draft migrated into a session). Only `create` mutations.
  */
 export interface UserStagedEvent {
   type: "user_staged";

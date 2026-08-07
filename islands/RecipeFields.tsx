@@ -42,7 +42,7 @@ interface DishProps {
 interface Props {
   /** The recipe to seed the fields from (AgentRecipe / OcrRecipeData shape). */
   r: Any;
-  /** Reset key — bump to re-seed all fields (used after AI refine). */
+  /** Reset key: bump to re-seed all fields (used after AI refine). */
   v?: number;
   coverImage?: CoverMedia | null;
   showCover?: boolean;
@@ -78,8 +78,8 @@ function formatDuration(
  * The one recipe edit form, shared by every create/edit/import surface.
  *
  * Tabs are radio inputs driving sibling selectors, so every panel stays in
- * the DOM and a single submit posts the whole recipe. The flip side — a
- * `required` field on an unselected tab would block submit invisibly — is
+ * the DOM and a single submit posts the whole recipe. The flip side (a
+ * `required` field on an unselected tab would block submit invisibly) is
  * handled by the `invalid`-capture effect below, which reveals the tab
  * holding the first failing field.
  */

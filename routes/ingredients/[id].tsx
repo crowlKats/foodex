@@ -93,9 +93,9 @@ export const handlers = handler({
   async POST(ctx) {
     // Ingredients are global rather than household-scoped, so this matches the
     // index route: any signed-in user may edit them, nobody signed out may.
-    // Without this every branch below — including MERGE, which reparents
+    // Without this every branch below (including MERGE, which reparents
     // recipes, pantry items and purchases across every household before
-    // deleting the row — ran for anonymous requests.
+    // deleting the row) ran for anonymous requests.
     if (!ctx.state.user) {
       return new Response(null, {
         status: 303,
@@ -150,7 +150,7 @@ export const handlers = handler({
           [targetId, id],
         );
         // Recipes that produce this ingredient keep producing it after the
-        // merge — otherwise cooking them stops booking output stock.
+        // merge; otherwise cooking them stops booking output stock.
         await q(
           "UPDATE recipes SET output_ingredient_id = $1 WHERE output_ingredient_id = $2",
           [targetId, id],
@@ -169,7 +169,7 @@ export const handlers = handler({
           [targetId, id],
         );
         // Purchases carry the projected line's identity, so the key moves with
-        // them — otherwise a ticked-off line would reappear as unbought.
+        // them; otherwise a ticked-off line would reappear as unbought.
         await q(
           `UPDATE shopping_list_purchases
            SET ingredient_id = $1, match_key = 'id:' || $1::text
@@ -404,7 +404,7 @@ export default page(
                       checked={ingredient.always_on_hand}
                       label="Always on hand"
                       labelClass="text-sm"
-                      title="Water, salt and the like — scales with recipes, but is never added to the shopping list or counted as missing from the pantry."
+                      title="Water, salt and the like: scales with recipes, but is never added to the shopping list or counted as missing from the pantry."
                     />
                   </div>
                   <Button type="submit">Save</Button>

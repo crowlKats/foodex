@@ -84,7 +84,7 @@ export const handlers = handler({
       compareRows = [...rows.values()];
     }
 
-    // Dishes that share a word with any of this dish's names — likely the
+    // Dishes that share a word with any of this dish's names: likely the
     // same thing spelled differently, offered as merge candidates. Filtered
     // to dishes with a visible recipe so private-only titles never surface.
     const suggestionsRes = await ctx.state.db.query<{
@@ -126,7 +126,7 @@ export const handlers = handler({
       )
       : { rows: [] as { id: string; name: string }[] };
 
-    // The merge reassigns every recipe, private ones included — count them
+    // The merge reassigns every recipe, private ones included; count them
     // all so the confirmation says what it actually does.
     const totalRes = await ctx.state.db.query<{ cnt: number }>(
       "SELECT COUNT(*)::int as cnt FROM recipes WHERE dish_id = $1",
@@ -181,7 +181,7 @@ export const handlers = handler({
       if (targetRes.rows.length === 0) throw new HttpError(404);
 
       // Everything moves, and the source's names live on as aliases of the
-      // target — that is what makes the merge stick for future recipes.
+      // target; that is what makes the merge stick for future recipes.
       await ctx.state.db.transaction(async (q) => {
         await q(
           "UPDATE recipes SET dish_id = $1 WHERE dish_id = $2",
@@ -337,7 +337,7 @@ export default page(function DishPage({
           {suggestions.length > 0 && (
             <div class="text-sm">
               <p class="text-stone-500 mb-1">
-                These dishes look similar — if one is the same thing, merge them
+                These dishes look similar. If one is the same thing, merge them
                 so every version shows up together:
               </p>
               <ul class="flex flex-wrap gap-2">

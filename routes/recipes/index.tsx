@@ -115,7 +115,7 @@ function buildRecipeQuery(opts: {
   }
 
   // Cookable: the pantry must cover every ingredient, and the household must
-  // own every tool. This mirrors isAvailable() in lib/inventory.ts — stock with
+  // own every tool. This mirrors isAvailable() in lib/inventory.ts: stock with
   // an untracked amount counts, a staple always counts, and a tracked amount
   // that falls short does not. It used to ignore amounts entirely, so "cookable"
   // included recipes you had a single gram of flour for.
@@ -199,7 +199,7 @@ function buildRecipeQuery(opts: {
       `SELECT ${distinct}r.*, m.url as cover_image_url, h.name as household_name, d.slug as dish_slug FROM recipes r\n             ${joinSql}\n             WHERE ${whereSql}\n             ORDER BY ${orderSql}\n             LIMIT $${p} OFFSET $${
         p + 1
       }`,
-    // ::int so `cnt` arrives as a number — pg hands back bigint as a string,
+    // ::int so `cnt` arrives as a number; pg hands back bigint as a string,
     // which quietly defeats any `=== 0` comparison on the result.
     count: `SELECT COUNT(${
       needsDistinct ? "DISTINCT r.id" : "*"
@@ -460,7 +460,7 @@ export default page(function RecipesPage({
   /**
    * "No recipes found." was the same sentence whether the catalog was empty,
    * a search matched nothing, or the pantry-aware filter had nothing to work
-   * with — which is the case that actually needs explaining.
+   * with, which is the case that actually needs explaining.
    */
   function renderEmptyState() {
     const clearHref = filterUrl(current, {
@@ -576,7 +576,7 @@ export default page(function RecipesPage({
         summary's implicit role when `display` is changed, which left the
         control exposed as a bare `generic` with no role and no expanded
         state. The flex row lives in a child instead. The sort control moved
-        out of the summary for the same reason — a control nested inside a
+        out of the summary for the same reason: a control nested inside a
         summary toggles the disclosure when you click it.
 
         The details is a full-width block so the open panel spans the whole

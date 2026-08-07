@@ -61,7 +61,7 @@ Deno.test("parseTemplate: interpolation expression has correct positions", () =>
 // ── The tricky markdown interaction ────────────────────────────────────────
 
 Deno.test("parseTemplate: `*` inside `{{ }}` does not break italic boundaries", () => {
-  // `*bar {{ foo * 2 }}*` — the inner `*` is a multiplication operator,
+  // In `*bar {{ foo * 2 }}*` the inner `*` is a multiplication operator,
   // not an italic delimiter. The template parser should fully consume the
   // interpolation so the outer `*` … `*` italic markers remain intact.
   const src = "*bar {{ foo * 2 }}*";

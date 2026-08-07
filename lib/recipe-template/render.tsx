@@ -13,7 +13,7 @@
  *      tokenises with marked and splices the slot contents back in.
  *
  * The directive resolution (timer, step ref, recipe ref, interpolation) is
- * all done here in JSX-land — no HTML string concat anywhere downstream.
+ * all done here in JSX-land, with no HTML string concat anywhere downstream.
  */
 
 import type { ComponentChildren, VNode } from "preact";
@@ -62,7 +62,7 @@ export interface TrayDims {
 
 export interface RenderContext {
   variables: Record<string, number>;
-  /** Set only for dimensions recipes — resolves the {{ tray }} ref. */
+  /** Set only for dimensions recipes; resolves the {{ tray }} ref. */
   tray?: TrayDims;
   ingredients?: Record<string, IngredientVar>;
   steps: RenderStepShape[];
@@ -139,13 +139,13 @@ function renderInterpolation(
     return renderError(`{{ ${expr.raw} }}`, expr.message);
   }
 
-  // {{ tray }} — the recipe's (scaled) tray dimensions, as text. Only valid
+  // {{ tray }}: the recipe's (scaled) tray dimensions, as text. Only valid
   // bare: it's a string, so it can't take part in math.
   if (expr.kind === "variable" && expr.name.toLowerCase() === "tray") {
     if (!ctx.tray) {
       return renderError(
         "{{ tray }}",
-        "This recipe has no tray dimensions — its quantity type isn't a tray.",
+        "This recipe has no tray dimensions; its quantity type isn't a tray.",
       );
     }
     return formatQuantity({

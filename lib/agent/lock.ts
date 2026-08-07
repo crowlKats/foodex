@@ -1,6 +1,6 @@
 // In-process per-session turn lock. A session may have only one in-flight turn;
 // while a turn runs, the staging panel is read-only (user edits are rejected).
-// Single-instance only — acceptable for v1; a DB advisory lock could harden it.
+// Single-instance only, acceptable for v1; a DB advisory lock could harden it.
 
 const active = new Set<string>();
 

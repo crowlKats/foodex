@@ -198,7 +198,7 @@ export const TOOLS: Anthropic.Tool[] = [
     description:
       "Put a recipe on the meal plan. This is a direct action, not a proposal: it " +
       "is trivially undone in the app. Whatever the pantry cannot cover appears on " +
-      "the shopping list automatically — never add a recipe's ingredients by hand.",
+      "the shopping list automatically; never add a recipe's ingredients by hand.",
     input_schema: {
       type: "object",
       properties: {
@@ -226,7 +226,7 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: "add_to_shopping_list",
     description:
-      "Add a one-off item to the shopping list — something not tied to a recipe. " +
+      "Add a one-off item to the shopping list, something not tied to a recipe. " +
       "For a recipe's ingredients use plan_meal instead. Direct action.",
     input_schema: {
       type: "object",
@@ -292,7 +292,7 @@ export const TOOLS: Anthropic.Tool[] = [
     name: "fetch_recipe_structured",
     description:
       "Extract structured recipe data (schema.org JSON-LD, or a Foodex export) directly " +
-      "from a recipe page URL. Fast and exact when the site provides it — when importing " +
+      "from a recipe page URL. Fast and exact when the site provides it. When importing " +
       "from a URL try this FIRST, and fall back to fetch_url if it finds nothing. The " +
       "result may be incomplete (no sections/tags/tools); verify and fill gaps before " +
       "proposing.",
@@ -366,7 +366,7 @@ export const TOOLS: Anthropic.Tool[] = [
     name: "edit_proposed",
     description:
       "Apply further patch ops to a change you already proposed (any kind). Call " +
-      "get_proposed first — the server rejects the update if it changed since you read it.",
+      "get_proposed first: the server rejects the update if it changed since you read it.",
     input_schema: {
       type: "object",
       properties: { id: { type: "string" }, ops: patchOpsSchema },
@@ -846,7 +846,7 @@ export async function executeTool(
         }
         if (observed !== loaded.version) {
           return err(
-            `"${slug}" changed since you read it — call get_recipe again, then retry.`,
+            `"${slug}" changed since you read it; call get_recipe again, then retry.`,
           );
         }
         const base = loaded.recipe as unknown as Record<string, unknown>;
@@ -893,7 +893,7 @@ export async function executeTool(
         }
         if (observed !== loaded.version) {
           return err(
-            `Ingredient changed since you read it — call get_ingredient again, then retry.`,
+            `Ingredient changed since you read it; call get_ingredient again, then retry.`,
           );
         }
         return {
@@ -927,7 +927,7 @@ export async function executeTool(
         const u = userTouchSeq(events, id);
         if (u !== undefined && u > a) {
           return err(
-            `Proposal ${id} changed since you read it — call get_proposed again, then retry.`,
+            `Proposal ${id} changed since you read it; call get_proposed again, then retry.`,
           );
         }
         const isCreateKind = it.kind === "create_recipe" ||
@@ -977,7 +977,7 @@ export async function executeTool(
         const u = userTouchSeq(events, id);
         if (u !== undefined && u > a) {
           return err(
-            `Proposal ${id} changed since you read it — call get_proposed again, then retry.`,
+            `Proposal ${id} changed since you read it; call get_proposed again, then retry.`,
           );
         }
         return {

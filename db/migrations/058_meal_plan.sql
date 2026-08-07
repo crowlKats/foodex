@@ -2,7 +2,7 @@
 --
 -- Both the pantry and the shopping list are downstream of this question, and
 -- neither could answer it before. A plan entry is the durable form of "add this
--- recipe to the shopping list" — it remembers the scale, so changing the
+-- recipe to the shopping list": it remembers the scale, so changing the
 -- servings updates what you need to buy instead of leaving a stale snapshot,
 -- and cooking it is the entry's terminal state rather than a floating button.
 

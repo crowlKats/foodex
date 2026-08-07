@@ -31,7 +31,7 @@ All values scale automatically when the recipe quantity (servings, weight, volum
 ### Tray dimensions: \`{{ tray }}\`
 For recipes whose quantity type is tray dimensions, renders the current tray size as text.
 Example: \`{{ tray }}\` → "20 x 30 cm" (or "20 x 30 x 5 cm" with a depth)
-Use: "Line a {{ tray }} tray with parchment." — it follows along when the reader retargets the tray size.
+Use: "Line a {{ tray }} tray with parchment." It follows along when the reader retargets the tray size.
 Text, not a number: it can't be used in math. Only meaningful in tray-dimension recipes.
 
 ## Arithmetic
@@ -49,12 +49,12 @@ Examples:
 - \`{{ (flour.amount + sugar.amount) / 2 }}\` → average of two ingredients
 
 ## Functions
-- \`round(x)\` — round to nearest integer
-- \`ceil(x)\` — round up
-- \`floor(x)\` — round down
-- \`min(a, b)\` — smaller of two values
-- \`max(a, b)\` — larger of two values
-- \`abs(x)\` — absolute value
+- \`round(x)\`: round to nearest integer
+- \`ceil(x)\`: round up
+- \`floor(x)\`: round down
+- \`min(a, b)\`: smaller of two values
+- \`max(a, b)\`: larger of two values
+- \`abs(x)\`: absolute value
 
 Examples:
 - \`{{ round(flour.amount / 3) }}\`
@@ -68,24 +68,24 @@ Use when a later step refers back to something produced earlier: "Take the mixtu
 
 If the recipe has sections (groups of steps), step numbers restart at 1 in each section. To reference a step inside a section, use \`@step(section-key.N)\`.
 Example: \`@step(coating.2)\` renders as "Coating step 2 (Dip and roll)".
-Plain \`@step(N)\` always refers to the Nth step counted globally across the whole recipe — useful when you want to reference a step in another section without naming it.
+Plain \`@step(N)\` always refers to the Nth step counted globally across the whole recipe; useful when you want to reference a step in another section without naming it.
 
 ## Sub-recipe References
 Link to other recipes using \`@recipe(slug)\` where slug is the URL-friendly recipe name.
 Example: \`@recipe(pizza-dough)\` renders as a clickable link to that recipe.
 
 ## Dish References
-Link to a dish — "any recipe that makes this" — using \`@dish(slug)\`.
+Link to a dish ("any recipe that makes this") using \`@dish(slug)\`.
 Example: \`@dish(pizza-dough)\` renders as a link to the dish page listing every recipe for it. Use this instead of \`@recipe()\` when any version of the dish will do.
 
 ## Timers
 Embed interactive countdown timers using \`@timer(duration)\`. Duration supports hours (\`h\`), minutes (\`m\`), and seconds (\`s\`), which can be combined.
 
 Examples:
-- \`@timer(15m)\` — 15 minute timer
-- \`@timer(1h30m)\` — 1 hour 30 minutes
-- \`@timer(30s)\` — 30 seconds
-- \`@timer(2h)\` — 2 hours
+- \`@timer(15m)\`: 15 minute timer
+- \`@timer(1h30m)\`: 1 hour 30 minutes
+- \`@timer(30s)\`: 30 seconds
+- \`@timer(2h)\`: 2 hours
 
 Timers render as inline buttons in the step text. Clicking a timer starts a live countdown in a floating panel. Multiple timers can run concurrently. When a timer finishes, an audio alarm repeats until dismissed, and a browser notification is shown (if permitted).
 
@@ -101,10 +101,10 @@ Step bodies support standard Markdown:
 
 ## Quantity Types
 Recipes support four quantity types. Ingredient amounts scale proportionally:
-- **Servings** — scale by ratio of target/base servings
-- **Weight** (g/kg) — scale by weight ratio (unit-aware: 1kg = 1000g)
-- **Volume** (ml/l) — scale by volume ratio (unit-aware: 1l = 1000ml)
-- **Tray dimensions** (W x L x D cm) — scale by volume ratio (width × length × depth)
+- **Servings**: scale by ratio of target/base servings
+- **Weight** (g/kg): scale by weight ratio (unit-aware: 1kg = 1000g)
+- **Volume** (ml/l): scale by volume ratio (unit-aware: 1l = 1000ml)
+- **Tray dimensions** (W x L x D cm): scale by volume ratio (width × length × depth)
 
 ## Unit Formatting
 Amounts are formatted based on unit type:

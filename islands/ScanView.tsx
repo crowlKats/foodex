@@ -379,7 +379,7 @@ export default function ScanView(props: Props) {
       }
     } else {
       // Deliberately not `error`, which swaps the whole view out for a retry
-      // prompt — a failed save should leave the filled-in form standing.
+      // prompt; a failed save should leave the filled-in form standing.
       saveError.value = await apiErrorMessage(res, "Couldn't add that item.");
     }
     saving.value = false;

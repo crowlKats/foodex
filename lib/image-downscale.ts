@@ -1,5 +1,5 @@
 // Client-side (canvas) helper: re-encode a photo as a capped JPEG so uploads
-// stay small and within the vision API's per-image size limit. Island-only —
+// stay small and within the vision API's per-image size limit. Island-only:
 // must never be imported from server code.
 
 const MAX_IMAGE_DIM = 2048;

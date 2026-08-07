@@ -3,7 +3,7 @@
  *
  * Every change records *why* it happened in `pantry_transactions` and then
  * moves the `pantry_items` balance to match. Callers never UPDATE a balance
- * directly — going through here is what makes buying idempotent, cooking
+ * directly; going through here is what makes buying idempotent, cooking
  * reversible, and "where did the milk go" answerable.
  */
 import type { QueryFn } from "../db/mod.ts";
@@ -92,7 +92,7 @@ export interface AddStockInput {
 }
 
 export interface AddStockResult {
-  /** False when this source was already recorded — the caller's retry is a no-op. */
+  /** False when this source was already recorded; the caller's retry is a no-op. */
   applied: boolean;
   pantryItemId: string | null;
   transactionId: string | null;
@@ -492,7 +492,7 @@ export async function mergeStock(
 }
 
 /**
- * Ingredients the household is running out of soonest — expired or expiring
+ * Ingredients the household is running out of soonest: expired or expiring
  * stock, used to seed "use it up" suggestions and the expiry reminder.
  */
 export function expiringSoon(

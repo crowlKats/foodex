@@ -254,8 +254,8 @@ export default page(function TemplateDocs() {
             Dish References
           </h2>
           <p class="mb-3">
-            When any version of a dish will do — "use pizza dough", not one
-            specific dough recipe — link the dish itself with the{" "}
+            When any version of a dish will do ("use pizza dough", not one
+            specific dough recipe), link the dish itself with the{" "}
             <code class="code-hint">@dish()</code> syntax.
           </p>
           <div class="card space-y-3">

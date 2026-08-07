@@ -159,8 +159,8 @@ export default function PlanView(
         {entries.value.length === 0
           ? (
             <p class="text-stone-500 text-sm">
-              Nothing planned. Open a recipe and hit "Plan this" — the meal
-              shows up here and its missing ingredients go on the shopping list.
+              Nothing planned. Open a recipe and hit "Plan this"; the meal shows
+              up here and its missing ingredients go on the shopping list.
             </p>
           )
           : (
@@ -222,7 +222,7 @@ export default function PlanView(
                               {entry.dish_name}
                             </a>
                             <span class="text-xs text-stone-400 ml-2">
-                              dish — recipe not chosen yet
+                              dish: recipe not chosen yet
                             </span>
                             <div class="text-xs mt-0.5 text-amber-600 dark:text-amber-400">
                               Pick a recipe to put its ingredients on the

@@ -178,7 +178,7 @@ export default page(
                 )
                 : (
                   <EmptyState title="No tools yet">
-                    Tools are your cookware — a pan, a stand mixer, an oven. A
+                    Tools are your cookware: a pan, a stand mixer, an oven. A
                     recipe can reference one along with the settings it needs
                     ("180 °C", "medium-low") and a note on how it's used, so the
                     method doesn't have to spell it out every time. {loggedIn

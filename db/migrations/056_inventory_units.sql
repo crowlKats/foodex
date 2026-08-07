@@ -48,7 +48,7 @@ CREATE OR REPLACE FUNCTION fx_base_amount(amount NUMERIC, u TEXT) RETURNS NUMERI
 $$ LANGUAGE sql IMMUTABLE;
 
 -- Convert between units, bridging mass↔volume with density (g/ml).
--- NULL means "not comparable" — callers must not treat that as zero.
+-- NULL means "not comparable"; callers must not treat that as zero.
 --
 -- `density` is DOUBLE PRECISION to match ingredients.density; Postgres will not
 -- implicitly narrow float8 to numeric when resolving the call.

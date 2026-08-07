@@ -75,7 +75,7 @@ export function sanitizeRedirect(
 /**
  * Sign-in URL that comes back to `redirectTo` once the user has an account.
  * Use this instead of a bare "/auth/login" whenever the visitor was reaching
- * for something specific — an invite, a shared collection — so signing in
+ * for something specific (an invite, a shared collection) so signing in
  * doesn't strand them on the default landing page.
  */
 export function loginUrl(redirectTo: string): string {
@@ -117,8 +117,8 @@ export function getOAuthStateFromRequest(req: Request): string | null {
   return match ? match[1] : null;
 }
 
-// The provider round-trip can't carry our own destination — `state` is spent on
-// CSRF — so it rides along in a cookie with the same lifetime.
+// The provider round-trip can't carry our own destination (`state` is spent on
+// CSRF), so it rides along in a cookie with the same lifetime.
 export function createOAuthRedirectCookie(path: string): string {
   return `oauth_redirect=${
     encodeURIComponent(path)

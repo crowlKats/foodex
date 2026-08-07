@@ -2,7 +2,7 @@
 --
 -- Water is the obvious one: it's in a large share of recipes and it has to
 -- scale with them, but the only way to make `600ml water` scale was to declare
--- it as an ingredient — which then put water on the shopping list and counted
+-- it as an ingredient, which then put water on the shopping list and counted
 -- it as missing from the pantry. The same applies to ice, and to salt or oil
 -- depending on how the author thinks about staples.
 --

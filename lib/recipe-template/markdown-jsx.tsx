@@ -25,7 +25,7 @@ const OPEN = "\uE000";
 const CLOSE = "\uE001";
 const PLACEHOLDER_RE = /\uE000(\d+)\uE001/g;
 
-// Marked is configured globally to drop raw HTML — we don't want it leaking
+// Marked is configured globally to drop raw HTML; we don't want it leaking
 // from user-authored step bodies.
 marked.use({ renderer: { html: () => "" } });
 

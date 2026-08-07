@@ -1,5 +1,5 @@
 // Staging projection: `foldStaging` reduces the event log into the current set of
-// staged items. Nothing here reads or writes the database — it is a pure fold, so
+// staged items. Nothing here reads or writes the database: it is a pure fold, so
 // the same function serves the API, the tools, and the tests. Apply-to-DB lives in
 // apply.ts (M3).
 
@@ -18,7 +18,7 @@ export interface StagedItem {
   full?: Record<string, unknown>;
   /** modify/edit kinds: accumulated patch ops. */
   ops: PatchOp[];
-  /** Revert targets — the state as of the last AGENT write. */
+  /** Revert targets: the state as of the last AGENT write. */
   agent_ops: PatchOp[];
   agent_full?: Record<string, unknown>;
   /** Version token = seq of the last event that mutated this item. */

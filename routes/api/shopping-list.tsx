@@ -28,7 +28,7 @@ export const handlers = handler({
       /**
        * Every mutation answers with the recomputed list. The lines are a
        * projection, so a local patch on the client would be a second, weaker
-       * implementation of the same arithmetic — buying flour has to be able to
+       * implementation of the same arithmetic; buying flour has to be able to
        * shorten an unrelated line that shares the ingredient.
        */
       const withLines = async (extra: Record<string, unknown> = {}) => {
@@ -130,7 +130,7 @@ export const handlers = handler({
       }
 
       if (body.action === "clear_bought") {
-        // The stock stays — it was bought. Only the ticked-off lines clear.
+        // The stock stays: it was bought. Only the ticked-off lines clear.
         await query(
           "DELETE FROM shopping_list_purchases WHERE shopping_list_id = $1",
           [listId],

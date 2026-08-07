@@ -1,6 +1,6 @@
 // Web-access tool helpers. SSRF-guarded: only public http(s) hosts; loopback,
 // private, link-local and cloud-metadata addresses are rejected. Hostnames that
-// aren't IP literals are allowed (DNS-rebinding is not defended against here — a
+// aren't IP literals are allowed (DNS-rebinding is not defended against here, a
 // known v1 limitation; the fetches carry no credentials and are read-only).
 
 const MAX_CHARS = 20_000;

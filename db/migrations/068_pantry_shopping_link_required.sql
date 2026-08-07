@@ -2,13 +2,13 @@
 -- ingredient links to a real ingredient entity.
 --
 -- pantry_items, shopping_list_demands and shopping_list_purchases become
--- NOT NULL — their write paths now find-or-create the entity up front
+-- NOT NULL; their write paths now find-or-create the entity up front
 -- (lib/ingredient-resolve.ts). pantry_transactions stays nullable for one
 -- reason: consumeStock's claim-marker row (source_seq 0, amount NULL) is a
 -- synthetic idempotency token whose "name" is a note like "Consumption", not
 -- an ingredient. Ledger rows get a best-effort link (no entity creation, so a
 -- note text never becomes an ingredient), and every FK moves from SET NULL to
--- RESTRICT — deleting an ingredient must not silently unlink stock or history.
+-- RESTRICT: deleting an ingredient must not silently unlink stock or history.
 
 -- ── pantry_items ────────────────────────────────────────────────────
 
@@ -89,7 +89,7 @@ WHERE p.ingredient_id IS NULL
   AND fx_norm_name(i.name) = fx_norm_name(p.name);
 
 -- Purchases match projected lines by match_key. Now that every demand and
--- recipe line is id-linked, projected keys are always 'id:<uuid>' — purchases
+-- recipe line is id-linked, projected keys are always 'id:<uuid>'; purchases
 -- recorded under a 'name:…' key (or a stale id) would stop matching and their
 -- lines would reappear as unbought. Re-key them, skipping any that would
 -- collide with an existing purchase on UNIQUE (shopping_list_id, match_key);

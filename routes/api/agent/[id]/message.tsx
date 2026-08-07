@@ -100,7 +100,7 @@ export const handlers = handler({
               encoder.encode(`data: ${JSON.stringify(ev)}\n\n`),
             );
           } catch {
-            // Controller already closed (client disconnected) — ignore.
+            // Controller already closed (client disconnected); ignore.
           }
         };
         // Heartbeat so the client's watchdog can tell a live-but-quiet turn
@@ -117,10 +117,10 @@ export const handlers = handler({
           });
 
         // After the first and second completed user turns, refine the title
-        // with a model-computed one. Best-effort — never breaks the stream.
+        // with a model-computed one. Best-effort; never breaks the stream.
         // Resume turns count too: seeded imports (chatless and bulk) only
         // ever run as resume, and their raw "Import the recipe…" seed text
-        // would otherwise stay the title forever — unsearchable.
+        // would otherwise stay the title forever, unsearchable.
         async function maybeRetitle() {
           if (!session) return;
           try {
@@ -137,7 +137,7 @@ export const handlers = handler({
               send({ type: "title", title });
             }
           } catch {
-            // Titling is non-essential — ignore any failure.
+            // Titling is non-essential; ignore any failure.
           }
         }
       },

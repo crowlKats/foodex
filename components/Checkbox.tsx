@@ -18,7 +18,7 @@ export interface CheckboxProps extends InputAttrs {
 /**
  * App-styled checkbox: the native input stays (form semantics, keyboard,
  * a11y) but is visually replaced by a sharp-cornered box that fills orange
- * when checked — matching the border-2 look of every other control. Styles
+ * when checked, matching the border-2 look of every other control. Styles
  * live under `.checkbox` in styles.css.
  */
 export function Checkbox(

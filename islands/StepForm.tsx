@@ -35,7 +35,7 @@ interface SectionEntry {
   title: string;
   /** Auto-derived from title unless user edits it manually. */
   key: string;
-  /** True once the user has manually edited the key — stops auto-derive. */
+  /** True once the user has manually edited the key; stops auto-derive. */
   keyDirty: boolean;
   /** Indices of sections this one depends on (must complete first). */
   after: number[];
@@ -502,8 +502,8 @@ function computeNestedLayout(
  * What to call a step in the graph.
  *
  * Titles are optional and nothing suggests they're needed for anything, so the
- * default authoring path produced a graph reading "#1 untitled ⟶ #2 untitled"
- * — the one view whose whole purpose is showing which steps run in parallel,
+ * default authoring path produced a graph reading "#1 untitled ⟶ #2 untitled":
+ * the one view whose whole purpose is showing which steps run in parallel,
  * with no information in it. Falls back to the opening words of the body,
  * with template directives reduced to the thing they name.
  */
@@ -815,7 +815,7 @@ export default function StepForm(
   const items = useSignal<StepEntry[]>(
     initialSteps.length > 0
       ? (() => {
-        // Drop any cross-section step deps from incoming data — step deps must
+        // Drop any cross-section step deps from incoming data; step deps must
         // stay intra-section (cross-section ordering lives in section.after).
         const sectionByIdx = initialSteps.map((s) => s.section ?? null);
         return initialSteps.map((s, i) => ({
@@ -908,7 +908,7 @@ export default function StepForm(
   }
 
   function removeSection(idx: number) {
-    // Find steps belonging to this section — they get deleted with it.
+    // Find steps belonging to this section; they get deleted with it.
     const deletedSteps = new Set<number>();
     items.value.forEach((s, i) => {
       if (s.section === idx) deletedSteps.add(i);
@@ -1342,8 +1342,8 @@ export default function StepForm(
 
   // Section deps: list mode treats sections as a linear chain (top-to-bottom).
   // Save+linearize on list entry, restore on graph entry. We skip saving an
-  // "all-empty" deps state — that's just default no-info, not an explicit
-  // user choice — so the first list→graph switch keeps the linear chain.
+  // "all-empty" deps state (that's just default no-info, not an explicit
+  // user choice), so the first list→graph switch keeps the linear chain.
   if (mode.value === "list" && !isLinearSectionChain(sections.value)) {
     const hasExplicit = sections.value.some((s) => s.after.length > 0);
     if (hasExplicit) {
@@ -1382,11 +1382,11 @@ export default function StepForm(
   const hasSections = sections.value.length > 0;
   const cardH = CARD_H;
   const rowHeight = cardH + ROW_GAP;
-  // Flat layout (no sections) — used when sections aren't in play
+  // Flat layout (no sections): used when sections aren't in play
   const flatLayout = isGraph && !hasSections
     ? computeGraphLayout(steps, sel, cardH)
     : null;
-  // Nested layout (sections as containers) — used when sections exist
+  // Nested layout (sections as containers): used when sections exist
   const nested = isGraph && hasSections
     ? computeNestedLayout(
       sections.value,
@@ -1405,7 +1405,7 @@ export default function StepForm(
     }
   }
 
-  // Live step drag line — works for both flat and nested
+  // Live step drag line: works for both flat and nested
   const dragLine = (() => {
     if (dragFrom.value == null || !dragPos.value) return null;
     let p1x: number, p1y: number;

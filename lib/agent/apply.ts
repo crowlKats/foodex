@@ -1,4 +1,4 @@
-// Apply a staged item to real household data. Pure user action — never invokes
+// Apply a staged item to real household data. Pure user action: never invokes
 // the agent. For modify/edit kinds, re-checks the base version against live and
 // runs the path-level 3-way merge (merge.ts). On a real conflict it applies
 // nothing and reports the conflicting paths so the UI can offer "Ask AI to resolve".

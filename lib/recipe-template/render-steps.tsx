@@ -2,7 +2,7 @@
 /** @jsxImportSource preact */
 
 /**
- * The full recipe step renderer. Produces JSX for the entire step tree —
+ * The full recipe step renderer. Produces JSX for the entire step tree:
  * section headers, step titles, body markdown with directives substituted,
  * step images, and the various annotations (parallel/after).
  */
@@ -122,7 +122,7 @@ export function RecipeSteps(props: RecipeStepsProps): VNode {
 }
 
 /**
- * Render a single step body — used by cooking mode where we display one step
+ * Render a single step body, used by cooking mode where we display one step
  * at a time without the surrounding section/title chrome.
  */
 export function RecipeStepBody(props: {

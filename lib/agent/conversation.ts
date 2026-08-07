@@ -1,7 +1,7 @@
 // Conversation projection: `foldConversation` reduces the event log into the
 // Anthropic `messages[]` for the next API call and a display timeline for the chat UI.
 //
-// User edits/reverts/discards are NEVER sent as their own API messages — they are
+// User edits/reverts/discards are NEVER sent as their own API messages; they are
 // collapsed into a single "here's what the user changed since your last reply" notice
 // prepended to the next user turn, computed from the point-in-time staging state.
 
@@ -70,7 +70,7 @@ function itemLabel(it: StagedItem): string {
 /**
  * The pre-turn notice describing staged items the user edited/discarded/applied
  * since the last turn. `api` is sent to the model so it stays in sync; nothing
- * here is shown in the chat (`display` is always null) — these are internal
+ * here is shown in the chat (`display` is always null); these are internal
  * system notes, and applied changes already appear as "Applied …" entries.
  */
 function buildNotice(
@@ -103,7 +103,7 @@ function buildNotice(
 
   const appliedNotice = applied.length > 0
     ? `[System note] The user APPLIED and saved these staged changes to the ` +
-      `real data — they are now live and no longer in the staging area: ` +
+      `real data; they are now live and no longer in the staging area: ` +
       `${applied.join("; ")}.`
     : null;
 

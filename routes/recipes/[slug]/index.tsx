@@ -270,7 +270,7 @@ export const handlers = handler({
     }
 
     // Same for `@dish(slug)` directives. A dish only resolves when at least
-    // one recipe the viewer may see makes it — otherwise the dish's name
+    // one recipe the viewer may see makes it; otherwise the dish's name
     // (derived from someone's private recipe title) would leak.
     const dishRefSlugs = new Set<string>();
     for (const s of stepsData) {
@@ -664,7 +664,7 @@ export default page(function RecipeViewPage({
 
       <div class="flex gap-2 sm:gap-4 text-sm text-stone-500 mt-2 flex-wrap">
         {
-          /* Kept in step with the scaler by RecipeView — the two used to sit a
+          /* Kept in step with the scaler by RecipeView; the two used to sit a
             few centimetres apart showing different numbers. */
         }
         <span data-recipe-quantity>{formatQuantity(baseQuantity)}</span>

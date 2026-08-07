@@ -23,7 +23,7 @@ interface PantryItem {
   amount?: number;
   unit?: string;
   expires_at?: string;
-  /** Always on hand — never counted as missing, never deducted. */
+  /** Always on hand: never counted as missing, never deducted. */
   staple?: boolean;
 }
 
@@ -201,7 +201,7 @@ export default function PantryManager(
 
   /**
    * Duplicates of an item, by the same identity rule the recipe view and the
-   * shopping list use — a linked ingredient first, the normalized name second.
+   * shopping list use: a linked ingredient first, the normalized name second.
    */
   function getSiblings(item: PantryItem): PantryItem[] {
     return findDuplicates(item, items.value);
@@ -490,7 +490,7 @@ export default function PantryManager(
                         }`}
                         title={item.staple
                           ? "Staple: always counted as available. Click to track its amount instead."
-                          : "Mark as a staple — salt, oil, water and the like, so recipes stop reporting them as missing."}
+                          : "Mark as a staple: salt, oil, water and the like, so recipes stop reporting them as missing."}
                         onClick={() => setStaple(item, !item.staple)}
                       >
                         &#x2605;

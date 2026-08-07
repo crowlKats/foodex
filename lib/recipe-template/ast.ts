@@ -3,16 +3,16 @@
  *
  * Syntax:
  *   - Plain text (and markdown).
- *   - `{{ expr }}` — interpolation; `expr` is an arithmetic expression that may
+ *   - `{{ expr }}`: interpolation; `expr` is an arithmetic expression that may
  *     reference variables, ingredient properties, and call built-in functions.
- *   - `@step(N)` / `@step(key.N)` — step references.
- *   - `@timer(15m)` etc. — timer buttons.
- *   - `@recipe(slug)` — sub-recipe links (resolved asynchronously).
- *   - `@dish(slug)` — dish links: "any recipe for this dish".
+ *   - `@step(N)` / `@step(key.N)`: step references.
+ *   - `@timer(15m)` etc.: timer buttons.
+ *   - `@recipe(slug)`: sub-recipe links (resolved asynchronously).
+ *   - `@dish(slug)`: dish links, "any recipe for this dish".
  *
  * Every node carries (`start`, `length`) into the original source so a syntax
  * highlighter or editor tooling can map nodes back to text ranges. Parse errors
- * are not thrown — they produce `Invalid*` nodes carrying the offending range
+ * are not thrown; they produce `Invalid*` nodes carrying the offending range
  * and a message. This means the AST always covers the whole input.
  */
 

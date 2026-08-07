@@ -51,7 +51,7 @@ export const PantryAction = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("add"),
     // Free-text adds send an explicit null when no catalog ingredient is
-    // selected; the server then finds or creates the entity — every pantry
+    // selected; the server then finds or creates the entity; every pantry
     // row links to a real ingredient (migration 068).
     ingredient_id: optionalUuid,
     name: nonEmptyString,

@@ -12,7 +12,7 @@ interface DishSelectProps {
 /**
  * The recipe's dish. Normally derived from the title automatically; picking
  * one here pins the recipe to that dish, and the pin survives renames.
- * Typing a name no dish has creates that dish on save — the way to split a
+ * Typing a name no dish has creates that dish on save, the way to split a
  * recipe out of a dish it was wrongly merged into. Clearing the field hands
  * control back to the title.
  *
@@ -73,7 +73,7 @@ export default function DishSelect(
         {manual.value
           ? newName.value
             ? "Saving creates this dish, pins the recipe to it, and moves recipes with a matching title along."
-            : "Pinned — this recipe stays in the chosen dish even if you rename it. Unpin to match from the title again."
+            : "Pinned: this recipe stays in the chosen dish even if you rename it. Unpin to match from the title again."
           : "Matched from the title automatically. Pick a dish to pin this recipe to it, or type a new name to give it a dish of its own."}
       </p>
       <input type="hidden" name="dish_id" value={dishId.value} />
