@@ -9,8 +9,7 @@ import {
 } from "../db/mod.ts";
 import {
   getSessionIdFromRequest,
-  householdSetupUrl,
-  sanitizeRedirect,
+  householdRequirementResponse,
 } from "../lib/auth.ts";
 import { loadSessionState } from "../lib/session.ts";
 import { deleteFile } from "../lib/s3.ts";
@@ -40,27 +39,11 @@ export default middleware(async function (ctx) {
     pageTitle: "Foodex",
   } satisfies State as State;
 
-  // Require household for authenticated users (onboarding).
+  // Membership in a household is required for everything beyond signing in
+  // and onboarding; see householdRequirementResponse for the exemptions.
   if (state.user && !state.householdId) {
-    const url = new URL(ctx.req.url);
-    const path = url.pathname;
-    if (
-      !path.startsWith("/auth") &&
-      !path.startsWith("/households") &&
-      !path.startsWith("/_fresh") &&
-      !path.startsWith("/api")
-    ) {
-      // Carry where they were headed through onboarding. A shared link is
-      // usually what brought a new account here in the first place, and it is
-      // lost for good if the detour forgets it.
-      const target = sanitizeRedirect(path + url.search);
-      return new Response(null, {
-        status: 303,
-        headers: {
-          Location: target ? householdSetupUrl(target) : "/households",
-        },
-      });
-    }
+    const denied = householdRequirementResponse(new URL(ctx.req.url));
+    if (denied) return denied;
   }
 
   return ctx.next(state);

@@ -91,6 +91,59 @@ export function householdSetupUrl(redirectTo: string): string {
   return `/households?redirect=${encodeURIComponent(redirectTo)}`;
 }
 
+/**
+ * What a signed-in user without a household gets instead of the page or API
+ * endpoint they asked for. Returns null when the request may proceed.
+ *
+ * Membership is the authorization boundary for the whole app, so this is
+ * enforced once in the middleware rather than re-checked route by route:
+ * a handler that only checks `state.user` (favorites, substitutions, the
+ * agent) must still be unreachable without a household.
+ *
+ * Three kinds of requests stay open:
+ * - the auth flow and household onboarding itself, or nobody could ever
+ *   join or create one;
+ * - API endpoints whose authorization comes from something other than
+ *   membership: the share-token shopping list, and the public media files
+ *   shared pages embed;
+ * - framework assets under /_fresh.
+ *
+ * Pages bounce through onboarding with their destination preserved. A shared
+ * link is usually what brought a new account here in the first place, and it
+ * is lost for good if the detour forgets it. API calls can't follow that
+ * detour, so they get a 403 that `apiErrorMessage` can surface.
+ */
+export function householdRequirementResponse(url: URL): Response | null {
+  const path = url.pathname;
+
+  if (path.startsWith("/api")) {
+    if (
+      path === "/api/shopping-list-shared" ||
+      path.startsWith("/api/media/file/")
+    ) {
+      return null;
+    }
+    return Response.json(
+      { error: "Join or create a household to do this." },
+      { status: 403 },
+    );
+  }
+
+  if (
+    path.startsWith("/auth") ||
+    path.startsWith("/households") ||
+    path.startsWith("/_fresh")
+  ) {
+    return null;
+  }
+
+  const target = sanitizeRedirect(path + url.search);
+  return new Response(null, {
+    status: 303,
+    headers: { Location: target ? householdSetupUrl(target) : "/households" },
+  });
+}
+
 function getBaseUrl(req: Request): string {
   const url = new URL(req.url);
   return `${ALWAYS_HTTPS ? "https:" : url.protocol}//${url.host}`;
