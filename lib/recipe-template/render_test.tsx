@@ -82,7 +82,7 @@ Deno.test("render: ingredient interpolation formats as amount+unit+name", () => 
       flour: { amount: 200, unit: "g", name: "all-purpose flour" },
     },
   });
-  assertStringIncludes(html, "200g all-purpose flour");
+  assertStringIncludes(html, "200 g all-purpose flour");
 });
 
 Deno.test("render: capitalised ingredient ref capitalises the name", () => {
@@ -92,7 +92,7 @@ Deno.test("render: capitalised ingredient ref capitalises the name", () => {
       flour: { amount: 200, unit: "g", name: "all-purpose flour" },
     },
   });
-  assertStringIncludes(html, "200g All-purpose flour");
+  assertStringIncludes(html, "200 g All-purpose flour");
 });
 
 Deno.test("render: {{ tray }} renders the tray dimensions as text", () => {

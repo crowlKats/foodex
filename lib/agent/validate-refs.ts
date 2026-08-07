@@ -9,6 +9,7 @@ import {
   collectStepBodyDiagnostics,
   type StepBodyContext,
 } from "../step-body-diagnostics.ts";
+import { ALL_UNITS } from "../units.ts";
 
 export interface StepDiagnostics {
   errors: string[];
@@ -110,6 +111,21 @@ export function stepDiagnostics(
         `ingredients: the row keyed "${g.key}" is named "${g.name}", which ` +
           `shares no words with the key. One of the two is wrong; fix ` +
           `whichever it is (the key must be derived from the name).`,
+      );
+    }
+  }
+
+  // Units are free text at the storage layer, but the editor's unit picker
+  // and unit conversion only understand the known list; anything else (e.g.
+  // "small") renders oddly and can be silently remapped on a later edit.
+  for (const g of ingredients) {
+    const unit = g.unit.trim();
+    if (unit && !ALL_UNITS.includes(unit)) {
+      out.warnings.push(
+        `ingredients: "${g.name}" uses the unknown unit "${unit}". Use one ` +
+          `of: ${ALL_UNITS.join(", ")}, or an empty unit and put the ` +
+          `descriptor in the name (e.g. name "Small garlic clove", unit ` +
+          `"pcs").`,
       );
     }
   }

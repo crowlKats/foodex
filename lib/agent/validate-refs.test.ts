@@ -106,6 +106,70 @@ Deno.test("stepDiagnostics: a key unrelated to its name warns", () => {
   assertEquals(d.warnings[0].includes("pasta_cooking_water"), true);
 });
 
+Deno.test("stepDiagnostics: a full ref with prose duplication warns", () => {
+  const r: Record<string, unknown> = {
+    ingredients: [
+      { key: "burnt_lemon_juice", name: "Burnt lemon juice", unit: "g" },
+      { key: "unsalted_butter", name: "Unsalted butter", unit: "g" },
+    ],
+    steps: [
+      // Renders "10 g burnt lemon juice of the burnt lemon juice".
+      {
+        id: "s0",
+        title: "",
+        body:
+          "Reserve {{ burnt_lemon_juice }} of the burnt lemon juice for later.",
+      },
+      // Renders "110 g of 120 g unsalted butter".
+      { id: "s1", title: "", body: "Place 110 g of {{ unsalted_butter }}." },
+    ],
+  };
+  const d = stepDiagnostics(r);
+  assertEquals(d.errors, []);
+  assertEquals(d.warnings.length, 2);
+  assertEquals(d.warnings[0].includes("repeats the name"), true);
+  assertEquals(d.warnings[1].includes("unsalted_butter.name"), true);
+});
+
+Deno.test("stepDiagnostics: literal amounts match partial names", () => {
+  const r: Record<string, unknown> = {
+    ingredients: [
+      { key: "bottarga", name: "Bottarga di muggine", unit: "g" },
+      { key: "pasta_water", name: "Pasta cooking water", unit: "g" },
+    ],
+    steps: [
+      { id: "s0", title: "", body: "Mix in 25 g grated bottarga." },
+      { id: "s1", title: "", body: "Add 100 g of pasta water and toss." },
+      // A duration mentioning a name word must stay quiet.
+      {
+        id: "s2",
+        title: "",
+        body: "Wait 2 minutes until the water boils, then drain.",
+      },
+    ],
+  };
+  const d = stepDiagnostics(r);
+  assertEquals(d.errors, []);
+  const literal = d.warnings.filter((w) => w.includes("typed out"));
+  assertEquals(literal.length, 2);
+  assertEquals(literal[0].includes("bottarga"), true);
+  assertEquals(literal[1].includes("pasta_water"), true);
+});
+
+Deno.test("stepDiagnostics: an unknown unit warns", () => {
+  const r: Record<string, unknown> = {
+    ingredients: [
+      { key: "garlic_clove", name: "Garlic clove", amount: "1", unit: "small" },
+      { key: "flour", name: "Flour", amount: "200", unit: "g" },
+    ],
+    steps: [{ id: "s0", title: "", body: "No refs." }],
+  };
+  const d = stepDiagnostics(r);
+  assertEquals(d.errors, []);
+  assertEquals(d.warnings.length, 1);
+  assertEquals(d.warnings[0].includes('unknown unit "small"'), true);
+});
+
 Deno.test("stepDiagnostics: a stated duration without a timer warns", () => {
   const bare = recipe(["flour"], [
     "Cook for 4-6 minutes until fragrant.",

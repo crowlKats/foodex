@@ -737,6 +737,31 @@ export default function RecipeView(
     );
   }
 
+  /** Collapsible full ingredient list at the current scale, shown per view. */
+  function cookingIngredients() {
+    if (ingredients.length === 0) return null;
+    const ratio = getCurrentRatio();
+    return (
+      <details class="cooking-mode-ingredients">
+        <summary>Ingredients</summary>
+        <ul>
+          {ingredients.map((ing) => {
+            const scaled = ing.amount * ratio;
+            const d = displayUnit(scaled, ing.unit, ing.density);
+            return (
+              <li key={ing.key || ing.name}>
+                <span class="font-semibold">
+                  {d.text} {d.unit}
+                </span>{" "}
+                {ing.name}
+              </li>
+            );
+          })}
+        </ul>
+      </details>
+    );
+  }
+
   function getCookingStepLabel(idx: number): {
     section: string | null;
     num: number;
@@ -1614,34 +1639,9 @@ export default function RecipeView(
               <div class="cooking-mode-step-content">
                 {cookingStepBody(cookingStep.value)}
               </div>
-              {ingredients.length > 0 && (
-                <details class="cooking-mode-ingredients">
-                  <summary>Ingredients</summary>
-                  <ul>
-                    {ingredients.map((ing) => {
-                      const ratio = getCurrentRatio();
-                      const scaled = ing.amount * ratio;
-                      return (
-                        <li key={ing.key || ing.name}>
-                          {(() => {
-                            const d = displayUnit(
-                              scaled,
-                              ing.unit,
-                              ing.density,
-                            );
-                            return (
-                              <span class="font-semibold">
-                                {d.text} {d.unit}
-                              </span>
-                            );
-                          })()} {ing.name}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </details>
-              )}
+              {cookingIngredients()}
             </div>
+            <div class="cooking-mode-scroll-fade" />
           </div>
           {cookedStatus.value === "done" && cookedShort.value.length > 0 && (
             <div class="shrink-0 px-4 py-2 text-sm text-amber-600 dark:text-amber-400 border-t-2 border-stone-200 dark:border-stone-700">
@@ -1830,16 +1830,19 @@ export default function RecipeView(
                 }
 
                 return (
-                  <div class="flex-1 flex overflow-hidden">
+                  // Columns side by side on desktop; stacked cards in one
+                  // vertical scroll on small screens, where 3+ columns would
+                  // be a few characters wide each.
+                  <div class="flex-1 flex overflow-hidden max-md:flex-col max-md:overflow-y-auto">
                     {columns.map((col) => {
                       const idx = col.showStepIdx;
                       if (idx == null) return null;
                       return (
                         <div
                           key={col.key}
-                          class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0"
+                          class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0 max-md:flex-none max-md:overflow-visible max-md:border-r-0 max-md:border-b-2 max-md:last:border-b-0"
                         >
-                          <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body">
+                          <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body max-md:flex-none max-md:overflow-visible">
                             {(() => {
                               const { section, num } = getCookingStepLabel(idx);
                               const titleText = steps[idx].title.trim();
@@ -1870,6 +1873,8 @@ export default function RecipeView(
                             <div class="cooking-mode-step-content">
                               {cookingStepBody(idx)}
                             </div>
+                            {cookingIngredients()}
+                            <div class="cooking-mode-scroll-fade" />
                           </div>
                           <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 flex gap-2">
                             <button

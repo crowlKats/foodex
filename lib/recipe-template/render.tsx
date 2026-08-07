@@ -198,7 +198,10 @@ function renderInterpolation(
       const name = capitalize
         ? ing.name.charAt(0).toUpperCase() + ing.name.slice(1).toLowerCase()
         : ing.name.toLowerCase();
-      return `${formatAmount(result.value, ing.unit)}${ing.unit} ${name}`;
+      // Space between amount and unit, matching the ingredient sidebar
+      // ("120 g", "1 small"); without it, word units collapse ("1small").
+      const amount = formatAmount(result.value, ing.unit);
+      return `${amount}${ing.unit ? ` ${ing.unit}` : ""} ${name}`;
     }
   }
 

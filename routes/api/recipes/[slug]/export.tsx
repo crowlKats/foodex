@@ -2,8 +2,10 @@ import { handler } from "./$export.ts";
 import { HttpError } from "fresh/errors";
 import type {
   RecipeIngredient,
+  RecipeSectionDep,
   RecipeStep,
   RecipeStepDep,
+  RecipeStepSection,
   RecipeTag,
 } from "../../../../db/types.ts";
 import { computeStepAfters } from "../../../../lib/step-graph.ts";
@@ -27,6 +29,7 @@ export const handlers = handler({
       quantity_value2: number | null;
       quantity_value3: number | null;
       quantity_unit2: string | null;
+      quantity_servings: number | null;
       private: boolean;
       household_id: string;
       cover_image_url: string | null;
@@ -73,6 +76,30 @@ export const handlers = handler({
       stepDepsRes.rows,
     );
 
+    const sectionsRes = await ctx.state.db.query<RecipeStepSection>(
+      `SELECT * FROM recipe_step_sections WHERE recipe_id = $1
+       ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+    const sectionDepsRes = await ctx.state.db.query<RecipeSectionDep>(
+      `SELECT sd.section_id, sd.depends_on
+       FROM recipe_section_deps sd
+       JOIN recipe_step_sections s ON s.id = sd.section_id
+       WHERE s.recipe_id = $1`,
+      [recipe.id],
+    );
+    const sectionKeyById = new Map(
+      sectionsRes.rows.map((s) => [s.id, s.key]),
+    );
+    const sectionAfters = new Map<string, string[]>();
+    for (const d of sectionDepsRes.rows) {
+      const key = sectionKeyById.get(d.depends_on);
+      if (!key) continue;
+      const list = sectionAfters.get(d.section_id) ?? [];
+      list.push(key);
+      sectionAfters.set(d.section_id, list);
+    }
+
     const tagsRes = await ctx.state.db.query<RecipeTag>(
       "SELECT tag_type, tag_value FROM recipe_tags WHERE recipe_id = $1",
       [recipe.id],
@@ -98,16 +125,28 @@ export const handlers = handler({
       quantity_type: recipe.quantity_type || "servings",
       quantity_value: recipe.quantity_value ?? 4,
       quantity_unit: recipe.quantity_unit || "servings",
+      quantity_value2: recipe.quantity_value2,
+      quantity_value3: recipe.quantity_value3,
+      quantity_unit2: recipe.quantity_unit2,
+      quantity_servings: recipe.quantity_servings,
       ingredients: ingredientsRes.rows.map((i) => ({
         key: i.key || "",
         name: i.ingredient_name ?? i.name,
         amount: i.amount != null ? String(i.amount) : "",
         unit: i.unit || "",
       })),
+      sections: sectionsRes.rows.map((s) => ({
+        key: s.key,
+        title: s.title,
+        after: sectionAfters.get(s.id) ?? [],
+      })),
       steps: stepsRes.rows.map((s) => ({
         title: s.title,
         body: s.body,
         after: stepAfterMap.get(s.id) ?? [],
+        section: s.section_id != null
+          ? sectionKeyById.get(s.section_id) ?? null
+          : null,
       })),
       tags: {
         meal_types: mealTypes,

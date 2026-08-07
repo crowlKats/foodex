@@ -780,6 +780,14 @@
   @apply mt-6 pt-4 border-t-2 border-stone-200 dark:border-stone-700 text-base;
 }
 
+/* Sits at the end of a scrollable step area: while text is clipped it fades
+   the cut-off line as a "more below" affordance, and at the end of the
+   scroll it lands over the bottom padding, invisible. */
+.cooking-mode-scroll-fade {
+  @apply max-md:hidden sticky bottom-0 h-8 -mt-8 shrink-0 pointer-events-none
+    bg-gradient-to-t from-white dark:from-stone-950 to-transparent;
+}
+
 .cooking-mode-ingredients summary {
   @apply cursor-pointer font-semibold text-stone-600 dark:text-stone-400
     select-none;

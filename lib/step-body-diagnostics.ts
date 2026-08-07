@@ -117,6 +117,16 @@ function collect(source: string, ctx: StepBodyContext): CollectResult {
   for (let i = 0; i < ast.nodes.length; i++) {
     const node = ast.nodes[i];
     emitNode(node, ctx, tokens, diagnostics);
+    if (node.kind === "interpolation") {
+      lintRefProse(
+        node,
+        ast.nodes[i - 1],
+        ast.nodes[i + 1],
+        ctx,
+        tokens,
+        diagnostics,
+      );
+    }
     if (node.kind === "text") {
       lintLiteralAmounts(node.value, node.start, ctx, tokens, diagnostics);
       lintTimerlessDurations(
@@ -137,8 +147,45 @@ function escapeRegExp(s: string): string {
 }
 
 /**
+ * Ways a step may refer to an ingredient by (partial) name: the full name,
+ * its word suffixes ("Pasta cooking water" is written as "cooking water" or
+ * "water"), and the head word of romance-language names ("Bottarga di
+ * muggine" is just "bottarga" in prose). Short fragments are dropped; they
+ * match too much.
+ */
+const NAME_LINKING_WORDS = new Set(
+  ["di", "de", "of", "alla", "al", "con", "da", "du", "des", "la", "le", "el"],
+);
+
+function nameVariants(name: string): string[] {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  const out = new Set<string>([words.join(" ")]);
+  for (let k = 1; k < words.length; k++) {
+    const v = words.slice(k).join(" ");
+    if (v.length >= 4) out.add(v);
+  }
+  if (
+    words.length > 1 && NAME_LINKING_WORDS.has(words[1].toLowerCase()) &&
+    words[0].length >= 4
+  ) {
+    out.add(words[0]);
+  }
+  // Longest first, so the most specific phrasing claims the match.
+  return [...out].sort((a, b) => b.length - a.length);
+}
+
+/**
+ * Words that signal the number is a duration or direction, not an amount of
+ * the ingredient ("2 minutes until the water boils").
+ */
+const NOT_AMOUNT_FILLER =
+  "(?!(?:minutes?|mins?|hours?|hrs?|seconds?|secs?|until|then|and|or|to|into|over|with|before|after)\\b)";
+
+/**
  * Flag a typed-out amount that names a declared ingredient: `50g butter`
- * where `butter` is declared as 50 g.
+ * where `butter` is declared as 50 g, including loose phrasings such as
+ * "25 g grated bottarga" or "100 g of pasta water".
  *
  * The editor already catches misspelled keys beautifully, but a correctly
  * spelled bare number got nothing at all, even though it's the failure that
@@ -159,37 +206,127 @@ function lintLiteralAmounts(
   const ingredients = ctx.ingredients;
   if (!ingredients || ingredients.length === 0) return;
 
+  // One warning per span, even when several ingredients/variants match.
+  const claimed: { start: number; end: number }[] = [];
+  const overlapsClaimed = (s: number, e: number) =>
+    claimed.some((r) => s < r.end && r.start < e);
+
   for (const ing of ingredients) {
     const name = ing.name.trim();
     if (!name || !ing.key) continue;
-    // `<number> [unit] <name>`: the unit is optional so bare countables
-    // ("2 onions") are caught too. Trailing "s" allows the plural.
+    // `<number> [unit] [of/the] [descriptor words] <name>`: the unit is
+    // optional so bare countables ("2 onions") are caught too. Trailing "s"
+    // allows the plural; up to two descriptor words cover "grated bottarga"
+    // and "warm pasta water".
     const unitPart = ing.unit.trim()
       ? `(?:\\s*${escapeRegExp(ing.unit.trim())}\\b)?`
       : "";
-    const re = new RegExp(
-      `\\b\\d+(?:[.,]\\d+)?${unitPart}\\s+${escapeRegExp(name)}s?\\b`,
-      "gi",
+    for (const variant of nameVariants(name)) {
+      const re = new RegExp(
+        `\\b\\d+(?:[.,]\\d+)?${unitPart}\\s+(?:(?:of|the)\\s+){0,2}` +
+          `(?:${NOT_AMOUNT_FILLER}[A-Za-z-]+\\s+){0,2}` +
+          `${escapeRegExp(variant)}s?\\b`,
+        "gi",
+      );
+      for (const m of text.matchAll(re)) {
+        const start = offset + (m.index ?? 0);
+        const end = start + m[0].length;
+        if (overlapsClaimed(start, end)) continue;
+        claimed.push({ start, end });
+        tokens.push({ start, end, label: "tpl-warning", priority: 5 });
+        diagnostics.push({
+          start,
+          end,
+          severity: "warning",
+          message: `\`${m[0]}\` is typed out, so it won't scale with the ` +
+            `recipe. Double the servings and this still says ` +
+            `\`${m[0]}\`. Use \`{{ ${ing.key} }}\`, or arithmetic on ` +
+            `\`${ing.key}.amount\` if this is a partial amount.`,
+          fix: {
+            start,
+            end,
+            replacement: `{{ ${ing.key} }}`,
+            label: `Replace with {{ ${ing.key} }}`,
+          },
+        });
+      }
+    }
+  }
+}
+
+/**
+ * A bare `{{ key }}` renders amount + unit + name, which reads badly when the
+ * surrounding prose already carries one of the two. Both shapes come from
+ * imports and produce output like "10 g juice of the juice" or
+ * "110 g of 120 g unsalted butter":
+ *
+ *  - `{{ key }} of the <name>`: the name renders twice. Fix: drop the phrase.
+ *  - `<amount> of {{ key }}`: a written-out amount followed by the full ref.
+ *    Fix: `{{ key.name }}`, or arithmetic on `key.amount` for a scaling
+ *    partial amount.
+ */
+function lintRefProse(
+  node: Extract<TemplateNode, { kind: "interpolation" }>,
+  prev: TemplateNode | undefined,
+  next: TemplateNode | undefined,
+  ctx: StepBodyContext,
+  tokens: HighlightToken[],
+  diagnostics: StepBodyDiagnostic[],
+): void {
+  const expr = node.expr;
+  if (expr.kind !== "variable") return;
+  const key = ctx.ingredientKeys.has(expr.name)
+    ? expr.name
+    : ctx.ingredientKeys.has(lowerFirst(expr.name))
+    ? lowerFirst(expr.name)
+    : null;
+  if (!key) return;
+  const name = ctx.ingredients?.find((g) => g.key === key)?.name.trim();
+
+  if (name && next?.kind === "text") {
+    const m = next.value.match(
+      new RegExp(`^\\s*of\\s+(?:the\\s+)?${escapeRegExp(name)}s?\\b`, "i"),
     );
-    for (const m of text.matchAll(re)) {
-      const start = offset + (m.index ?? 0);
-      const end = start + m[0].length;
+    if (m) {
+      const start = next.start;
+      const end = next.start + m[0].length;
       tokens.push({ start, end, label: "tpl-warning", priority: 5 });
       diagnostics.push({
         start,
         end,
         severity: "warning",
-        message: `\`${m[0]}\` is typed out, so it won't scale with the ` +
-          `recipe. Double the servings and this still says ` +
-          `\`${m[0]}\`. Use \`{{ ${ing.key} }}\` instead.`,
-        fix: {
-          start,
-          end,
-          replacement: `{{ ${ing.key} }}`,
-          label: `Replace with {{ ${ing.key} }}`,
-        },
+        message: `\`{{ ${key} }}\` already renders the amount, unit, and ` +
+          `name, so "${m[0].trim()}" repeats the name right after it. ` +
+          `Drop the repeated words.`,
+        fix: { start, end, replacement: "", label: "Remove the repeated name" },
       });
+      return;
     }
+  }
+
+  if (
+    prev?.kind === "text" &&
+    /\d+(?:[.,]\d+)?\s*[A-Za-z]*\s+of\s+(?:the\s+)?$/.test(prev.value)
+  ) {
+    const start = node.start;
+    const end = node.start + node.length;
+    tokens.push({ start, end, label: "tpl-warning", priority: 5 });
+    diagnostics.push({
+      start,
+      end,
+      severity: "warning",
+      message: `\`{{ ${key} }}\` renders its own amount and name, but an ` +
+        `amount is already written out before it ("110 g of 120 g butter"). ` +
+        `Use \`{{ ${key}.name }}\` for just the name, or replace the whole ` +
+        `phrase with arithmetic on \`${key}.amount\` so the partial amount ` +
+        `scales.`,
+      fix: {
+        start,
+        end,
+        replacement: `{{ ${key}.name }}`,
+        label: `Use {{ ${key}.name }}`,
+      },
+    });
   }
 }
 

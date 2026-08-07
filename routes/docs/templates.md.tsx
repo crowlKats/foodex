@@ -10,12 +10,12 @@ Each ingredient defined in a recipe has a **key** (e.g. \`flour\`, \`eggs\`, \`b
 
 ### Full output (lowercase): \`{{ key }}\`
 Renders the scaled amount + unit + name in lowercase.
-Example: \`{{ flour }}\` → "200g flour"
+Example: \`{{ flour }}\` → "200 g flour"
 Use in mid-sentence: "Mix {{ flour }} with {{ eggs }}."
 
 ### Capitalized: \`{{ Key }}\`
 Same as above but with capitalized name (for start of sentence).
-Example: \`{{ Flour }}\` → "200g Flour"
+Example: \`{{ Flour }}\` → "200 g Flour"
 
 ### Name only: \`{{ key.name }}\`
 Renders just the ingredient name with no amount. Use when the amount is already shown in the sidebar or when referring to the ingredient without repeating the quantity.
@@ -47,6 +47,9 @@ Examples:
 - \`{{ flour.amount * 1.5 }}\` → 1.5x the flour
 - \`{{ flour.amount + 50 }}\` → add 50
 - \`{{ (flour.amount + sugar.amount) / 2 }}\` → average of two ingredients
+
+### Scale factor: \`{{ ratio }}\`
+The current scale factor (target quantity divided by the authored quantity); 1 when the recipe is shown as written. Use it for amounts that are not ingredient rows, like intermediate products: \`{{ round(50 * ratio) }} g of the browned butter\` stays correct when the recipe is scaled.
 
 ## Functions
 - \`round(x)\`: round to nearest integer
