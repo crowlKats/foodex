@@ -1,4 +1,5 @@
 import { middleware, type ParentState } from "./$_middleware.ts";
+import { HttpError } from "fresh/errors";
 import type { User } from "../utils.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
 import {
@@ -49,5 +50,15 @@ export default middleware(async function (ctx) {
     if (denied) return denied;
   }
 
-  return ctx.next(state);
+  try {
+    return await ctx.next(state);
+  } catch (err) {
+    // The framework catches any thrown error and renders _error.tsx without
+    // logging it, so a production 500 leaves no trace. HttpErrors are skipped:
+    // they are deliberate responses (404s from stale links), not failures.
+    if (!(err instanceof HttpError)) {
+      console.error(`${ctx.req.method} ${ctx.req.url} failed:`, err);
+    }
+    throw err;
+  }
 });

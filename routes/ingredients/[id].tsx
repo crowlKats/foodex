@@ -189,16 +189,19 @@ export const handlers = handler({
         );
         // Purchases carry the projected line's identity, so the key moves with
         // them; otherwise a ticked-off line would reappear as unbought.
+        // The key is a separate parameter rather than 'id:' || $1: reusing
+        // one parameter as both uuid (the assignment) and text (the concat)
+        // makes Postgres deduce inconsistent types and reject the statement.
         await q(
           `UPDATE shopping_list_purchases
-           SET ingredient_id = $1, match_key = 'id:' || $1::text
-           WHERE ingredient_id = $2
+           SET ingredient_id = $1, match_key = $2
+           WHERE ingredient_id = $3
              AND NOT EXISTS (
                SELECT 1 FROM shopping_list_purchases other
                WHERE other.shopping_list_id = shopping_list_purchases.shopping_list_id
-                 AND other.match_key = 'id:' || $1::text
+                 AND other.match_key = $2
              )`,
-          [targetId, id],
+          [targetId, `id:${targetId}`, id],
         );
         await q(
           `UPDATE household_ingredient_stores SET ingredient_id = $1
