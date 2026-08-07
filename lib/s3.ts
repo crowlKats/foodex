@@ -19,7 +19,9 @@ const client = new S3Client({
 const BUCKET = Deno.env.get("S3_BUCKET") ?? "foodex";
 
 export function getServeUrl(key: string): string {
-  return `/api/media/file/${encodeURIComponent(key)}`;
+  // Encode per segment, keeping literal slashes: proxies that normalize
+  // escaped slashes (e.g. Envoy) redirect %2F paths and break the route.
+  return `/api/media/file/${key.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 export async function uploadFile(

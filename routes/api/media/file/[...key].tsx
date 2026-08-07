@@ -1,4 +1,4 @@
-import { handler } from "./$[key].ts";
+import { handler } from "./$[...key].ts";
 import { getFile } from "../../../../lib/s3.ts";
 
 export const handlers = handler({

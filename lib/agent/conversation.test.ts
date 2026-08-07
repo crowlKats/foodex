@@ -142,7 +142,7 @@ Deno.test("foldConversation: image attachments become marker blocks + timeline i
           media_id: "m1",
           key: "uploads/x.jpg",
           content_type: "image/jpeg",
-          url: "/api/media/file/uploads%2Fx.jpg",
+          url: "/api/media/file/uploads/x.jpg",
         }],
       },
     },
@@ -159,7 +159,7 @@ Deno.test("foldConversation: image attachments become marker blocks + timeline i
   assert(user.kind === "user");
   assertEquals(user.images, [{
     media_id: "m1",
-    url: "/api/media/file/uploads%2Fx.jpg",
+    url: "/api/media/file/uploads/x.jpg",
   }]);
 });
 
