@@ -3,6 +3,7 @@ import { formatAmount } from "../lib/format.ts";
 import { formatQuantity } from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
 import { Input } from "../components/Input.tsx";
+import { Checkbox } from "../components/Checkbox.tsx";
 
 export interface CompareRecipe {
   id: string;
@@ -51,15 +52,11 @@ export default function DishCompare(
   return (
     <div>
       <div class="flex items-center gap-3 mb-3 flex-wrap">
-        <label class="flex items-center gap-2 text-sm cursor-pointer">
-          <input
-            type="checkbox"
-            class="size-4 accent-orange-600"
-            checked={normalize.value}
-            onChange={() => normalize.value = !normalize.value}
-          />
-          Normalize to
-        </label>
+        <Checkbox
+          checked={normalize.value}
+          onChange={() => normalize.value = !normalize.value}
+          label="Normalize to"
+        />
         <Input
           type="number"
           min="1"

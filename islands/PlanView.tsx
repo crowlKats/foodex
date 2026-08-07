@@ -4,6 +4,7 @@ import type { PlanEntryWithReadiness, Suggestion } from "../lib/plan.ts";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
+import { Checkbox } from "../components/Checkbox.tsx";
 import { IconTrash } from "@tabler/icons-preact";
 
 interface HistoryEntry {
@@ -344,16 +345,12 @@ export default function PlanView(
                       />
                     </label>
                     {entry.recipe_id && (
-                      <label class="flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          class="size-3.5 accent-orange-600"
-                          checked={entry.include_in_list}
-                          onChange={() =>
-                            toggleList(entry)}
-                        />
-                        On the shopping list
-                      </label>
+                      <Checkbox
+                        checked={entry.include_in_list}
+                        onChange={() => toggleList(entry)}
+                        label="On the shopping list"
+                        labelClass="text-xs"
+                      />
                     )}
                   </div>
                 </div>

@@ -11,6 +11,7 @@ import { UNIT_GROUPS } from "../lib/units.ts";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
+import { Checkbox } from "../components/Checkbox.tsx";
 
 interface Store {
   id: string;
@@ -217,11 +218,9 @@ export default function ShoppingListView(
         }`}
       >
         <div class={CHECK_COL}>
-          <input
-            type="checkbox"
+          <Checkbox
             checked={bought}
             disabled={busy.value === line.key}
-            class="size-4 cursor-pointer accent-orange-600"
             // Ticking a line is a purchase, not just a tick: it books the stock
             // into the pantry, which later gets deducted when you cook. Say so.
             aria-label={bought
@@ -430,9 +429,7 @@ export default function ShoppingListView(
         <div key={storeId ?? "__none__"}>
           <div class="flex items-center gap-2 mb-1 px-2">
             <div class={CHECK_COL}>
-              <input
-                type="checkbox"
-                class="size-3.5 cursor-pointer accent-orange-600"
+              <Checkbox
                 aria-label={`Buy everything from ${
                   store ? store.name : "no store"
                 }: adds it all to your pantry`}
