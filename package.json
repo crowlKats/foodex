@@ -22,6 +22,7 @@
     "@std/assert": "jsr:^1.0.19",
     "preact": "^10.29.7",
     "@preact/signals": "^2.10.0",
+    "sharp": "^0.35.3",
     "vite": "^8.1.5",
     "tailwindcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",

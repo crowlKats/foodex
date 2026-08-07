@@ -1,5 +1,6 @@
 import { handler } from "./$upload.ts";
 import { uploadFile } from "../../lib/s3.ts";
+import { reduceImage, REDUCIBLE_TYPES } from "../../lib/image-reduce.ts";
 
 export const handlers = handler({
   async POST(ctx) {
@@ -28,16 +29,27 @@ export const handlers = handler({
       });
     }
 
-    const ext = ALLOWED_TYPES[file.type];
+    let ext = ALLOWED_TYPES[file.type];
     if (!ext) {
       return Response.json({ error: "File type not allowed" }, { status: 415 });
     }
 
+    let bytes: Uint8Array = new Uint8Array(await file.arrayBuffer());
+    let contentType = file.type;
+    if (REDUCIBLE_TYPES.has(contentType)) {
+      const reduced = await reduceImage(bytes, contentType, ext);
+      if (!reduced) {
+        return Response.json({ error: "File is not a valid image" }, {
+          status: 400,
+        });
+      }
+      ({ bytes, contentType, ext } = reduced);
+    }
+
     const key = `uploads/${crypto.randomUUID()}.${ext}`;
-    const bytes = new Uint8Array(await file.arrayBuffer());
     let url: string;
     try {
-      url = await uploadFile(key, bytes, file.type);
+      url = await uploadFile(key, bytes, contentType);
     } catch (e) {
       // Surface storage failures as JSON (misconfigured/unreachable S3);
       // an uncaught throw would render the HTML error page instead.
@@ -48,7 +60,7 @@ export const handlers = handler({
     const result = await ctx.state.db.query(
       `INSERT INTO media (key, url, content_type, filename, size_bytes, household_id)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, url, filename`,
-      [key, url, file.type, file.name, bytes.length, ctx.state.householdId],
+      [key, url, contentType, file.name, bytes.length, ctx.state.householdId],
     );
 
     return Response.json(result.rows[0]);
