@@ -183,6 +183,10 @@ export default function RecipeView(
   const targetUnit = useSignal(baseQuantity.unit);
   const targetValue2 = useSignal(baseQuantity.value2 ?? baseQuantity.value);
   const targetValue3 = useSignal(baseQuantity.value3 ?? 1);
+  // Scale-by-ingredient mode: "I have 350 g of flour" pins the ratio to
+  // entered / recipe amount. Touching the quantity controls exits the mode.
+  const scaleIngKey = useSignal<string | null>(null);
+  const scaleIngAmount = useSignal<number | null>(null);
 
   // Map of sub-recipe references (`@recipe(slug)` → resolved title), built once
   // from the server-resolved list. Used by the JSX template renderer.
@@ -217,10 +221,61 @@ export default function RecipeView(
 
   // Re-rendering happens automatically through signals reads in the JSX:
   // changing target* signals triggers the `getCurrentRatio()` re-read in the
-  // `<RecipeSteps>` render path.
+  // `<RecipeSteps>` render path. Called by every quantity control, so a manual
+  // quantity change also takes over from scale-by-ingredient mode.
   function update() {
-    // No-op: kept so existing onClick handlers compile. The signal updates
-    // they perform already cause a re-render.
+    scaleIngKey.value = null;
+    scaleIngAmount.value = null;
+  }
+
+  /** The ingredient currently driving the scale, when the mode is active. */
+  function scaleIngredient(): RecipeIngredient | null {
+    if (scaleIngKey.value == null) return null;
+    const ing = ingredients.find((i) => ingredientKey(i) === scaleIngKey.value);
+    return ing && ing.amount > 0 ? ing : null;
+  }
+
+  /**
+   * Mirror an ingredient-driven ratio into the quantity controls, so the
+   * metadata line and the servings/tray inputs show the equivalent quantity,
+   * and touching a control continues from there instead of jumping back.
+   */
+  function syncTargetsToRatio(ratio: number) {
+    const r = (n: number, places: number) => {
+      const f = 10 ** places;
+      return Math.round(n * f) / f;
+    };
+    if (baseQuantity.type === "dimensions") {
+      // The ratio scales the tray's area or volume; each side gets the root.
+      const hasDepth = (baseQuantity.value3 ?? 0) > 0;
+      const f = Math.pow(ratio, 1 / (hasDepth ? 3 : 2));
+      targetValue.value = r(baseQuantity.value * f, 1);
+      targetValue2.value = r((baseQuantity.value2 ?? baseQuantity.value) * f, 1);
+      if (hasDepth) targetValue3.value = r(baseQuantity.value3! * f, 1);
+      return;
+    }
+    targetUnit.value = baseQuantity.unit;
+    targetValue.value = r(baseQuantity.value * ratio, 2);
+  }
+
+  function setScaleIngredient(key: string) {
+    if (!key) {
+      update();
+      return;
+    }
+    const ing = ingredients.find((i) => ingredientKey(i) === key);
+    if (!ing || !(ing.amount > 0)) return;
+    // Seed the input with the ingredient's amount at the current scale.
+    const ratio = getCurrentRatio();
+    scaleIngKey.value = key;
+    scaleIngAmount.value = Math.round(ing.amount * ratio * 100) / 100;
+  }
+
+  function setScaleAmount(v: number) {
+    const ing = scaleIngredient();
+    if (!ing || !(v > 0)) return;
+    scaleIngAmount.value = v;
+    syncTargetsToRatio(v / ing.amount);
   }
 
   function renderScalingUI() {
@@ -401,6 +456,12 @@ export default function RecipeView(
   }
 
   function getCurrentRatio(): number {
+    // Ingredient mode wins while active: the ratio is exact from the entered
+    // amount; the target signals only mirror it for display.
+    const ing = scaleIngredient();
+    if (ing && (scaleIngAmount.value ?? 0) > 0) {
+      return scaleIngAmount.value! / ing.amount;
+    }
     return computeScaleRatio(baseQuantity, getTarget());
   }
 
@@ -967,6 +1028,54 @@ export default function RecipeView(
       <div class="recipe-print-sidebar lg:col-span-1 space-y-4">
         <div class="card print-hidden">
           {renderScalingUI()}
+          {ingredients.some((i) => i.amount > 0) && (
+            <div class="mt-3">
+              <label class="text-sm font-medium">Scale by ingredient:</label>
+              <Select
+                value={scaleIngKey.value ?? ""}
+                class="w-full mt-1"
+                size="sm"
+                onValueChange={setScaleIngredient}
+              >
+                <option value="">Choose an ingredient…</option>
+                {ingredients.filter((i) => i.amount > 0).map((i) => (
+                  <option key={ingredientKey(i)} value={ingredientKey(i)}>
+                    {i.name}
+                  </option>
+                ))}
+              </Select>
+              {(() => {
+                const ing = scaleIngredient();
+                if (!ing) return null;
+                return (
+                  <div class="mt-2">
+                    <div class="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={formatInputValue(scaleIngAmount.value)}
+                        class="flex-1 min-w-0 text-center"
+                        onValueChange={(s) => {
+                          const v = parseFloat(s);
+                          if (v > 0) setScaleAmount(v);
+                        }}
+                      />
+                      {ing.unit && (
+                        <span class="text-sm text-stone-500 shrink-0">
+                          {ing.unit}
+                        </span>
+                      )}
+                    </div>
+                    <p class="text-xs text-stone-400 mt-1">
+                      The whole recipe scales so {ing.name} matches this
+                      amount.
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
           {steps.length > 0 && (
             <div class="flex gap-2 mt-3">
               <Button
