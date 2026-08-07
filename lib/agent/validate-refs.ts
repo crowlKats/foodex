@@ -91,6 +91,29 @@ export function stepDiagnostics(
     if (group.some((g) => !warnedKeys.has(g.key))) warnDup(group);
   }
 
+  // A key sharing no word with its name ("pasta_cooking_water" named
+  // "Lemon") means one of the two got garbled; keys are derived from names.
+  const tokens = (s: string) =>
+    s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const overlaps = (a: string[], b: string[]) =>
+    a.some((t1) =>
+      b.some((t2) =>
+        t1 === t2 ||
+        (t1.length >= 3 && t2.length >= 3 &&
+          (t1.startsWith(t2) || t2.startsWith(t1)))
+      )
+    );
+  for (const g of ingredients) {
+    if (!g.name.trim()) continue;
+    if (!overlaps(tokens(g.key), tokens(g.name))) {
+      out.warnings.push(
+        `ingredients: the row keyed "${g.key}" is named "${g.name}", which ` +
+          `shares no words with the key. One of the two is wrong; fix ` +
+          `whichever it is (the key must be derived from the name).`,
+      );
+    }
+  }
+
   steps.forEach((s, i) => {
     const step = s as Record<string, unknown>;
     const body = String(step.body ?? "");

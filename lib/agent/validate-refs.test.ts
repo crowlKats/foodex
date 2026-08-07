@@ -89,6 +89,23 @@ Deno.test("stepDiagnostics: duplicate ingredient rows warn", () => {
   assertEquals(d.warnings[1].includes("butter_cold"), true);
 });
 
+Deno.test("stepDiagnostics: a key unrelated to its name warns", () => {
+  const r: Record<string, unknown> = {
+    ingredients: [
+      // The garbled-import case: a row whose name belongs to another row.
+      { key: "pasta_cooking_water", name: "Lemon", unit: "g" },
+      // Derived keys are fine, including partial and plural/singular matches.
+      { key: "flour", name: "All-purpose flour", unit: "g" },
+      { key: "eggs", name: "Egg", unit: "pcs" },
+    ],
+    steps: [{ id: "s0", title: "", body: "No refs." }],
+  };
+  const d = stepDiagnostics(r);
+  assertEquals(d.errors, []);
+  assertEquals(d.warnings.length, 1);
+  assertEquals(d.warnings[0].includes("pasta_cooking_water"), true);
+});
+
 Deno.test("stepDiagnostics: {{ tray }} is a known ref, but not in math", () => {
   const ok = recipe(["flour"], ["Pour into a {{ tray }} tray."]);
   assertEquals(stepDiagnostics(ok).errors, []);
