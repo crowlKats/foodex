@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
@@ -57,5 +58,15 @@ export async function getFile(
 export async function deleteFile(key: string): Promise<void> {
   await client.send(
     new DeleteObjectCommand({ Bucket: BUCKET, Key: key }),
+  );
+}
+
+export async function copyFile(srcKey: string, destKey: string): Promise<void> {
+  await client.send(
+    new CopyObjectCommand({
+      Bucket: BUCKET,
+      CopySource: `${BUCKET}/${encodeURIComponent(srcKey)}`,
+      Key: destKey,
+    }),
   );
 }

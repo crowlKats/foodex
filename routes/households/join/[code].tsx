@@ -5,6 +5,7 @@ import { FormField } from "../../../components/FormField.tsx";
 import { Input } from "../../../components/Input.tsx";
 import { logAudit } from "../../../lib/audit.ts";
 import { loginUrl } from "../../../lib/auth.ts";
+import { unpackMovingBox } from "../../../lib/moving-box.ts";
 
 /**
  * An invitee usually has no account yet, so the link lands on sign-in first.
@@ -156,6 +157,12 @@ export const handlers = handler({
       detail: invite.grants_owner ? "as owner, via admin invite" : undefined,
       householdId: invite.household_id,
     });
+
+    await unpackMovingBox(
+      ctx.state.db.query,
+      ctx.state.user,
+      invite.household_id,
+    ).catch((err) => console.error("moving box unpack failed:", err));
 
     return new Response(null, {
       status: 303,

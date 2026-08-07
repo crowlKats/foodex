@@ -89,7 +89,12 @@ household.
 ### Households & Collaboration
 
 - Create a household and invite others via shareable links (7-day expiry).
-- **Roles**: owner and member. Owners can manage members, invites, and settings.
+- **Roles**: owner and member. Owners can manage members, invites, and settings,
+  and can promote members to owner; an owner can leave once someone else owns
+  the household.
+- **Moving box**: before leaving, pack recipes (and whole collections) to take
+  with you. Packed copies keep their images and unpack automatically into the
+  next household you create or join.
 - Shared pantry, shared shopping list, and shared recipe ownership.
 - Manage which tools and stores your household uses.
 
@@ -162,8 +167,11 @@ household-scoped.
 Two cleanups run automatically on regular traffic, alongside the existing
 session pruning:
 
-- Accounts that still have no household a week after signing up (abandoned
-  onboarding or an unaccepted invite) are deleted. Admin accounts are exempt.
+- Accounts that spend a week without a household are deleted: abandoned
+  onboarding, an unaccepted invite, or leaving a household without landing in a
+  new one. The clock starts when the account becomes household-less, not when it
+  was created. A packed moving box extends the grace period to 30 days. Admin
+  accounts are exempt.
 - Media that has been unreferenced by any recipe, step, or draft for over a week
   is purged, including the S3 objects. The grace period protects uploads
   belonging to edits still in progress.

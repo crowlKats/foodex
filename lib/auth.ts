@@ -109,7 +109,8 @@ export function householdSetupUrl(redirectTo: string): string {
  * agent) must still be unreachable without a household.
  *
  * Three kinds of requests stay open:
- * - the auth flow and household onboarding itself, or nobody could ever
+ * - the auth flow, household onboarding, and the moving box (which exists
+ *   precisely for the stretch between households), or nobody could ever
  *   join or create one;
  * - API endpoints whose authorization comes from something other than
  *   membership: the share-token shopping list, and the public media files
@@ -140,6 +141,7 @@ export function householdRequirementResponse(url: URL): Response | null {
   if (
     path.startsWith("/auth") ||
     path.startsWith("/households") ||
+    path === "/moving-box" ||
     path.startsWith("/_fresh")
   ) {
     return null;

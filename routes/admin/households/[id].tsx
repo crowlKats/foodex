@@ -95,7 +95,34 @@ export const handlers = handler({
     if (targetRes.rows.length === 0) throw new HttpError(404);
     const targetLabel = targetRes.rows[0].name;
 
-    if (method === "REMOVE_MEMBER") {
+    if (method === "PROMOTE_MEMBER") {
+      const userId = String(form.get("user_id"));
+      const promoted = await ctx.state.db.query<{ user_id: string }>(
+        `UPDATE household_members SET role = 'owner'
+         WHERE household_id = $1 AND user_id = $2 AND role = 'member'
+         RETURNING user_id`,
+        [id, userId],
+      );
+      if (promoted.rows.length > 0) {
+        const memberRes = await ctx.state.db.query<{
+          name: string | null;
+          email: string | null;
+        }>("SELECT name, email FROM users WHERE id = $1", [userId]);
+        const member = memberRes.rows[0];
+        await logAudit(ctx.state.db.query, ctx.state.adminUser, {
+          source: "admin",
+          action: "household.promote_member",
+          targetType: "household",
+          targetId: id,
+          targetLabel,
+          detail: member
+            ? `made ${member.name ?? "(no name)"} <${
+              member.email ?? "no email"
+            }> an owner`
+            : undefined,
+        });
+      }
+    } else if (method === "REMOVE_MEMBER") {
       const userId = String(form.get("user_id"));
       const memberRes = await ctx.state.db.query<{
         name: string | null;
@@ -177,6 +204,25 @@ export default page(function AdminHouseholdDetailPage(
                       {m.email ?? "no email"}
                     </div>
                   </div>
+                  {m.role === "member" && (
+                    <form method="POST">
+                      <input
+                        type="hidden"
+                        name="_method"
+                        value="PROMOTE_MEMBER"
+                      />
+                      <input type="hidden" name="user_id" value={m.user_id} />
+                      <ConfirmButton
+                        message={`Make ${
+                          m.name ?? "this member"
+                        } an owner of the household?`}
+                        variant="outline"
+                        size="xs"
+                      >
+                        Make owner
+                      </ConfirmButton>
+                    </form>
+                  )}
                   <form method="POST">
                     <input type="hidden" name="_method" value="REMOVE_MEMBER" />
                     <input type="hidden" name="user_id" value={m.user_id} />
