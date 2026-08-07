@@ -123,7 +123,33 @@ S3_REGION=...
 S3_ACCESS_KEY_ID=...
 S3_SECRET_ACCESS_KEY=...
 S3_ENDPOINT=...             # optional, for S3-compatible services
+ADMIN_EMAILS=...            # optional, comma-separated; grants /admin access
+INVITE_ONLY=true            # optional; disables self-serve household creation
 ```
+
+### Admin panel
+
+Set `ADMIN_EMAILS` to a comma-separated list of account emails (matched
+case-insensitively against the signed-in user, whichever provider they used,
+including Authentik) to unlock `/admin`: platform stats, user and household
+management, recipe moderation, the audit log, and system maintenance (session
+purge, orphaned media cleanup). Accounts not on the list get a 404 for any
+`/admin` URL.
+
+Edit operations across the platform (recipes, ingredients, stores, tools,
+dishes, collections, households) are recorded in an audit log, tagged with the
+surface that made them: the app, the assistant, or the admin panel. Admins can
+browse it at `/admin/audit`.
+
+### Invite-only mode
+
+Set `INVITE_ONLY=true` to stop accounts from creating households themselves.
+Admins invite new users by email from `/admin/households`: this seeds an empty
+household and sends an invite link; the invitee signs in, becomes its owner, and
+names it. Household members can still invite others into their household with
+regular invites, so the platform is limited to people someone chose to let in.
+Signing in stays open, but without a household an account can't reach anything
+household-scoped.
 
 ### Setup
 

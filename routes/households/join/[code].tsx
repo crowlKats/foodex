@@ -1,6 +1,9 @@
 import { handler, page } from "./$[code].ts";
 import type { HouseholdInvite, HouseholdMember } from "../../../db/types.ts";
 import { Button, ButtonLink } from "../../../components/Button.tsx";
+import { FormField } from "../../../components/FormField.tsx";
+import { Input } from "../../../components/Input.tsx";
+import { logAudit } from "../../../lib/audit.ts";
 import { loginUrl } from "../../../lib/auth.ts";
 
 /**
@@ -81,7 +84,10 @@ export const handlers = handler({
     const code = ctx.params.code;
 
     const inviteRes = await ctx.state.db.query<HouseholdInvite>(
-      `SELECT * FROM household_invites WHERE code = $1 AND expires_at > now()`,
+      `SELECT hi.*, h.name as household_name
+       FROM household_invites hi
+       JOIN households h ON h.id = hi.household_id
+       WHERE hi.code = $1 AND hi.expires_at > now()`,
       [code],
     );
 
@@ -121,10 +127,35 @@ export const handlers = handler({
       };
     }
 
+    // An admin invite seeds an empty household: the joiner owns and names it.
+    const form = await ctx.req.formData();
+    const pickedName = String(form.get("name") ?? "").trim();
+    let householdName = invite.household_name ?? invite.household_id;
+
     await ctx.state.db.query(
-      "INSERT INTO household_members (household_id, user_id, role) VALUES ($1, $2, 'member')",
-      [invite.household_id, ctx.state.user.id],
+      "INSERT INTO household_members (household_id, user_id, role) VALUES ($1, $2, $3)",
+      [
+        invite.household_id,
+        ctx.state.user.id,
+        invite.grants_owner ? "owner" : "member",
+      ],
     );
+    if (invite.grants_owner && pickedName) {
+      await ctx.state.db.query(
+        "UPDATE households SET name = $1, updated_at = now() WHERE id = $2",
+        [pickedName, invite.household_id],
+      );
+      householdName = pickedName;
+    }
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "household.join",
+      targetType: "household",
+      targetId: invite.household_id,
+      targetLabel: householdName,
+      detail: invite.grants_owner ? "as owner, via admin invite" : undefined,
+      householdId: invite.household_id,
+    });
 
     return new Response(null, {
       status: 303,
@@ -149,6 +180,32 @@ export default page(function JoinHouseholdPage(
         <ButtonLink href="/households">
           Go to Households
         </ButtonLink>
+      </div>
+    );
+  }
+
+  if (invite!.grants_owner) {
+    return (
+      <div class="max-w-md mx-auto mt-12 text-center">
+        <h1 class="text-2xl font-bold mb-2">Welcome to Foodex</h1>
+        <p class="text-stone-500 mb-6">
+          You've been invited to set up your own household. Give it a name to
+          get started; you can always rename it later.
+        </p>
+        <form method="POST" class="card space-y-3 text-left">
+          <FormField label="Household name">
+            <Input
+              type="text"
+              name="name"
+              required
+              placeholder="e.g. Smith Family"
+              class="w-full"
+            />
+          </FormField>
+          <Button type="submit">
+            Create my household
+          </Button>
+        </form>
       </div>
     );
   }

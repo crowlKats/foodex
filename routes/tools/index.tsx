@@ -5,6 +5,7 @@ import { EmptyState } from "../../components/EmptyState.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input, InputMultiline } from "../../components/Input.tsx";
+import { logAudit } from "../../lib/audit.ts";
 import {
   getPage,
   Pagination,
@@ -93,6 +94,14 @@ export const handlers = handler({
       "INSERT INTO tools (name, description) VALUES ($1, $2) RETURNING id",
       [name.trim(), description?.trim() || null],
     );
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "tool.create",
+      targetType: "tool",
+      targetId: toolRes.rows[0].id,
+      targetLabel: name.trim(),
+      householdId: ctx.state.householdId,
+    });
 
     // Auto-add to household
     if (ctx.state.householdId) {

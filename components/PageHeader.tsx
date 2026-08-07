@@ -14,7 +14,12 @@ export function PageHeader(
 ) {
   return (
     <div class="mb-6 space-y-3 sm:space-y-0">
-      <div class="flex items-center gap-3 sm:gap-4">
+      {
+        /* min-h matches the 2.5rem input height so pages with and without a
+          search bar keep the title row (and everything under it) at the same
+          vertical position when switching between them. */
+      }
+      <div class="flex items-center gap-3 sm:gap-4 min-h-10">
         <h1 class="text-2xl font-bold shrink-0">{title}</h1>
         {!noSearch && (
           <div class="flex-1">

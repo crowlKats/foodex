@@ -21,6 +21,7 @@ export default layout(function AppLayout({ Component, state, url }) {
         user={state.user}
         shoppingListCount={state.shoppingListCount}
         hasHousehold={state.householdId != null}
+        isAdmin={state.isAdmin}
         currentPath={url.pathname}
       />
       {

@@ -170,9 +170,9 @@ export default function RecipeFields(props: Props) {
         />
       ))}
 
-      <div class="edit-tablist">
+      <div class="tab-bar edit-tablist">
         {TABS.map((t) => (
-          <label key={t.id} for={`tab-${t.id}`} class="edit-tab">
+          <label key={t.id} for={`tab-${t.id}`} class="tab">
             {t.label}
             {t.id === "ingredients" && (
               <span class="count-badge">{(r.ingredients ?? []).length}</span>

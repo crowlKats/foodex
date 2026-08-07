@@ -2,6 +2,7 @@ import { handler, page } from "./$[id].ts";
 import { HttpError } from "fresh/errors";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { CURRENCIES, getCurrencySymbol } from "../../lib/currencies.ts";
+import { logAudit } from "../../lib/audit.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
@@ -80,7 +81,19 @@ export const handlers = handler({
     }
 
     if (method === "DELETE") {
-      await ctx.state.db.query("DELETE FROM stores WHERE id = $1", [id]);
+      const deleted = await ctx.state.db.query<{ name: string }>(
+        "DELETE FROM stores WHERE id = $1 RETURNING name",
+        [id],
+      );
+      if (ctx.state.user && deleted.rows.length > 0) {
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "store.delete",
+          targetType: "store",
+          targetId: id,
+          targetLabel: deleted.rows[0].name,
+          householdId: ctx.state.householdId,
+        });
+      }
       return new Response(null, {
         status: 303,
         headers: { Location: "/stores" },
@@ -94,6 +107,20 @@ export const handlers = handler({
           "INSERT INTO store_locations (store_id, address) VALUES ($1, $2)",
           [id, address.trim()],
         );
+        if (ctx.state.user) {
+          const storeRes = await ctx.state.db.query<{ name: string }>(
+            "SELECT name FROM stores WHERE id = $1",
+            [id],
+          );
+          await logAudit(ctx.state.db.query, ctx.state.user, {
+            action: "store.update",
+            targetType: "store",
+            targetId: id,
+            targetLabel: storeRes.rows[0].name,
+            detail: `added location ${address.trim()}`,
+            householdId: ctx.state.householdId,
+          });
+        }
       }
       return new Response(null, {
         status: 303,
@@ -103,10 +130,25 @@ export const handlers = handler({
 
     if (method === "DELETE_LOCATION") {
       const locationId = form.get("location_id");
-      await ctx.state.db.query(
-        "DELETE FROM store_locations WHERE id = $1 AND store_id = $2",
+      const removed = await ctx.state.db.query<{ address: string }>(
+        `DELETE FROM store_locations WHERE id = $1 AND store_id = $2
+         RETURNING address`,
         [locationId, id],
       );
+      if (ctx.state.user && removed.rows.length > 0) {
+        const storeRes = await ctx.state.db.query<{ name: string }>(
+          "SELECT name FROM stores WHERE id = $1",
+          [id],
+        );
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "store.update",
+          targetType: "store",
+          targetId: id,
+          targetLabel: storeRes.rows[0].name,
+          detail: `removed location ${removed.rows[0].address}`,
+          householdId: ctx.state.householdId,
+        });
+      }
       return new Response(null, {
         status: 303,
         headers: { Location: `/stores/${id}` },
@@ -121,10 +163,20 @@ export const handlers = handler({
         headers: { Location: `/stores/${id}` },
       });
     }
-    await ctx.state.db.query(
-      "UPDATE stores SET name = $1, currency = $2 WHERE id = $3",
+    const updated = await ctx.state.db.query<{ name: string }>(
+      `UPDATE stores SET name = $1, currency = $2 WHERE id = $3
+       RETURNING name`,
       [name.trim(), currency?.trim() || "EUR", id],
     );
+    if (ctx.state.user && updated.rows.length > 0) {
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "store.update",
+        targetType: "store",
+        targetId: id,
+        targetLabel: updated.rows[0].name,
+        householdId: ctx.state.householdId,
+      });
+    }
     return new Response(null, {
       status: 303,
       headers: { Location: `/stores/${id}` },

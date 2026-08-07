@@ -29,6 +29,7 @@ export default page(function ErrorPage({ error, url, data }) {
         user={data.user}
         shoppingListCount={data.shoppingListCount}
         hasHousehold={data.householdId != null}
+        isAdmin={data.isAdmin}
         currentPath={url.pathname}
       />
       <main class="flex-1 overflow-y-auto">

@@ -1,4 +1,5 @@
 import { handler } from "./$recipes.ts";
+import { logAudit } from "../../../lib/audit.ts";
 import {
   CollectionRecipesBody,
   parseJsonBody,
@@ -15,13 +16,20 @@ export const handlers = handler({
     const { action, collection_id, recipe_id } = result.data;
 
     // Verify the user's household owns this collection
-    const collRes = await ctx.state.db.query(
-      "SELECT 1 FROM collections WHERE id = $1 AND household_id = $2",
+    const collRes = await ctx.state.db.query<{ name: string }>(
+      "SELECT name FROM collections WHERE id = $1 AND household_id = $2",
       [collection_id, ctx.state.householdId],
     );
     if (collRes.rows.length === 0) {
       return new Response(null, { status: 403 });
     }
+    const collectionName = collRes.rows[0].name;
+
+    const recipeRes = await ctx.state.db.query<{ title: string }>(
+      "SELECT title FROM recipes WHERE id = $1",
+      [recipe_id],
+    );
+    const recipeTitle = recipeRes.rows[0]?.title;
 
     if (action === "add") {
       const maxRes = await ctx.state.db.query<{ max_order: number }>(
@@ -48,6 +56,21 @@ export const handlers = handler({
         [collection_id],
       );
     }
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: action === "add"
+        ? "collection.add_recipe"
+        : "collection.remove_recipe",
+      targetType: "collection",
+      targetId: collection_id,
+      targetLabel: collectionName,
+      detail: recipeTitle
+        ? `${action === "add" ? "added" : "removed"} ${recipeTitle}`
+        : `${
+          action === "add" ? "added" : "removed"
+        } unknown recipe ${recipe_id}`,
+      householdId: ctx.state.householdId,
+    });
 
     return Response.json({ ok: true });
   },

@@ -11,6 +11,7 @@ import type {
   RecipeWithCover,
 } from "../../../db/types.ts";
 import { computeStepAfters } from "../../../lib/step-graph.ts";
+import { logAudit } from "../../../lib/audit.ts";
 import { loadStock, type StockItem } from "../../../lib/pantry.ts";
 import { formatDuration } from "../../../lib/duration.ts";
 import { computeIngredientCost } from "../../../lib/unit-convert.ts";
@@ -464,8 +465,10 @@ export const handlers = handler({
     const method = form.get("_method");
 
     if (method === "DELETE") {
-      const recipeRes = await ctx.state.db.query<{ household_id: string }>(
-        "SELECT household_id FROM recipes WHERE slug = $1",
+      const recipeRes = await ctx.state.db.query<
+        { id: string; title: string; household_id: string }
+      >(
+        "SELECT id, title, household_id FROM recipes WHERE slug = $1",
         [slug],
       );
       if (
@@ -478,6 +481,16 @@ export const handlers = handler({
         });
       }
       await ctx.state.db.query("DELETE FROM recipes WHERE slug = $1", [slug]);
+      if (ctx.state.user) {
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "recipe.delete",
+          targetType: "recipe",
+          targetId: recipeRes.rows[0].id,
+          targetLabel: recipeRes.rows[0].title,
+          detail: `slug ${slug}`,
+          householdId: ctx.state.householdId,
+        });
+      }
       return new Response(null, {
         status: 303,
         headers: { Location: "/recipes" },

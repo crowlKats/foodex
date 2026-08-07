@@ -2,6 +2,7 @@ import { handler, page } from "./$[id].ts";
 import { HttpError } from "fresh/errors";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
+import { logAudit } from "../../lib/audit.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { Checkbox } from "../../components/Checkbox.tsx";
 import { FormField } from "../../components/FormField.tsx";
@@ -107,6 +108,12 @@ export const handlers = handler({
     const form = await ctx.req.formData();
     const method = form.get("_method");
 
+    const nameRes = await ctx.state.db.query<{ name: string }>(
+      "SELECT name FROM ingredients WHERE id = $1",
+      [id],
+    );
+    const ingredientName = nameRes.rows[0]?.name ?? "";
+
     if (method === "DELETE") {
       // Recipes, pantry stock, ledger history and shopping data all require
       // their ingredient (ON DELETE RESTRICT since migrations 067/068): one
@@ -127,6 +134,13 @@ export const handlers = handler({
         });
       }
       await ctx.state.db.query("DELETE FROM ingredients WHERE id = $1", [id]);
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "ingredient.delete",
+        targetType: "ingredient",
+        targetId: id,
+        targetLabel: ingredientName,
+        householdId: ctx.state.householdId,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: "/ingredients" },
@@ -141,6 +155,11 @@ export const handlers = handler({
           headers: { Location: `/ingredients/${id}` },
         });
       }
+
+      const targetRes = await ctx.state.db.query<{ name: string }>(
+        "SELECT name FROM ingredients WHERE id = $1",
+        [targetId],
+      );
 
       // Reparent all references from this ingredient to the target. One
       // transaction: a failure midway must not leave a half-merged ingredient.
@@ -222,6 +241,15 @@ export const handlers = handler({
         await q("DELETE FROM ingredients WHERE id = $1", [id]);
       });
 
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "ingredient.merge",
+        targetType: "ingredient",
+        targetId: id,
+        targetLabel: ingredientName,
+        detail: `merged into ${targetRes.rows[0]?.name ?? targetId}`,
+        householdId: ctx.state.householdId,
+      });
+
       return new Response(null, {
         status: 303,
         headers: { Location: `/ingredients/${targetId}` },
@@ -235,6 +263,14 @@ export const handlers = handler({
           "INSERT INTO ingredient_brands (ingredient_id, brand) VALUES ($1, $2)",
           [id, brand.trim()],
         );
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "ingredient.update",
+          targetType: "ingredient",
+          targetId: id,
+          targetLabel: ingredientName,
+          detail: `added brand ${brand.trim()}`,
+          householdId: ctx.state.householdId,
+        });
       }
       return new Response(null, {
         status: 303,
@@ -244,10 +280,21 @@ export const handlers = handler({
 
     if (method === "DELETE_BRAND") {
       const brandId = form.get("brand_id");
-      await ctx.state.db.query(
-        "DELETE FROM ingredient_brands WHERE id = $1 AND ingredient_id = $2",
+      const deleted = await ctx.state.db.query<{ brand: string }>(
+        `DELETE FROM ingredient_brands WHERE id = $1 AND ingredient_id = $2
+         RETURNING brand`,
         [brandId, id],
       );
+      if (deleted.rows.length > 0) {
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "ingredient.update",
+          targetType: "ingredient",
+          targetId: id,
+          targetLabel: ingredientName,
+          detail: `removed brand ${deleted.rows[0].brand}`,
+          householdId: ctx.state.householdId,
+        });
+      }
       return new Response(null, {
         status: 303,
         headers: { Location: `/ingredients/${id}` },
@@ -270,6 +317,18 @@ export const handlers = handler({
           amount || null,
         ],
       );
+      const storeRes = await ctx.state.db.query<{ name: string }>(
+        "SELECT name FROM stores WHERE id = $1",
+        [storeId],
+      );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "ingredient.update",
+        targetType: "ingredient",
+        targetId: id,
+        targetLabel: ingredientName,
+        detail: `added price at ${storeRes.rows[0]?.name ?? "unknown store"}`,
+        householdId: ctx.state.householdId,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: `/ingredients/${id}` },
@@ -278,10 +337,27 @@ export const handlers = handler({
 
     if (method === "DELETE_PRICE") {
       const priceId = form.get("price_id");
-      await ctx.state.db.query(
-        "DELETE FROM ingredient_prices WHERE id = $1 AND ingredient_id = $2",
+      const deleted = await ctx.state.db.query<{ store_id: string }>(
+        `DELETE FROM ingredient_prices WHERE id = $1 AND ingredient_id = $2
+         RETURNING store_id`,
         [priceId, id],
       );
+      if (deleted.rows.length > 0) {
+        const storeRes = await ctx.state.db.query<{ name: string }>(
+          "SELECT name FROM stores WHERE id = $1",
+          [deleted.rows[0].store_id],
+        );
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "ingredient.update",
+          targetType: "ingredient",
+          targetId: id,
+          targetLabel: ingredientName,
+          detail: `removed price at ${
+            storeRes.rows[0]?.name ?? "unknown store"
+          }`,
+          householdId: ctx.state.householdId,
+        });
+      }
       return new Response(null, {
         status: 303,
         headers: { Location: `/ingredients/${id}` },
@@ -315,6 +391,16 @@ export const handlers = handler({
       "UPDATE ingredients SET name = $1, unit = $2, density = $3, always_on_hand = $4, updated_at = now() WHERE id = $5",
       [name.trim(), unit?.trim() || null, density, alwaysOnHand, id],
     );
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "ingredient.update",
+      targetType: "ingredient",
+      targetId: id,
+      targetLabel: name.trim(),
+      detail: ingredientName && ingredientName !== name.trim()
+        ? `renamed from ${ingredientName}`
+        : undefined,
+      householdId: ctx.state.householdId,
+    });
     return new Response(null, {
       status: 303,
       headers: { Location: `/ingredients/${id}` },

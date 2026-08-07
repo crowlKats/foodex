@@ -8,6 +8,7 @@ import { Input, InputMultiline } from "../../../components/Input.tsx";
 import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePicker from "../../../islands/RecipePicker.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
+import { logAudit } from "../../../lib/audit.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -73,17 +74,25 @@ export const handlers = handler({
     }
 
     // Verify ownership
-    const collRes = await ctx.state.db.query(
-      "SELECT 1 FROM collections WHERE id = $1 AND household_id = $2",
+    const collRes = await ctx.state.db.query<{ name: string }>(
+      "SELECT name FROM collections WHERE id = $1 AND household_id = $2",
       [id, ctx.state.householdId],
     );
     if (collRes.rows.length === 0) throw new HttpError(404);
+    const currentName = collRes.rows[0].name;
 
     const form = await ctx.req.formData();
     const method = form.get("_method") as string;
 
     if (method === "DELETE") {
       await ctx.state.db.query("DELETE FROM collections WHERE id = $1", [id]);
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "collection.delete",
+        targetType: "collection",
+        targetId: id,
+        targetLabel: currentName,
+        householdId: ctx.state.householdId,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: "/collections" },
@@ -126,6 +135,14 @@ export const handlers = handler({
           [id, recipeIds[i], i],
         );
       }
+    });
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "collection.update",
+      targetType: "collection",
+      targetId: id,
+      targetLabel: name.trim(),
+      householdId: ctx.state.householdId,
     });
 
     return new Response(null, {

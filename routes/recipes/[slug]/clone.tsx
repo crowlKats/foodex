@@ -1,6 +1,7 @@
 import { handler } from "./$clone.ts";
 import { HttpError } from "fresh/errors";
 import { uniqueSlug } from "../../../lib/slug.ts";
+import { logAudit } from "../../../lib/audit.ts";
 
 export const handlers = handler({
   async POST(ctx) {
@@ -219,6 +220,15 @@ export const handlers = handler({
         [newRecipeId, tag.tag_type, tag.tag_value],
       );
     }
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "recipe.clone",
+      targetType: "recipe",
+      targetId: String(newRecipeId),
+      targetLabel: title,
+      detail: `slug ${newSlug}, forked from ${slug}`,
+      householdId: ctx.state.householdId,
+    });
 
     return new Response(null, {
       status: 303,

@@ -7,6 +7,7 @@ import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import PlanDishButton from "../../islands/PlanDishButton.tsx";
 import DishCompare, { type CompareRow } from "../../islands/DishCompare.tsx";
 import { formatDuration } from "../../lib/duration.ts";
+import { logAudit } from "../../lib/audit.ts";
 import { formatQuantity } from "../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../lib/quantity.ts";
 import { IconClock, IconFlame, IconUsers } from "@tabler/icons-preact";
@@ -174,8 +175,10 @@ export const handlers = handler({
           headers: { Location: `/dishes/${dish.slug}` },
         });
       }
-      const targetRes = await ctx.state.db.query<{ slug: string }>(
-        "SELECT slug FROM dishes WHERE id = $1",
+      const targetRes = await ctx.state.db.query<
+        { slug: string; name: string }
+      >(
+        "SELECT slug, name FROM dishes WHERE id = $1",
         [targetId],
       );
       if (targetRes.rows.length === 0) throw new HttpError(404);
@@ -196,6 +199,15 @@ export const handlers = handler({
           [targetId, dish.id],
         );
         await q("DELETE FROM dishes WHERE id = $1", [dish.id]);
+      });
+
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "dish.merge",
+        targetType: "dish",
+        targetId: dish.id,
+        targetLabel: dish.name,
+        detail: `merged into "${targetRes.rows[0].name}"`,
+        householdId: ctx.state.householdId,
       });
 
       return new Response(null, {

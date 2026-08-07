@@ -1,5 +1,6 @@
 import { handler, page } from "./$new.ts";
 import type { Recipe } from "../../db/types.ts";
+import { logAudit } from "../../lib/audit.ts";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
@@ -81,6 +82,14 @@ export const handlers = handler({
           [collectionId, recipeIds[i], i],
         );
       }
+    });
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "collection.create",
+      targetType: "collection",
+      targetId: collectionId!,
+      targetLabel: name.trim(),
+      householdId: ctx.state.householdId,
     });
 
     return new Response(null, {

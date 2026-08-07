@@ -9,6 +9,7 @@ import {
   effective,
   foldStaging,
   serializePending,
+  type StagedItem,
 } from "../../../../lib/agent/staging.ts";
 import { applyStaged } from "../../../../lib/agent/apply.ts";
 import { isTurnActive } from "../../../../lib/agent/lock.ts";
@@ -18,11 +19,35 @@ import {
   RECIPE_SCHEMA,
 } from "../../../../lib/agent/merge.ts";
 import type { ApplyResult } from "../../../../lib/agent/events.ts";
+import { logAudit } from "../../../../lib/audit.ts";
+import type { QueryFn } from "../../../../db/mod.ts";
+import type { User } from "../../../../utils.ts";
 import type { AgentSession } from "../../../../db/types.ts";
 import type { State } from "../../../_middleware.tsx";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Audit entry for a staged item landing in real data, inside the same tx. */
+function auditApply(
+  q: QueryFn,
+  user: User,
+  householdId: string,
+  item: StagedItem,
+  result: ApplyResult,
+): Promise<void> {
+  const eff = effective(item) as Record<string, unknown>;
+  const created = item.kind === "create_recipe" ||
+    item.kind === "create_ingredient";
+  return logAudit(q, user, {
+    source: "agent",
+    action: `${result.kind}.${created ? "create" : "update"}`,
+    targetType: result.kind,
+    targetId: result.recipe_id ?? result.ingredient_id,
+    targetLabel: String(eff.title ?? eff.name ?? "(unnamed)"),
+    householdId,
+  });
+}
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -64,6 +89,8 @@ export const handlers = handler({
     if ("error" in auth) return auth.error;
     const s = auth.session;
     const db = ctx.state.db;
+    // authSession returned above when there is no user.
+    const user = ctx.state.user as User;
 
     // The panel is read-only while the agent is mid-turn.
     if (isTurnActive(s.id)) {
@@ -218,6 +245,13 @@ export const handlers = handler({
                       type: "apply",
                       payload: { item_id: ref, result: depOutcome.result },
                     });
+                    await auditApply(
+                      q,
+                      user,
+                      s.household_id,
+                      dep,
+                      depOutcome.result,
+                    );
                     if (!applied.includes(ref)) applied.push(ref);
                     out = depOutcome.result.ingredient_id;
                   }
@@ -236,6 +270,13 @@ export const handlers = handler({
                 type: "apply",
                 payload: { item_id: itemId, result: outcome.result },
               });
+              await auditApply(
+                q,
+                user,
+                s.household_id,
+                item,
+                outcome.result,
+              );
               if (!applied.includes(itemId)) applied.push(itemId);
               appliedResults.push({ item_id: itemId, result: outcome.result });
             } else if (outcome.conflict) {

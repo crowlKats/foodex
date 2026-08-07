@@ -5,6 +5,7 @@ import { BackLink } from "../../components/BackLink.tsx";
 import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input, InputMultiline } from "../../components/Input.tsx";
+import { logAudit } from "../../lib/audit.ts";
 import type { Tool, ToolUsage } from "../../db/types.ts";
 
 export const handlers = handler({
@@ -50,7 +51,19 @@ export const handlers = handler({
     const method = form.get("_method");
 
     if (method === "DELETE") {
-      await ctx.state.db.query("DELETE FROM tools WHERE id = $1", [id]);
+      const deleted = await ctx.state.db.query<{ name: string }>(
+        "DELETE FROM tools WHERE id = $1 RETURNING name",
+        [id],
+      );
+      if (ctx.state.user && deleted.rows.length > 0) {
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "tool.delete",
+          targetType: "tool",
+          targetId: id,
+          targetLabel: deleted.rows[0].name,
+          householdId: ctx.state.householdId,
+        });
+      }
       return new Response(null, {
         status: 303,
         headers: { Location: "/tools" },
@@ -87,10 +100,20 @@ export const handlers = handler({
         headers: { Location: `/tools/${id}` },
       });
     }
-    await ctx.state.db.query(
-      "UPDATE tools SET name = $1, description = $2 WHERE id = $3",
+    const updated = await ctx.state.db.query<{ name: string }>(
+      `UPDATE tools SET name = $1, description = $2 WHERE id = $3
+       RETURNING name`,
       [name.trim(), description?.trim() || null, id],
     );
+    if (ctx.state.user && updated.rows.length > 0) {
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "tool.update",
+        targetType: "tool",
+        targetId: id,
+        targetLabel: updated.rows[0].name,
+        householdId: ctx.state.householdId,
+      });
+    }
     return new Response(null, {
       status: 303,
       headers: { Location: `/tools/${id}` },
