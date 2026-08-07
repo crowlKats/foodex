@@ -71,7 +71,9 @@ export const handlers = handler({
       console.error("Failed to send magic link email:", err);
     }
 
-    // Always show confirmation (don't reveal whether email exists)
+    // The confirmation is unconditional: the link is sent to any address,
+    // and following it signs in or creates the account. Send failures are
+    // logged but not surfaced; the page would leak nothing useful anyway.
     ctx.state.pageTitle = "Check Your Email";
     return { data: {} };
   },
@@ -83,8 +85,9 @@ export default page(function MagicLinkSentPage() {
       <h1 class="text-2xl font-bold text-center mb-4">Check your email</h1>
       <div class="card">
         <p class="text-stone-600 dark:text-stone-400 mb-4">
-          If an account exists for that email, we've sent a sign-in link. It
-          expires in 15 minutes.
+          We've sent a sign-in link to that address. Follow it to sign in, or to
+          create your account if this is your first time here. The link expires
+          in 15 minutes.
         </p>
         <ButtonLink href="/auth/login" variant="outline" class="w-full">
           Back to sign in
