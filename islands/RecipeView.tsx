@@ -59,6 +59,9 @@ interface RecipeIngredient {
   density?: number | null;
   /** Water and the like: scales, but is never bought or counted missing. */
   always_on_hand?: boolean;
+  /** Made during this recipe (browned butter): scales and renders, but is
+   *  not shoppable and links to no library ingredient. */
+  intermediate?: boolean;
 }
 
 interface RecipeTool {
@@ -132,6 +135,11 @@ export default function RecipeView(
   const layout = computeSectionLayout(steps, sections);
   const unitSystem = unitSystemProp ?? "metric";
   const pantryItems = pantryItemsProp ?? [];
+
+  // Intermediates (made while cooking) render and scale, but stay out of
+  // shopping, pantry math, and the scale-by-ingredient picker.
+  const shoppable = ingredients.filter((i) => !i.intermediate);
+  const madeDuring = ingredients.filter((i) => i.intermediate);
 
   /** Format a scaled ingredient amount + unit for the user's preferred unit system. */
   function displayUnit(
@@ -1076,7 +1084,7 @@ export default function RecipeView(
       <div class="recipe-print-sidebar lg:col-span-1 space-y-4">
         <div class="card print-hidden">
           {renderScalingUI()}
-          {ingredients.some((i) => i.amount > 0) && (
+          {shoppable.some((i) => i.amount > 0) && (
             <div class="mt-3">
               <label class="text-sm font-medium">Scale by ingredient:</label>
               <Select
@@ -1086,7 +1094,7 @@ export default function RecipeView(
                 onValueChange={setScaleIngredient}
               >
                 <option value="">Choose an ingredient…</option>
-                {ingredients.filter((i) => i.amount > 0).map((i) => (
+                {shoppable.filter((i) => i.amount > 0).map((i) => (
                   <option key={ingredientKey(i)} value={ingredientKey(i)}>
                     {i.name}
                   </option>
@@ -1210,10 +1218,10 @@ export default function RecipeView(
               // Counted at the current scale, with the same rule the shopping
               // button uses: double the servings and the badge reacts.
               const ratio = getCurrentRatio();
-              const inPantry = ingredients.filter((ing) =>
+              const inPantry = shoppable.filter((ing) =>
                 isInPantry(ing, ratio)
               ).length;
-              const total = ingredients.length;
+              const total = shoppable.length;
               const allAvailable = inPantry === total;
               return (
                 <div
@@ -1231,7 +1239,7 @@ export default function RecipeView(
             })()}
             <h2 class="font-semibold mb-2">Ingredients</h2>
             <ul class="space-y-1.5">
-              {ingredients.map((ing) => {
+              {shoppable.map((ing) => {
                 const ratio = getCurrentRatio();
                 const scaled = ing.amount * ratio;
                 const cost = ing.base_cost != null
@@ -1410,6 +1418,33 @@ export default function RecipeView(
                 );
               })}
             </ul>
+            {madeDuring.length > 0 && (
+              <div class="mt-3 pt-2 border-t-2 border-stone-200 dark:border-stone-700">
+                <div
+                  class="text-xs font-medium text-stone-500 mb-1"
+                  title="Produced by the steps; nothing to buy or stock"
+                >
+                  Made while cooking
+                </div>
+                <ul class="space-y-1">
+                  {madeDuring.map((ing) => {
+                    const scaled = ing.amount * getCurrentRatio();
+                    const d = displayUnit(scaled, ing.unit, ing.density);
+                    return (
+                      <li
+                        key={ingredientKey(ing)}
+                        class="text-sm text-stone-600 dark:text-stone-300"
+                      >
+                        <span class="font-medium">
+                          {d.text} {d.unit}
+                        </span>{" "}
+                        {ing.name}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
             {(() => {
               const ratio = getCurrentRatio();
               const total = ingredients.reduce((sum, ing) => {

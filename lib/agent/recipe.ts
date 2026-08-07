@@ -28,6 +28,8 @@ export interface AgentIngredientRow {
   amount?: string;
   unit?: string;
   ingredient_id?: string | null;
+  /** Made during this recipe: no library link, never shopped. */
+  intermediate?: boolean;
 }
 export interface AgentSection {
   key: string;
@@ -202,6 +204,7 @@ export async function loadAgentRecipe(
       amount: r.amount != null ? String(r.amount) : "",
       unit: r.unit ?? "",
       ingredient_id: r.ingredient_id,
+      intermediate: r.intermediate ?? false,
     })),
     sections: secs.rows.map((s) => ({
       key: s.key,
@@ -241,7 +244,11 @@ export function agentRecipeToFormData(r: AgentRecipe): FormData {
     fd.set(`ingredients[${i}][key]`, ing.key ?? "");
     fd.set(`ingredients[${i}][amount]`, ing.amount ?? "");
     fd.set(`ingredients[${i}][unit]`, ing.unit ?? "");
-    if (ing.ingredient_id) {
+    fd.set(
+      `ingredients[${i}][intermediate]`,
+      ing.intermediate === true ? "true" : "false",
+    );
+    if (ing.ingredient_id && ing.intermediate !== true) {
       fd.set(`ingredients[${i}][ingredient_id]`, ing.ingredient_id);
     }
   });

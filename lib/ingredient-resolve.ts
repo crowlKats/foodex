@@ -12,6 +12,8 @@ export interface IngredientLinkRow {
   name?: string;
   ingredient_id?: string | null;
   unit?: string | null;
+  /** Truthy for rows made during the recipe; they never link to an entity. */
+  intermediate?: boolean | string;
 }
 
 /**
@@ -19,13 +21,21 @@ export interface IngredientLinkRow {
  * ingredients as needed. Mutates the rows in place. Run inside the caller's
  * transaction so a failed save doesn't leave stray ingredient entities behind.
  */
+/** Normalizes the flag across sources: booleans (agent JSON) and form strings. */
+export function isIntermediate(
+  row: { intermediate?: boolean | string },
+): boolean {
+  return row.intermediate === true || row.intermediate === "true" ||
+    row.intermediate === "1";
+}
+
 export async function ensureIngredientIds(
   q: QueryFn,
   rows: IngredientLinkRow[],
 ): Promise<void> {
   const unresolved = rows.filter(
     (r): r is IngredientLinkRow & { name: string } =>
-      !r.ingredient_id?.trim() && !!r.name?.trim(),
+      !isIntermediate(r) && !r.ingredient_id?.trim() && !!r.name?.trim(),
   );
   if (unresolved.length === 0) return;
 

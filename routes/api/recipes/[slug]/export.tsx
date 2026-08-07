@@ -134,6 +134,7 @@ export const handlers = handler({
         name: i.ingredient_name ?? i.name,
         amount: i.amount != null ? String(i.amount) : "",
         unit: i.unit || "",
+        intermediate: i.intermediate ?? false,
       })),
       sections: sectionsRes.rows.map((s) => ({
         key: s.key,

@@ -24,7 +24,8 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
   "quantity_unit2": <"cm" for dimensions, else null>,
   "quantity_servings": <servings/pieces the tray yields, dimensions only, or null>,
   "ingredients": [
-    { "key": "snake_case_key", "name": "Ingredient name", "amount": "numeric amount as string", "unit": "unit" }
+    { "key": "snake_case_key", "name": "Ingredient name", "amount": "numeric amount as string", "unit": "unit" },
+    { "key": "browned_butter", "name": "Browned butter", "amount": "80", "unit": "g", "intermediate": true }
   ],
   "sections": [
     { "key": "kebab-case-key", "title": "Section title", "after": ["other-section-key"] }
@@ -62,7 +63,7 @@ its size, write {{ tray }} instead of the literal dimensions so the text follows
 tray size.
 - If prep, cook, or rest time is not specified, use null. "rest_time" covers any inactive waiting (rising dough, marinating, chilling, resting cooked meat, etc.), not active prep or cook time.
 - "difficulty" should be "easy", "medium", or "hard" based on the recipe's complexity, technique requirements, and skill level needed. Use null if uncertain
-- Amounts of INTERMEDIATE products (browned butter made from the butter row, reserved cooking water, a dough from an earlier step) are not ingredient refs, but they must still scale: write them as arithmetic on the "ratio" variable, e.g. "add {{ round(50 * ratio) }} g of the browned butter". Never leave a bare number on anything that scales with the recipe.
+- INTERMEDIATE products (browned butter made from the butter row, burnt lemon juice pressed from the lemon, reserved cooking water) get their own ingredient row with "intermediate": true. Such a row scales, appears under "Made while cooking", and can be referenced from steps like any other row; it is never shopped for and MUST NOT be linked to or create an ingredient library entity. Amounts too incidental for a row still scale via the "ratio" variable: "add {{ round(50 * ratio) }} g". Never leave a bare number on anything that scales with the recipe.
 - Cross-check the numbers: partial uses in step text must add up to the ingredient row's total, and a reserved amount can never exceed the row (a 210 g water row cannot say "reserve 400 g"). When the source is internally inconsistent, fix the numbers to be consistent and keep the proportions sensible.
 - Only actionable instructions become steps. Doneness descriptions, texture targets, or closing notes from the source belong in the final step's body or the description, never as their own step (a cook would have nothing to do before pressing "next").
 - Add a @timer() wherever a step states a concrete duration, replacing the duration text: "cook for 5 minutes" → "cook for @timer(5m)". Ranges are supported directly: "cook for 4-6 minutes" → "cook for @timer(4-6m)" (renders as "4-6 min", counts down to the lower bound and offers the rest as an extension). Skip vague timing ("a few minutes", "until golden").

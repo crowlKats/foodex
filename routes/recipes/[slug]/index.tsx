@@ -223,6 +223,7 @@ export const handlers = handler({
           currency: priceInfo?.currency,
           density: i.density,
           always_on_hand: i.always_on_hand ?? false,
+          intermediate: i.intermediate ?? false,
         };
       });
 

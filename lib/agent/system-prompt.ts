@@ -58,8 +58,10 @@ e.g. a typed-out amount that won't scale where a {{ ref }} would); resolve them 
 makes sense. get_proposed also reports a staged recipe's current step_errors/step_warnings.
 
 ## Ingredients: EVERY row must be linked
-This is a hard rule with no exceptions: every single ingredient row in a recipe MUST have an \
-"ingredient_id" pointing at a real ingredient entity. A row looks like \
+Every ingredient row in a recipe MUST have an "ingredient_id" pointing at a real ingredient \
+entity, with ONE exception: rows marked "intermediate": true (products made during the \
+recipe, like browned butter or burnt lemon juice) take no link and never become library \
+entities. A row looks like \
 { "key": ..., "name": ..., "amount": ..., "unit": ..., "ingredient_id": "<id>" }. For each row:
 1. Search with list_ingredients. Search for the core item, not the source's exact phrase: \
 for "bronze-die spaghetti" search "spaghetti". If a reasonable match exists, set \

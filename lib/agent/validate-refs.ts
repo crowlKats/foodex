@@ -28,6 +28,8 @@ export function stepDiagnostics(
           name: String(row.name ?? ""),
           unit: String(row.unit ?? ""),
           ingredient_id: String(row.ingredient_id ?? ""),
+          intermediate: row.intermediate === true ||
+            row.intermediate === "true",
         };
       })
       .filter((i) => i.key);
@@ -111,6 +113,21 @@ export function stepDiagnostics(
         `ingredients: the row keyed "${g.key}" is named "${g.name}", which ` +
           `shares no words with the key. One of the two is wrong; fix ` +
           `whichever it is (the key must be derived from the name).`,
+      );
+    }
+  }
+
+  // A row named like something the recipe itself produces should be an
+  // intermediate, not a library-linked ingredient; as a linked row it lands
+  // on shopping lists as something unbuyable and pollutes the shared corpus.
+  const derivedName =
+    /^(browned|burnt|caramelized|clarified|rendered|reduced|reserved|leftover)\b|cooking water$/i;
+  for (const g of ingredients) {
+    if (!g.intermediate && derivedName.test(g.name.trim())) {
+      out.warnings.push(
+        `ingredients: "${g.name}" looks like something made during the ` +
+          `recipe. If it is, set "intermediate": true on the row and drop ` +
+          `its "ingredient_id" instead of linking a library ingredient.`,
       );
     }
   }

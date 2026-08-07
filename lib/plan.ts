@@ -136,6 +136,7 @@ export async function loadPlan(
        FROM recipe_ingredients ri
        LEFT JOIN ingredients g ON g.id = ri.ingredient_id
        WHERE ri.recipe_id = ANY($1)
+         AND NOT ri.intermediate
          AND NOT COALESCE(g.always_on_hand, false)
        ORDER BY ri.sort_order`,
         [recipeIds],
@@ -368,7 +369,8 @@ export async function cookPlanEntry(
      FROM recipe_ingredients ri
      LEFT JOIN ingredients g ON g.id = ri.ingredient_id
      WHERE ri.recipe_id = $1
-       AND NOT COALESCE(g.always_on_hand, false)`,
+       AND NOT ri.intermediate
+         AND NOT COALESCE(g.always_on_hand, false)`,
     [entry.recipe_id],
   );
 
@@ -530,11 +532,13 @@ export async function suggestRecipes(
      LEFT JOIN media m ON m.id = r.cover_image_id
      JOIN recipe_ingredients ri ON ri.recipe_id = r.id
      LEFT JOIN ingredients g ON g.id = ri.ingredient_id
-     WHERE NOT COALESCE(g.always_on_hand, false)
+     WHERE NOT ri.intermediate
+       AND NOT COALESCE(g.always_on_hand, false)
        AND (r.household_id = $1 OR r.private = false)
        AND EXISTS (
          SELECT 1 FROM recipe_ingredients hit
          WHERE hit.recipe_id = r.id
+           AND NOT hit.intermediate
            AND (hit.ingredient_id = ANY($2) OR lower(hit.name) = ANY($3))
        )
        -- Already on the plan is not a suggestion. Beyond offering a second

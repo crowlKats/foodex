@@ -57,13 +57,16 @@ export interface RecipeWithCoverMedia extends Recipe {
 export interface RecipeIngredient {
   id: string;
   recipe_id: string;
-  /** Required since migration 067: a line always links to a real ingredient. */
-  ingredient_id: string;
+  /** Required since migration 067 for regular rows; null on intermediates. */
+  ingredient_id: string | null;
   name: string;
   amount: number | null;
   unit: string | null;
   key: string | null;
   sort_order: number;
+  /** Made during this recipe (browned butter): scales, but is not shoppable
+   *  and links to no library ingredient. */
+  intermediate: boolean;
   ingredient_name: string | null;
   ingredient_unit: string | null;
 }

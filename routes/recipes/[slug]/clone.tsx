@@ -76,8 +76,8 @@ export const handlers = handler({
     );
     for (const ing of ingredientsRes.rows) {
       await ctx.state.db.query(
-        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, intermediate, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           newRecipeId,
           ing.ingredient_id,
@@ -85,6 +85,7 @@ export const handlers = handler({
           ing.name,
           ing.amount,
           ing.unit,
+          ing.intermediate ?? false,
           ing.sort_order,
         ],
       );

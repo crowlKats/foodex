@@ -25,6 +25,7 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
       unit: String(fd.get(`ingredients[${i}][unit]`) ?? ""),
       ingredient_id: (fd.get(`ingredients[${i}][ingredient_id]`) as string) ||
         null,
+      intermediate: fd.get(`ingredients[${i}][intermediate]`) === "true",
     });
     i++;
   }

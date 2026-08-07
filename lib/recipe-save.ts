@@ -1,6 +1,6 @@
 import { bulkInsert } from "./bulk-insert.ts";
 import { parseFormArray } from "./form.ts";
-import { ensureIngredientIds } from "./ingredient-resolve.ts";
+import { ensureIngredientIds, isIntermediate } from "./ingredient-resolve.ts";
 import type { QueryFn } from "../db/mod.ts";
 
 /**
@@ -21,11 +21,13 @@ export async function saveRecipeChildren(
   await ensureIngredientIds(q, ingredients.map(({ ing }) => ing));
   const ingRows = ingredients.map(({ ing, i }) => [
     recipeId,
-    ing.ingredient_id!.trim(),
+    // Intermediates (made during the recipe) carry no entity link.
+    isIntermediate(ing) ? null : ing.ingredient_id!.trim(),
     ing.key?.trim() || null,
     ing.name.trim(),
     ing.amount ? parseFloat(ing.amount) : null,
     ing.unit?.trim() || null,
+    isIntermediate(ing),
     i,
   ]);
 
@@ -37,6 +39,7 @@ export async function saveRecipeChildren(
       "name",
       "amount",
       "unit",
+      "intermediate",
       "sort_order",
     ], ingRows);
   }

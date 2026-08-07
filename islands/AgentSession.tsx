@@ -1580,7 +1580,15 @@ function ItemPreview({ item }: { item: SerializedStagedItem }) {
             {ings.map((g, i) => (
               <li key={i}>
                 {[g.amount, g.unit, g.name].filter(Boolean).join(" ")}
-                {!g.ingredient_id && (
+                {g.intermediate && (
+                  <span
+                    class="text-stone-400 text-xs ml-1"
+                    title="Made during the recipe; never shopped or linked"
+                  >
+                    (made while cooking)
+                  </span>
+                )}
+                {!g.ingredient_id && !g.intermediate && (
                   <span
                     class="text-amber-600 dark:text-amber-400 text-xs ml-1"
                     title="Not linked to an ingredient yet; applying finds or creates one by name"
@@ -1939,7 +1947,8 @@ function StagedItemDiff(
                       {r.av?.ingredient_id ? "linked" : "unlinked"}
                     </span>
                   )}
-                {r.s !== "changed" && r.av && !r.av.ingredient_id && (
+                {r.s !== "changed" && r.av && !r.av.ingredient_id &&
+                  !r.av.intermediate && (
                   <span
                     class="text-amber-600 dark:text-amber-400 text-xs ml-1"
                     title="Not linked to an ingredient yet; applying finds or creates one by name"

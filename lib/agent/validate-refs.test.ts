@@ -109,7 +109,12 @@ Deno.test("stepDiagnostics: a key unrelated to its name warns", () => {
 Deno.test("stepDiagnostics: a full ref with prose duplication warns", () => {
   const r: Record<string, unknown> = {
     ingredients: [
-      { key: "burnt_lemon_juice", name: "Burnt lemon juice", unit: "g" },
+      {
+        key: "burnt_lemon_juice",
+        name: "Burnt lemon juice",
+        unit: "g",
+        intermediate: true,
+      },
       { key: "unsalted_butter", name: "Unsalted butter", unit: "g" },
     ],
     steps: [
@@ -154,6 +159,28 @@ Deno.test("stepDiagnostics: literal amounts match partial names", () => {
   assertEquals(literal.length, 2);
   assertEquals(literal[0].includes("bottarga"), true);
   assertEquals(literal[1].includes("pasta_water"), true);
+});
+
+Deno.test("stepDiagnostics: a derived-looking linked row suggests intermediate", () => {
+  const r: Record<string, unknown> = {
+    ingredients: [
+      { key: "burnt_lemon_juice", name: "Burnt lemon juice", unit: "g" },
+      // Flagged rows and ordinary names stay quiet.
+      {
+        key: "browned_butter",
+        name: "Browned butter",
+        unit: "g",
+        intermediate: true,
+      },
+      { key: "butter", name: "Butter", unit: "g" },
+    ],
+    steps: [{ id: "s0", title: "", body: "No refs." }],
+  };
+  const d = stepDiagnostics(r);
+  assertEquals(d.errors, []);
+  assertEquals(d.warnings.length, 1);
+  assertEquals(d.warnings[0].includes("Burnt lemon juice"), true);
+  assertEquals(d.warnings[0].includes("intermediate"), true);
 });
 
 Deno.test("stepDiagnostics: an unknown unit warns", () => {

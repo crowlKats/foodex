@@ -13,6 +13,8 @@ interface Ingredient {
   amount: string;
   unit: string;
   ingredient_id: string;
+  /** Made during this recipe: no library link, never shopped. */
+  intermediate?: boolean;
 }
 
 interface IngredientItem extends Ingredient {
@@ -81,9 +83,23 @@ export default function IngredientForm(
       ingredient_id: g.id,
       name: g.name,
       key: slugifyKey(g.name),
+      // Picking a library ingredient means this is a real, shoppable row.
+      intermediate: false,
       unit: g.unit && ALL_UNITS.includes(g.unit) && !next[index].unit
         ? g.unit
         : next[index].unit,
+    };
+    items.value = next;
+  }
+
+  function toggleIntermediate(index: number) {
+    const next = [...items.value];
+    const on = !next[index].intermediate;
+    next[index] = {
+      ...next[index],
+      intermediate: on,
+      // An intermediate is produced by the steps; it links to nothing.
+      ingredient_id: on ? "" : next[index].ingredient_id,
     };
     items.value = next;
   }
@@ -123,7 +139,10 @@ export default function IngredientForm(
           Staples like water or salt are marked{" "}
           <span class="font-medium">Always on hand</span>{" "}
           on the ingredient itself: they scale, but are never bought or counted
-          as missing.
+          as missing. Things the recipe itself produces (browned butter, a
+          reserved liquid) are marked{" "}
+          <span class="font-medium">made while cooking</span>: they scale and
+          can be used in steps, but are never shopped for.
         </p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -214,10 +233,26 @@ export default function IngredientForm(
               name={`ingredients[${i}][unit]`}
               value={item.unit}
             />
+            <label
+              class="flex items-center gap-1.5 sm:pl-7 text-xs text-stone-500 dark:text-stone-400 cursor-pointer select-none"
+              title="Produced by the steps (browned butter, a reserved liquid): scales and shows in steps, but is never shopped or stocked"
+            >
+              <input
+                type="checkbox"
+                checked={!!item.intermediate}
+                onChange={() => toggleIntermediate(i)}
+              />
+              Made while cooking
+            </label>
             <input
               type="hidden"
               name={`ingredients[${i}][ingredient_id]`}
               value={item.ingredient_id}
+            />
+            <input
+              type="hidden"
+              name={`ingredients[${i}][intermediate]`}
+              value={item.intermediate ? "true" : "false"}
             />
           </div>
         ))}

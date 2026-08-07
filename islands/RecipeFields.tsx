@@ -340,6 +340,8 @@ export default function RecipeFields(props: Props) {
             amount: ing.amount != null ? String(ing.amount) : "",
             unit: ing.unit ?? "",
             ingredient_id: ing.ingredient_id ?? "",
+            intermediate: ing.intermediate === true ||
+              ing.intermediate === "true",
           }))}
           ingredients={ingredients}
         />
