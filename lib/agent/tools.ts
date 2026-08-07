@@ -341,7 +341,12 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "create_ingredient",
-    description: "Propose a brand-new ingredient entity.",
+    description:
+      "Propose a brand-new ingredient entity. Last resort: first search " +
+      "list_ingredients for the core item (for \"bronze-die spaghetti\" search " +
+      "\"spaghetti\") and link a reasonable existing match instead. Name new " +
+      "entities generically, at the level someone shops (\"Spaghetti\", not " +
+      "\"Bronze-die spaghetti\").",
     input_schema: {
       type: "object",
       properties: {
