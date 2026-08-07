@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { useCallback } from "preact/hooks";
+import { useCallback, useEffect, useRef } from "preact/hooks";
 import { IconArrowUp } from "@tabler/icons-preact";
 import { IconArrowDown } from "@tabler/icons-preact";
 import { IconPlus } from "@tabler/icons-preact";
@@ -268,16 +268,23 @@ const SECTION_PAD_BOTTOM = 14;
 const SECTION_GAP = 32;
 const SECTION_MIN_W = 360;
 
+/** A section's internal step layout, local to its scrollable step area. */
+interface SectionInner {
+  innerW: number;
+  innerH: number;
+  stepLocal: Map<number, { x: number; y: number }>;
+  addStepLocal: { x: number; y: number };
+  stepEdges: GraphLayout["edges"];
+}
+
 interface NestedLayout {
   svgW: number;
   svgH: number;
   sectionBoxes: { x: number; y: number; w: number; h: number }[];
-  /** Absolute top-left of the "add step" placeholder per section. */
-  addStepTopLeft: { x: number; y: number }[];
-  stepTopLeft: Map<number, { x: number; y: number }>;
+  /** Per-section step layout; rendered inside the section's own scroll area. */
+  inner: SectionInner[];
   /** Per-section display number for each step (1-based, restarts per section). */
   displayNum: Map<number, number>;
-  stepEdges: GraphLayout["edges"];
   sectionEdges: GraphLayout["edges"];
 }
 
@@ -287,6 +294,8 @@ function computeNestedLayout(
   cardH: number,
   selStep: number | null,
   selSec: number | null,
+  /** Widest a section box may get; wider step DAGs scroll inside the box. */
+  maxSectionW: number,
 ): NestedLayout {
   // Group steps by section index
   const stepsBySection: number[][] = sections.map(() => []);
@@ -355,10 +364,10 @@ function computeNestedLayout(
     };
     // Reserve vertical space for the placeholder
     const innerH = Math.max(lay.svgH, addStepLocal.y + cardH);
-    // Map local-index edges to global indices
+    // Map local-index edges to global indices; the path stays in local
+    // coordinates since edges render inside the section's own step area.
     const stepEdges = lay.edges.map((e) => ({
-      d: e.d, // recomputed below in absolute coords
-      active: e.active,
+      ...e,
       key: `${localToGlobal[e.fromIdx]}-${localToGlobal[e.toIdx]}`,
       fromIdx: localToGlobal[e.fromIdx],
       toIdx: localToGlobal[e.toIdx],
@@ -377,9 +386,12 @@ function computeNestedLayout(
 
   const colW: number[] = secInCol.map((idxs) => {
     if (idxs.length === 0) return SECTION_MIN_W;
-    return Math.max(
-      SECTION_MIN_W,
-      ...idxs.map((i) => internal[i].innerW + 2 * SECTION_PAD_X),
+    return Math.min(
+      maxSectionW,
+      Math.max(
+        SECTION_MIN_W,
+        ...idxs.map((i) => internal[i].innerW + 2 * SECTION_PAD_X),
+      ),
     );
   });
   const colX: number[] = [];
@@ -390,71 +402,34 @@ function computeNestedLayout(
   }
   const totalW = Math.max(0, acc - SECTION_GAP);
 
+  // Anchor each section to its topmost dependency, so a chain stays in one
+  // horizontal lane (Sauce sits level with Burnt Lemon, not centered in a
+  // gap) and long edges stop cutting through unrelated boxes. Sections
+  // sharing a column stack downward from their anchors.
   const sectionBoxes = sections.map(() => ({ x: 0, y: 0, w: 0, h: 0 }));
   let totalH = 0;
   for (let c = 0; c <= maxSecCol; c++) {
+    const idxs = [...secInCol[c]];
+    if (c > 0) {
+      const anchor = (i: number) => {
+        const deps = sections[i].after.filter((d) => secCols[d] < c);
+        return deps.length
+          ? Math.min(...deps.map((d) => sectionBoxes[d].y))
+          : 0;
+      };
+      idxs.sort((a, b) => anchor(a) - anchor(b));
+    }
     let curY = 0;
-    for (const idx of secInCol[c]) {
-      const innerH = internal[idx].innerH;
-      const boxW = colW[c];
-      const boxH = innerH + SECTION_PAD_TOP + SECTION_PAD_BOTTOM;
-      sectionBoxes[idx] = { x: colX[c], y: curY, w: boxW, h: boxH };
-      curY += boxH + SECTION_GAP;
-    }
-    totalH = Math.max(totalH, curY - SECTION_GAP);
-  }
-
-  // Vertically center sections within their column relative to totalH
-  for (let c = 0; c <= maxSecCol; c++) {
-    let colTotal = 0;
-    for (const idx of secInCol[c]) {
-      colTotal += sectionBoxes[idx].h + SECTION_GAP;
-    }
-    colTotal -= SECTION_GAP;
-    const offset = Math.max(0, (totalH - colTotal) / 2);
-    for (const idx of secInCol[c]) {
-      sectionBoxes[idx].y += offset;
-    }
-  }
-
-  // Compute absolute step positions
-  const stepTopLeft = new Map<number, { x: number; y: number }>();
-  const addStepTopLeft: { x: number; y: number }[] = sections.map(() => ({
-    x: 0,
-    y: 0,
-  }));
-  for (let i = 0; i < sections.length; i++) {
-    const box = sectionBoxes[i];
-    for (const [g, local] of internal[i].stepLocal) {
-      stepTopLeft.set(g, {
-        x: box.x + SECTION_PAD_X + local.x,
-        y: box.y + SECTION_PAD_TOP + local.y,
-      });
-    }
-    addStepTopLeft[i] = {
-      x: box.x + SECTION_PAD_X + internal[i].addStepLocal.x,
-      y: box.y + SECTION_PAD_TOP + internal[i].addStepLocal.y,
-    };
-  }
-
-  // Step edges in absolute coordinates
-  const stepEdges: GraphLayout["edges"] = [];
-  for (let s = 0; s < sections.length; s++) {
-    for (const e of internal[s].stepEdges) {
-      const fromTL = stepTopLeft.get(e.fromIdx);
-      const toTL = stepTopLeft.get(e.toIdx);
-      if (!fromTL || !toTL) continue;
-      const p1x = fromTL.x + CARD_W;
-      const p1y = fromTL.y + cardH / 2;
-      const p2x = toTL.x;
-      const p2y = toTL.y + cardH / 2;
-      const dx = Math.abs(p2x - p1x) * 0.5;
-      const d = `M${p1x},${p1y} C${p1x + dx},${p1y} ${
-        p2x - dx
-      },${p2y} ${p2x},${p2y}`;
-      const active = selStep != null &&
-        (selStep === e.toIdx || selStep === e.fromIdx);
-      stepEdges.push({ ...e, d, active });
+    for (const idx of idxs) {
+      const deps = sections[idx].after.filter((d) => secCols[d] < c);
+      const desired = deps.length
+        ? Math.min(...deps.map((d) => sectionBoxes[d].y))
+        : curY;
+      const y = Math.max(desired, curY);
+      const boxH = internal[idx].innerH + SECTION_PAD_TOP + SECTION_PAD_BOTTOM;
+      sectionBoxes[idx] = { x: colX[c], y, w: colW[c], h: boxH };
+      curY = y + boxH + SECTION_GAP;
+      totalH = Math.max(totalH, y + boxH);
     }
   }
 
@@ -488,10 +463,8 @@ function computeNestedLayout(
     svgW: totalW,
     svgH: totalH,
     sectionBoxes,
-    addStepTopLeft,
-    stepTopLeft,
+    inner: internal,
     displayNum,
-    stepEdges,
     sectionEdges,
   };
 }
@@ -844,10 +817,27 @@ export default function StepForm(
   const savedGraphDeps = useSignal<number[][] | null>(null);
   const savedSectionDeps = useSignal<number[][] | null>(null);
   const dragFrom = useSignal<number | null>(null);
+  const dragStart = useSignal<{ x: number; y: number } | null>(null);
   const dragPos = useSignal<{ x: number; y: number } | null>(null);
   const secSelected = useSignal<number | null>(null);
   const secDragFrom = useSignal<number | null>(null);
   const secDragPos = useSignal<{ x: number; y: number } | null>(null);
+
+  // Measured island width; caps section boxes at 3/4 of the editor so a wide
+  // step chain scrolls inside its box instead of blowing up the canvas.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const canvasW = useSignal(1100);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => {
+      if (el.clientWidth > 0) canvasW.value = el.clientWidth;
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Validation context for the step-body editor. Ingredient keys live in a
   // sibling island (IngredientForm) so we scrape them from the surrounding
@@ -1265,13 +1255,21 @@ export default function StepForm(
   function onDragHandleMouseDown(index: number, e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    dragFrom.value = index;
 
-    const container = (e.target as HTMLElement).closest(
+    const handleEl = e.currentTarget as HTMLElement;
+    const container = handleEl.closest(
       "[data-graph-container]",
     ) as HTMLElement;
     if (!container) return;
+    dragFrom.value = index;
     const rect = container.getBoundingClientRect();
+    // Anchor the line at the handle's on-screen position rather than layout
+    // coordinates: cards may live inside a scrolled section step area.
+    const hr = handleEl.getBoundingClientRect();
+    dragStart.value = {
+      x: hr.left + hr.width / 2 - rect.left,
+      y: hr.top + hr.height / 2 - rect.top,
+    };
     dragPos.value = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
     const onMove = (me: MouseEvent) => {
@@ -1294,6 +1292,7 @@ export default function StepForm(
         }
       }
       dragFrom.value = null;
+      dragStart.value = null;
       dragPos.value = null;
     };
     document.addEventListener("mousemove", onMove);
@@ -1394,6 +1393,7 @@ export default function StepForm(
       cardH,
       sel,
       secSelected.value,
+      Math.max(SECTION_MIN_W, Math.floor(canvasW.value * 0.75)),
     )
     : null;
 
@@ -1405,22 +1405,29 @@ export default function StepForm(
     }
   }
 
-  // Live step drag line: works for both flat and nested
+  // Same highlight semantics for sections as for steps: green for what the
+  // selected section depends on, blue for what depends on it.
+  const secSel = secSelected.value;
+  const secSelDeps = new Set(
+    secSel != null ? sections.value[secSel]?.after ?? [] : [],
+  );
+  const secDependents = new Set<number>();
+  if (secSel != null) {
+    for (let i = 0; i < sections.value.length; i++) {
+      if (sections.value[i].after.includes(secSel)) secDependents.add(i);
+    }
+  }
+
+  // Live step drag line: anchored at the handle's measured position, which
+  // holds up in both flat and nested mode (including scrolled step areas).
   const dragLine = (() => {
-    if (dragFrom.value == null || !dragPos.value) return null;
-    let p1x: number, p1y: number;
-    if (nested) {
-      const tl = nested.stepTopLeft.get(dragFrom.value);
-      if (!tl) return null;
-      p1x = tl.x + CARD_W;
-      p1y = tl.y + cardH / 2;
-    } else if (flatLayout) {
-      p1x = flatLayout.cols[dragFrom.value] * COL_WIDTH + CARD_W;
-      p1y = flatLayout.stepY.get(dragFrom.value) ?? 0;
-    } else return null;
+    if (dragFrom.value == null || !dragStart.value || !dragPos.value) {
+      return null;
+    }
+    const p1 = dragStart.value;
     const p2 = dragPos.value;
-    const dx = Math.abs(p2.x - p1x) * 0.4;
-    return `M${p1x},${p1y} C${p1x + dx},${p1y} ${
+    const dx = Math.abs(p2.x - p1.x) * 0.4;
+    return `M${p1.x},${p1.y} C${p1.x + dx},${p1.y} ${
       p2.x - dx
     },${p2.y} ${p2.x},${p2.y}`;
   })();
@@ -1440,7 +1447,7 @@ export default function StepForm(
   })();
 
   return (
-    <div class="space-y-4">
+    <div class="space-y-4" ref={rootRef}>
       <div class="flex items-center justify-between gap-3">
         <p class="text-xs text-stone-500 dark:text-stone-400">
           Use <code class="code-hint">{"{{ key }}"}</code>{" "}
@@ -1706,19 +1713,25 @@ export default function StepForm(
 
       {/* ── Nested graph (sections containing steps) ── */}
       {isGraph && nested && (
-        <div class="overflow-x-auto pb-2" data-graph-container>
-          <div data-section-graph-container>
-            <div
-              style={{
-                position: "relative",
-                width: `${nested.svgW + 4}px`,
-                minHeight: `${nested.svgH + SECTION_GAP + 56 + ROW_GAP}px`,
-              }}
-            >
-              {/* Section bounding boxes (drawn behind everything) */}
-              {sections.value.map((sec, sIdx) => {
+        <div class="overflow-x-auto pb-2 select-none">
+          <div
+            data-graph-container
+            data-section-graph-container
+            style={{
+              position: "relative",
+              width: `${nested.svgW + 4}px`,
+              minHeight: `${nested.svgH + SECTION_GAP + 56 + ROW_GAP}px`,
+            }}
+          >
+            {
+              /* Section bounding boxes. No z-index on the box itself, so its
+              header/steps children can stack above the section-edge SVG. */
+            }
+            {(() => {
+              return sections.value.map((sec, sIdx) => {
                 const box = nested.sectionBoxes[sIdx];
-                if (!box) {
+                const innerL = nested.inner[sIdx];
+                if (!box || !innerL) {
                   return null;
                 }
                 const isSelected = secSelected.value === sIdx;
@@ -1727,6 +1740,10 @@ export default function StepForm(
                   ? "border-orange-400 ring-2 ring-orange-200 dark:ring-orange-800"
                   : isSelected
                   ? "border-orange-500 ring-2 ring-orange-200 dark:ring-orange-800"
+                  : secSelDeps.has(sIdx)
+                  ? "border-green-400 dark:border-green-600"
+                  : secDependents.has(sIdx)
+                  ? "border-blue-300 dark:border-blue-700"
                   : "border-stone-300 dark:border-stone-700";
                 const stepCount = steps.filter((st) =>
                   st.section === sIdx
@@ -1741,7 +1758,6 @@ export default function StepForm(
                       top: `${box.y}px`,
                       width: `${box.w}px`,
                       height: `${box.h}px`,
-                      zIndex: 0,
                     }}
                     class={`border-2 bg-stone-50 dark:bg-stone-900/40 ${borderClass}`}
                     onClick={(e) => {
@@ -1754,7 +1770,7 @@ export default function StepForm(
                       secSelected.value = isSelected ? null : sIdx;
                     }}
                   >
-                    <div class="px-2 pt-2 pb-1 flex items-center gap-1 min-w-0">
+                    <div class="relative z-[2] px-2 pt-2 pb-1 flex items-center gap-1 min-w-0">
                       <Input
                         type="text"
                         placeholder="Section title"
@@ -1762,7 +1778,7 @@ export default function StepForm(
                         onClick={(e) => e.stopPropagation()}
                         onValueChange={(v) =>
                           updateSectionTitle(sIdx, v)}
-                        class="flex-1 min-w-0 font-bold"
+                        class="flex-1 min-w-0 font-bold select-text"
                       />
                       <Input
                         type="text"
@@ -1772,7 +1788,7 @@ export default function StepForm(
                           e.stopPropagation()}
                         onValueChange={(v) => updateSectionKey(sIdx, v)}
                         title="Used in @step(key.N) references"
-                        class="w-32 shrink-0"
+                        class="w-32 shrink-0 select-text"
                         size="xs"
                         monospace
                       />
@@ -1831,9 +1847,101 @@ export default function StepForm(
                     >
                       <div class="w-2.5 h-2.5 rounded-full bg-orange-300 dark:bg-orange-700 hover:bg-orange-500 dark:hover:bg-orange-400 transition-colors" />
                     </div>
+                    {
+                      /* The section's step DAG, scrolling horizontally inside
+                      the box when wider than the (capped) box width. */
+                    }
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: `${SECTION_PAD_X}px`,
+                        top: `${SECTION_PAD_TOP}px`,
+                        width: `${box.w - 2 * SECTION_PAD_X}px`,
+                        height: `${
+                          box.h - SECTION_PAD_TOP - SECTION_PAD_BOTTOM
+                        }px`,
+                        zIndex: 2,
+                      }}
+                      class="overflow-x-auto overflow-y-hidden"
+                    >
+                      <div
+                        style={{
+                          position: "relative",
+                          width: `${innerL.innerW}px`,
+                          height: `${innerL.innerH}px`,
+                        }}
+                      >
+                        <svg
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            pointerEvents: "none",
+                            overflow: "visible",
+                          }}
+                          width={innerL.innerW}
+                          height={innerL.innerH}
+                        >
+                          {innerL.stepEdges.map(
+                            ({ d, active, key, fromIdx, toIdx }) => (
+                              <EdgePath
+                                key={`step-${key}`}
+                                d={d}
+                                active={active}
+                                color="step"
+                                onRemove={() => removeDep(toIdx, fromIdx)}
+                              />
+                            ),
+                          )}
+                        </svg>
+                        {steps.map((step, index) => {
+                          const tl = innerL.stepLocal.get(index);
+                          if (!tl) {
+                            return null;
+                          }
+                          const isSelectedStep = sel === index;
+                          const stepBorder = dragFrom.value === index
+                            ? "border-orange-400 ring-2 ring-orange-200 dark:ring-orange-800"
+                            : isSelectedStep
+                            ? "border-orange-500 ring-2 ring-orange-200 dark:ring-orange-800"
+                            : selDeps.has(index)
+                            ? "border-green-400 dark:border-green-600"
+                            : selDependents.has(index)
+                            ? "border-blue-300 dark:border-blue-700"
+                            : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600";
+                          return (
+                            <StepCardEl
+                              key={index}
+                              index={index}
+                              displayNum={nested.displayNum.get(index) ??
+                                index + 1}
+                              step={step}
+                              position={tl}
+                              cardH={cardH}
+                              borderClass={stepBorder}
+                              onSelect={(e) => {
+                                e.stopPropagation();
+                                selected.value = isSelectedStep ? null : index;
+                              }}
+                              onInsert={() => graphInsertAfter(index)}
+                              onBranch={() => graphBranchAfter(index)}
+                              onRemove={() => graphRemoveStep(index)}
+                              onDragStart={(e) =>
+                                onDragHandleMouseDown(index, e)}
+                            />
+                          );
+                        })}
+                        <AddStepEl
+                          position={innerL.addStepLocal}
+                          cardH={cardH}
+                          onClick={() => graphAddStartInSection(sIdx)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 );
-              })}
+              });
+            })()}
 
               {/* "Add starting section" placeholder under col 0 */}
               {(() => {
@@ -1867,60 +1975,7 @@ export default function StepForm(
                 );
               })()}
 
-              {/* Steps positioned inside their section boxes */}
-              <div style={{ position: "relative", zIndex: 2 }}>
-                {steps.map((step, index) => {
-                  const tl = nested.stepTopLeft.get(index);
-                  if (!tl) {
-                    return null;
-                  }
-                  const isSelected = sel === index;
-                  const borderClass = dragFrom.value === index
-                    ? "border-orange-400 ring-2 ring-orange-200 dark:ring-orange-800"
-                    : isSelected
-                    ? "border-orange-500 ring-2 ring-orange-200 dark:ring-orange-800"
-                    : selDeps.has(index)
-                    ? "border-green-400 dark:border-green-600"
-                    : selDependents.has(index)
-                    ? "border-blue-300 dark:border-blue-700"
-                    : "border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600";
-                  return (
-                    <StepCardEl
-                      key={index}
-                      index={index}
-                      displayNum={nested.displayNum.get(index) ?? index + 1}
-                      step={step}
-                      position={tl}
-                      cardH={cardH}
-                      borderClass={borderClass}
-                      onSelect={(e) => {
-                        e.stopPropagation();
-                        selected.value = isSelected ? null : index;
-                      }}
-                      onInsert={() => graphInsertAfter(index)}
-                      onBranch={() => graphBranchAfter(index)}
-                      onRemove={() => graphRemoveStep(index)}
-                      onDragStart={(e) => onDragHandleMouseDown(index, e)}
-                    />
-                  );
-                })}
-
-                {/* Per-section "Add step" placeholder cards */}
-                {sections.value.map((sec, sIdx) => {
-                  const tl = nested.addStepTopLeft[sIdx];
-                  if (!tl) return null;
-                  return (
-                    <AddStepEl
-                      key={`add-step-${sec._uid ?? sIdx}`}
-                      position={tl}
-                      cardH={cardH}
-                      onClick={() => graphAddStartInSection(sIdx)}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* SVG edges for both step and section deps */}
+              {/* Section dependency edges */}
               <svg
                 style={{
                   position: "absolute",
@@ -1933,7 +1988,6 @@ export default function StepForm(
                 width={nested.svgW}
                 height={nested.svgH}
               >
-                {/* Section edges (thicker, drawn first/behind) */}
                 {nested.sectionEdges.map(
                   ({ d, active, key, fromIdx, toIdx }) => (
                     <EdgePath
@@ -1945,38 +1999,43 @@ export default function StepForm(
                     />
                   ),
                 )}
-                {/* Step edges */}
-                {nested.stepEdges.map(({ d, active, key, fromIdx, toIdx }) => (
-                  <EdgePath
-                    key={`step-${key}`}
-                    d={d}
-                    active={active}
-                    color="step"
-                    onRemove={() => removeDep(toIdx, fromIdx)}
-                  />
-                ))}
-                {dragLine && (
-                  <path
-                    d={dragLine}
-                    fill="none"
-                    stroke="var(--color-orange-500)"
-                    stroke-width={2}
-                    stroke-dasharray="6 4"
-                    opacity={0.7}
-                  />
-                )}
-                {secDragLine && (
-                  <path
-                    d={secDragLine}
-                    fill="none"
-                    stroke="var(--color-orange-500)"
-                    stroke-width={2.5}
-                    stroke-dasharray="6 4"
-                    opacity={0.7}
-                  />
-                )}
               </svg>
-            </div>
+              {/* Live drag lines, above everything */}
+              {(dragLine || secDragLine) && (
+                <svg
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    zIndex: 5,
+                    pointerEvents: "none",
+                    overflow: "visible",
+                  }}
+                  width={nested.svgW}
+                  height={nested.svgH}
+                >
+                  {dragLine && (
+                    <path
+                      d={dragLine}
+                      fill="none"
+                      stroke="var(--color-orange-500)"
+                      stroke-width={2}
+                      stroke-dasharray="6 4"
+                      opacity={0.7}
+                    />
+                  )}
+                  {secDragLine && (
+                    <path
+                      d={secDragLine}
+                      fill="none"
+                      stroke="var(--color-orange-500)"
+                      stroke-width={2.5}
+                      stroke-dasharray="6 4"
+                      opacity={0.7}
+                    />
+                  )}
+                </svg>
+              )}
           </div>
         </div>
       )}
@@ -2013,7 +2072,7 @@ export default function StepForm(
               <IconPlus class="size-3 inline mr-0.5" />Add section
             </button>
           </div>
-          <div class="overflow-x-auto pb-2">
+          <div class="overflow-x-auto pb-2 select-none">
             <div
               data-graph-container
               style={{
@@ -2123,9 +2182,9 @@ export default function StepForm(
         </div>
       )}
 
-      {/* Legend (shared between flat + nested graph) */}
-      {isGraph && sel != null && (
-        <div class="flex flex-wrap gap-3 text-xs text-stone-500 mt-2">
+      {/* Legend (shared between flat + nested graph, steps and sections) */}
+      {isGraph && (sel != null || secSelected.value != null) && (
+        <div class="flex flex-wrap gap-3 text-xs text-stone-500 mt-2 select-none">
           <span>
             <span class="inline-block w-3 h-3 border-2 border-orange-500 mr-1 align-middle" />selected
           </span>
