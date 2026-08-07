@@ -8,10 +8,12 @@ import { adminEmails } from "./admin.ts";
 import { logSystemAudit } from "./audit.ts";
 
 /**
- * Accounts that never landed in a household have nothing on the platform:
- * they either abandoned onboarding or never accepted their invite. A week is
- * enough time to come back; after that the account is removed so stale
- * sign-ins don't accumulate. Admin accounts are exempt, household or not.
+ * Accounts with no household have nothing on the platform: they abandoned
+ * onboarding, never accepted their invite, or left a household and didn't
+ * land in a new one. A week without a household (tracked by trigger in
+ * `users.householdless_since`, NOT account age; someone moving out must get
+ * the full grace period) is enough time to come back; after that the account
+ * is removed so stale sign-ins don't accumulate. Admin accounts are exempt.
  */
 export async function cleanupStaleAccounts(): Promise<number> {
   const res = await query<{
@@ -20,10 +22,8 @@ export async function cleanupStaleAccounts(): Promise<number> {
     email: string | null;
   }>(
     `DELETE FROM users u
-     WHERE u.created_at < now() - interval '7 days'
-       AND NOT EXISTS (
-         SELECT 1 FROM household_members hm WHERE hm.user_id = u.id
-       )
+     WHERE u.householdless_since IS NOT NULL
+       AND u.householdless_since < now() - interval '7 days'
        AND (u.email IS NULL OR lower(u.email) != ALL($1))
      RETURNING u.id, u.name, u.email`,
     [[...adminEmails]],
@@ -34,7 +34,7 @@ export async function cleanupStaleAccounts(): Promise<number> {
       targetType: "user",
       targetId: u.id,
       targetLabel: `${u.name ?? "(no name)"} <${u.email ?? "no email"}>`,
-      detail: "no household a week after signing up",
+      detail: "a week without a household",
     });
   }
   return res.rows.length;

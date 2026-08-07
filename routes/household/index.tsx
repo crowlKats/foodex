@@ -171,6 +171,7 @@ export const handlers = handler({
         recipes,
         myRole,
         q,
+        error: ctx.url.searchParams.get("error") || undefined,
       },
     };
   },
@@ -287,24 +288,70 @@ export const handlers = handler({
           householdId: id,
         });
       }
-    } else if (method === "LEAVE") {
-      if (myRole !== "owner") {
-        await ctx.state.db.query(
-          "DELETE FROM household_members WHERE household_id = $1 AND user_id = $2",
-          [id, ctx.state.user.id],
-        );
+    } else if (method === "PROMOTE_MEMBER" && myRole === "owner") {
+      const memberId = String(form.get("member_user_id"));
+      const promoted = await ctx.state.db.query<{ user_id: string }>(
+        `UPDATE household_members SET role = 'owner'
+         WHERE household_id = $1 AND user_id = $2 AND role = 'member'
+         RETURNING user_id`,
+        [id, memberId],
+      );
+      if (promoted.rows.length > 0) {
+        const memberRes = await ctx.state.db.query<{
+          name: string | null;
+          email: string | null;
+        }>("SELECT name, email FROM users WHERE id = $1", [memberId]);
+        const member = memberRes.rows[0];
         await logAudit(ctx.state.db.query, ctx.state.user, {
-          action: "household.leave",
+          action: "household.promote_member",
           targetType: "household",
           targetId: id,
           targetLabel: householdName,
+          detail: member
+            ? `made ${member.name ?? "(no name)"} <${
+              member.email ?? "no email"
+            }> an owner`
+            : undefined,
           householdId: id,
         });
+      }
+    } else if (method === "LEAVE") {
+      // An owner may leave only once someone else owns the household, so it
+      // is never left without anyone who can manage members and settings.
+      let canLeave = myRole !== "owner";
+      if (!canLeave) {
+        const others = await ctx.state.db.query(
+          `SELECT 1 FROM household_members
+           WHERE household_id = $1 AND role = 'owner' AND user_id != $2`,
+          [id, ctx.state.user.id],
+        );
+        canLeave = others.rows.length > 0;
+      }
+      if (!canLeave) {
         return new Response(null, {
           status: 303,
-          headers: { Location: "/households" },
+          headers: {
+            Location: "/household?error=" + encodeURIComponent(
+              "Make another member an owner before leaving, or delete the household.",
+            ),
+          },
         });
       }
+      await ctx.state.db.query(
+        "DELETE FROM household_members WHERE household_id = $1 AND user_id = $2",
+        [id, ctx.state.user.id],
+      );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "household.leave",
+        targetType: "household",
+        targetId: id,
+        targetLabel: householdName,
+        householdId: id,
+      });
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/households" },
+      });
     } else if (method === "UPDATE_NAME" && myRole === "owner") {
       const name = form.get("name") as string;
       if (name?.trim()) {
@@ -357,12 +404,16 @@ export default page(function HouseholdDetailPage(
       myRole,
       q,
       kitchen,
+      error,
     },
     state,
     url,
   },
 ) {
   const isOwner = myRole === "owner";
+  const otherOwners = members.some((m) =>
+    m.role === "owner" && m.user_id !== state.user!.id
+  );
 
   return (
     <div>
@@ -373,6 +424,8 @@ export default page(function HouseholdDetailPage(
           <ButtonLink href="/household/pantry">Pantry</ButtonLink>
         </div>
       </div>
+
+      {error && <div class="alert-error mb-4">{error}</div>}
 
       <div class="card mb-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <a href="/household/pantry" class="link">
@@ -687,6 +740,28 @@ export default page(function HouseholdDetailPage(
                     >
                       {m.role}
                     </span>
+                    {isOwner && m.user_id !== state.user!.id &&
+                      m.role === "member" && (
+                      <form method="POST" class="inline shrink-0">
+                        <input
+                          type="hidden"
+                          name="_method"
+                          value="PROMOTE_MEMBER"
+                        />
+                        <input
+                          type="hidden"
+                          name="member_user_id"
+                          value={m.user_id}
+                        />
+                        <ConfirmButton
+                          message={`Make ${m.name} an owner? Owners manage members, invites, and settings, and this frees you to leave the household.`}
+                          variant="ghost"
+                          size="xs"
+                        >
+                          Make owner
+                        </ConfirmButton>
+                      </form>
+                    )}
                     {isOwner && m.user_id !== state.user!.id && (
                       <form method="POST" class="inline shrink-0">
                         <input
@@ -710,17 +785,23 @@ export default page(function HouseholdDetailPage(
                   </div>
                 ))}
               </div>
-              {!isOwner && (
+              {(!isOwner || otherOwners) && (
                 <form method="POST" class="mt-4">
                   <input type="hidden" name="_method" value="LEAVE" />
-                  <Button
-                    type="submit"
+                  <ConfirmButton
+                    message="Leave this household? You'll lose access to its recipes, pantry, and lists, and will need an invite or a new household to keep using Foodex."
                     variant="danger-outline"
                     class="w-full"
                   >
                     Leave Household
-                  </Button>
+                  </ConfirmButton>
                 </form>
+              )}
+              {isOwner && !otherOwners && members.length > 1 && (
+                <p class="text-xs text-stone-400 mt-4">
+                  Moving out? Make another member an owner first, then you can
+                  leave.
+                </p>
               )}
             </div>
 
