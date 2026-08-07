@@ -69,6 +69,26 @@ Deno.test("stepDiagnostics: a literal amount naming an ingredient warns", () => 
   assertEquals(d.warnings.length, 1);
 });
 
+Deno.test("stepDiagnostics: duplicate ingredient rows warn", () => {
+  // Per-use rows of the same ingredient: same name, and same entity id under
+  // a different name. Both are one duplication, reported once each.
+  const r: Record<string, unknown> = {
+    ingredients: [
+      { key: "bottarga", name: "Bottarga di muggine", unit: "g" },
+      { key: "bottarga_for_crumb", name: "Bottarga di muggine", unit: "g" },
+      { key: "butter", name: "Butter", unit: "g", ingredient_id: "id-1" },
+      { key: "butter_cold", name: "Cold butter", unit: "g", ingredient_id: "id-1" },
+      { key: "flour", name: "Flour", unit: "g" },
+    ],
+    steps: [{ id: "s0", title: "", body: "No refs." }],
+  };
+  const d = stepDiagnostics(r);
+  assertEquals(d.errors, []);
+  assertEquals(d.warnings.length, 2);
+  assertEquals(d.warnings[0].includes("bottarga_for_crumb"), true);
+  assertEquals(d.warnings[1].includes("butter_cold"), true);
+});
+
 Deno.test("stepDiagnostics: {{ tray }} is a known ref, but not in math", () => {
   const ok = recipe(["flour"], ["Pour into a {{ tray }} tray."]);
   assertEquals(stepDiagnostics(ok).errors, []);

@@ -26,6 +26,7 @@ export function stepDiagnostics(
           key: String(row.key ?? ""),
           name: String(row.name ?? ""),
           unit: String(row.unit ?? ""),
+          ingredient_id: String(row.ingredient_id ?? ""),
         };
       })
       .filter((i) => i.key);
@@ -53,6 +54,43 @@ export function stepDiagnostics(
   };
 
   const out: StepDiagnostics = { errors: [], warnings: [] };
+
+  // The same ingredient split into per-use rows ("40 g for the sauce" and
+  // "5 g for the crumb") reads as duplicate lines in the ingredient list.
+  // A warning, not an error: existing recipes with duplicates must stay
+  // editable, but the model is expected to merge them into one total row.
+  const groupBy = (of: (g: (typeof ingredients)[number]) => string) => {
+    const m = new Map<string, typeof ingredients>();
+    for (const g of ingredients) {
+      const k = of(g);
+      if (!k) continue;
+      const group = m.get(k);
+      if (group) group.push(g);
+      else m.set(k, [g]);
+    }
+    return [...m.values()].filter((g) => g.length > 1);
+  };
+  const warnDup = (group: typeof ingredients) => {
+    out.warnings.push(
+      `ingredients: "${group[0].name}" appears in ${group.length} rows (keys ${
+        group.map((g) => g.key).join(", ")
+      }). Merge them into ONE row holding the total amount, and write each ` +
+        `partial use into the step body with arithmetic on the ref, e.g. ` +
+        `{{ round(${group[0].key}.amount * 40 / 60) }} for a 40 g share of ` +
+        `a 60 g total.`,
+    );
+  };
+  const warnedKeys = new Set<string>();
+  for (const group of groupBy((g) => g.name.trim().toLowerCase())) {
+    warnDup(group);
+    for (const g of group) warnedKeys.add(g.key);
+  }
+  // Same entity under different row names is the same duplication; only skip
+  // groups the name pass already reported.
+  for (const group of groupBy((g) => g.ingredient_id)) {
+    if (group.some((g) => !warnedKeys.has(g.key))) warnDup(group);
+  }
+
   steps.forEach((s, i) => {
     const step = s as Record<string, unknown>;
     const body = String(step.body ?? "");
