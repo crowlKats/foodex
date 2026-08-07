@@ -7,6 +7,7 @@ import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import { Select } from "../../components/Select.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
+import { logAudit } from "../../lib/audit.ts";
 import IngredientNameInput from "../../islands/IngredientNameInput.tsx";
 import {
   getPage,
@@ -121,6 +122,15 @@ export const handlers = handler({
         ],
       );
     }
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "ingredient.create",
+      targetType: "ingredient",
+      targetId: String(ingredientId),
+      targetLabel: name.trim(),
+      detail: storeId && price ? "with initial price" : undefined,
+      householdId: ctx.state.householdId,
+    });
 
     const location = action === "add_another"
       ? "/ingredients"

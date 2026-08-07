@@ -21,6 +21,14 @@ export const providers = {
     AUTHENTIK_ISSUER),
 };
 
+/**
+ * Invite-only mode: accounts can't create households themselves, so anyone
+ * new needs an invite — from an admin (which seeds a fresh household they'll
+ * own) or from an existing household. Signing in stays open; without a
+ * household an account can't touch anything household-scoped.
+ */
+export const inviteOnly = Deno.env.get("INVITE_ONLY") === "true";
+
 export async function verifyHCaptcha(
   token: string | null | undefined,
   remoteIp?: string | null,
@@ -94,6 +102,12 @@ export function householdSetupUrl(redirectTo: string): string {
 function getBaseUrl(req: Request): string {
   const url = new URL(req.url);
   return `${ALWAYS_HTTPS ? "https:" : url.protocol}//${url.host}`;
+}
+
+export function generateInviteCode(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function generateOAuthState(): string {

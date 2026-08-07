@@ -1,6 +1,7 @@
 import { handler, page } from "./$edit.ts";
 import { HttpError } from "fresh/errors";
 import { uniqueSlug } from "../../../lib/slug.ts";
+import { logAudit } from "../../../lib/audit.ts";
 import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
 import {
   editDataToRecipeFields,
@@ -187,6 +188,17 @@ export const handlers = handler({
 
       await saveRecipeChildren(q, recipeId as string, form);
     });
+
+    if (ctx.state.user) {
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "recipe.update",
+        targetType: "recipe",
+        targetId: recipeId,
+        targetLabel: title?.trim() || slug,
+        detail: `slug ${newSlug}`,
+        householdId: ctx.state.householdId,
+      });
+    }
 
     return new Response(null, {
       status: 303,

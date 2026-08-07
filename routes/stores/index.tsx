@@ -7,6 +7,7 @@ import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import { Select } from "../../components/Select.tsx";
 import { CURRENCIES } from "../../lib/currencies.ts";
+import { logAudit } from "../../lib/audit.ts";
 import {
   getPage,
   Pagination,
@@ -122,6 +123,14 @@ export const handlers = handler({
       }
       throw err;
     }
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "store.create",
+      targetType: "store",
+      targetId: storeId,
+      targetLabel: name.trim(),
+      householdId: ctx.state.householdId,
+    });
 
     // Auto-add to household
     if (ctx.state.householdId) {

@@ -24,6 +24,7 @@ export interface State extends ParentState {
   unitSystem: UnitSystem;
   shoppingListCount: number;
   householdId: string | null;
+  isAdmin: boolean;
   pageTitle: string;
 }
 

@@ -192,7 +192,7 @@ export interface StoreWithOwned extends Store {
 export interface Household {
   id: string;
   name: string;
-  created_by: string;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -213,9 +213,13 @@ export interface HouseholdInvite {
   id: string;
   household_id: string;
   code: string;
-  created_by: string;
+  created_by: string | null;
   created_at: string;
   expires_at: string;
+  /** Admin invites: who this was sent to. */
+  invited_email: string | null;
+  /** Admin invites: the joiner becomes owner of the (empty) household. */
+  grants_owner: boolean;
   // JOIN field
   household_name?: string;
 }

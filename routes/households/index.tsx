@@ -4,7 +4,8 @@ import { FormField } from "../../components/FormField.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import type { Household, HouseholdInvite } from "../../db/types.ts";
-import { loginUrl, sanitizeRedirect } from "../../lib/auth.ts";
+import { logAudit } from "../../lib/audit.ts";
+import { inviteOnly, loginUrl, sanitizeRedirect } from "../../lib/auth.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -32,7 +33,7 @@ export const handlers = handler({
     }
 
     ctx.state.pageTitle = "Join or Create Household";
-    return { data: { redirectTo } };
+    return { data: { redirectTo, inviteOnly } };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -68,27 +69,49 @@ export const handlers = handler({
     if (method === "JOIN") {
       const code = (form.get("code") as string)?.trim();
       if (!code) {
-        return { data: { error: "Invite code is required", redirectTo } };
+        return {
+          data: { error: "Invite code is required", redirectTo, inviteOnly },
+        };
       }
 
       const inviteRes = await ctx.state.db.query<
-        Pick<HouseholdInvite, "household_id">
+        Pick<HouseholdInvite, "household_id" | "grants_owner"> & {
+          household_name: string;
+        }
       >(
-        `SELECT hi.household_id FROM household_invites hi
+        `SELECT hi.household_id, hi.grants_owner, h.name as household_name
+         FROM household_invites hi
+         JOIN households h ON h.id = hi.household_id
          WHERE hi.code = $1 AND hi.expires_at > now()`,
         [code],
       );
       if (inviteRes.rows.length === 0) {
         return {
-          data: { error: "Invalid or expired invite code", redirectTo },
+          data: {
+            error: "Invalid or expired invite code",
+            redirectTo,
+            inviteOnly,
+          },
         };
       }
 
       const householdId = inviteRes.rows[0].household_id;
       await ctx.state.db.query(
-        "INSERT INTO household_members (household_id, user_id, role) VALUES ($1, $2, 'member')",
-        [householdId, ctx.state.user.id],
+        "INSERT INTO household_members (household_id, user_id, role) VALUES ($1, $2, $3)",
+        [
+          householdId,
+          ctx.state.user.id,
+          inviteRes.rows[0].grants_owner ? "owner" : "member",
+        ],
       );
+
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "household.join",
+        targetType: "household",
+        targetId: householdId,
+        targetLabel: inviteRes.rows[0].household_name,
+        householdId,
+      });
 
       return new Response(null, {
         status: 303,
@@ -96,10 +119,20 @@ export const handlers = handler({
       });
     }
 
+    if (inviteOnly) {
+      return {
+        data: {
+          error: "Foodex is invite-only; households can't be created directly.",
+          redirectTo,
+          inviteOnly,
+        },
+      };
+    }
+
     const name = form.get("name") as string;
 
     if (!name?.trim()) {
-      return { data: { error: "Name is required", redirectTo } };
+      return { data: { error: "Name is required", redirectTo, inviteOnly } };
     }
 
     const houseRes = await ctx.state.db.query<Pick<Household, "id">>(
@@ -113,6 +146,14 @@ export const handlers = handler({
       [householdId, ctx.state.user.id],
     );
 
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "household.create",
+      targetType: "household",
+      targetId: householdId,
+      targetLabel: name.trim(),
+      householdId,
+    });
+
     return new Response(null, {
       status: 303,
       headers: { Location: done },
@@ -121,9 +162,10 @@ export const handlers = handler({
 });
 
 export default page(function HouseholdsPage({ data }) {
-  const { error, redirectTo } = data as {
+  const { error, redirectTo, inviteOnly: invitesOnly } = data as {
     error?: string;
     redirectTo?: string | null;
+    inviteOnly?: boolean;
   };
   const carryRedirect = redirectTo
     ? <input type="hidden" name="redirect" value={redirectTo} />
@@ -134,8 +176,9 @@ export default page(function HouseholdsPage({ data }) {
       <PageHeader title="Get Started" noSearch />
 
       <p class="text-stone-500 mb-6">
-        Create a new household or join an existing one to manage recipes, tools,
-        stores, and your pantry.
+        {invitesOnly
+          ? "Foodex is invite-only. Join a household with the invite code or link you received; if you don't have one, ask a household member or an operator for an invite."
+          : "Create a new household or join an existing one to manage recipes, tools, stores, and your pantry."}
       </p>
 
       {error && (
@@ -145,30 +188,34 @@ export default page(function HouseholdsPage({ data }) {
       )}
 
       <div class="space-y-6">
-        <div>
-          <h2 class="text-lg font-semibold mb-3">Create Household</h2>
-          <form method="POST" class="card space-y-3">
-            {carryRedirect}
-            <FormField label="Name">
-              <Input
-                type="text"
-                name="name"
-                required
-                placeholder="e.g. Smith Family"
-                class="w-full"
-              />
-            </FormField>
-            <Button type="submit">
-              Create Household
-            </Button>
-          </form>
-        </div>
+        {!invitesOnly && (
+          <>
+            <div>
+              <h2 class="text-lg font-semibold mb-3">Create Household</h2>
+              <form method="POST" class="card space-y-3">
+                {carryRedirect}
+                <FormField label="Name">
+                  <Input
+                    type="text"
+                    name="name"
+                    required
+                    placeholder="e.g. Smith Family"
+                    class="w-full"
+                  />
+                </FormField>
+                <Button type="submit">
+                  Create Household
+                </Button>
+              </form>
+            </div>
 
-        <div class="flex items-center gap-4">
-          <hr class="flex-1 border-stone-300 dark:border-stone-700" />
-          <span class="text-sm text-stone-400">or</span>
-          <hr class="flex-1 border-stone-300 dark:border-stone-700" />
-        </div>
+            <div class="flex items-center gap-4">
+              <hr class="flex-1 border-stone-300 dark:border-stone-700" />
+              <span class="text-sm text-stone-400">or</span>
+              <hr class="flex-1 border-stone-300 dark:border-stone-700" />
+            </div>
+          </>
+        )}
 
         <div>
           <h2 class="text-lg font-semibold mb-3">Join Household</h2>

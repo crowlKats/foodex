@@ -10,6 +10,7 @@ import { BackLink } from "../../../components/BackLink.tsx";
 import { Button, ButtonLink } from "../../../components/Button.tsx";
 import { Input } from "../../../components/Input.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
+import { logAudit } from "../../../lib/audit.ts";
 import { formatDuration } from "../../../lib/duration.ts";
 import { formatQuantity } from "../../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../../lib/quantity.ts";
@@ -127,6 +128,10 @@ export const handlers = handler({
 
     if (method === "REMOVE_RECIPE" && isOwner) {
       const recipeId = String(form.get("recipe_id"));
+      const recipeRes = await ctx.state.db.query<{ title: string }>(
+        "SELECT title FROM recipes WHERE id = $1",
+        [recipeId],
+      );
       await ctx.state.db.query(
         "DELETE FROM collection_recipes WHERE collection_id = $1 AND recipe_id = $2",
         [id, recipeId],
@@ -135,6 +140,16 @@ export const handlers = handler({
         "UPDATE collections SET updated_at = now() WHERE id = $1",
         [id],
       );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "collection.remove_recipe",
+        targetType: "collection",
+        targetId: id,
+        targetLabel: collection.name,
+        detail: recipeRes.rows[0]
+          ? `removed ${recipeRes.rows[0].title}`
+          : `removed unknown recipe ${recipeId}`,
+        householdId: ctx.state.householdId,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: `/collections/${id}` },
@@ -147,6 +162,14 @@ export const handlers = handler({
         "UPDATE collections SET share_token = $1, share_token_expires_at = now() + interval '30 days' WHERE id = $2",
         [token, id],
       );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "collection.share",
+        targetType: "collection",
+        targetId: id,
+        targetLabel: collection.name,
+        detail: "generated share link",
+        householdId: ctx.state.householdId,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: `/collections/${id}` },
@@ -158,6 +181,14 @@ export const handlers = handler({
         "UPDATE collections SET share_token = NULL, share_token_expires_at = NULL WHERE id = $1",
         [id],
       );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "collection.share",
+        targetType: "collection",
+        targetId: id,
+        targetLabel: collection.name,
+        detail: "revoked share link",
+        householdId: ctx.state.householdId,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: `/collections/${id}` },
@@ -166,10 +197,26 @@ export const handlers = handler({
 
     if (method === "REVOKE_SHARE" && isOwner) {
       const shareId = String(form.get("share_id"));
+      const shareRes = await ctx.state.db.query<{ name: string }>(
+        `SELECT h.name FROM collection_shares cs
+         JOIN households h ON h.id = cs.household_id
+         WHERE cs.id = $1 AND cs.collection_id = $2`,
+        [shareId, id],
+      );
       await ctx.state.db.query(
         "DELETE FROM collection_shares WHERE id = $1 AND collection_id = $2",
         [shareId, id],
       );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "collection.share",
+        targetType: "collection",
+        targetId: id,
+        targetLabel: collection.name,
+        detail: shareRes.rows[0]
+          ? `revoked share with household ${shareRes.rows[0].name}`
+          : "revoked share",
+        householdId: ctx.state.householdId,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: `/collections/${id}` },
@@ -182,6 +229,14 @@ export const handlers = handler({
         "DELETE FROM collection_shares WHERE collection_id = $1 AND household_id = $2",
         [id, ctx.state.householdId],
       );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "collection.share",
+        targetType: "collection",
+        targetId: id,
+        targetLabel: collection.name,
+        detail: "left shared collection",
+        householdId: ctx.state.householdId,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: "/collections" },

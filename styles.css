@@ -385,6 +385,11 @@
     dark:text-red-300 px-4 py-2;
 }
 
+.alert-success {
+  @apply bg-green-50 dark:bg-green-950 border-2 border-green-600 text-green-800
+    dark:text-green-300 px-4 py-2;
+}
+
 /* ── Section titles ── */
 /* The label itself. `.section-header` draws the rule beneath it and makes
    room for controls (toggles, links) on the same line. */
@@ -460,16 +465,12 @@
   @apply border-orange-400;
 }
 
-/* Radio-driven tabs: no island, and every panel stays in the DOM so one
-   submit still posts the whole form. The invalid-capture effect inside
-   `islands/RecipeFields.tsx` reveals the panel holding a field that fails
-   validation. */
-.edit-tab-radio {
-  @apply hidden;
-}
-
-.edit-tablist {
-  @apply flex flex-wrap gap-1 mb-4 border-b-2 border-stone-300
+/* ── Tab bars ── */
+/* Shared by every underlined tab row (recipe editor, admin sections). Tabs
+   hang 2px into the rule so the active underline replaces it rather than
+   stacking on top. Rows wrap instead of scrolling on narrow screens. */
+.tab-bar {
+  @apply flex flex-wrap gap-1 border-b-2 border-stone-300
     dark:border-stone-700;
 }
 
@@ -477,10 +478,29 @@
    changes that label's width and shoves every tab after it sideways on each
    click. Colour and the underline carry the active state instead, for the same
    reason `.nav-link` stays `font-medium` and only swaps colour. */
-.edit-tab {
+.tab {
   @apply flex items-center gap-1.5 text-sm font-medium px-4 py-2 -mb-0.5
     border-b-2 border-transparent text-stone-500 dark:text-stone-400
-    cursor-pointer select-none hover:text-stone-900 dark:hover:text-stone-100;
+    cursor-pointer select-none whitespace-nowrap
+    hover:text-stone-900 dark:hover:text-stone-100;
+}
+
+.tab-active {
+  @apply text-orange-600 dark:text-orange-400 border-orange-600
+    dark:border-orange-400 hover:text-orange-600 dark:hover:text-orange-400;
+}
+
+/* Radio-driven tabs: no island, and every panel stays in the DOM so one
+   submit still posts the whole form. The invalid-capture effect inside
+   `islands/RecipeFields.tsx` reveals the panel holding a field that fails
+   validation. Visuals come from `.tab-bar`/`.tab`; the classes below carry
+   only the radio mechanism and the editor's spacing. */
+.edit-tab-radio {
+  @apply hidden;
+}
+
+.edit-tablist {
+  @apply mb-4;
 }
 
 .edit-panel {

@@ -9,6 +9,7 @@ import { IconFridge } from "@tabler/icons-preact";
 import { IconHome } from "@tabler/icons-preact";
 import { IconBooks } from "@tabler/icons-preact";
 import { IconScan } from "@tabler/icons-preact";
+import { IconShieldCog } from "@tabler/icons-preact";
 import type { User } from "../utils.ts";
 
 function isActive(currentPath: string, href: string): boolean {
@@ -60,10 +61,11 @@ function MobileTab(
 }
 
 export function Nav(
-  { user, shoppingListCount, hasHousehold, currentPath }: {
+  { user, shoppingListCount, hasHousehold, isAdmin, currentPath }: {
     user?: User | null;
     shoppingListCount?: number;
     hasHousehold?: boolean;
+    isAdmin?: boolean;
     currentPath: string;
   },
 ) {
@@ -207,6 +209,17 @@ export function Nav(
                   title="Collections"
                 >
                   <IconBooks class="size-5" />
+                </a>
+              )}
+              {isAdmin && (
+                <a
+                  href="/admin"
+                  class={`nav-link ${
+                    currentPath.startsWith("/admin") ? "text-orange-400" : ""
+                  }`}
+                  title="Admin"
+                >
+                  <IconShieldCog class="size-5" />
                 </a>
               )}
               <a

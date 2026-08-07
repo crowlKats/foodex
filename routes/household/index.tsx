@@ -12,6 +12,7 @@ import { IconClock } from "@tabler/icons-preact";
 import { IconFlame } from "@tabler/icons-preact";
 import { IconZzz } from "@tabler/icons-preact";
 import { IconUsers } from "@tabler/icons-preact";
+import { logAudit } from "../../lib/audit.ts";
 import { formatDuration } from "../../lib/duration.ts";
 import { formatQuantity } from "../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../lib/quantity.ts";
@@ -25,12 +26,7 @@ import type {
   StoreWithOwned,
   ToolWithOwned,
 } from "../../db/types.ts";
-
-function generateInviteCode(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
+import { generateInviteCode } from "../../lib/auth.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -190,8 +186,13 @@ export const handlers = handler({
     const form = await ctx.req.formData();
     const method = form.get("_method");
 
-    const memberCheck = await ctx.state.db.query<Pick<HouseholdMember, "role">>(
-      "SELECT role FROM household_members WHERE household_id = $1 AND user_id = $2",
+    const memberCheck = await ctx.state.db.query<
+      Pick<HouseholdMember, "role"> & { household_name: string }
+    >(
+      `SELECT hm.role, h.name as household_name
+       FROM household_members hm
+       JOIN households h ON h.id = hm.household_id
+       WHERE hm.household_id = $1 AND hm.user_id = $2`,
       [id, ctx.state.user.id],
     );
     if (memberCheck.rows.length === 0) {
@@ -201,6 +202,7 @@ export const handlers = handler({
       });
     }
     const myRole = memberCheck.rows[0].role;
+    const householdName = memberCheck.rows[0].household_name;
 
     if (method === "ADD_TOOL") {
       const toolId = String(form.get("tool_id"));
@@ -240,19 +242,50 @@ export const handlers = handler({
         "INSERT INTO household_invites (household_id, code, created_by) VALUES ($1, $2, $3)",
         [id, code, ctx.state.user.id],
       );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "household.create_invite",
+        targetType: "household",
+        targetId: id,
+        targetLabel: householdName,
+        householdId: id,
+      });
     } else if (method === "REVOKE_INVITE" && myRole === "owner") {
       const inviteId = String(form.get("invite_id"));
       await ctx.state.db.query(
         "DELETE FROM household_invites WHERE id = $1 AND household_id = $2",
         [inviteId, id],
       );
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "household.revoke_invite",
+        targetType: "household",
+        targetId: id,
+        targetLabel: householdName,
+        householdId: id,
+      });
     } else if (method === "REMOVE_MEMBER" && myRole === "owner") {
       const memberId = String(form.get("member_user_id"));
       if (memberId !== ctx.state.user.id) {
+        const memberRes = await ctx.state.db.query<{
+          name: string | null;
+          email: string | null;
+        }>("SELECT name, email FROM users WHERE id = $1", [memberId]);
+        const member = memberRes.rows[0];
         await ctx.state.db.query(
           "DELETE FROM household_members WHERE household_id = $1 AND user_id = $2",
           [id, memberId],
         );
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "household.remove_member",
+          targetType: "household",
+          targetId: id,
+          targetLabel: householdName,
+          detail: member
+            ? `removed ${member.name ?? "(no name)"} <${
+              member.email ?? "no email"
+            }>`
+            : `removed unknown user ${memberId}`,
+          householdId: id,
+        });
       }
     } else if (method === "LEAVE") {
       if (myRole !== "owner") {
@@ -260,6 +293,13 @@ export const handlers = handler({
           "DELETE FROM household_members WHERE household_id = $1 AND user_id = $2",
           [id, ctx.state.user.id],
         );
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "household.leave",
+          targetType: "household",
+          targetId: id,
+          targetLabel: householdName,
+          householdId: id,
+        });
         return new Response(null, {
           status: 303,
           headers: { Location: "/households" },
@@ -272,9 +312,24 @@ export const handlers = handler({
           "UPDATE households SET name = $1, updated_at = now() WHERE id = $2",
           [name.trim(), id],
         );
+        await logAudit(ctx.state.db.query, ctx.state.user, {
+          action: "household.rename",
+          targetType: "household",
+          targetId: id,
+          targetLabel: name.trim(),
+          detail: `renamed from ${householdName}`,
+          householdId: id,
+        });
       }
     } else if (method === "DELETE" && myRole === "owner") {
       await ctx.state.db.query("DELETE FROM households WHERE id = $1", [id]);
+      await logAudit(ctx.state.db.query, ctx.state.user, {
+        action: "household.delete",
+        targetType: "household",
+        targetId: id,
+        targetLabel: householdName,
+        householdId: null,
+      });
       return new Response(null, {
         status: 303,
         headers: { Location: "/households" },

@@ -1,5 +1,6 @@
 import { handler, page } from "./$new.ts";
 import { uniqueSlug } from "../../lib/slug.ts";
+import { logAudit } from "../../lib/audit.ts";
 import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
 import { saveRecipeChildren } from "../../lib/recipe-save.ts";
 import RecipeFields from "../../islands/RecipeFields.tsx";
@@ -124,6 +125,7 @@ export const handlers = handler({
 
     const slug = await uniqueSlug(ctx.state.db.query, title);
 
+    let recipeId = "";
     try {
       await ctx.state.db.transaction(async (q) => {
         const res = await q<{ id: string }>(
@@ -157,7 +159,8 @@ export const handlers = handler({
             outputExpiresDays,
           ],
         );
-        await saveRecipeChildren(q, res.rows[0].id, form);
+        recipeId = res.rows[0].id;
+        await saveRecipeChildren(q, recipeId, form);
       });
     } catch (err) {
       if (String(err).includes("unique")) {
@@ -182,6 +185,15 @@ export const handlers = handler({
       }
       throw err;
     }
+
+    await logAudit(ctx.state.db.query, ctx.state.user, {
+      action: "recipe.create",
+      targetType: "recipe",
+      targetId: recipeId,
+      targetLabel: title.trim(),
+      detail: `slug ${slug}`,
+      householdId: ctx.state.householdId,
+    });
 
     return new Response(null, {
       status: 303,

@@ -6,6 +6,7 @@
  * this it would render a signed-out nav to a signed-in user on every 404.
  */
 import { query } from "../db/mod.ts";
+import { isAdminEmail } from "./admin.ts";
 import { getSessionIdFromRequest } from "./auth.ts";
 import { countOutstandingLines } from "./shopping-list.ts";
 import type { User } from "../utils.ts";
@@ -16,6 +17,7 @@ export interface SessionState {
   unitSystem: UnitSystem;
   shoppingListCount: number;
   householdId: string | null;
+  isAdmin: boolean;
 }
 
 export function emptySession(): SessionState {
@@ -24,6 +26,7 @@ export function emptySession(): SessionState {
     unitSystem: "metric",
     shoppingListCount: 0,
     householdId: null,
+    isAdmin: false,
   };
 }
 
@@ -64,6 +67,7 @@ export async function loadSessionState(req: Request): Promise<SessionState> {
   };
   state.unitSystem = unitSystem;
   state.householdId = row.household_id;
+  state.isAdmin = isAdminEmail(row.email);
   // The list is a projection now, so the badge is derived rather than a row
   // count. Kept to one query; this runs on every request.
   if (row.household_id) {
