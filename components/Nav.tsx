@@ -254,7 +254,7 @@ export function Nav(
                       {user.avatar_url && (
                         <img
                           src={user.avatar_url}
-                          alt={user.name}
+                          alt={user.name ?? ""}
                           class="size-7 rounded-full"
                         />
                       )}

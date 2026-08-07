@@ -32,7 +32,7 @@ export function emptySession(): SessionState {
 
 interface UserRow {
   id: string;
-  name: string;
+  name: string | null;
   email: string | null;
   avatar_url: string | null;
   unit_system: string | null;

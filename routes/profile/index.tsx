@@ -1,6 +1,7 @@
 import { handler, page } from "./$index.ts";
 import type { Household } from "../../db/types.ts";
 import { Button } from "../../components/Button.tsx";
+import { Input } from "../../components/Input.tsx";
 import { Select } from "../../components/Select.tsx";
 
 /** Sections the mobile tab bar has no room for. */
@@ -58,6 +59,14 @@ export const handlers = handler({
       );
     }
 
+    const name = form.get("name");
+    if (typeof name === "string" && name.trim()) {
+      await ctx.state.db.query(
+        "UPDATE users SET name = $1 WHERE id = $2",
+        [name.trim().slice(0, 100), ctx.state.user.id],
+      );
+    }
+
     return new Response(null, {
       status: 303,
       headers: { Location: "/profile" },
@@ -75,7 +84,7 @@ export default page(
           {user.avatar_url && (
             <img
               src={user.avatar_url}
-              alt={user.name}
+              alt={user.name ?? ""}
               class="size-16 rounded-full"
             />
           )}
@@ -83,6 +92,24 @@ export default page(
             <h1 class="text-2xl font-bold">{user.name}</h1>
             {user.email && <p class="text-sm text-stone-500">{user.email}</p>}
           </div>
+        </div>
+
+        <div class="card mb-4">
+          <h2 class="text-lg font-semibold mb-3">Display Name</h2>
+          <p class="text-xs text-stone-500 mb-3">
+            Shown to other members of your household.
+          </p>
+          <form method="POST" class="flex gap-2">
+            <Input
+              type="text"
+              name="name"
+              value={user.name ?? ""}
+              required
+              maxLength={100}
+              class="flex-1 min-w-0"
+            />
+            <Button type="submit">Save</Button>
+          </form>
         </div>
 
         <div class="card mb-4">

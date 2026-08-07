@@ -11,6 +11,7 @@ import {
 import {
   getSessionIdFromRequest,
   householdRequirementResponse,
+  nameRequirementResponse,
 } from "../lib/auth.ts";
 import { loadSessionState } from "../lib/session.ts";
 import { cleanupStaleAccounts } from "../lib/retention.ts";
@@ -42,6 +43,13 @@ export default middleware(async function (ctx) {
     ...(await loadSessionState(ctx.req)),
     pageTitle: "Foodex",
   } satisfies State as State;
+
+  // A display name comes before everything else: without one the user shows
+  // up to their household as a raw email address or nothing at all.
+  if (state.user && !state.user.name) {
+    const denied = nameRequirementResponse(new URL(ctx.req.url));
+    if (denied) return denied;
+  }
 
   // Membership in a household is required for everything beyond signing in
   // and onboarding; see householdRequirementResponse for the exemptions.

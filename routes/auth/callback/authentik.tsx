@@ -31,7 +31,7 @@ export const handlers = handler({
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (authentik_id) DO UPDATE SET
          email = COALESCE(EXCLUDED.email, users.email),
-         name = COALESCE(EXCLUDED.name, users.name),
+         name = COALESCE(users.name, EXCLUDED.name),
          avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url)
        RETURNING id`,
       [authentikId, email, name, avatarUrl],

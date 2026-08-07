@@ -122,6 +122,39 @@ export function householdSetupUrl(redirectTo: string): string {
  * is lost for good if the detour forgets it. API calls can't follow that
  * detour, so they get a 403 that `apiErrorMessage` can surface.
  */
+/**
+ * What a signed-in user without a display name gets instead of the page they
+ * asked for: a detour through /welcome to pick one. Returns null when the
+ * request may proceed.
+ *
+ * Unlike household membership this is not an authorization boundary, just an
+ * identity gap, so API calls (which can't follow an HTML detour) pass
+ * through, as do the auth flow, the welcome form itself, and framework
+ * assets.
+ */
+export function nameRequirementResponse(url: URL): Response | null {
+  const path = url.pathname;
+
+  if (
+    path.startsWith("/auth") ||
+    path === "/welcome" ||
+    path.startsWith("/api") ||
+    path.startsWith("/_fresh")
+  ) {
+    return null;
+  }
+
+  const target = sanitizeRedirect(path + url.search);
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: target
+        ? `/welcome?redirect=${encodeURIComponent(target)}`
+        : "/welcome",
+    },
+  });
+}
+
 export function householdRequirementResponse(url: URL): Response | null {
   const path = url.pathname;
 
@@ -142,6 +175,7 @@ export function householdRequirementResponse(url: URL): Response | null {
     path.startsWith("/auth") ||
     path.startsWith("/households") ||
     path === "/moving-box" ||
+    path === "/welcome" ||
     path.startsWith("/_fresh")
   ) {
     return null;
@@ -287,7 +321,12 @@ export async function exchangeGoogleCode(
   req: Request,
   code: string,
 ): Promise<
-  { googleId: string; email: string | null; name: string; avatarUrl: string }
+  {
+    googleId: string;
+    email: string | null;
+    name: string | null;
+    avatarUrl: string;
+  }
 > {
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -317,7 +356,8 @@ export async function exchangeGoogleCode(
   return {
     googleId: String(user.id),
     email: user.email ?? null,
-    name: user.name ?? user.email ?? "User",
+    // No made-up fallback: a null name sends the user through /welcome.
+    name: user.name ?? null,
     avatarUrl: user.picture ?? "",
   };
 }
@@ -340,7 +380,7 @@ export async function exchangeAuthentikCode(
   {
     authentikId: string;
     email: string | null;
-    name: string;
+    name: string | null;
     avatarUrl: string;
   }
 > {
@@ -369,7 +409,8 @@ export async function exchangeAuthentikCode(
   return {
     authentikId: String(user.sub),
     email: user.email ?? null,
-    name: user.name ?? user.preferred_username ?? user.email ?? "User",
+    // No made-up fallback: a null name sends the user through /welcome.
+    name: user.name ?? user.preferred_username ?? null,
     avatarUrl: "",
   };
 }

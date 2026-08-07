@@ -2,7 +2,8 @@ import type { UnitSystem } from "./lib/unit-display.ts";
 
 export interface User {
   id: string;
-  name: string;
+  /** Null until the user picks one; the middleware detours them to /welcome. */
+  name: string | null;
   email: string | null;
   avatar_url: string | null;
   unit_system: UnitSystem;

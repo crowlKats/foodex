@@ -35,7 +35,7 @@ export const handlers = handler({
 
     const userResult = await ctx.state.db.query<{ id: string }>(
       `INSERT INTO users (email, name)
-       VALUES ($1, $1)
+       VALUES ($1, NULL)
        ON CONFLICT (email) WHERE email IS NOT NULL DO UPDATE SET
          email = EXCLUDED.email
        RETURNING id`,

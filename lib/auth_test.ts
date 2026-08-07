@@ -1,5 +1,9 @@
 import { assertEquals } from "@std/assert";
-import { householdRequirementResponse, sanitizeRedirect } from "./auth.ts";
+import {
+  householdRequirementResponse,
+  nameRequirementResponse,
+  sanitizeRedirect,
+} from "./auth.ts";
 
 Deno.test("sanitizeRedirect: keeps same-origin paths", () => {
   assertEquals(
@@ -76,6 +80,29 @@ Deno.test("householdRequirementResponse: rejects API calls with a JSON 403", asy
 Deno.test("householdRequirementResponse: leaves token- and public-authorized API endpoints open", () => {
   assertEquals(guard("/api/shopping-list-shared"), null);
   assertEquals(guard("/api/media/file/some-key.jpg"), null);
+});
+
+function nameGuard(path: string) {
+  return nameRequirementResponse(new URL(path, "http://localhost"));
+}
+
+Deno.test("nameRequirementResponse: bounces pages through /welcome", () => {
+  const res = nameGuard("/recipes?sort=name");
+  assertEquals(res?.status, 303);
+  assertEquals(
+    res?.headers.get("Location"),
+    `/welcome?redirect=${encodeURIComponent("/recipes?sort=name")}`,
+  );
+});
+
+Deno.test("nameRequirementResponse: leaves welcome, auth, and the API open", () => {
+  assertEquals(nameGuard("/welcome"), null);
+  assertEquals(nameGuard("/auth/logout"), null);
+  assertEquals(nameGuard("/api/pantry"), null);
+});
+
+Deno.test("householdRequirementResponse: leaves the welcome step reachable", () => {
+  assertEquals(guard("/welcome"), null);
 });
 
 Deno.test("sanitizeRedirect: rejects header-splitting control characters", () => {
