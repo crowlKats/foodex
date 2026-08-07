@@ -803,6 +803,13 @@ export default page(function HouseholdDetailPage(
                   leave.
                 </p>
               )}
+              <p class="text-xs text-stone-400 mt-2">
+                Leaving?{" "}
+                <a href="/moving-box" class="link">
+                  Pack a moving box
+                </a>{" "}
+                to take recipes with you.
+              </p>
             </div>
 
             {isOwner && (

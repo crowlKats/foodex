@@ -6,6 +6,7 @@ import { Input } from "../../components/Input.tsx";
 import type { Household, HouseholdInvite } from "../../db/types.ts";
 import { logAudit } from "../../lib/audit.ts";
 import { inviteOnly, loginUrl, sanitizeRedirect } from "../../lib/auth.ts";
+import { unpackMovingBox } from "../../lib/moving-box.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -33,7 +34,13 @@ export const handlers = handler({
     }
 
     ctx.state.pageTitle = "Join or Create Household";
-    return { data: { redirectTo, inviteOnly } };
+    const boxRes = await ctx.state.db.query<{ cnt: string }>(
+      "SELECT COUNT(*) as cnt FROM moving_box_recipes WHERE user_id = $1",
+      [ctx.state.user.id],
+    );
+    return {
+      data: { redirectTo, inviteOnly, boxCount: Number(boxRes.rows[0].cnt) },
+    };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -113,6 +120,9 @@ export const handlers = handler({
         householdId,
       });
 
+      await unpackMovingBox(ctx.state.db.query, ctx.state.user, householdId)
+        .catch((err) => console.error("moving box unpack failed:", err));
+
       return new Response(null, {
         status: 303,
         headers: { Location: done },
@@ -154,6 +164,9 @@ export const handlers = handler({
       householdId,
     });
 
+    await unpackMovingBox(ctx.state.db.query, ctx.state.user, householdId)
+      .catch((err) => console.error("moving box unpack failed:", err));
+
     return new Response(null, {
       status: 303,
       headers: { Location: done },
@@ -162,10 +175,11 @@ export const handlers = handler({
 });
 
 export default page(function HouseholdsPage({ data }) {
-  const { error, redirectTo, inviteOnly: invitesOnly } = data as {
+  const { error, redirectTo, inviteOnly: invitesOnly, boxCount } = data as {
     error?: string;
     redirectTo?: string | null;
     inviteOnly?: boolean;
+    boxCount?: number;
   };
   const carryRedirect = redirectTo
     ? <input type="hidden" name="redirect" value={redirectTo} />
@@ -184,6 +198,14 @@ export default page(function HouseholdsPage({ data }) {
       {error && (
         <div class="alert-error mb-4">
           {error}
+        </div>
+      )}
+
+      {(boxCount ?? 0) > 0 && (
+        <div class="alert-success mb-4">
+          Your <a href="/moving-box" class="underline">moving box</a> with{" "}
+          {boxCount} recipe{boxCount === 1 ? "" : "s"}{" "}
+          will unpack into the household you join or create.
         </div>
       )}
 
