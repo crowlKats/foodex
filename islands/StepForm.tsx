@@ -269,8 +269,8 @@ const SECTION_GAP = 32;
 const SECTION_MIN_W = 360;
 /** Right-end spacing inside the graph scroller. Trailing padding on a scroll
  *  container is unreliably included in the scrollable area, so the canvas
- *  width carries it instead; the left end uses plain padding (pl-4). */
-const GRAPH_PAD_END = 16;
+ *  width carries it instead; the left end uses plain padding (pl-12). */
+const GRAPH_PAD_END = 48;
 
 /** A section's internal step layout, local to its scrollable step area. */
 interface SectionInner {
@@ -864,7 +864,7 @@ export default function StepForm(
   // whole window edge to edge; measured against the nearest scroll/clip
   // ancestor (<main> on the edit pages, the modal scroller in the agent
   // session). Spacing from the window edge is internal to the scroller
-  // (pl-4 + GRAPH_PAD_END), not an outer gutter.
+  // (pl-12 + GRAPH_PAD_END), not an outer gutter.
   const bleed = useSignal({ left: 0, right: 0 });
   useEffect(() => {
     const el = rootRef.current;
@@ -1780,7 +1780,7 @@ export default function StepForm(
       {/* ── Nested graph (sections containing steps) ── */}
       {isGraph && nested && (
         <div
-          class="overflow-x-auto pb-2 pl-4 select-none"
+          class="overflow-x-auto pb-2 pl-12 select-none"
           style={{
             marginLeft: `${-bleed.value.left}px`,
             marginRight: `${-bleed.value.right}px`,
@@ -2143,7 +2143,7 @@ export default function StepForm(
             </button>
           </div>
           <div
-            class="overflow-x-auto pb-2 pl-4 select-none"
+            class="overflow-x-auto pb-2 pl-12 select-none"
             style={{
               marginLeft: `${-bleed.value.left}px`,
               marginRight: `${-bleed.value.right}px`,
