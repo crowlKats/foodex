@@ -5,12 +5,15 @@ interface PageHeaderProps {
   title: string;
   query?: string;
   searchPlaceholder?: string;
+  /** Query params the search submit keeps (active filters); see SearchBar. */
+  searchPreserve?: Record<string, string>;
   children?: ComponentChildren;
   noSearch?: boolean;
 }
 
 export function PageHeader(
-  { title, query, searchPlaceholder, children, noSearch }: PageHeaderProps,
+  { title, query, searchPlaceholder, searchPreserve, children, noSearch }:
+    PageHeaderProps,
 ) {
   return (
     <div class="mb-6 space-y-3 sm:space-y-0">
@@ -27,6 +30,7 @@ export function PageHeader(
               query={query}
               placeholder={searchPlaceholder ??
                 `Search ${title.toLowerCase()}...`}
+              preserve={searchPreserve}
             />
           </div>
         )}
