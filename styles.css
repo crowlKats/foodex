@@ -870,9 +870,20 @@
     display: none !important;
   }
 
-  /* Reset layout */
+  /*
+   * Reset layout. The app shell is a fixed-height flex column (body is
+   * h-screen overflow-hidden, main scrolls internally), which prints as a
+   * single clipped page; let the document flow so every page prints.
+   */
+  html,
   body {
+    height: auto !important;
     min-height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  body {
     font-size: 11pt;
     line-height: 1.4;
   }
@@ -881,6 +892,8 @@
     max-width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   /* Flatten recipe grid into single column */
@@ -894,6 +907,15 @@
     padding: 8pt !important;
     margin-bottom: 8pt;
     page-break-inside: avoid;
+  }
+
+  /*
+   * The steps card spans several pages; keeping it unbreakable just dumps a
+   * mostly-blank first page and starts the steps on page two. Let it break
+   * and keep each section's heading attached to its first step instead.
+   */
+  .card.recipe-body {
+    page-break-inside: auto;
   }
 
   /* Ingredients sidebar: full width in print */
