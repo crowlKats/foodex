@@ -60,6 +60,7 @@ export function editDataToRecipeFields(
       amount: i.amount != null ? String(i.amount) : "",
       unit: i.unit ?? "",
       ingredient_id: i.ingredient_id != null ? String(i.ingredient_id) : "",
+      note: i.note ?? "",
       intermediate: i.intermediate ?? false,
     })),
     sections: d.sections.map((s) => ({

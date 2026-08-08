@@ -23,6 +23,7 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
       name: String(fd.get(`ingredients[${i}][name]`) ?? ""),
       amount: String(fd.get(`ingredients[${i}][amount]`) ?? ""),
       unit: String(fd.get(`ingredients[${i}][unit]`) ?? ""),
+      note: String(fd.get(`ingredients[${i}][note]`) ?? ""),
       ingredient_id: (fd.get(`ingredients[${i}][ingredient_id]`) as string) ||
         null,
       intermediate: fd.get(`ingredients[${i}][intermediate]`) === "true",

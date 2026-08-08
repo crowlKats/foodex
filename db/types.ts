@@ -63,6 +63,8 @@ export interface RecipeIngredient {
   amount: number | null;
   unit: string | null;
   key: string | null;
+  /** Prep/usage note for this line (e.g. finely chopped, room temperature). */
+  note: string | null;
   sort_order: number;
   /** Made during this recipe (browned butter): scales, but is not shoppable
    *  and links to no library ingredient. */

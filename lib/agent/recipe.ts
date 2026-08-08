@@ -27,6 +27,8 @@ export interface AgentIngredientRow {
   name: string;
   amount?: string;
   unit?: string;
+  /** Prep/usage note for this line (e.g. finely chopped, room temperature). */
+  note?: string | null;
   ingredient_id?: string | null;
   /** Made during this recipe: no library link, never shopped. */
   intermediate?: boolean;
@@ -203,6 +205,7 @@ export async function loadAgentRecipe(
       name: r.ingredient_name ?? r.name,
       amount: r.amount != null ? String(r.amount) : "",
       unit: r.unit ?? "",
+      note: r.note ?? "",
       ingredient_id: r.ingredient_id,
       intermediate: r.intermediate ?? false,
     })),
@@ -244,6 +247,7 @@ export function agentRecipeToFormData(r: AgentRecipe): FormData {
     fd.set(`ingredients[${i}][key]`, ing.key ?? "");
     fd.set(`ingredients[${i}][amount]`, ing.amount ?? "");
     fd.set(`ingredients[${i}][unit]`, ing.unit ?? "");
+    fd.set(`ingredients[${i}][note]`, ing.note ?? "");
     fd.set(
       `ingredients[${i}][intermediate]`,
       ing.intermediate === true ? "true" : "false",

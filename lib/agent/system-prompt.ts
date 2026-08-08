@@ -62,7 +62,9 @@ Every ingredient row in a recipe MUST have an "ingredient_id" pointing at a real
 entity, with ONE exception: rows marked "intermediate": true (products made during the \
 recipe, like browned butter or burnt lemon juice) take no link and never become library \
 entities. A row looks like \
-{ "key": ..., "name": ..., "amount": ..., "unit": ..., "ingredient_id": "<id>" }. For each row:
+{ "key": ..., "name": ..., "amount": ..., "unit": ..., "ingredient_id": "<id>" }, plus an \
+optional "note" for short per-line prep/usage hints ("finely chopped", "room temperature"); \
+keep "name" a clean ingredient name and put such qualifiers in "note". For each row:
 1. Search with list_ingredients. Search for the core item, not the source's exact phrase: \
 for "bronze-die spaghetti" search "spaghetti". If a reasonable match exists, set \
 "ingredient_id" to its real id.

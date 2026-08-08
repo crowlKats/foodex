@@ -24,7 +24,7 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
   "quantity_unit2": <"cm" for dimensions, else null>,
   "quantity_servings": <servings/pieces the tray yields, dimensions only, or null>,
   "ingredients": [
-    { "key": "snake_case_key", "name": "Ingredient name", "amount": "numeric amount as string", "unit": "unit" },
+    { "key": "snake_case_key", "name": "Ingredient name", "amount": "numeric amount as string", "unit": "unit", "note": "short prep/usage note or empty string" },
     { "key": "browned_butter", "name": "Browned butter", "amount": "80", "unit": "g", "intermediate": true }
   ],
   "sections": [
@@ -50,6 +50,7 @@ export const RECIPE_FIELD_RULES = `\
 - "key" must be a unique snake_case identifier derived from the ingredient name (e.g. "all_purpose_flour", "olive_oil")
 - ONE row per ingredient. When the source uses the same ingredient in several places (listed per component, or "divided"), merge it into a single row holding the TOTAL amount; never create per-use rows or keys like "butter_for_sauce" / "butter_for_finishing". Write each partial use into the step body with arithmetic on the ref so it still scales: with 60 g of bottarga total, "stir in {{ round(bottarga.amount * 40 / 60) }} g of bottarga" renders the 40 g share.
 - "amount" must be a numeric string (e.g. "200", "1.5") or empty string if unspecified
+- "note" carries short per-line prep or usage hints from the source ("finely chopped", "room temperature", "divided", "plus more for dusting"). Keep the "name" a clean ingredient name and move such qualifiers into "note"; use an empty string when there is none.
 - "unit" must be one of these exact values: ${
   ALL_UNITS.join(", ")
 }, or empty string if no unit applies

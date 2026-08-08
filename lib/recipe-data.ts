@@ -30,6 +30,8 @@ export interface OcrRecipeData {
     name: string;
     amount: string;
     unit: string;
+    /** Prep/usage note for this line (e.g. finely chopped), empty if none. */
+    note?: string;
     /** Made during this recipe: no library link, never shopped. */
     intermediate?: boolean;
   }[];

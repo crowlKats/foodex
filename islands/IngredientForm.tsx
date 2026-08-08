@@ -4,6 +4,7 @@ import SearchSelect from "./SearchSelect.tsx";
 import { IconPlus } from "@tabler/icons-preact";
 import { IconTrash } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
+import { Checkbox } from "../components/Checkbox.tsx";
 import { Input, InputBar } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
 
@@ -13,6 +14,8 @@ interface Ingredient {
   amount: string;
   unit: string;
   ingredient_id: string;
+  /** Prep/usage note for this line (e.g. finely chopped, room temperature). */
+  note?: string;
   /** Made during this recipe: no library link, never shopped. */
   intermediate?: boolean;
 }
@@ -38,9 +41,14 @@ export default function IngredientForm(
     IngredientFormProps,
 ) {
   const items = useSignal<IngredientItem[]>(
-    (initialIngredients.length > 0
-      ? initialIngredients
-      : [{ key: "", name: "", amount: "", unit: "", ingredient_id: "" }])
+    (initialIngredients.length > 0 ? initialIngredients : [{
+      key: "",
+      name: "",
+      amount: "",
+      unit: "",
+      ingredient_id: "",
+      note: "",
+    }])
       .map((i) => ({ ...i, _uid: crypto.randomUUID() })),
   );
 
@@ -59,6 +67,7 @@ export default function IngredientForm(
         amount: "",
         unit: "",
         ingredient_id: "",
+        note: "",
         _uid: crypto.randomUUID(),
       },
     ];
@@ -213,6 +222,16 @@ export default function IngredientForm(
                 <span class="input-affix">{"}}"}</span>
               </div>
             </div>
+            <div class="sm:pl-7">
+              <Input
+                type="text"
+                placeholder="Note (e.g. finely chopped, room temperature)"
+                value={item.note ?? ""}
+                onValueChange={(v) => update(i, "note", v)}
+                size="sm"
+                class="w-full"
+              />
+            </div>
             <input
               type="hidden"
               name={`ingredients[${i}][key]`}
@@ -233,17 +252,19 @@ export default function IngredientForm(
               name={`ingredients[${i}][unit]`}
               value={item.unit}
             />
-            <label
-              class="flex items-center gap-1.5 sm:pl-7 text-xs text-stone-500 dark:text-stone-400 cursor-pointer select-none"
+            <input
+              type="hidden"
+              name={`ingredients[${i}][note]`}
+              value={item.note ?? ""}
+            />
+            <Checkbox
+              class="sm:pl-7"
+              labelClass="text-xs text-stone-500 dark:text-stone-400"
               title="Produced by the steps (browned butter, a reserved liquid): scales and shows in steps, but is never shopped or stocked"
-            >
-              <input
-                type="checkbox"
-                checked={!!item.intermediate}
-                onChange={() => toggleIntermediate(i)}
-              />
-              Made while cooking
-            </label>
+              checked={!!item.intermediate}
+              onChange={() => toggleIntermediate(i)}
+              label="Made while cooking"
+            />
             <input
               type="hidden"
               name={`ingredients[${i}][ingredient_id]`}

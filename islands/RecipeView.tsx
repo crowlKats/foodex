@@ -1,4 +1,5 @@
 import { useSignal } from "@preact/signals";
+import { Fragment } from "preact";
 import { useEffect, useMemo, useRef } from "preact/hooks";
 import {
   formatAmount,
@@ -53,6 +54,8 @@ interface RecipeIngredient {
   amount: number;
   unit: string;
   name: string;
+  /** Prep/usage note for this line (e.g. finely chopped, room temperature). */
+  note?: string;
   ingredient_id?: string;
   base_cost?: number; // cost at the recipe's default quantity
   currency?: string;
@@ -261,7 +264,10 @@ export default function RecipeView(
       const hasDepth = (baseQuantity.value3 ?? 0) > 0;
       const f = Math.pow(ratio, 1 / (hasDepth ? 3 : 2));
       targetValue.value = r(baseQuantity.value * f, 1);
-      targetValue2.value = r((baseQuantity.value2 ?? baseQuantity.value) * f, 1);
+      targetValue2.value = r(
+        (baseQuantity.value2 ?? baseQuantity.value) * f,
+        1,
+      );
       if (hasDepth) targetValue3.value = r(baseQuantity.value3! * f, 1);
       return;
     }
@@ -718,6 +724,9 @@ export default function RecipeView(
   const cookingDoneOrder = useSignal<number[]>([]); // LIFO undo history for graph mode
   const cookingFocused = useSignal<number | null>(null); // which step is expanded in graph mode
   const cookingRef = useRef<HTMLDivElement>(null);
+  // Column widths as flex weights, keyed by column key so a column keeps its
+  // size while it exists; columns come and go as sections complete.
+  const cookingColWeights = useSignal<Record<string, number>>({});
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -743,6 +752,48 @@ export default function RecipeView(
         onTimerStart={startTimer}
       />
     );
+  }
+
+  /**
+   * Drag a divider to trade width between its two neighbouring columns. The
+   * divider captures the pointer, so no document-level listeners are needed
+   * and the drag survives the re-renders its own weight updates trigger.
+   */
+  function startColResize(e: PointerEvent, leftKey: string, rightKey: string) {
+    const divider = e.currentTarget as HTMLElement;
+    const leftEl = divider.previousElementSibling as HTMLElement | null;
+    const rightEl = divider.nextElementSibling as HTMLElement | null;
+    if (!leftEl || !rightEl) return;
+    e.preventDefault();
+    divider.setPointerCapture(e.pointerId);
+    divider.dataset.resizing = "true";
+    const startX = e.clientX;
+    const leftW = leftEl.getBoundingClientRect().width;
+    const pxSum = leftW + rightEl.getBoundingClientRect().width;
+    const weights = cookingColWeights.value;
+    const wSum = (weights[leftKey] ?? 1) + (weights[rightKey] ?? 1);
+    // Neither column may shrink below a readable width.
+    const minFrac = Math.min(0.5, 160 / pxSum);
+    const onMove = (ev: PointerEvent) => {
+      const f = Math.min(
+        1 - minFrac,
+        Math.max(minFrac, (leftW + ev.clientX - startX) / pxSum),
+      );
+      cookingColWeights.value = {
+        ...cookingColWeights.value,
+        [leftKey]: wSum * f,
+        [rightKey]: wSum * (1 - f),
+      };
+    };
+    const onUp = () => {
+      delete divider.dataset.resizing;
+      divider.removeEventListener("pointermove", onMove);
+      divider.removeEventListener("pointerup", onUp);
+      divider.removeEventListener("pointercancel", onUp);
+    };
+    divider.addEventListener("pointermove", onMove);
+    divider.addEventListener("pointerup", onUp);
+    divider.addEventListener("pointercancel", onUp);
   }
 
   /** Collapsible full ingredient list at the current scale, shown per view. */
@@ -1124,8 +1175,7 @@ export default function RecipeView(
                       )}
                     </div>
                     <p class="text-xs text-stone-400 mt-1">
-                      The whole recipe scales so {ing.name} matches this
-                      amount.
+                      The whole recipe scales so {ing.name} matches this amount.
                     </p>
                   </div>
                 );
@@ -1333,6 +1383,11 @@ export default function RecipeView(
                               </a>
                             )
                             : <span>{ing.name}</span>}
+                          {ing.note && (
+                            <span class="text-stone-500 dark:text-stone-400">
+                              , {ing.note}
+                            </span>
+                          )}
                           {ing.ingredient_id &&
                             sourceRecipes?.[ing.ingredient_id]?.map(
                               (src, i, all) => (
@@ -1439,6 +1494,9 @@ export default function RecipeView(
                           {d.text} {d.unit}
                         </span>{" "}
                         {ing.name}
+                        {ing.note && (
+                          <span class="text-stone-400">, {ing.note}</span>
+                        )}
                       </li>
                     );
                   })}
@@ -1869,66 +1927,86 @@ export default function RecipeView(
                   // vertical scroll on small screens, where 3+ columns would
                   // be a few characters wide each.
                   <div class="flex-1 flex overflow-hidden max-md:flex-col max-md:overflow-y-auto">
-                    {columns.map((col) => {
+                    {columns.map((col, ci) => {
                       const idx = col.showStepIdx;
                       if (idx == null) return null;
                       return (
-                        <div
-                          key={col.key}
-                          class="flex-1 flex flex-col overflow-hidden border-r-2 border-stone-200 dark:border-stone-700 last:border-r-0 max-md:flex-none max-md:overflow-visible max-md:border-r-0 max-md:border-b-2 max-md:last:border-b-0"
-                        >
-                          <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body max-md:flex-none max-md:overflow-visible">
-                            {(() => {
-                              const { section, num } = getCookingStepLabel(idx);
-                              const titleText = steps[idx].title.trim();
-                              return (
-                                <>
-                                  {section && (
-                                    <div class="text-[11px] font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
-                                      {section}
-                                    </div>
-                                  )}
-                                  {titleText
-                                    ? (
-                                      <div class="cooking-mode-step-title">
-                                        <span class="text-stone-400 mr-2">
-                                          {num}.
-                                        </span>
-                                        {titleText}
-                                      </div>
-                                    )
-                                    : (
-                                      <div class="text-sm font-semibold text-stone-400 mb-3">
-                                        {num}.
+                        <Fragment key={col.key}>
+                          {ci > 0 && (
+                            <div
+                              class="cooking-mode-col-divider"
+                              title="Drag to resize"
+                              onPointerDown={(e) =>
+                                startColResize(
+                                  e,
+                                  columns[ci - 1].key,
+                                  col.key,
+                                )}
+                            />
+                          )}
+                          <div
+                            class="cooking-mode-col"
+                            style={{
+                              "--col-w": String(
+                                cookingColWeights.value[col.key] ?? 1,
+                              ),
+                            }}
+                          >
+                            <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 recipe-body max-md:flex-none max-md:overflow-visible">
+                              {(() => {
+                                const { section, num } = getCookingStepLabel(
+                                  idx,
+                                );
+                                const titleText = steps[idx].title.trim();
+                                return (
+                                  <>
+                                    {section && (
+                                      <div class="text-[11px] font-mono uppercase tracking-[0.18em] text-orange-600 dark:text-orange-400 mb-1">
+                                        {section}
                                       </div>
                                     )}
-                                </>
-                              );
-                            })()}
-                            <div class="cooking-mode-step-content">
-                              {cookingStepBody(idx)}
+                                    {titleText
+                                      ? (
+                                        <div class="cooking-mode-step-title">
+                                          <span class="text-stone-400 mr-2">
+                                            {num}.
+                                          </span>
+                                          {titleText}
+                                        </div>
+                                      )
+                                      : (
+                                        <div class="text-sm font-semibold text-stone-400 mb-3">
+                                          {num}.
+                                        </div>
+                                      )}
+                                  </>
+                                );
+                              })()}
+                              <div class="cooking-mode-step-content">
+                                {cookingStepBody(idx)}
+                              </div>
+                              {cookingIngredients()}
+                              <div class="cooking-mode-scroll-fade" />
                             </div>
-                            {cookingIngredients()}
-                            <div class="cooking-mode-scroll-fade" />
+                            <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 flex gap-2">
+                              <button
+                                type="button"
+                                class="cooking-mode-nav-btn flex-1"
+                                disabled={!hasSectionPrev(idx)}
+                                onClick={() => cookingPrevInSection(idx)}
+                              >
+                                Prev
+                              </button>
+                              <button
+                                type="button"
+                                class="cooking-mode-nav-btn btn-primary flex-1"
+                                onClick={() => markStepDone(idx)}
+                              >
+                                Next
+                              </button>
+                            </div>
                           </div>
-                          <div class="shrink-0 px-4 py-3 border-t-2 border-stone-200 dark:border-stone-700 flex gap-2">
-                            <button
-                              type="button"
-                              class="cooking-mode-nav-btn flex-1"
-                              disabled={!hasSectionPrev(idx)}
-                              onClick={() => cookingPrevInSection(idx)}
-                            >
-                              Prev
-                            </button>
-                            <button
-                              type="button"
-                              class="cooking-mode-nav-btn btn-primary flex-1"
-                              onClick={() => markStepDone(idx)}
-                            >
-                              Next
-                            </button>
-                          </div>
-                        </div>
+                        </Fragment>
                       );
                     })}
                   </div>

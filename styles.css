@@ -732,6 +732,36 @@
   @apply my-auto px-6 py-6 sm:px-12 sm:py-8 max-w-3xl mx-auto w-full;
 }
 
+/*
+ * Parallel-column widths are user-draggable: each column carries its weight
+ * in --col-w, set inline by the divider drag handles. The weight only applies
+ * where columns sit side by side; stacked mobile cards keep natural height.
+ */
+.cooking-mode-col {
+  @apply flex flex-col overflow-hidden border-stone-200 dark:border-stone-700
+    max-md:flex-none max-md:overflow-visible max-md:border-b-2
+    max-md:last:border-b-0;
+}
+@media (width >= 48rem) {
+  .cooking-mode-col {
+    flex: var(--col-w, 1) 1 0%;
+  }
+}
+
+.cooking-mode-col-divider {
+  @apply relative shrink-0 w-2 cursor-col-resize touch-none select-none
+    max-md:hidden;
+}
+.cooking-mode-col-divider::after {
+  content: "";
+  @apply absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-stone-200
+    dark:bg-stone-700 transition-colors;
+}
+.cooking-mode-col-divider:hover::after,
+.cooking-mode-col-divider[data-resizing]::after {
+  @apply bg-orange-400;
+}
+
 .cooking-mode-step-title {
   @apply text-2xl sm:text-3xl font-bold mb-4 pb-2 border-b-2 border-stone-200
     dark:border-stone-700;

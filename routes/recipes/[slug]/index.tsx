@@ -218,6 +218,7 @@ export const handlers = handler({
           amount: ingAmount,
           unit: ingUnit,
           name: i.ingredient_name ?? i.name,
+          note: i.note ?? undefined,
           ingredient_id: ingredientId,
           base_cost: baseCost ?? undefined,
           currency: priceInfo?.currency,

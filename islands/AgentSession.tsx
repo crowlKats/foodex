@@ -1580,6 +1580,11 @@ function ItemPreview({ item }: { item: SerializedStagedItem }) {
             {ings.map((g, i) => (
               <li key={i}>
                 {[g.amount, g.unit, g.name].filter(Boolean).join(" ")}
+                {g.note && (
+                  <span class="text-stone-500 dark:text-stone-400">
+                    , {g.note}
+                  </span>
+                )}
                 {g.intermediate && (
                   <span
                     class="text-stone-400 text-xs ml-1"
@@ -1809,7 +1814,8 @@ function StagedItemDiff(
       : "";
 
   const ingText = (g: Any) =>
-    [g.amount, g.unit, g.name].filter(Boolean).join(" ");
+    [g.amount, g.unit, g.name].filter(Boolean).join(" ") +
+    (g.note ? `, ${g.note}` : "");
   const stepText = (s: Any) =>
     [s.title ? `${s.title}:` : "", s.body].filter(Boolean).join(" ");
   // The ingredient_id link isn't in the display text, so include it in the diff

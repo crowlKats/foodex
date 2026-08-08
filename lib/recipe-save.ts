@@ -27,6 +27,7 @@ export async function saveRecipeChildren(
     ing.name.trim(),
     ing.amount ? parseFloat(ing.amount) : null,
     ing.unit?.trim() || null,
+    ing.note?.trim() || null,
     isIntermediate(ing),
     i,
   ]);
@@ -39,6 +40,7 @@ export async function saveRecipeChildren(
       "name",
       "amount",
       "unit",
+      "note",
       "intermediate",
       "sort_order",
     ], ingRows);
