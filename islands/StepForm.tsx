@@ -402,48 +402,76 @@ function computeNestedLayout(
   }
   const totalW = Math.max(0, acc - SECTION_GAP);
 
-  // Anchor each section to its topmost dependency, so a chain stays in one
-  // horizontal lane (Sauce sits level with Burnt Lemon, not centered in a
-  // gap) and long edges stop cutting through unrelated boxes. Sections
-  // sharing a column stack downward from their anchors.
+  // Anchor each section vertically to its dependencies. A single dependency
+  // top-aligns the box with it, so a chain stays in one horizontal lane
+  // (Sauce sits level with Burnt Lemon, not centered in a gap). A section
+  // fed by several sections is centered on their combined vertical span, so
+  // its edges arrive from above and below instead of all climbing to a box
+  // pinned level with the topmost dependency. Sections sharing a column
+  // stack downward from their anchors.
   const sectionBoxes = sections.map(() => ({ x: 0, y: 0, w: 0, h: 0 }));
   let totalH = 0;
   for (let c = 0; c <= maxSecCol; c++) {
     const idxs = [...secInCol[c]];
-    if (c > 0) {
-      const anchor = (i: number) => {
-        const deps = sections[i].after.filter((d) => secCols[d] < c);
-        return deps.length
-          ? Math.min(...deps.map((d) => sectionBoxes[d].y))
-          : 0;
-      };
-      idxs.sort((a, b) => anchor(a) - anchor(b));
-    }
+    const boxHOf = (i: number) =>
+      internal[i].innerH + SECTION_PAD_TOP + SECTION_PAD_BOTTOM;
+    const desiredTop = (i: number) => {
+      const deps = sections[i].after.filter((d) => secCols[d] < c);
+      if (deps.length === 0) return 0;
+      if (deps.length === 1) return sectionBoxes[deps[0]].y;
+      const top = Math.min(...deps.map((d) => sectionBoxes[d].y));
+      const bottom = Math.max(
+        ...deps.map((d) => sectionBoxes[d].y + sectionBoxes[d].h),
+      );
+      return Math.max(0, (top + bottom) / 2 - boxHOf(i) / 2);
+    };
+    if (c > 0) idxs.sort((a, b) => desiredTop(a) - desiredTop(b));
     let curY = 0;
     for (const idx of idxs) {
-      const deps = sections[idx].after.filter((d) => secCols[d] < c);
-      const desired = deps.length
-        ? Math.min(...deps.map((d) => sectionBoxes[d].y))
-        : curY;
-      const y = Math.max(desired, curY);
-      const boxH = internal[idx].innerH + SECTION_PAD_TOP + SECTION_PAD_BOTTOM;
+      const y = Math.max(c > 0 ? desiredTop(idx) : 0, curY);
+      const boxH = boxHOf(idx);
       sectionBoxes[idx] = { x: colX[c], y, w: colW[c], h: boxH };
       curY = y + boxH + SECTION_GAP;
       totalH = Math.max(totalH, y + boxH);
     }
   }
 
-  // Section edges between section box borders
+  // Section edges between section box borders. Endpoints fan out along the
+  // box edge instead of stacking on the vertical midpoint: a section fed by
+  // many sections gets a clean fan rather than a knot of overlapping curves.
+  // Slots are ordered by the far end's height so the fan never crosses itself.
+  const secCenter = (i: number) => sectionBoxes[i].y + sectionBoxes[i].h / 2;
+  const incomingOf: number[][] = sections.map((s) =>
+    s.after.filter((d) => d >= 0 && d < sections.length)
+      .sort((a, b) => secCenter(a) - secCenter(b))
+  );
+  const outgoingOf: number[][] = sections.map(() => []);
+  for (let i = 0; i < sections.length; i++) {
+    for (const dep of incomingOf[i]) outgoingOf[dep].push(i);
+  }
+  for (const list of outgoingOf) {
+    list.sort((a, b) => secCenter(a) - secCenter(b));
+  }
+  const slotY = (box: { y: number; h: number }, slot: number, count: number) =>
+    box.y + (box.h * (slot + 1)) / (count + 1);
+
   const sectionEdges: GraphLayout["edges"] = [];
   for (let i = 0; i < sections.length; i++) {
-    for (const dep of sections[i].after) {
-      if (dep < 0 || dep >= sections.length) continue;
+    for (const dep of incomingOf[i]) {
       const fromBox = sectionBoxes[dep];
       const toBox = sectionBoxes[i];
       const p1x = fromBox.x + fromBox.w;
-      const p1y = fromBox.y + fromBox.h / 2;
+      const p1y = slotY(
+        fromBox,
+        outgoingOf[dep].indexOf(i),
+        outgoingOf[dep].length,
+      );
       const p2x = toBox.x;
-      const p2y = toBox.y + toBox.h / 2;
+      const p2y = slotY(
+        toBox,
+        incomingOf[i].indexOf(dep),
+        incomingOf[i].length,
+      );
       const dx = Math.abs(p2x - p1x) * 0.4;
       const d = `M${p1x},${p1y} C${p1x + dx},${p1y} ${
         p2x - dx
@@ -2236,6 +2264,81 @@ export default function StepForm(
           />
         </div>
       )}
+
+      {/* Selected-section editor panel (nested graph) */}
+      {isGraph && nested && secSel != null && sections.value[secSel] &&
+        (() => {
+          const sec = sections.value[secSel];
+          const secSteps = steps
+            .map((_, i) => i)
+            .filter((i) => steps[i].section === secSel);
+          return (
+            <div class="card p-4 border-orange-300 dark:border-orange-700 border-2 mt-4">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="text-sm font-semibold text-stone-500">
+                  {sec.title.trim() || `Section ${secSel + 1}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    secSelected.value = null;
+                  }}
+                  class="text-stone-400 hover:text-stone-600 ml-auto cursor-pointer"
+                >
+                  <IconX class="size-4" />
+                </button>
+              </div>
+              <div class="flex items-center gap-2 mb-3">
+                <Input
+                  type="text"
+                  placeholder="Section title"
+                  value={sec.title}
+                  onValueChange={(v) => updateSectionTitle(secSel, v)}
+                  class="flex-1 font-bold min-w-0"
+                />
+                <Input
+                  type="text"
+                  placeholder="key"
+                  value={sec.key}
+                  onValueChange={(v) => updateSectionKey(secSel, v)}
+                  class="w-32 shrink-0"
+                  size="xs"
+                  monospace
+                  title="Used in @step(key.N) references"
+                />
+              </div>
+              {secSteps.length === 0 && (
+                <div class="text-xs text-stone-400 italic">
+                  No steps in this section yet.
+                </div>
+              )}
+              <div class="space-y-3">
+                {secSteps.map((i) => (
+                  <div
+                    key={steps[i]._uid ?? i}
+                    class="border-t-2 border-stone-200 dark:border-stone-700 pt-3"
+                  >
+                    <div class="text-xs font-semibold text-stone-500 mb-1.5">
+                      Step {nested.displayNum.get(i) ?? i + 1}
+                    </div>
+                    <StepEditor
+                      step={steps[i]}
+                      index={i}
+                      sections={sections.value}
+                      onTitle={(v) => updateField(i, "title", v)}
+                      onBody={(v) => updateField(i, "body", v)}
+                      onSection={(idx) => setStepSection(i, idx)}
+                      onRemoveMedia={(mi) => removeMedia(i, mi)}
+                      onUploadMedia={() => triggerFileUpload(i)}
+                      uploading={uploading.value === i}
+                      getBodyContext={getStepBodyContext}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
       {
         /* Hidden form fields. Drop sections with empty titles and remap step
