@@ -267,6 +267,10 @@ const SECTION_PAD_TOP = 60;
 const SECTION_PAD_BOTTOM = 14;
 const SECTION_GAP = 32;
 const SECTION_MIN_W = 360;
+/** Right-end spacing inside the graph scroller. Trailing padding on a scroll
+ *  container is unreliably included in the scrollable area, so the canvas
+ *  width carries it instead; the left end uses plain padding (pl-4). */
+const GRAPH_PAD_END = 16;
 
 /** A section's internal step layout, local to its scrollable step area. */
 interface SectionInner {
@@ -855,15 +859,44 @@ export default function StepForm(
   // step chain scrolls inside its box instead of blowing up the canvas.
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasW = useSignal(1100);
+  // How far the graph canvas may bleed past the island on each side. The page
+  // centers content in a max-width column, but the graph scroller wants the
+  // whole window edge to edge; measured against the nearest scroll/clip
+  // ancestor (<main> on the edit pages, the modal scroller in the agent
+  // session). Spacing from the window edge is internal to the scroller
+  // (pl-4 + GRAPH_PAD_END), not an outer gutter.
+  const bleed = useSignal({ left: 0, right: 0 });
   useEffect(() => {
     const el = rootRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
+    let clip: HTMLElement | null = el.parentElement;
+    while (clip && clip !== document.body) {
+      const s = getComputedStyle(clip);
+      if (s.overflowX !== "visible" || s.overflowY !== "visible") break;
+      clip = clip.parentElement;
+    }
     const update = () => {
       if (el.clientWidth > 0) canvasW.value = el.clientWidth;
+      if (!clip) return;
+      const rr = el.getBoundingClientRect();
+      // Hidden (the steps tab panel is display:none until selected): rects
+      // are all zero and would compute a garbage bleed. Keep the last good
+      // value; the observer fires again when the panel becomes visible.
+      if (rr.width === 0) return;
+      const cs = getComputedStyle(clip);
+      const cr = clip.getBoundingClientRect();
+      const contentL = cr.left + clip.clientLeft + parseFloat(cs.paddingLeft);
+      const contentR = cr.left + clip.clientLeft + clip.clientWidth -
+        parseFloat(cs.paddingRight);
+      bleed.value = {
+        left: Math.max(0, Math.round(rr.left - contentL)),
+        right: Math.max(0, Math.round(contentR - rr.right)),
+      };
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
+    if (clip) ro.observe(clip);
     return () => ro.disconnect();
   }, []);
 
@@ -1421,7 +1454,12 @@ export default function StepForm(
       cardH,
       sel,
       secSelected.value,
-      Math.max(SECTION_MIN_W, Math.floor(canvasW.value * 0.75)),
+      Math.max(
+        SECTION_MIN_W,
+        Math.floor(
+          (canvasW.value + bleed.value.left + bleed.value.right) * 0.75,
+        ),
+      ),
     )
     : null;
 
@@ -1741,13 +1779,19 @@ export default function StepForm(
 
       {/* ── Nested graph (sections containing steps) ── */}
       {isGraph && nested && (
-        <div class="overflow-x-auto pb-2 select-none">
+        <div
+          class="overflow-x-auto pb-2 pl-4 select-none"
+          style={{
+            marginLeft: `${-bleed.value.left}px`,
+            marginRight: `${-bleed.value.right}px`,
+          }}
+        >
           <div
             data-graph-container
             data-section-graph-container
             style={{
               position: "relative",
-              width: `${nested.svgW + 4}px`,
+              width: `${nested.svgW + 4 + GRAPH_PAD_END}px`,
               minHeight: `${nested.svgH + SECTION_GAP + 56 + ROW_GAP}px`,
             }}
           >
@@ -1804,16 +1848,14 @@ export default function StepForm(
                         placeholder="Section title"
                         value={sec.title}
                         onClick={(e) => e.stopPropagation()}
-                        onValueChange={(v) =>
-                          updateSectionTitle(sIdx, v)}
+                        onValueChange={(v) => updateSectionTitle(sIdx, v)}
                         class="flex-1 min-w-0 font-bold select-text"
                       />
                       <Input
                         type="text"
                         placeholder="key"
                         value={sec.key}
-                        onClick={(e) =>
-                          e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
                         onValueChange={(v) => updateSectionKey(sIdx, v)}
                         title="Used in @step(key.N) references"
                         class="w-32 shrink-0 select-text"
@@ -1971,99 +2013,99 @@ export default function StepForm(
               });
             })()}
 
-              {/* "Add starting section" placeholder under col 0 */}
-              {(() => {
-                let col0Bottom = 0;
-                let col0W = 0;
-                for (const box of nested.sectionBoxes) {
-                  if (box.x === 0) {
-                    col0Bottom = Math.max(col0Bottom, box.y + box.h);
-                    col0W = box.w;
-                  }
+            {/* "Add starting section" placeholder under col 0 */}
+            {(() => {
+              let col0Bottom = 0;
+              let col0W = 0;
+              for (const box of nested.sectionBoxes) {
+                if (box.x === 0) {
+                  col0Bottom = Math.max(col0Bottom, box.y + box.h);
+                  col0W = box.w;
                 }
-                if (col0W === 0) {
-                  return null;
-                }
-                const placeholderH = 56;
-                return (
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: `${col0Bottom + SECTION_GAP}px`,
-                      width: `${col0W}px`,
-                      height: `${placeholderH}px`,
-                      zIndex: 0,
-                    }}
-                    class="border-2 border-dashed border-stone-300 dark:border-stone-600 hover:border-orange-400 dark:hover:border-orange-500 cursor-pointer transition-colors flex items-center justify-center text-stone-500 hover:text-orange-600 text-xs font-medium"
-                    onClick={addSection}
-                  >
-                    <IconPlus class="size-4 mr-1" />Add starting section
-                  </div>
-                );
-              })()}
+              }
+              if (col0W === 0) {
+                return null;
+              }
+              const placeholderH = 56;
+              return (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: `${col0Bottom + SECTION_GAP}px`,
+                    width: `${col0W}px`,
+                    height: `${placeholderH}px`,
+                    zIndex: 0,
+                  }}
+                  class="border-2 border-dashed border-stone-300 dark:border-stone-600 hover:border-orange-400 dark:hover:border-orange-500 cursor-pointer transition-colors flex items-center justify-center text-stone-500 hover:text-orange-600 text-xs font-medium"
+                  onClick={addSection}
+                >
+                  <IconPlus class="size-4 mr-1" />Add starting section
+                </div>
+              );
+            })()}
 
-              {/* Section dependency edges */}
+            {/* Section dependency edges */}
+            <svg
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                zIndex: 1,
+                pointerEvents: "none",
+                overflow: "visible",
+              }}
+              width={nested.svgW}
+              height={nested.svgH}
+            >
+              {nested.sectionEdges.map(
+                ({ d, active, key, fromIdx, toIdx }) => (
+                  <EdgePath
+                    key={key}
+                    d={d}
+                    active={active}
+                    color="section"
+                    onRemove={() => removeSectionDep(toIdx, fromIdx)}
+                  />
+                ),
+              )}
+            </svg>
+            {/* Live drag lines, above everything */}
+            {(dragLine || secDragLine) && (
               <svg
                 style={{
                   position: "absolute",
                   top: 0,
                   left: 0,
-                  zIndex: 1,
+                  zIndex: 5,
                   pointerEvents: "none",
                   overflow: "visible",
                 }}
                 width={nested.svgW}
                 height={nested.svgH}
               >
-                {nested.sectionEdges.map(
-                  ({ d, active, key, fromIdx, toIdx }) => (
-                    <EdgePath
-                      key={key}
-                      d={d}
-                      active={active}
-                      color="section"
-                      onRemove={() => removeSectionDep(toIdx, fromIdx)}
-                    />
-                  ),
+                {dragLine && (
+                  <path
+                    d={dragLine}
+                    fill="none"
+                    stroke="var(--color-orange-500)"
+                    stroke-width={2}
+                    stroke-dasharray="6 4"
+                    opacity={0.7}
+                  />
+                )}
+                {secDragLine && (
+                  <path
+                    d={secDragLine}
+                    fill="none"
+                    stroke="var(--color-orange-500)"
+                    stroke-width={2.5}
+                    stroke-dasharray="6 4"
+                    opacity={0.7}
+                  />
                 )}
               </svg>
-              {/* Live drag lines, above everything */}
-              {(dragLine || secDragLine) && (
-                <svg
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    zIndex: 5,
-                    pointerEvents: "none",
-                    overflow: "visible",
-                  }}
-                  width={nested.svgW}
-                  height={nested.svgH}
-                >
-                  {dragLine && (
-                    <path
-                      d={dragLine}
-                      fill="none"
-                      stroke="var(--color-orange-500)"
-                      stroke-width={2}
-                      stroke-dasharray="6 4"
-                      opacity={0.7}
-                    />
-                  )}
-                  {secDragLine && (
-                    <path
-                      d={secDragLine}
-                      fill="none"
-                      stroke="var(--color-orange-500)"
-                      stroke-width={2.5}
-                      stroke-dasharray="6 4"
-                      opacity={0.7}
-                    />
-                  )}
-                </svg>
-              )}
+            )}
           </div>
         </div>
       )}
@@ -2100,12 +2142,18 @@ export default function StepForm(
               <IconPlus class="size-3 inline mr-0.5" />Add section
             </button>
           </div>
-          <div class="overflow-x-auto pb-2 select-none">
+          <div
+            class="overflow-x-auto pb-2 pl-4 select-none"
+            style={{
+              marginLeft: `${-bleed.value.left}px`,
+              marginRight: `${-bleed.value.right}px`,
+            }}
+          >
             <div
               data-graph-container
               style={{
                 position: "relative",
-                width: `${flatLayout.svgW}px`,
+                width: `${flatLayout.svgW + GRAPH_PAD_END}px`,
                 minHeight: `${flatLayout.svgH + rowHeight}px`,
               }}
             >
