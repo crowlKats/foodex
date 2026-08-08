@@ -10,6 +10,11 @@ export default layout(function AppLayout({ Component, state, url }) {
   // agent chat session; they manage their own full-height layout.
   const fullBleed = url.pathname === "/scan" ||
     /^\/agent\/[^/]+$/.test(url.pathname);
+  // The welcome walkthrough points at nav items, so it needs the full menu
+  // even though the new user has no household yet. The links just bounce to
+  // household setup, which is where the tour sends them anyway.
+  const navPreview = url.pathname === "/welcome" &&
+    url.searchParams.get("tour") === "1";
   return (
     <>
       {state.pageTitle !== "Foodex" && (
@@ -20,7 +25,7 @@ export default layout(function AppLayout({ Component, state, url }) {
       <Nav
         user={state.user}
         shoppingListCount={state.shoppingListCount}
-        hasHousehold={state.householdId != null}
+        hasHousehold={state.householdId != null || navPreview}
         isAdmin={state.isAdmin}
         currentPath={url.pathname}
       />

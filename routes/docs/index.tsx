@@ -106,7 +106,8 @@ export default page(function DocsIndex({ url }) {
       <DocSection id="finding-your-way" title="Finding Your Way Around">
         <p class={`${docProse} mb-3`}>
           The top navigation bar (bottom tabs on a phone) covers the everyday
-          areas:
+          areas. On a phone, pages without a tab of their own live behind the
+          menu button in the top bar.
         </p>
         <ul class="list-disc pl-6 space-y-1 mb-3">
           <li class={docProse}>

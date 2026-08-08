@@ -1,5 +1,6 @@
 import { ComponentChildren } from "preact";
 import DarkModeToggle from "../islands/DarkModeToggle.tsx";
+import MobileMenu from "../islands/MobileMenu.tsx";
 import { IconChefHat } from "@tabler/icons-preact";
 import { IconShoppingCart } from "@tabler/icons-preact";
 import { IconCalendar } from "@tabler/icons-preact";
@@ -7,7 +8,6 @@ import { IconBook } from "@tabler/icons-preact";
 import { IconToolsKitchen2 } from "@tabler/icons-preact";
 import { IconFridge } from "@tabler/icons-preact";
 import { IconHome } from "@tabler/icons-preact";
-import { IconBooks } from "@tabler/icons-preact";
 import { IconScan } from "@tabler/icons-preact";
 import { IconShieldCog } from "@tabler/icons-preact";
 import type { User } from "../utils.ts";
@@ -27,12 +27,14 @@ function isActive(currentPath: string, href: string): boolean {
 }
 
 function MobileTab(
-  { href, label, icon, currentPath, badge }: {
+  { href, label, icon, currentPath, badge, tour }: {
     href: string;
     label: string;
     icon: (props: { class: string }) => ComponentChildren;
     currentPath: string;
     badge?: number;
+    /** Anchor id for the welcome walkthrough (data-tour). */
+    tour?: string;
   },
 ) {
   const active = isActive(currentPath, href);
@@ -40,6 +42,7 @@ function MobileTab(
   return (
     <a
       href={href}
+      data-tour={tour}
       class={`flex flex-col items-center gap-0.5 text-[10px] transition-colors duration-75 relative ${
         active ? "text-orange-400" : "text-stone-400 hover:text-stone-200"
       }`}
@@ -86,6 +89,7 @@ export function Nav(
               <div class="flex items-center gap-4">
                 <a
                   href="/recipes"
+                  data-tour="recipes"
                   class={`nav-link font-medium ${
                     isActive(currentPath, "/recipes") ? "text-orange-400" : ""
                   }`}
@@ -95,6 +99,7 @@ export function Nav(
                 {hasHousehold && (
                   <a
                     href="/collections"
+                    data-tour="collections"
                     class={`nav-link font-medium ${
                       isActive(currentPath, "/collections")
                         ? "text-orange-400"
@@ -107,6 +112,7 @@ export function Nav(
                 {hasHousehold && (
                   <a
                     href="/agent"
+                    data-tour="assistant"
                     class={`nav-link font-medium ${
                       isActive(currentPath, "/agent") ? "text-orange-400" : ""
                     }`}
@@ -118,6 +124,7 @@ export function Nav(
                   <>
                     <a
                       href="/household/pantry"
+                      data-tour="pantry"
                       class={`nav-link font-medium ${
                         isActive(currentPath, "/household/pantry")
                           ? "text-orange-400"
@@ -128,6 +135,7 @@ export function Nav(
                     </a>
                     <a
                       href="/plan"
+                      data-tour="plan"
                       class={`nav-link font-medium ${
                         isActive(currentPath, "/plan") ? "text-orange-400" : ""
                       }`}
@@ -139,6 +147,7 @@ export function Nav(
                 {user && (
                   <a
                     href="/shopping-list"
+                    data-tour="shopping"
                     class={`nav-link font-medium relative ${
                       isActive(currentPath, "/shopping-list")
                         ? "text-orange-400"
@@ -162,7 +171,7 @@ export function Nav(
               <div class="w-px h-4 bg-stone-700" />
 
               {/* Secondary: reference data */}
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3" data-tour="catalogs">
                 <a
                   href="/ingredients"
                   class={`nav-link text-sm text-stone-400 ${
@@ -198,19 +207,10 @@ export function Nav(
 
             {/* Right side */}
             <div class="ml-auto flex items-center gap-3">
-              {hasHousehold && (
-                <a
-                  href="/collections"
-                  class={`nav-link sm:hidden ${
-                    isActive(currentPath, "/collections")
-                      ? "text-orange-400"
-                      : ""
-                  }`}
-                  title="Collections"
-                >
-                  <IconBooks class="size-5" />
-                </a>
-              )}
+              <MobileMenu
+                hasHousehold={hasHousehold}
+                currentPath={currentPath}
+              />
               {isAdmin && (
                 <a
                   href="/admin"
@@ -224,6 +224,7 @@ export function Nav(
               )}
               <a
                 href="/docs"
+                data-tour="docs"
                 class={`nav-link hidden sm:block ${
                   currentPath.startsWith("/docs") ? "text-orange-400" : ""
                 }`}
@@ -234,6 +235,7 @@ export function Nav(
               <DarkModeToggle />
               <a
                 href={hasHousehold ? "/household" : "/households"}
+                data-tour="household"
                 class={`nav-link hidden sm:block ${
                   isActive(currentPath, "/household") ||
                     isActive(currentPath, "/households")
@@ -296,6 +298,7 @@ export function Nav(
           <MobileTab
             href="/recipes"
             label="Recipes"
+            tour="recipes"
             icon={IconToolsKitchen2}
             currentPath={currentPath}
           />
@@ -303,6 +306,7 @@ export function Nav(
             <MobileTab
               href="/household/pantry"
               label="Pantry"
+              tour="pantry"
               icon={IconFridge}
               currentPath={currentPath}
             />
@@ -311,6 +315,7 @@ export function Nav(
             <MobileTab
               href="/plan"
               label="Plan"
+              tour="plan"
               icon={IconCalendar}
               currentPath={currentPath}
             />
@@ -319,6 +324,7 @@ export function Nav(
             <MobileTab
               href="/scan"
               label="Scan"
+              tour="scan"
               icon={IconScan}
               currentPath={currentPath}
             />
@@ -327,6 +333,7 @@ export function Nav(
             <MobileTab
               href="/shopping-list"
               label="Shop"
+              tour="shopping"
               icon={IconShoppingCart}
               currentPath={currentPath}
               badge={shoppingListCount}
@@ -335,6 +342,7 @@ export function Nav(
           <MobileTab
             href={hasHousehold ? "/household" : "/households"}
             label="Household"
+            tour="household"
             icon={IconHome}
             currentPath={currentPath}
           />

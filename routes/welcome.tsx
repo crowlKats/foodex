@@ -3,6 +3,7 @@ import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { FormField } from "../components/FormField.tsx";
 import { sanitizeRedirect } from "../lib/auth.ts";
+import WelcomeTour from "../islands/WelcomeTour.tsx";
 
 export const handlers = handler({
   GET(ctx) {
@@ -13,14 +14,16 @@ export const handlers = handler({
       });
     }
     const redirect = sanitizeRedirect(ctx.url.searchParams.get("redirect"));
-    if (ctx.state.user.name) {
+    const tour = ctx.url.searchParams.get("tour") === "1";
+    if (ctx.state.user.name && !tour) {
       return new Response(null, {
         status: 303,
         headers: { Location: redirect ?? "/" },
       });
     }
     ctx.state.pageTitle = "Welcome";
-    return { data: { redirect } };
+    // The tour needs a name to exist first; without one, fall back to the form.
+    return { data: { redirect, tour: tour && ctx.state.user.name != null } };
   },
   async POST(ctx) {
     if (!ctx.state.user) {
@@ -46,14 +49,22 @@ export const handlers = handler({
       "UPDATE users SET name = $1 WHERE id = $2",
       [name, ctx.state.user.id],
     );
+    // Only brand-new users reach the name form, so follow it with the tour.
     return new Response(null, {
       status: 303,
-      headers: { Location: redirect ?? "/" },
+      headers: {
+        Location: redirect
+          ? `/welcome?tour=1&redirect=${encodeURIComponent(redirect)}`
+          : "/welcome?tour=1",
+      },
     });
   },
 });
 
 export default page(function WelcomePage({ data }) {
+  if (data.tour) {
+    return <WelcomeTour target={data.redirect ?? "/"} />;
+  }
   return (
     <div class="max-w-md mx-auto mt-12">
       <h1 class="text-2xl font-bold mb-2">Welcome to Foodex</h1>
