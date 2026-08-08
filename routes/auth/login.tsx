@@ -70,6 +70,13 @@ export default page(function LoginPage({ data }) {
           Captcha verification failed. Please try again.
         </div>
       )}
+      {data.error === "invite_required" && (
+        <div class="mb-4 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+          New accounts on this Foodex instance can only be created through an
+          invite link. If someone invited you, open their invite link and sign
+          in from there.
+        </div>
+      )}
       <div class="card space-y-3">
         {data.githubUrl && (
           <ButtonLink

@@ -7,6 +7,7 @@ import {
   generateSessionId,
   getOAuthRedirectFromRequest,
   getOAuthStateFromRequest,
+  signupAllowed,
 } from "../../../lib/auth.ts";
 
 export const handlers = handler({
@@ -25,6 +26,25 @@ export const handlers = handler({
       ctx.req,
       code,
     );
+
+    const existing = await ctx.state.db.query(
+      "SELECT 1 FROM users WHERE google_id = $1",
+      [googleId],
+    );
+    if (
+      existing.rows.length === 0 &&
+      !await signupAllowed(
+        ctx.state.db.query,
+        getOAuthRedirectFromRequest(ctx.req),
+      )
+    ) {
+      const headers = new Headers({
+        Location: "/auth/login?error=invite_required",
+      });
+      headers.append("Set-Cookie", clearOAuthStateCookie());
+      headers.append("Set-Cookie", clearOAuthRedirectCookie());
+      return new Response(null, { status: 303, headers });
+    }
 
     const result = await ctx.state.db.query(
       `INSERT INTO users (google_id, email, name, avatar_url)

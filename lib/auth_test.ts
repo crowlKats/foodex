@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import {
   householdRequirementResponse,
+  inviteCodeFromRedirect,
   nameRequirementResponse,
   sanitizeRedirect,
 } from "./auth.ts";
@@ -103,6 +104,27 @@ Deno.test("nameRequirementResponse: leaves welcome, auth, and the API open", () 
 
 Deno.test("householdRequirementResponse: leaves the welcome step reachable", () => {
   assertEquals(guard("/welcome"), null);
+});
+
+Deno.test("inviteCodeFromRedirect: extracts the code from an invite link", () => {
+  assertEquals(inviteCodeFromRedirect("/households/join/abc123"), "abc123");
+  assertEquals(
+    inviteCodeFromRedirect("/households/join/abc123?redirect=/recipes"),
+    "abc123",
+  );
+  assertEquals(inviteCodeFromRedirect("/households/join/a%2Fb"), "a/b");
+});
+
+Deno.test("inviteCodeFromRedirect: rejects everything else", () => {
+  assertEquals(inviteCodeFromRedirect(null), null);
+  assertEquals(inviteCodeFromRedirect(undefined), null);
+  assertEquals(inviteCodeFromRedirect(""), null);
+  assertEquals(inviteCodeFromRedirect("/recipes"), null);
+  assertEquals(inviteCodeFromRedirect("/households"), null);
+  assertEquals(inviteCodeFromRedirect("/households/join/"), null);
+  assertEquals(inviteCodeFromRedirect("/households/join"), null);
+  assertEquals(inviteCodeFromRedirect("/x/households/join/abc"), null);
+  assertEquals(inviteCodeFromRedirect("/households/join/%zz"), null);
 });
 
 Deno.test("sanitizeRedirect: rejects header-splitting control characters", () => {

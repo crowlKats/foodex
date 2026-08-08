@@ -3,6 +3,7 @@ import {
   createSessionCookie,
   generateSessionId,
   sanitizeRedirect,
+  signupAllowed,
 } from "../../../lib/auth.ts";
 import { ButtonLink } from "../../../components/Button.tsx";
 
@@ -33,6 +34,18 @@ export const handlers = handler({
 
     const { email, redirect_to } = result.rows[0];
 
+    const existing = await ctx.state.db.query(
+      "SELECT 1 FROM users WHERE email = $1",
+      [email],
+    );
+    if (
+      existing.rows.length === 0 &&
+      !await signupAllowed(ctx.state.db.query, redirect_to)
+    ) {
+      ctx.state.pageTitle = "Invite Required";
+      return { data: { inviteRequired: true } };
+    }
+
     const userResult = await ctx.state.db.query<{ id: string }>(
       `INSERT INTO users (email, name)
        VALUES ($1, NULL)
@@ -60,7 +73,29 @@ export const handlers = handler({
   },
 });
 
-export default page(function InvalidTokenPage() {
+export default page(function InvalidTokenPage({ data }) {
+  const { inviteRequired } = data as { inviteRequired?: boolean };
+
+  if (inviteRequired) {
+    return (
+      <div class="max-w-sm mx-auto mt-16">
+        <h1 class="text-2xl font-bold text-center mb-4">
+          Invite required
+        </h1>
+        <div class="card">
+          <p class="text-stone-600 dark:text-stone-400 mb-4">
+            New accounts on this Foodex instance can only be created through an
+            invite link. If someone invited you, open their invite link and sign
+            in from there.
+          </p>
+          <ButtonLink href="/auth/login" variant="outline" class="w-full">
+            Back to sign in
+          </ButtonLink>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div class="max-w-sm mx-auto mt-16">
       <h1 class="text-2xl font-bold text-center mb-4">

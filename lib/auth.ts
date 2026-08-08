@@ -1,3 +1,5 @@
+import type { QueryFn } from "../db/mod.ts";
+
 const GITHUB_CLIENT_ID = Deno.env.get("GITHUB_CLIENT_ID") ?? "";
 const GITHUB_CLIENT_SECRET = Deno.env.get("GITHUB_CLIENT_SECRET") ?? "";
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") ?? "";
@@ -23,11 +25,53 @@ export const providers = {
 
 /**
  * Invite-only mode: accounts can't create households themselves, so anyone
- * new needs an invite — from an admin (which seeds a fresh household they'll
- * own) or from an existing household. Signing in stays open; without a
- * household an account can't touch anything household-scoped.
+ * new needs an invite, from an admin (which seeds a fresh household they'll
+ * own) or from an existing household. Signing in with an existing account
+ * stays open, but a brand-new account is only created when the sign-in flow
+ * was started from a valid invite link (see `signupAllowed`).
  */
 export const inviteOnly = Deno.env.get("INVITE_ONLY") === "true";
+
+/**
+ * The invite code embedded in a post-sign-in destination, if that
+ * destination is an invite link.
+ */
+export function inviteCodeFromRedirect(
+  path: string | null | undefined,
+): string | null {
+  if (!path) return null;
+  const match = path.match(/^\/households\/join\/([^/?#]+)/);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a sign-in that would create a brand-new account may proceed.
+ *
+ * Only callers that already know the account is new should ask; existing
+ * accounts always sign in. In invite-only mode the answer hinges on the
+ * post-sign-in destination the visitor carried into the flow: it has to be
+ * an invite link whose code is still valid. The destination is client
+ * controlled (a cookie or form field), so the code is checked against the
+ * database rather than trusted for merely looking like an invite.
+ */
+export async function signupAllowed(
+  query: QueryFn,
+  redirectPath: string | null | undefined,
+): Promise<boolean> {
+  if (!inviteOnly) return true;
+  const code = inviteCodeFromRedirect(redirectPath);
+  if (!code) return false;
+  const res = await query(
+    "SELECT 1 FROM household_invites WHERE code = $1 AND expires_at > now()",
+    [code],
+  );
+  return res.rows.length > 0;
+}
 
 export async function verifyHCaptcha(
   token: string | null | undefined,
