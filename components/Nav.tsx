@@ -223,7 +223,7 @@ export function Nav(
                 </a>
               )}
               <a
-                href="/docs/guide"
+                href="/docs"
                 class={`nav-link hidden sm:block ${
                   currentPath.startsWith("/docs") ? "text-orange-400" : ""
                 }`}

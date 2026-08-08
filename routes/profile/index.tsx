@@ -15,7 +15,7 @@ const MORE_LINKS = [
   },
   { href: "/stores", label: "Stores", detail: "shops and prices" },
   { href: "/tools", label: "Tools", detail: "your cookware" },
-  { href: "/docs/guide", label: "User guide", detail: "how Foodex works" },
+  { href: "/docs", label: "User guide", detail: "how Foodex works" },
 ];
 
 export const handlers = handler({

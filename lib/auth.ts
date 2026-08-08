@@ -176,6 +176,7 @@ export function householdRequirementResponse(url: URL): Response | null {
     path.startsWith("/households") ||
     path === "/moving-box" ||
     path === "/welcome" ||
+    path.startsWith("/docs") ||
     path.startsWith("/_fresh")
   ) {
     return null;

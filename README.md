@@ -103,8 +103,9 @@ household.
 - **Dark mode** with system preference detection and manual toggle.
 - **OAuth sign-in** via GitHub or Google.
 - **Mobile-friendly** responsive layout.
-- **Template docs** page (`/docs/templates`) with full syntax reference for
-  recipe authors.
+- **In-app documentation** (`/docs`): a multi-page user guide covering every
+  feature, plus a full template syntax reference (`/docs/templates`) for recipe
+  authors.
 
 ## Getting Started
 
