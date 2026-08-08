@@ -106,10 +106,10 @@ export function Nav(
   // Reference catalogs and the guide sit behind a menu rather than in the bar:
   // the bar only has room for the core workflow before it wraps.
   const moreLinks: NavDropdownLink[] = [
-    { href: "/ingredients", label: "Ingredients" },
-    { href: "/stores", label: "Stores" },
-    { href: "/tools", label: "Tools" },
-    { href: "/docs", label: "User guide" },
+    { href: "/ingredients", label: "Ingredients", group: "catalogs" },
+    { href: "/stores", label: "Stores", group: "catalogs" },
+    { href: "/tools", label: "Tools", group: "catalogs" },
+    { href: "/docs", label: "User guide", tour: "docs" },
     ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
   ];
   // Below lg the bar shows none of the links, so the menu carries everything
@@ -117,8 +117,8 @@ export function Nav(
   const compactLinks: NavDropdownLink[] = [
     ...(hasHousehold
       ? [
-        { href: "/agent", label: "Assistant" },
-        { href: "/collections", label: "Collections" },
+        { href: "/agent", label: "Assistant", tour: "assistant" },
+        { href: "/collections", label: "Collections", tour: "collections" },
       ]
       : []),
     ...moreLinks,
@@ -188,15 +188,15 @@ export function Nav(
             {/* Right side */}
             <div class="ml-auto flex items-center gap-3">
               <NavDropdown
+                id="menu"
                 class="lg:hidden"
-                tour="menu"
                 trigger={{ kind: "hamburger" }}
                 links={compactLinks}
                 currentPath={currentPath}
               />
               <NavDropdown
+                id="more"
                 class="hidden lg:block"
-                tour="catalogs"
                 trigger={{ kind: "text", label: "More" }}
                 links={moreLinks}
                 currentPath={currentPath}
@@ -218,6 +218,7 @@ export function Nav(
               {user
                 ? (
                   <NavDropdown
+                    id="account"
                     trigger={{
                       kind: "avatar",
                       name: user.name,

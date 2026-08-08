@@ -1,10 +1,17 @@
-import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { IconChevronDown, IconMenu2, IconX } from "@tabler/icons-preact";
+import { menuPinnedByTour, openMenu } from "../lib/menu-state.ts";
 
 export interface NavDropdownLink {
   href: string;
   label: string;
+  /** Anchor id for the welcome walkthrough (data-tour). */
+  tour?: string;
+  /**
+   * Consecutive links sharing a group are wrapped together so the walkthrough
+   * can ring them as one (data-tour set to the group name).
+   */
+  group?: string;
 }
 
 type Trigger =
@@ -15,34 +22,100 @@ type Trigger =
   /** Avatar (falling back to the name), for the account menu. */
   | { kind: "avatar"; name?: string | null; avatarUrl?: string | null };
 
+function MenuLink(
+  { link, currentPath }: { link: NavDropdownLink; currentPath: string },
+) {
+  return (
+    <a
+      href={link.href}
+      role="menuitem"
+      data-tour={link.tour}
+      class={`block px-4 py-2.5 text-sm font-medium ${
+        currentPath.startsWith(link.href)
+          ? "text-orange-400"
+          : "text-stone-200 hover:bg-stone-800"
+      }`}
+    >
+      {link.label}
+    </a>
+  );
+}
+
+/** Links in order, with runs of the same group wrapped in one anchored div. */
+function renderLinks(links: NavDropdownLink[], currentPath: string) {
+  const out = [];
+  for (let i = 0; i < links.length;) {
+    const group = links[i].group;
+    if (!group) {
+      out.push(
+        <MenuLink
+          key={links[i].href}
+          link={links[i]}
+          currentPath={currentPath}
+        />,
+      );
+      i++;
+      continue;
+    }
+    const run = [];
+    while (i < links.length && links[i].group === group) {
+      run.push(
+        <MenuLink
+          key={links[i].href}
+          link={links[i]}
+          currentPath={currentPath}
+        />,
+      );
+      i++;
+    }
+    out.push(
+      <div key={group} data-tour={group}>
+        {run}
+      </div>,
+    );
+  }
+  return out;
+}
+
 /**
  * Dropdown for the top bar: the narrow-screen menu, the desktop overflow
  * menu, and the account menu are all this component with a different trigger.
  * Keeping the overflow behind a menu is what stops the bar from wrapping on
  * laptop widths.
+ *
+ * The open state lives in a shared signal, keyed by id, so only one menu is
+ * open at a time and the welcome tour can open a menu to ring the items
+ * inside it.
  */
 export default function NavDropdown(
-  { trigger, links, currentPath, signOut, class: className, tour }: {
+  { id, trigger, links, currentPath, signOut, class: className }: {
+    /** Unique among the top bar's dropdowns. */
+    id: string;
     trigger: Trigger;
     links: NavDropdownLink[];
     currentPath: string;
     /** Append a sign-out button below the links. */
     signOut?: boolean;
     class?: string;
-    /** Anchor id for the welcome walkthrough (data-tour). */
-    tour?: string;
   },
 ) {
-  const open = useSignal(false);
+  const open = openMenu.value === id;
   const container = useRef<HTMLDivElement>(null);
+  // Only menus that hold walkthrough anchors advertise themselves to the tour.
+  const holdsTourItems = links.some((l) => l.tour || l.group);
 
   useEffect(() => {
-    if (!open.value) return;
+    if (!open) return;
+    const close = () => {
+      if (openMenu.peek() === id) openMenu.value = null;
+    };
     const onPointerDown = (e: PointerEvent) => {
-      if (!container.current?.contains(e.target as Node)) open.value = false;
+      if (menuPinnedByTour.peek()) return;
+      if (!container.current?.contains(e.target as Node)) close();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") open.value = false;
+      if (menuPinnedByTour.peek()) return;
+      if (e.key === "Escape") close();
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -50,7 +123,7 @@ export default function NavDropdown(
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open.value]);
+  }, [open]);
 
   const active = links.some((l) => currentPath.startsWith(l.href));
 
@@ -58,25 +131,23 @@ export default function NavDropdown(
     <div ref={container} class={`relative ${className ?? ""}`}>
       <button
         type="button"
-        data-tour={tour}
+        data-tour-menu={holdsTourItems ? id : undefined}
         class={`nav-link flex items-center cursor-pointer ${
           active ? "text-orange-400" : ""
         }`}
         title={trigger.kind === "text" ? trigger.label : "Menu"}
-        aria-expanded={open.value}
+        aria-expanded={open}
         aria-haspopup="menu"
-        onClick={() => open.value = !open.value}
+        onClick={() => openMenu.value = open ? null : id}
       >
         {trigger.kind === "hamburger" &&
-          (open.value
-            ? <IconX class="size-5" />
-            : <IconMenu2 class="size-5" />)}
+          (open ? <IconX class="size-5" /> : <IconMenu2 class="size-5" />)}
         {trigger.kind === "text" && (
           <>
             <span class="text-sm font-medium">{trigger.label}</span>
             <IconChevronDown
               class={`size-4 ml-0.5 transition-transform duration-75 ${
-                open.value ? "rotate-180" : ""
+                open ? "rotate-180" : ""
               }`}
             />
           </>
@@ -93,10 +164,14 @@ export default function NavDropdown(
             : <span class="text-sm">{trigger.name ?? "Account"}</span>
         )}
       </button>
-      {/* Panel sits above the welcome tour's overlay (z 60) so it stays usable mid-tour. */}
-      {open.value && (
+      {
+        /* z 70 clears the bottom tab bar (z 50); the welcome tour draws its
+          ring and card above the panel at z 80. */
+      }
+      {open && (
         <div
           role="menu"
+          data-tour-panel
           class="absolute right-0 top-full mt-3 min-w-44 bg-stone-900 border-2 border-orange-600 dark:border-orange-500"
           style={{ zIndex: 70 }}
         >
@@ -105,20 +180,7 @@ export default function NavDropdown(
               {trigger.name}
             </div>
           )}
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              role="menuitem"
-              class={`block px-4 py-2.5 text-sm font-medium ${
-                currentPath.startsWith(l.href)
-                  ? "text-orange-400"
-                  : "text-stone-200 hover:bg-stone-800"
-              }`}
-            >
-              {l.label}
-            </a>
-          ))}
+          {renderLinks(links, currentPath)}
           {signOut && (
             <form method="POST" action="/auth/logout">
               <button
