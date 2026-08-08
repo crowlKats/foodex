@@ -49,11 +49,21 @@ export function stepDiagnostics(
     if (key && !sectionStepCounts.has(key)) sectionStepCounts.set(key, 0);
   }
 
+  // @tool(name) refs can only be checked when every tool row carries its
+  // name; with any name missing, silence beats a false "unknown tool".
+  const toolRows = (Array.isArray(recipe.tools) ? recipe.tools : [])
+    .map((t) => (t as Record<string, unknown>).tool_name)
+    .map((n) => (typeof n === "string" ? n.trim() : ""));
+  const toolNames = toolRows.every((n) => n !== "")
+    ? new Set(toolRows)
+    : undefined;
+
   const ctx: StepBodyContext = {
     ingredientKeys: new Set(ingredients.map((i) => i.key)),
     totalSteps: steps.length,
     sectionStepCounts,
     ingredients,
+    toolNames,
   };
 
   const out: StepDiagnostics = { errors: [], warnings: [] };

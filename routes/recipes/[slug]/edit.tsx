@@ -186,7 +186,9 @@ export const handlers = handler({
         q("DELETE FROM recipe_tags WHERE recipe_id = $1", [recipeId]),
       ]);
 
-      await saveRecipeChildren(q, recipeId as string, form);
+      await saveRecipeChildren(q, recipeId as string, form, {
+        householdId: ctx.state.householdId,
+      });
     });
 
     if (ctx.state.user) {

@@ -4,7 +4,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { render } from "preact-render-to-string";
 import { computeSectionLayout } from "../step-sections.ts";
-import { renderTemplate } from "./render.tsx";
+import { renderTemplate, toolRefMap } from "./render.tsx";
 
 function renderToHtml(
   source: string,
@@ -112,4 +112,47 @@ Deno.test("render: tray in math is an inline error", () => {
     tray: { value: 20, value2: 30 },
   });
   assertStringIncludes(html, "recipe-template-error");
+});
+
+Deno.test("render: @tool(name) links the tool and shows its settings", () => {
+  const html = renderToHtml("Preheat the @tool(oven) now.", {
+    tools: toolRefMap([{ id: "t1", name: "Oven", settings: "180 °C" }]),
+  });
+  assertStringIncludes(html, 'href="/tools/t1"');
+  // Label keeps the typed casing; settings follow in parentheses.
+  assertStringIncludes(html, ">oven</a>");
+  assertStringIncludes(html, "(180 °C)");
+});
+
+Deno.test("render: @tool(name) without settings renders just the link", () => {
+  const html = renderToHtml("Use the @tool(Stand Mixer).", {
+    tools: toolRefMap([{ id: "t2", name: "stand mixer" }]),
+  });
+  assertStringIncludes(html, 'href="/tools/t2"');
+  assertStringIncludes(html, ">Stand Mixer</a>");
+  assertEquals(html.includes("()"), false);
+});
+
+Deno.test("render: @tool(name) not attached is an inline error", () => {
+  const html = renderToHtml("Use the @tool(blender).", {
+    tools: toolRefMap([{ id: "t1", name: "Oven" }]),
+  });
+  assertStringIncludes(html, "recipe-template-error");
+});
+
+Deno.test("render: @tool(name, settings) overrides the default settings", () => {
+  const html = renderToHtml(
+    "Cream in the @tool(mixer, medium speed), then @tool(mixer, high speed).",
+    { tools: toolRefMap([{ id: "t3", name: "Mixer", settings: "speed 2" }]) },
+  );
+  assertStringIncludes(html, "(medium speed)");
+  assertStringIncludes(html, "(high speed)");
+  assertEquals(html.includes("(speed 2)"), false);
+});
+
+Deno.test("render: @tool(name) falls back to the default settings", () => {
+  const html = renderToHtml("Whip with the @tool(mixer).", {
+    tools: toolRefMap([{ id: "t3", name: "Mixer", settings: "speed 2" }]),
+  });
+  assertStringIncludes(html, "(speed 2)");
 });

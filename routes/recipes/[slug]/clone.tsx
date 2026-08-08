@@ -99,12 +99,11 @@ export const handlers = handler({
     );
     for (const tool of toolsRes.rows) {
       await ctx.state.db.query(
-        `INSERT INTO recipe_tools (recipe_id, tool_id, usage_description, settings, sort_order)
-         VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO recipe_tools (recipe_id, tool_id, settings, sort_order)
+         VALUES ($1, $2, $3, $4)`,
         [
           newRecipeId,
           tool.tool_id,
-          tool.usage_description,
           tool.settings,
           tool.sort_order,
         ],

@@ -270,8 +270,12 @@ export default page(function GuideDocs() {
               and choose a unit.
             </li>
             <li class={listItem}>
-              <strong>Steps</strong>: Write each step. You can add a photo and
-              specify tools for any step.
+              <strong>Steps</strong>: Write each step. You can add a photo, and
+              reference one of the recipe's tools inline with{" "}
+              <code>@tool(name)</code>, or <code>@tool(name, settings)</code>
+              {" "}
+              when that use has its own settings ("speed 2" now, "high speed"
+              later); it renders as a link with the settings next to it.
             </li>
             <li class={listItem}>
               <strong>Private</strong>: Toggle on if you want it visible only to
@@ -659,10 +663,15 @@ export default page(function GuideDocs() {
           <h3 class={subSectionClass}>Managing Tools</h3>
           <p class={`${prose} mb-4`}>
             Your household has a list of kitchen tools (blender, stand mixer,
-            baking trays, etc.). When you create a recipe, you can specify which
-            tools are needed for each step. This way, if you're browsing
-            recipes, you'll know if you have the right equipment. Go to the{" "}
-            <strong>Household</strong> page to add or remove tools.
+            baking trays, etc.). A recipe lists the tools it needs, each with
+            optional default settings ("180 °C"), and steps reference them
+            inline with <code>@tool(name)</code> or{" "}
+            <code>@tool(name, settings)</code>{" "}
+            for per-use settings. When browsing, the "cookable" filter only
+            shows recipes whose tools you own, and a recipe flags any tool your
+            household is missing. Go to the <strong>Household</strong>{" "}
+            page to add or remove tools, or create them right in the recipe
+            editor.
           </p>
 
           <h3 class={subSectionClass}>Managing Stores</h3>

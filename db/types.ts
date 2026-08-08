@@ -77,7 +77,6 @@ export interface RecipeTool {
   id: string;
   recipe_id: string;
   tool_id: string;
-  usage_description: string | null;
   settings: string | null;
   sort_order: number;
   tool_name: string;
@@ -359,7 +358,6 @@ export interface ToolUsage {
   id: string;
   recipe_id: string;
   tool_id: string;
-  usage_description: string | null;
   settings: string | null;
   recipe_title: string;
   recipe_slug: string;

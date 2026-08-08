@@ -382,9 +382,9 @@ export default function RecipeFields(props: Props) {
             key={`tools-${v}`}
             initialTools={(r.tools ?? []).map((t: Any) => ({
               tool_id: t.tool_id ?? "",
-              tool_name: t.tool_name ??
+              tool_name: t.tool_name ?? t.new_name ??
                 allTools.find((at) => at.id === t.tool_id)?.name ?? "",
-              usage_description: t.usage_description ?? "",
+              new_name: t.new_name ?? "",
               settings: t.settings ?? "",
             }))}
             tools={allTools}

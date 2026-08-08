@@ -153,6 +153,33 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "list_tools",
+    description:
+      "List kitchen tool entities (oven, stand mixer, ...) with id, name, description " +
+      "and whether the household owns one. A recipe's tools must reference one of " +
+      "these ids; search here before reaching for create_tool.",
+    input_schema: {
+      type: "object",
+      properties: { search: { type: "string" } },
+    },
+  },
+  {
+    name: "create_tool",
+    description:
+      "Create a kitchen tool entity and add it to the household's owned list. Direct " +
+      "action, not a proposal: a tool is just a name and description, trivially " +
+      "removed in the app. Last resort: search list_tools first and reuse a match. " +
+      'Name generically ("Stand mixer", not "KitchenAid Artisan 5KSM175").',
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        description: { type: "string" },
+      },
+      required: ["name"],
+    },
+  },
+  {
     name: "get_pantry",
     description:
       "What the household has in stock right now: name, amount, unit, best-before " +
@@ -343,10 +370,10 @@ export const TOOLS: Anthropic.Tool[] = [
     name: "create_ingredient",
     description:
       "Propose a brand-new ingredient entity. Last resort: first search " +
-      "list_ingredients for the core item (for \"bronze-die spaghetti\" search " +
-      "\"spaghetti\") and link a reasonable existing match instead. Name new " +
-      "entities generically, at the level someone shops (\"Spaghetti\", not " +
-      "\"Bronze-die spaghetti\").",
+      'list_ingredients for the core item (for "bronze-die spaghetti" search ' +
+      '"spaghetti") and link a reasonable existing match instead. Name new ' +
+      'entities generically, at the level someone shops ("Spaghetti", not ' +
+      '"Bronze-die spaghetti").',
     input_schema: {
       type: "object",
       properties: {
@@ -535,6 +562,62 @@ export async function executeTool(
             version: loaded.version,
           }],
         };
+      }
+
+      case "list_tools": {
+        const search = typeof input.search === "string" ? input.search : "";
+        const params: unknown[] = [householdId];
+        let where = "";
+        if (search) {
+          params.push(`%${escapeLike(search)}%`);
+          where = "WHERE t.name ILIKE $2";
+        }
+        const res = await q<{
+          id: string;
+          name: string;
+          description: string | null;
+          owned: boolean;
+        }>(
+          `SELECT t.id, t.name, t.description,
+                  EXISTS (SELECT 1 FROM household_tools ht
+                          WHERE ht.household_id = $1 AND ht.tool_id = t.id) AS owned
+           FROM tools t ${where} ORDER BY t.name LIMIT 100`,
+          params,
+        );
+        return { content: { tools: res.rows }, is_error: false };
+      }
+
+      case "create_tool": {
+        const nm = input.name;
+        if (typeof nm !== "string" || !nm.trim()) {
+          return err("name is required.");
+        }
+        // A same-named tool already existing is reused, never duplicated.
+        const existing = await q<{ id: string }>(
+          `SELECT id FROM tools WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+           ORDER BY created_at, id LIMIT 1`,
+          [nm],
+        );
+        let toolId: string;
+        let created = false;
+        if (existing.rows.length > 0) {
+          toolId = existing.rows[0].id;
+        } else {
+          const desc = typeof input.description === "string"
+            ? input.description.trim() || null
+            : null;
+          const res = await q<{ id: string }>(
+            "INSERT INTO tools (name, description) VALUES ($1, $2) RETURNING id",
+            [nm.trim(), desc],
+          );
+          toolId = res.rows[0].id;
+          created = true;
+        }
+        await q(
+          "INSERT INTO household_tools (household_id, tool_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+          [householdId, toolId],
+        );
+        return { content: { tool_id: toolId, created }, is_error: false };
       }
 
       // ── kitchen state ────────────────────────────────────────────

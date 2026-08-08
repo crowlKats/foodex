@@ -39,6 +39,7 @@ import type {
   TemplateAst,
   TemplateNode,
   TimerNode,
+  ToolRefNode,
 } from "./ast.ts";
 import { placeholder, renderMarkdown } from "./markdown-jsx.tsx";
 
@@ -51,6 +52,24 @@ export interface RenderStepShape {
 export interface RecipeRefInfo {
   slug: string;
   title: string;
+}
+
+/** One of the recipe's attached tools, for resolving `@tool(name)`. */
+export interface ToolRefInfo {
+  id: string;
+  name: string;
+  settings?: string | null;
+}
+
+/** Key the recipe's tools by normalized name for `@tool(...)` lookup. */
+export function toolRefMap(
+  tools: { id: string; name: string; settings?: string | null }[],
+): Map<string, ToolRefInfo> {
+  const map = new Map<string, ToolRefInfo>();
+  for (const t of tools) {
+    map.set(t.name.trim().toLowerCase(), t);
+  }
+  return map;
 }
 
 /** Current (possibly retargeted) tray size of a dimensions recipe, in cm. */
@@ -71,6 +90,8 @@ export interface RenderContext {
   recipeRefs?: Map<string, RecipeRefInfo>;
   /** Map of `slug -> {title,slug}` for resolved dishes (`@dish(...)`). */
   dishRefs?: Map<string, RecipeRefInfo>;
+  /** Map of normalized tool name -> tool, for `@tool(...)`; see toolRefMap. */
+  tools?: Map<string, ToolRefInfo>;
   /** Click handler for timer buttons; pass `null` to render a static button.
    *  `maxSeconds` is set for range timers (`@timer(4-6m)`): the countdown
    *  runs to `seconds` and the rest is offered as a one-tap extension. */
@@ -127,6 +148,8 @@ function renderNodeToMarkdown(
       return slot(renderRecipeRef(node, ctx));
     case "dish_ref":
       return slot(renderDishRef(node, ctx));
+    case "tool_ref":
+      return slot(renderToolRef(node, ctx));
     case "invalid_directive":
       return slot(renderInvalid(node));
   }
@@ -300,6 +323,31 @@ function renderDishRef(
     );
   }
   return <a href={`/dishes/${encodeURIComponent(ref.slug)}`}>{ref.title}</a>;
+}
+
+function renderToolRef(
+  node: ToolRefNode,
+  ctx: RenderContext,
+): ComponentChildren {
+  const tool = ctx.tools?.get(node.name.toLowerCase());
+  if (!tool) {
+    return renderError(
+      `@tool(${node.name})`,
+      `This recipe doesn't list a tool called "${node.name}". ` +
+        "Add it under the recipe's tools.",
+    );
+  }
+  // The typed text stays as the label so the sentence reads naturally; the
+  // dial settings ride along so the step carries them inline. Settings given
+  // in the directive win over the tool's default: a mixer runs at "speed 2"
+  // in one step and "high speed" in another.
+  const settings = node.settings ?? tool.settings?.trim();
+  return (
+    <>
+      <a href={`/tools/${encodeURIComponent(tool.id)}`}>{node.name}</a>
+      {settings ? ` (${settings})` : ""}
+    </>
+  );
 }
 
 function renderInvalid(node: InvalidDirectiveNode): ComponentChildren {

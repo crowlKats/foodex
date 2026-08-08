@@ -203,6 +203,55 @@ Deno.test("parseTemplate: @dish(BAD CAPS) is invalid", () => {
   assertEquals(ast.nodes[0].kind, "invalid_directive");
 });
 
+// ── Tool references ────────────────────────────────────────────────────────
+
+Deno.test("parseTemplate: @tool(name) with spaces and caps", () => {
+  const src = "whisk in the @tool(Stand mixer) until fluffy";
+  const ast = parseTemplate(src);
+  const ref = ast.nodes[1];
+  assert(ref.kind === "tool_ref");
+  assertEquals(ref.name, "Stand mixer");
+  assertEquals(rangeText(src, ref.nameRange), "Stand mixer");
+  assertEquals(rangeText(src, ref), "@tool(Stand mixer)");
+});
+
+Deno.test("parseTemplate: @tool( padded ) trims but keeps positions", () => {
+  const src = "@tool(  oven  )";
+  const ast = parseTemplate(src);
+  const ref = ast.nodes[0];
+  assert(ref.kind === "tool_ref");
+  assertEquals(ref.name, "oven");
+  assertEquals(rangeText(src, ref.nameRange), "oven");
+});
+
+Deno.test("parseTemplate: @tool() with nothing inside is invalid", () => {
+  const ast = parseTemplate("@tool( )");
+  assertEquals(ast.nodes[0].kind, "invalid_directive");
+});
+
+Deno.test("parseTemplate: @tool(name, settings) carries per-use settings", () => {
+  const src = "whip in the @tool(Stand mixer, high speed) briefly";
+  const ast = parseTemplate(src);
+  const ref = ast.nodes[1];
+  assert(ref.kind === "tool_ref");
+  assertEquals(ref.name, "Stand mixer");
+  assertEquals(ref.settings, "high speed");
+  assertEquals(rangeText(src, ref.nameRange), "Stand mixer");
+  assertEquals(rangeText(src, ref.settingsRange!), "high speed");
+});
+
+Deno.test("parseTemplate: @tool(name) leaves settings unset", () => {
+  const ast = parseTemplate("@tool(oven)");
+  const ref = ast.nodes[0];
+  assert(ref.kind === "tool_ref");
+  assertEquals(ref.settings, undefined);
+});
+
+Deno.test("parseTemplate: @tool(name, ) with empty settings is invalid", () => {
+  const ast = parseTemplate("@tool(mixer, )");
+  assertEquals(ast.nodes[0].kind, "invalid_directive");
+});
+
 // ── Unknown @-words pass through as text ───────────────────────────────────
 
 Deno.test("parseTemplate: @username(at-style stuff) stays as text", () => {

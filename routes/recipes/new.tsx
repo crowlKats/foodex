@@ -160,7 +160,9 @@ export const handlers = handler({
           ],
         );
         recipeId = res.rows[0].id;
-        await saveRecipeChildren(q, recipeId, form);
+        await saveRecipeChildren(q, recipeId, form, {
+          householdId: ctx.state.householdId,
+        });
       });
     } catch (err) {
       if (String(err).includes("unique")) {

@@ -935,11 +935,26 @@ export default function StepForm(
       ).length;
       sectionStepCounts.set(key, count);
     }
+
+    // Attached tool names for `@tool(...)`, scraped from the ToolForm
+    // sibling island the same way ingredient keys are.
+    const toolNames = new Set<string>();
+    const toolInputs = typeof document === "undefined"
+      ? []
+      : document.querySelectorAll<HTMLInputElement>(
+        'input[name^="tools["][name$="][tool_name]"]',
+      );
+    toolInputs.forEach((el) => {
+      const n = el.value?.trim();
+      if (n) toolNames.add(n);
+    });
+
     return {
       ingredientKeys,
       ingredients,
       totalSteps: items.value.length,
       sectionStepCounts,
+      toolNames,
     };
   }, []);
 
@@ -1519,7 +1534,9 @@ export default function StepForm(
           Use <code class="code-hint">{"{{ key }}"}</code>{" "}
           for scaled ingredients,{" "}
           <code class="code-hint">{"{{ key.amount }}"}</code>{" "}
-          for just the number. Supports math and functions.{" "}
+          for just the number, <code class="code-hint">@tool(name)</code>{" "}
+          for an attached tool with its settings. Supports math and functions.
+          {" "}
           <a href="/docs/templates" class="link text-xs">Full reference</a>
         </p>
         <SegmentToggle value={mode} options={["list", "graph"]} />

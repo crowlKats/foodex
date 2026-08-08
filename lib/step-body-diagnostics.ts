@@ -41,6 +41,12 @@ export interface StepBodyContext {
    * insert bar. Optional so existing callers keep compiling.
    */
   ingredients?: StepBodyIngredient[];
+  /**
+   * Names of the recipe's attached tools, for validating `@tool(name)`.
+   * Leave unset when the caller can't know them (matching is skipped);
+   * an empty set means "knows the tools, and there are none".
+   */
+  toolNames?: Set<string>;
 }
 
 /** Diagnostic emitted alongside a `tpl-invalid` highlight. */
@@ -421,6 +427,39 @@ function emitNode(
     case "dish_ref":
       pushToken(tokens, node.start, node.length, "tpl-recipe", 2);
       return;
+    case "tool_ref": {
+      const names = ctx.toolNames;
+      if (names) {
+        const known = [...names].some(
+          (n) => n.trim().toLowerCase() === node.name.toLowerCase(),
+        );
+        if (!known) {
+          const suggestion = nearestKey(node.name, names);
+          pushInvalid(
+            tokens,
+            diagnostics,
+            node.start,
+            node.length,
+            `This recipe doesn't list a tool called \`${node.name}\`. ` +
+              (suggestion
+                ? `Did you mean \`${suggestion}\`?`
+                : "Add it under the recipe's tools first, " +
+                  "or check that the spelling matches."),
+            suggestion
+              ? {
+                start: node.nameRange.start,
+                end: node.nameRange.start + node.nameRange.length,
+                replacement: suggestion,
+                label: `Change to ${suggestion}`,
+              }
+              : undefined,
+          );
+          return;
+        }
+      }
+      pushToken(tokens, node.start, node.length, "tpl-tool", 2);
+      return;
+    }
   }
 }
 

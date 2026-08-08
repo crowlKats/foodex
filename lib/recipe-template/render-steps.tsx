@@ -19,6 +19,7 @@ import {
   type RecipeRefInfo,
   type RenderContext,
   renderTemplate,
+  type ToolRefInfo,
   type TrayDims,
 } from "./render.tsx";
 
@@ -39,6 +40,8 @@ export interface RecipeStepsProps {
   tray?: TrayDims;
   recipeRefs?: Map<string, RecipeRefInfo>;
   dishRefs?: Map<string, RecipeRefInfo>;
+  /** Attached tools keyed by normalized name (`@tool(...)`); see toolRefMap. */
+  tools?: Map<string, ToolRefInfo>;
   onTimerStart?: (seconds: number, label: string, maxSeconds?: number) => void;
 }
 
@@ -53,6 +56,7 @@ export function RecipeSteps(props: RecipeStepsProps): VNode {
     layout,
     recipeRefs: props.recipeRefs,
     dishRefs: props.dishRefs,
+    tools: props.tools,
     onTimerStart: props.onTimerStart,
   };
 
@@ -134,6 +138,7 @@ export function RecipeStepBody(props: {
   tray?: TrayDims;
   recipeRefs?: Map<string, RecipeRefInfo>;
   dishRefs?: Map<string, RecipeRefInfo>;
+  tools?: Map<string, ToolRefInfo>;
   onTimerStart?: (seconds: number, label: string, maxSeconds?: number) => void;
 }): VNode {
   const layout = computeSectionLayout(props.steps, props.sections);
@@ -145,6 +150,7 @@ export function RecipeStepBody(props: {
     layout,
     recipeRefs: props.recipeRefs,
     dishRefs: props.dishRefs,
+    tools: props.tools,
     onTimerStart: props.onTimerStart,
   };
   return (

@@ -11,7 +11,8 @@
  *   - `tpl-interp`     a successful `{{ … }}` interpolation expression body.
  *   - `tpl-step-ref`   an `@step(…)` or section-relative step reference.
  *   - `tpl-timer`      an `@timer(…)` directive.
- *   - `tpl-recipe`     an `@recipe(…)` directive.
+ *   - `tpl-recipe`     an `@recipe(…)` or `@dish(…)` directive.
+ *   - `tpl-tool`       an `@tool(…)` reference to an attached tool.
  *   - `tpl-invalid`    anything the parser flagged as invalid OR a directive
  *                      whose argument doesn't resolve (unknown ingredient
  *                      key, out-of-range step, missing section, …).

@@ -77,7 +77,12 @@ Deno.test("stepDiagnostics: duplicate ingredient rows warn", () => {
       { key: "bottarga", name: "Bottarga di muggine", unit: "g" },
       { key: "bottarga_for_crumb", name: "Bottarga di muggine", unit: "g" },
       { key: "butter", name: "Butter", unit: "g", ingredient_id: "id-1" },
-      { key: "butter_cold", name: "Cold butter", unit: "g", ingredient_id: "id-1" },
+      {
+        key: "butter_cold",
+        name: "Cold butter",
+        unit: "g",
+        ingredient_id: "id-1",
+      },
       { key: "flour", name: "Flour", unit: "g" },
     ],
     steps: [{ id: "s0", title: "", body: "No refs." }],

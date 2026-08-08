@@ -5,7 +5,8 @@
  *
  *   1. `parseTemplate` scans the input character-by-character producing a
  *      sequence of `TemplateNode`s. It is responsible for recognising the
- *      directive markers (`{{`, `@step(`, `@timer(`, `@recipe(`) and for
+ *      directive markers (`{{`, `@step(`, `@timer(`, `@recipe(`, `@dish(`,
+ *      `@tool(`) and for
  *      lifting their content out before any markdown sees them. This is what
  *      makes `*bar {{ foo * 2 }}*` safe: the inner `*` is fully consumed as
  *      part of the interpolation, so by the time markdown looks at the text
@@ -34,6 +35,7 @@ import type {
   TemplateNode,
   TextNode,
   TimerNode,
+  ToolRefNode,
 } from "./ast.ts";
 
 // ── Public entry points ─────────────────────────────────────────────────────
@@ -188,7 +190,7 @@ class TemplateParser {
     const name = m[1];
     if (
       name !== "step" && name !== "timer" && name !== "recipe" &&
-      name !== "dish"
+      name !== "dish" && name !== "tool"
     ) return null;
 
     const argStart = this.pos + m[0].length;
@@ -220,6 +222,8 @@ class TemplateParser {
         return this.buildRecipeRef(arg, argStart, start, totalLen);
       case "dish":
         return this.buildDishRef(arg, argStart, start, totalLen);
+      case "tool":
+        return this.buildToolRef(arg, argStart, start, totalLen);
     }
     return null;
   }
@@ -365,6 +369,73 @@ class TemplateParser {
       kind: "recipe_ref",
       slug: arg,
       slugRange: { start: argStart, length: arg.length },
+      start,
+      length: totalLen,
+    };
+  }
+
+  private buildToolRef(
+    arg: string,
+    argStart: number,
+    start: number,
+    totalLen: number,
+  ): ToolRefNode | InvalidDirectiveNode {
+    const invalid = (message: string): InvalidDirectiveNode => ({
+      kind: "invalid_directive",
+      raw: this.src.slice(start, start + totalLen),
+      message,
+      start,
+      length: totalLen,
+    });
+
+    // `@tool(name)` or `@tool(name, settings)`: settings for this particular
+    // use; without them the tool's default settings apply. Both parts are
+    // free text ("stand mixer", "speed 2"), so accept anything non-blank;
+    // whether the name matches an attached tool is a semantic check done by
+    // the renderer and the diagnostics, which know the recipe's tools.
+    const comma = arg.indexOf(",");
+    const namePart = comma >= 0 ? arg.slice(0, comma) : arg;
+    const trimRange = (text: string, offset: number) => {
+      let lead = 0;
+      while (lead < text.length && isSpace(text[lead])) lead++;
+      let tail = text.length;
+      while (tail > lead && isSpace(text[tail - 1])) tail--;
+      return {
+        value: text.slice(lead, tail),
+        range: { start: offset + lead, length: tail - lead },
+      };
+    };
+
+    const name = trimRange(namePart, argStart);
+    if (name.value.length === 0) {
+      return invalid(
+        "`@tool(...)` needs the name of one of the recipe's tools " +
+          "inside, like `@tool(oven)`.",
+      );
+    }
+    if (comma < 0) {
+      return {
+        kind: "tool_ref",
+        name: name.value,
+        nameRange: name.range,
+        start,
+        length: totalLen,
+      };
+    }
+
+    const settings = trimRange(arg.slice(comma + 1), argStart + comma + 1);
+    if (settings.value.length === 0) {
+      return invalid(
+        "There's nothing after the comma. Put this use's settings there, " +
+          "like `@tool(mixer, medium-low)`, or drop the comma.",
+      );
+    }
+    return {
+      kind: "tool_ref",
+      name: name.value,
+      nameRange: name.range,
+      settings: settings.value,
+      settingsRange: settings.range,
       start,
       length: totalLen,
     };

@@ -46,6 +46,13 @@ export const handlers = handler({
     };
   },
   async POST(ctx) {
+    if (!ctx.state.user) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login" },
+      });
+    }
+
     const id = ctx.params.id;
     const form = await ctx.req.formData();
     const method = form.get("_method");
@@ -197,11 +204,6 @@ export default page(
                       class="block card card-hover p-3"
                     >
                       <div class="font-medium">{u.recipe_title}</div>
-                      {u.usage_description && (
-                        <div class="text-sm text-stone-500">
-                          {u.usage_description}
-                        </div>
-                      )}
                       {u.settings && (
                         <div class="text-sm text-stone-400">
                           Settings: {u.settings}

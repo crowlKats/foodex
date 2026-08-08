@@ -84,7 +84,6 @@ export function editDataToRecipeFields(
     tools: d.tools.map((t) => ({
       tool_id: String(t.tool_id),
       tool_name: t.tool_name ?? "",
-      usage_description: t.usage_description,
       settings: t.settings,
     })),
     refs: d.refs.map((ref) => ({

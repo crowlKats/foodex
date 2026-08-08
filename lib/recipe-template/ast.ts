@@ -9,6 +9,9 @@
  *   - `@timer(15m)` etc.: timer buttons.
  *   - `@recipe(slug)`: sub-recipe links (resolved asynchronously).
  *   - `@dish(slug)`: dish links, "any recipe for this dish".
+ *   - `@tool(name)` / `@tool(name, settings)`: one of the recipe's attached
+ *     tools; the second argument overrides the tool's default settings for
+ *     this use ("speed 2" now, "high speed" later).
  *
  * Every node carries (`start`, `length`) into the original source so a syntax
  * highlighter or editor tooling can map nodes back to text ranges. Parse errors
@@ -78,6 +81,18 @@ export interface DishRefNode extends Pos {
   slugRange: Pos;
 }
 
+export interface ToolRefNode extends Pos {
+  kind: "tool_ref";
+  /** Tool name as typed; matched case-insensitively against the recipe's
+   *  attached tools at render/validation time. */
+  name: string;
+  nameRange: Pos;
+  /** Settings for this use ("medium-low"), from `@tool(name, settings)`.
+   *  Unset falls back to the attached tool's default settings. */
+  settings?: string;
+  settingsRange?: Pos;
+}
+
 export interface InvalidDirectiveNode extends Pos {
   kind: "invalid_directive";
   /** Raw source covering the offending construct, including the leading `@` or `{{`. */
@@ -93,6 +108,7 @@ export type TemplateNode =
   | TimerNode
   | RecipeRefNode
   | DishRefNode
+  | ToolRefNode
   | InvalidDirectiveNode;
 
 export interface TemplateAst extends Pos {

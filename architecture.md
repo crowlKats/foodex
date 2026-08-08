@@ -178,7 +178,7 @@
 - **recipe_steps**: recipe_id, title, body (markdown + template syntax),
   sort_order
 - **recipe_step_media**: step_id, media_id, sort_order
-- **recipe_tools**: recipe_id, tool_id, usage_description, settings, sort_order
+- **recipe_tools**: recipe_id, tool_id, settings, sort_order
 - **recipe_references**: recipe_id, referenced_recipe_id, sort_order
 - **recipe_tags**: recipe_id, tag_type (meal_type|dietary), tag_value
 - **recipe_favorites**: user_id, recipe_id

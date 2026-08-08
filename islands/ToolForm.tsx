@@ -8,7 +8,8 @@ import { Input } from "../components/Input.tsx";
 interface ToolEntry {
   tool_id: string;
   tool_name: string;
-  usage_description: string;
+  /** Set when the user typed a name no tool has; saving creates it. */
+  new_name: string;
   settings: string;
 }
 
@@ -25,9 +26,12 @@ export default function ToolForm(
   { initialTools, tools }: ToolFormProps,
 ) {
   const items = useSignal<ToolItem[]>(
-    (initialTools.length > 0
-      ? initialTools
-      : [{ tool_id: "", tool_name: "", usage_description: "", settings: "" }])
+    (initialTools.length > 0 ? initialTools : [{
+      tool_id: "",
+      tool_name: "",
+      new_name: "",
+      settings: "",
+    }])
       .map((t) => ({ ...t, _uid: crypto.randomUUID() })),
   );
 
@@ -37,7 +41,7 @@ export default function ToolForm(
     items.value = [...items.value, {
       tool_id: "",
       tool_name: "",
-      usage_description: "",
+      new_name: "",
       settings: "",
       _uid: crypto.randomUUID(),
     }];
@@ -65,14 +69,35 @@ export default function ToolForm(
               value={{ id: item.tool_id, name: item.tool_name }}
               options={options}
               placeholder="Search tool..."
+              createLabel="New tool"
               onSelect={(o) => {
                 const next = [...items.value];
-                next[i] = { ...next[i], tool_id: o.id, tool_name: o.name };
+                next[i] = {
+                  ...next[i],
+                  tool_id: o.id,
+                  tool_name: o.name,
+                  new_name: "",
+                };
+                items.value = next;
+              }}
+              onCreate={(text) => {
+                const next = [...items.value];
+                next[i] = {
+                  ...next[i],
+                  tool_id: "",
+                  tool_name: text,
+                  new_name: text,
+                };
                 items.value = next;
               }}
               onClear={() => {
                 const next = [...items.value];
-                next[i] = { ...next[i], tool_id: "", tool_name: "" };
+                next[i] = {
+                  ...next[i],
+                  tool_id: "",
+                  tool_name: "",
+                  new_name: "",
+                };
                 items.value = next;
               }}
             />
@@ -86,23 +111,22 @@ export default function ToolForm(
                 remove(i)}
             />
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:pl-7">
+          <div class="sm:pl-7">
             <Input
               type="text"
-              placeholder="Settings (e.g. 180C)"
+              placeholder="Default settings (e.g. 180C)"
               value={item.settings}
               onValueChange={(v) =>
                 update(i, "settings", v)}
               size="sm"
-            />
-            <Input
-              type="text"
-              placeholder="Usage description"
-              value={item.usage_description}
-              onValueChange={(v) => update(i, "usage_description", v)}
-              size="sm"
+              class="w-full"
             />
           </div>
+          {item.new_name && (
+            <p class="text-xs text-stone-400 sm:pl-7">
+              Saving creates this tool and adds it to your household.
+            </p>
+          )}
           <input
             type="hidden"
             name={`tools[${i}][tool_id]`}
@@ -110,8 +134,13 @@ export default function ToolForm(
           />
           <input
             type="hidden"
-            name={`tools[${i}][usage_description]`}
-            value={item.usage_description}
+            name={`tools[${i}][tool_name]`}
+            value={item.tool_name}
+          />
+          <input
+            type="hidden"
+            name={`tools[${i}][new_name]`}
+            value={item.new_name}
           />
           <input
             type="hidden"

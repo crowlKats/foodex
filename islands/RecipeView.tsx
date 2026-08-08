@@ -20,7 +20,10 @@ import {
   RecipeStepBody,
   RecipeSteps,
 } from "../lib/recipe-template/render-steps.tsx";
-import { scaleIngredients } from "../lib/recipe-template/render.tsx";
+import {
+  scaleIngredients,
+  toolRefMap,
+} from "../lib/recipe-template/render.tsx";
 import { toDisplayUnit } from "../lib/unit-display.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
 import { Button } from "../components/Button.tsx";
@@ -71,7 +74,8 @@ interface RecipeTool {
   id: string;
   name: string;
   settings?: string;
-  usage?: string;
+  /** Whether the viewer's household owns one; undefined without a household. */
+  owned?: boolean;
 }
 
 interface RecipeRef {
@@ -215,6 +219,9 @@ export default function RecipeView(
     for (const d of dishRefsList ?? []) map.set(d.slug, d);
     return map;
   }, [dishRefsList]);
+
+  // Attached tools keyed by normalized name, for `@tool(name)` in step bodies.
+  const toolsMap = useMemo(() => toolRefMap(tools ?? []), [tools]);
 
   function getTarget(): RecipeQuantity {
     return {
@@ -749,6 +756,7 @@ export default function RecipeView(
         ingredients={scaleIngredients(ingredients, ratio)}
         recipeRefs={recipeRefsMap}
         dishRefs={dishRefsMap}
+        tools={toolsMap}
         onTimerStart={startTimer}
       />
     );
@@ -1551,8 +1559,10 @@ export default function RecipeView(
                   {t.settings && (
                     <span class="text-stone-500">{` (${t.settings})`}</span>
                   )}
-                  {t.usage && (
-                    <div class="text-stone-500 text-xs">{t.usage}</div>
+                  {householdId && !t.owned && (
+                    <span class="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded ml-1.5">
+                      not owned
+                    </span>
                   )}
                 </li>
               ))}
@@ -1584,6 +1594,7 @@ export default function RecipeView(
             tray={getTray()}
             recipeRefs={recipeRefsMap}
             dishRefs={dishRefsMap}
+            tools={toolsMap}
             onTimerStart={startTimer}
           />
         </div>

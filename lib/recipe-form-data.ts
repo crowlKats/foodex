@@ -92,11 +92,12 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
   let t = 0;
   while (fd.has(`tools[${t}][tool_id]`)) {
     const toolId = (fd.get(`tools[${t}][tool_id]`) as string) || "";
-    if (toolId) {
+    const newName = (fd.get(`tools[${t}][new_name]`) as string)?.trim() || "";
+    if (toolId || newName) {
       tools.push({
         tool_id: toolId,
-        usage_description:
-          (fd.get(`tools[${t}][usage_description]`) as string)?.trim() || null,
+        tool_name: (fd.get(`tools[${t}][tool_name]`) as string)?.trim() || null,
+        new_name: newName || null,
         settings: (fd.get(`tools[${t}][settings]`) as string)?.trim() || null,
       });
     }

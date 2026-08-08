@@ -50,7 +50,9 @@ export interface AgentStep {
 }
 export interface AgentTool {
   tool_id: string;
-  usage_description?: string | null;
+  /** The tool entity's name; lets `@tool(name)` refs in step bodies be
+   *  validated without a DB round-trip. */
+  tool_name?: string | null;
   settings?: string | null;
 }
 
@@ -224,7 +226,7 @@ export async function loadAgentRecipe(
     })),
     tools: tools.rows.map((t) => ({
       tool_id: t.tool_id,
-      usage_description: t.usage_description,
+      tool_name: t.tool_name,
       settings: t.settings,
     })),
     refs: refs.rows.map((r) => ({
@@ -289,9 +291,6 @@ export function agentRecipeToFormData(r: AgentRecipe): FormData {
   const tools = r.tools ?? [];
   tools.forEach((t, i) => {
     fd.set(`tools[${i}][tool_id]`, t.tool_id);
-    if (t.usage_description) {
-      fd.set(`tools[${i}][usage_description]`, t.usage_description);
-    }
     if (t.settings) fd.set(`tools[${i}][settings]`, t.settings);
   });
 

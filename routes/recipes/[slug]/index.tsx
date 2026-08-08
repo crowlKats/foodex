@@ -61,13 +61,15 @@ export const handlers = handler({
       [recipe.id],
     );
 
-    const toolsRes = await ctx.state.db.query<RecipeTool>(
-      `SELECT rt.*, t.name as tool_name, t.description as tool_description
+    const toolsRes = await ctx.state.db.query<RecipeTool & { owned: boolean }>(
+      `SELECT rt.*, t.name as tool_name, t.description as tool_description,
+              EXISTS (SELECT 1 FROM household_tools ht
+                      WHERE ht.household_id = $2 AND ht.tool_id = rt.tool_id) as owned
        FROM recipe_tools rt
        JOIN tools t ON t.id = rt.tool_id
        WHERE rt.recipe_id = $1
        ORDER BY rt.sort_order, rt.id`,
-      [recipe.id],
+      [recipe.id, ctx.state.householdId],
     );
 
     const stepsRes = await ctx.state.db.query<RecipeStep>(
@@ -748,7 +750,7 @@ export default page(function RecipeViewPage({
             id: m.tool_id,
             name: m.tool_name,
             settings: m.settings ?? undefined,
-            usage: m.usage_description ?? undefined,
+            owned: m.owned,
           }))}
           refs={refs.map((r) => ({
             slug: r.ref_slug,

@@ -4,13 +4,63 @@ import { ensureIngredientIds, isIntermediate } from "./ingredient-resolve.ts";
 import type { QueryFn } from "../db/mod.ts";
 
 /**
+ * Fill in `tool_id` on rows that arrived with a `new_name`, matching an
+ * existing tool case-insensitively or creating one. Mutates the rows in
+ * place; returns the ids of tools that were actually created.
+ */
+async function ensureToolIds(
+  q: QueryFn,
+  rows: { tool_id?: string; new_name?: string }[],
+): Promise<string[]> {
+  const unresolved = rows.filter(
+    (r): r is { tool_id?: string; new_name: string } =>
+      !r.tool_id?.trim() && !!r.new_name?.trim(),
+  );
+  if (unresolved.length === 0) return [];
+
+  const norms = [
+    ...new Set(unresolved.map((r) => r.new_name.trim().toLowerCase())),
+  ];
+  // When several tools share a name, prefer the oldest, like ingredients do.
+  const existing = await q<{ id: string; norm: string }>(
+    `SELECT DISTINCT ON (LOWER(TRIM(name))) LOWER(TRIM(name)) AS norm, id
+     FROM tools
+     WHERE LOWER(TRIM(name)) = ANY($1)
+     ORDER BY LOWER(TRIM(name)), created_at, id`,
+    [norms],
+  );
+  const byNorm = new Map(existing.rows.map((r) => [r.norm, r.id]));
+
+  const created: string[] = [];
+  for (const row of unresolved) {
+    const norm = row.new_name.trim().toLowerCase();
+    let id = byNorm.get(norm);
+    if (!id) {
+      const res = await q<{ id: string }>(
+        "INSERT INTO tools (name) VALUES ($1) RETURNING id",
+        [row.new_name.trim()],
+      );
+      id = res.rows[0].id;
+      byNorm.set(norm, id);
+      created.push(id);
+    }
+    row.tool_id = id;
+  }
+  return created;
+}
+
+/**
  * Save all recipe child records (ingredients, tools, steps, step media, refs, tags).
  * Caller is responsible for wrapping this in a transaction.
+ *
+ * `householdId` lets tools created inline on the recipe form land in the
+ * household's owned list, matching what creating one on /tools does.
  */
 export async function saveRecipeChildren(
   q: QueryFn,
   recipeId: string,
   form: FormData,
+  opts: { householdId?: string | null } = {},
 ): Promise<void> {
   // Ingredients. Every line must link to a real ingredient entity; free-text
   // names (manual form, imports) are resolved to an existing ingredient or
@@ -46,15 +96,25 @@ export async function saveRecipeChildren(
     ], ingRows);
   }
 
-  // Tools
+  // Tools. Rows may carry a `new_name` instead of a linked tool_id (typed
+  // into the recipe form); resolve those by name or create the tool here,
+  // inside the caller's transaction.
   const toolEntries = parseFormArray(form, "tools");
+  const createdToolIds = await ensureToolIds(q, toolEntries);
+  if (opts.householdId) {
+    for (const toolId of createdToolIds) {
+      await q(
+        "INSERT INTO household_tools (household_id, tool_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        [opts.householdId, toolId],
+      );
+    }
+  }
   const toolRows = toolEntries
     .map((t, i) => {
       if (!t.tool_id) return null;
       return [
         recipeId,
         t.tool_id,
-        t.usage_description?.trim() || null,
         t.settings?.trim() || null,
         i,
       ];
@@ -65,7 +125,6 @@ export async function saveRecipeChildren(
     await bulkInsert(q, "recipe_tools", [
       "recipe_id",
       "tool_id",
-      "usage_description",
       "settings",
       "sort_order",
     ], toolRows);

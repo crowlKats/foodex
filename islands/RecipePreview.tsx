@@ -1,6 +1,9 @@
 import { useSignal } from "@preact/signals";
 import { RecipeSteps } from "../lib/recipe-template/render-steps.tsx";
-import { scaleIngredients } from "../lib/recipe-template/render.tsx";
+import {
+  scaleIngredients,
+  toolRefMap,
+} from "../lib/recipe-template/render.tsx";
 import type { SectionInfo } from "../lib/step-sections.ts";
 import { recipeErrorCount } from "../lib/recipe-errors.ts";
 import { IconEye } from "@tabler/icons-preact";
@@ -25,6 +28,7 @@ interface PreviewData {
   steps: RenderStep[];
   sections: SectionInfo[];
   ingredients: RenderIngredient[];
+  tools: { id: string; name: string; settings?: string }[];
   tray?: { value: number; value2?: number; value3?: number };
 }
 
@@ -76,6 +80,20 @@ export default function RecipePreview({ formId, size }: Props = {}) {
       s++;
     }
 
+    const tools: PreviewData["tools"] = [];
+    let t = 0;
+    while (fd.has(`tools[${t}][tool_id]`)) {
+      const name = ((fd.get(`tools[${t}][tool_name]`) as string) || "").trim();
+      if (name) {
+        tools.push({
+          id: (fd.get(`tools[${t}][tool_id]`) as string) || "",
+          name,
+          settings: (fd.get(`tools[${t}][settings]`) as string) || "",
+        });
+      }
+      t++;
+    }
+
     const steps: RenderStep[] = [];
     let j = 0;
     while (fd.has(`steps[${j}][title]`) || fd.has(`steps[${j}][body]`)) {
@@ -107,7 +125,7 @@ export default function RecipePreview({ formId, size }: Props = {}) {
       }
       : undefined;
 
-    return { steps, sections, ingredients, tray };
+    return { steps, sections, ingredients, tools, tray };
   }
 
   function show(e: Event) {
@@ -162,6 +180,7 @@ export default function RecipePreview({ formId, size }: Props = {}) {
                   sections={data.value.sections}
                   variables={{ ratio: 1 }}
                   ingredients={scaleIngredients(data.value.ingredients, 1)}
+                  tools={toolRefMap(data.value.tools)}
                   tray={data.value.tray}
                 />
               </div>

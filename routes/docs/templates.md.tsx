@@ -81,6 +81,12 @@ Example: \`@recipe(pizza-dough)\` renders as a clickable link to that recipe.
 Link to a dish ("any recipe that makes this") using \`@dish(slug)\`.
 Example: \`@dish(pizza-dough)\` renders as a link to the dish page listing every recipe for it. Use this instead of \`@recipe()\` when any version of the dish will do.
 
+## Tool References
+Reference one of the recipe's attached tools using \`@tool(name)\` or \`@tool(name, settings)\`, where name matches an attached tool's name (case-insensitive).
+The second argument gives the settings for THIS use, so a tool used at varying settings states each one where it happens: \`Cream the butter in the @tool(mixer, medium speed), then whip on @tool(mixer, high speed).\` renders each mention as a link with that use's settings in parentheses.
+Without a second argument, the tool's default settings from the recipe's tool list (if any) are shown: with an "Oven" tool attached whose settings are "180 °C", \`Preheat the @tool(oven).\` renders as "Preheat the [oven] (180 °C)."
+The typed name is used as the link label, so it can follow the sentence's casing. The tool must be listed under the recipe's tools; an unattached name is flagged as an error in the editor.
+
 ## Timers
 Embed interactive countdown timers using \`@timer(duration)\`. Duration supports hours (\`h\`), minutes (\`m\`), and seconds (\`s\`), which can be combined.
 
