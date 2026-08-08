@@ -31,16 +31,12 @@ household.
 - **Cookable filter**: show only recipes you can make right now based on what's
   in your pantry.
 
-### Import & AI Generation
+### Import
 
 - **Import from image**: upload photos of cookbook pages, handwritten notes, or
   screenshots. AI (Claude) extracts the title, ingredients, steps, times, and
   even crops a cover photo. Supports any language with automatic English
   translation.
-- **Generate from pantry**: AI suggests a recipe based on what you have on hand.
-  Set a maximum total time and provide custom instructions (e.g. "something
-  Italian", "a dessert", "no spicy food"). The generated recipe lands in the
-  same review form as imports so you can edit before saving.
 
 ### Pantry
 

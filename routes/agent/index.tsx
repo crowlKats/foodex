@@ -107,9 +107,8 @@ export default page(function AgentIndex(
                 </form>
               }
             >
-              The assistant finds, imports, creates, and improves recipes with
-              you. Every change is staged for your review before it touches the
-              library.
+              The assistant finds, imports, and improves recipes with you. Every
+              change is staged for your review before it touches the library.
             </EmptyState>
           )
         : (

@@ -84,7 +84,7 @@ type Any = any;
 
 // Starter prompts shown on an empty chat.
 const EXAMPLE_PROMPTS = [
-  "Add an authentic Neapolitan pizza recipe",
+  "Find and import an authentic Neapolitan pizza recipe",
   "Find and add a traditional pad thai",
   "Import the recipe at this URL: ",
   "Make my pancakes recipe vegan",

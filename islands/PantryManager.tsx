@@ -11,7 +11,6 @@ import { IconTrash } from "@tabler/icons-preact";
 import { IconAlertTriangle } from "@tabler/icons-preact";
 import { IconScan } from "@tabler/icons-preact";
 import { IconArrowMerge } from "@tabler/icons-preact";
-import GenerateRecipe from "./GenerateRecipe.tsx";
 import { Button } from "../components/Button.tsx";
 import { Input, InputBar } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
@@ -390,12 +389,6 @@ export default function PantryManager(
             </Button>
           </div>
         </div>
-
-        {items.value.length > 0 && (
-          <div class="mt-8">
-            <GenerateRecipe />
-          </div>
-        )}
       </div>
 
       <div class="lg:col-span-2">
