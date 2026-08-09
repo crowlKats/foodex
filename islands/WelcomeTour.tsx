@@ -71,11 +71,13 @@ const STEPS: Step[] = [
     fallbackNote: "On a phone, these catalogs live in this menu.",
   },
   {
-    targets: ["docs", "menu"],
+    // No standalone anchor: the guide always lives inside a menu, so both
+    // entries here are fallbacks and the note below always shows.
+    targets: ["docs", "catalogs", "menu"],
     title: "The Guide",
     body:
       "Full documentation for everything you just saw, whenever you need the details.",
-    fallbackNote: "On a phone, the guide lives in this menu.",
+    fallbackNote: "The guide lives in this menu, alongside the catalogs.",
   },
   {
     targets: ["household"],

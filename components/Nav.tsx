@@ -1,15 +1,13 @@
 import { ComponentChildren } from "preact";
 import DarkModeToggle from "../islands/DarkModeToggle.tsx";
-import MobileMenu from "../islands/MobileMenu.tsx";
+import NavDropdown, { NavDropdownLink } from "../islands/NavDropdown.tsx";
 import { IconChefHat } from "@tabler/icons-preact";
 import { IconShoppingCart } from "@tabler/icons-preact";
 import { IconCalendar } from "@tabler/icons-preact";
-import { IconBook } from "@tabler/icons-preact";
 import { IconToolsKitchen2 } from "@tabler/icons-preact";
 import { IconFridge } from "@tabler/icons-preact";
 import { IconHome } from "@tabler/icons-preact";
 import { IconScan } from "@tabler/icons-preact";
-import { IconShieldCog } from "@tabler/icons-preact";
 import type { User } from "../utils.ts";
 
 function isActive(currentPath: string, href: string): boolean {
@@ -24,6 +22,39 @@ function isActive(currentPath: string, href: string): boolean {
     return currentPath === "/household";
   }
   return currentPath.startsWith(href);
+}
+
+function NavLink(
+  { href, label, currentPath, tour, badge }: {
+    href: string;
+    label: string;
+    currentPath: string;
+    /** Anchor id for the welcome walkthrough (data-tour). */
+    tour?: string;
+    badge?: number;
+  },
+) {
+  return (
+    <a
+      href={href}
+      data-tour={tour}
+      class={`nav-link font-medium whitespace-nowrap ${
+        badge !== undefined ? "relative" : ""
+      } ${isActive(currentPath, href) ? "text-orange-400" : ""}`}
+    >
+      {label}
+      {badge !== undefined && (
+        <span
+          data-shopping-badge
+          class={`count-badge count-badge-accent ml-1.5 ${
+            badge > 0 ? "" : "hidden"
+          }`}
+        >
+          {badge}
+        </span>
+      )}
+    </a>
+  );
 }
 
 function MobileTab(
@@ -72,6 +103,27 @@ export function Nav(
     currentPath: string;
   },
 ) {
+  // Reference catalogs and the guide sit behind a menu rather than in the bar:
+  // the bar only has room for the core workflow before it wraps.
+  const moreLinks: NavDropdownLink[] = [
+    { href: "/ingredients", label: "Ingredients" },
+    { href: "/stores", label: "Stores" },
+    { href: "/tools", label: "Tools" },
+    { href: "/docs", label: "User guide" },
+    ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+  ];
+  // Below lg the bar shows none of the links, so the menu carries everything
+  // the bottom tab bar has no room for as well.
+  const compactLinks: NavDropdownLink[] = [
+    ...(hasHousehold
+      ? [
+        { href: "/agent", label: "Assistant" },
+        { href: "/collections", label: "Collections" },
+      ]
+      : []),
+    ...moreLinks,
+  ];
+
   return (
     <>
       {/* ── Top bar ── */}
@@ -79,164 +131,81 @@ export function Nav(
         <div class="max-w-6xl mx-auto px-4 py-3">
           <div class="flex items-center gap-6">
             {/* Brand */}
-            <a href="/" class="flex items-center text-lg font-bold nav-link">
+            <a
+              href="/"
+              class="flex items-center text-lg font-bold nav-link whitespace-nowrap"
+            >
               <IconChefHat class="size-5 inline mr-1" />Foodex
             </a>
 
-            {/* Desktop nav */}
-            <div class="hidden sm:contents">
-              {/* Primary: core workflow */}
-              <div class="flex items-center gap-4">
-                <a
-                  href="/recipes"
-                  data-tour="recipes"
-                  class={`nav-link font-medium ${
-                    isActive(currentPath, "/recipes") ? "text-orange-400" : ""
-                  }`}
-                >
-                  Recipes
-                </a>
-                {hasHousehold && (
-                  <a
+            {/* Desktop nav: the core workflow, in the order you'd use it */}
+            <div class="hidden lg:flex items-center gap-4 min-w-0">
+              <NavLink
+                href="/recipes"
+                label="Recipes"
+                tour="recipes"
+                currentPath={currentPath}
+              />
+              {hasHousehold && (
+                <>
+                  <NavLink
                     href="/collections"
-                    data-tour="collections"
-                    class={`nav-link font-medium ${
-                      isActive(currentPath, "/collections")
-                        ? "text-orange-400"
-                        : ""
-                    }`}
-                  >
-                    Collections
-                  </a>
-                )}
-                {hasHousehold && (
-                  <a
+                    label="Collections"
+                    tour="collections"
+                    currentPath={currentPath}
+                  />
+                  <NavLink
                     href="/agent"
-                    data-tour="assistant"
-                    class={`nav-link font-medium ${
-                      isActive(currentPath, "/agent") ? "text-orange-400" : ""
-                    }`}
-                  >
-                    Assistant
-                  </a>
-                )}
-                {hasHousehold && (
-                  <>
-                    <a
-                      href="/household/pantry"
-                      data-tour="pantry"
-                      class={`nav-link font-medium ${
-                        isActive(currentPath, "/household/pantry")
-                          ? "text-orange-400"
-                          : ""
-                      }`}
-                    >
-                      Pantry
-                    </a>
-                    <a
-                      href="/plan"
-                      data-tour="plan"
-                      class={`nav-link font-medium ${
-                        isActive(currentPath, "/plan") ? "text-orange-400" : ""
-                      }`}
-                    >
-                      Plan
-                    </a>
-                  </>
-                )}
-                {user && (
-                  <a
-                    href="/shopping-list"
-                    data-tour="shopping"
-                    class={`nav-link font-medium relative ${
-                      isActive(currentPath, "/shopping-list")
-                        ? "text-orange-400"
-                        : ""
-                    }`}
-                  >
-                    Shopping List
-                    <span
-                      data-shopping-badge
-                      class={`count-badge count-badge-accent ml-1.5 ${
-                        (shoppingListCount ?? 0) > 0 ? "" : "hidden"
-                      }`}
-                    >
-                      {shoppingListCount ?? 0}
-                    </span>
-                  </a>
-                )}
-              </div>
-
-              {/* Separator */}
-              <div class="w-px h-4 bg-stone-700" />
-
-              {/* Secondary: reference data */}
-              <div class="flex items-center gap-3" data-tour="catalogs">
-                <a
-                  href="/ingredients"
-                  class={`nav-link text-sm text-stone-400 ${
-                    isActive(currentPath, "/ingredients")
-                      ? "!text-orange-400"
-                      : "hover:text-stone-200"
-                  }`}
-                >
-                  Ingredients
-                </a>
-                <a
-                  href="/stores"
-                  class={`nav-link text-sm text-stone-400 ${
-                    isActive(currentPath, "/stores")
-                      ? "!text-orange-400"
-                      : "hover:text-stone-200"
-                  }`}
-                >
-                  Stores
-                </a>
-                <a
-                  href="/tools"
-                  class={`nav-link text-sm text-stone-400 ${
-                    isActive(currentPath, "/tools")
-                      ? "!text-orange-400"
-                      : "hover:text-stone-200"
-                  }`}
-                >
-                  Tools
-                </a>
-              </div>
+                    label="Assistant"
+                    tour="assistant"
+                    currentPath={currentPath}
+                  />
+                  <NavLink
+                    href="/household/pantry"
+                    label="Pantry"
+                    tour="pantry"
+                    currentPath={currentPath}
+                  />
+                  <NavLink
+                    href="/plan"
+                    label="Plan"
+                    tour="plan"
+                    currentPath={currentPath}
+                  />
+                </>
+              )}
+              {user && (
+                <NavLink
+                  href="/shopping-list"
+                  label="Shopping List"
+                  tour="shopping"
+                  currentPath={currentPath}
+                  badge={shoppingListCount ?? 0}
+                />
+              )}
             </div>
 
             {/* Right side */}
             <div class="ml-auto flex items-center gap-3">
-              <MobileMenu
-                hasHousehold={hasHousehold}
+              <NavDropdown
+                class="lg:hidden"
+                tour="menu"
+                trigger={{ kind: "hamburger" }}
+                links={compactLinks}
                 currentPath={currentPath}
               />
-              {isAdmin && (
-                <a
-                  href="/admin"
-                  class={`nav-link ${
-                    currentPath.startsWith("/admin") ? "text-orange-400" : ""
-                  }`}
-                  title="Admin"
-                >
-                  <IconShieldCog class="size-5" />
-                </a>
-              )}
-              <a
-                href="/docs"
-                data-tour="docs"
-                class={`nav-link hidden sm:block ${
-                  currentPath.startsWith("/docs") ? "text-orange-400" : ""
-                }`}
-                title="User Guide"
-              >
-                <IconBook class="size-5" />
-              </a>
+              <NavDropdown
+                class="hidden lg:block"
+                tour="catalogs"
+                trigger={{ kind: "text", label: "More" }}
+                links={moreLinks}
+                currentPath={currentPath}
+              />
               <DarkModeToggle />
               <a
                 href={hasHousehold ? "/household" : "/households"}
                 data-tour="household"
-                class={`nav-link hidden sm:block ${
+                class={`nav-link hidden lg:block ${
                   isActive(currentPath, "/household") ||
                     isActive(currentPath, "/households")
                     ? "text-orange-400"
@@ -248,38 +217,21 @@ export function Nav(
               </a>
               {user
                 ? (
-                  <div class="flex items-center gap-2">
-                    <a
-                      href="/profile"
-                      class="flex items-center gap-2 nav-link"
-                    >
-                      {user.avatar_url && (
-                        <img
-                          src={user.avatar_url}
-                          alt={user.name ?? ""}
-                          class="size-7 rounded-full"
-                        />
-                      )}
-                      <span class="hidden sm:inline text-sm">{user.name}</span>
-                    </a>
-                    <form
-                      method="POST"
-                      action="/auth/logout"
-                      class="hidden sm:inline"
-                    >
-                      <button
-                        type="submit"
-                        class="text-sm text-stone-400 hover:text-stone-200 cursor-pointer"
-                      >
-                        Sign out
-                      </button>
-                    </form>
-                  </div>
+                  <NavDropdown
+                    trigger={{
+                      kind: "avatar",
+                      name: user.name,
+                      avatarUrl: user.avatar_url,
+                    }}
+                    links={[{ href: "/profile", label: "Profile" }]}
+                    currentPath={currentPath}
+                    signOut
+                  />
                 )
                 : (
                   <a
                     href="/auth/login"
-                    class="text-sm text-stone-400 hover:text-stone-200"
+                    class="text-sm text-stone-400 hover:text-stone-200 whitespace-nowrap"
                   >
                     Sign in
                   </a>
@@ -292,7 +244,7 @@ export function Nav(
       {/* ── Mobile bottom tabs ── */}
       <div
         data-mobile-nav
-        class="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-900 border-t-2 border-orange-600 dark:border-orange-500 px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]"
+        class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-900 border-t-2 border-orange-600 dark:border-orange-500 px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]"
       >
         <div class="flex items-center justify-around">
           <MobileTab

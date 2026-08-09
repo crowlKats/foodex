@@ -28,7 +28,7 @@ export default function PwaInstallPrompt() {
 
   return (
     <div
-      class={`sm:hidden fixed bottom-16 left-3 right-3 z-[60] card border-orange-600 dark:border-orange-500 animate-slide-up ${
+      class={`lg:hidden fixed bottom-16 left-3 right-3 z-[60] card border-orange-600 dark:border-orange-500 animate-slide-up ${
         show.value ? "" : "hidden"
       }`}
     >

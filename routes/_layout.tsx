@@ -59,7 +59,7 @@ export default layout(function AppLayout({ Component, state, url }) {
         class={`flex-1 overscroll-y-none ${
           fullBleed
             ? "overflow-hidden"
-            : "overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0"
+            : "overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0"
         }`}
       >
         {fullBleed ? <Component /> : (
