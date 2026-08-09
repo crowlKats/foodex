@@ -113,6 +113,7 @@ export default function RecipeStart() {
       {error.value && <div class="alert-error">{error.value}</div>}
 
       <InputMultiline
+        autofocus
         rows={8}
         class={`w-full ${
           dragging.value ? "border-orange-600! dark:border-orange-500!" : ""
