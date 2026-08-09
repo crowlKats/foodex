@@ -129,8 +129,16 @@ export async function appendEvent(
   sessionId: string,
   body: AgentEventBody,
 ): Promise<number> {
+  // seq is per-session, not a global sequence: "the Nth event of this chat" has
+  // to be expressible, and callers need to be able to predict the next value.
+  // Computed from the session's own max inside the caller's transaction; the
+  // UNIQUE (session_id, seq) constraint turns a concurrent append into an error
+  // rather than a silently reordered log.
   const res = await q<{ seq: string }>(
-    `INSERT INTO agent_events (session_id, type, payload) VALUES ($1, $2, $3) RETURNING seq`,
+    `INSERT INTO agent_events (session_id, seq, type, payload)
+     SELECT $1, COALESCE(MAX(seq), 0) + 1, $2, $3
+       FROM agent_events WHERE session_id = $1
+     RETURNING seq`,
     [sessionId, body.type, JSON.stringify(body.payload)],
   );
   await q("UPDATE agent_sessions SET updated_at = now() WHERE id = $1", [

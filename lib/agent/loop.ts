@@ -1,29 +1,36 @@
 // The agentic turn loop. The triggering event (user_message or
 // conflict_resolve_request) must already be appended before calling runTurn.
 //
-// Each round: fold the log into Anthropic messages, call the model, and (if it
-// used tools) execute them (DB reads only), then persist the assistant message
-// and all tool results together in one transaction so the log is never left with
-// a tool_use that has no tool_result.
+// Each round: fold the log into messages, call the model, and — if it used
+// tools — execute them, then persist the assistant message and all tool results
+// together in one transaction so the log is never left with a tool_call that
+// has no tool_result.
+//
+// Most tools only read, but some mutate directly (pantry, plan, shopping list).
+// Those writes land outside the persisting transaction, so a crash mid-batch
+// can leave a write with no log entry.
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText, jsonSchema, streamText, tool, type ToolSet } from "ai";
+import { cacheControl, costOf, getModel, hasCredentials } from "./model.ts";
+import {
+  toAssistantBlocks,
+  toModelMessages,
+  withBreakpoint,
+} from "./translate.ts";
 import type { QueryFn } from "../../db/mod.ts";
 import type { AgentSession } from "../../db/types.ts";
-import type { AgentEvent, AgentEventBody } from "./events.ts";
+import type { AgentEvent, AgentEventBody, AssistantBlock } from "./events.ts";
+import { recordUsage } from "./usage.ts";
 import { appendEvent, loadEvents } from "./session.ts";
-import { foldConversation, type PendingImageBlock } from "./conversation.ts";
+import {
+  foldConversation,
+  type FoldMessage,
+  type UserBlock,
+} from "./conversation.ts";
 import { executeTool, TOOLS } from "./tools.ts";
 import { buildSystemPrompt } from "./system-prompt.ts";
 import { getFile } from "../s3.ts";
 
-// A fast, low-cost model with no extended thinking: recipe staging is largely a
-// mechanical data transform, not deep reasoning. (Haiku 4.5 does not support
-// adaptive thinking / effort; omit them entirely.)
-const MODEL = "claude-haiku-4-5";
-// Turns that carry photos use the stronger vision model instead: deciphering
-// hand-written pages is what the old OCR pipeline used it for, and Haiku gives
-// up (and starts asking the user) on handwriting Sonnet reads fine.
-const VISION_MODEL = "claude-sonnet-4-6";
 const MAX_STEPS = 24;
 const MAX_TOKENS = 8192;
 
@@ -72,58 +79,56 @@ async function loadBase64(key: string): Promise<string | null> {
   return btoa(bin);
 }
 
-function hasImageBlock(messages: Anthropic.MessageParam[]): boolean {
-  return messages.some((m) =>
-    Array.isArray(m.content) &&
-    m.content.some((b) => (b as { type: string }).type === "image")
-  );
-}
-
 /**
- * Replace the fold's `foodex_image` placeholder blocks with base64 image
- * blocks read from S3. `cache` spans the steps of one turn, so each image is
- * fetched at most once per turn.
+ * Replace the fold's `image_ref` markers with blocks carrying the bytes, read
+ * from S3. `cache` spans the steps of one turn, so each image is fetched at
+ * most once per turn.
  */
-async function resolveImageBlocks(
-  messages: Anthropic.MessageParam[],
+async function resolveImages(
+  messages: FoldMessage[],
   cache: Map<string, string | null>,
-): Promise<Anthropic.MessageParam[]> {
-  const out: Anthropic.MessageParam[] = [];
+): Promise<FoldMessage[]> {
+  const out: FoldMessage[] = [];
   for (const m of messages) {
-    if (typeof m.content === "string") {
+    if (m.role === "assistant") {
       out.push(m);
       continue;
     }
-    const blocks: Anthropic.ContentBlockParam[] = [];
+    const blocks: UserBlock[] = [];
     for (const b of m.content) {
-      if ((b as { type: string }).type !== "foodex_image") {
-        blocks.push(b as Anthropic.ContentBlockParam);
+      if (b.type !== "image_ref") {
+        blocks.push(b);
         continue;
       }
-      const img = b as unknown as PendingImageBlock;
-      let data = cache.get(img.key);
+      let data = cache.get(b.key);
       if (data === undefined) {
-        data = await loadBase64(img.key);
-        cache.set(img.key, data);
+        data = await loadBase64(b.key);
+        cache.set(b.key, data);
       }
       blocks.push(
         data == null
           ? { type: "text", text: "[attached image is no longer available]" }
-          : {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: img
-                .content_type as Anthropic.Base64ImageSource["media_type"],
-              data,
-            },
-          },
+          : { type: "image", data, media_type: b.content_type },
       );
     }
-    out.push({ ...m, content: blocks });
+    out.push({ role: "user", content: blocks });
   }
   return out;
 }
+
+// Tool schemas are reused verbatim from TOOLS — the AI SDK accepts the existing
+// JSON Schema, so there is no second source of truth to keep in sync. No
+// `execute` is supplied: the loop below runs tools itself and persists each
+// result, which the SDK supports by simply returning the tool calls.
+const AI_TOOLS: ToolSet = Object.fromEntries(
+  TOOLS.map((t) => [
+    t.name,
+    tool({
+      description: t.description,
+      inputSchema: jsonSchema(t.input_schema as object),
+    }),
+  ]),
+);
 
 function summarize(content: unknown, isError: boolean): string {
   const s = typeof content === "string" ? content : JSON.stringify(content);
@@ -139,8 +144,7 @@ function summarize(content: unknown, isError: boolean): string {
 export async function generateChatTitle(
   events: AgentEvent[],
 ): Promise<string | null> {
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) return null;
+  if (!hasCredentials()) return null;
 
   const parts: string[] = [];
   for (const ev of events) {
@@ -150,8 +154,10 @@ export async function generateChatTitle(
         : "";
       parts.push(`User: ${ev.payload.text}${photos}`);
     } else if (ev.type === "assistant_message") {
-      const text = (ev.payload.content as Anthropic.ContentBlock[])
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      const text = ev.payload.content
+        .filter((b): b is Extract<AssistantBlock, { type: "text" }> =>
+          b.type === "text"
+        )
         .map((b) => b.text)
         .join(" ")
         .trim();
@@ -161,11 +167,12 @@ export async function generateChatTitle(
   if (parts.length === 0) return null;
   const transcript = parts.join("\n").slice(0, 4000);
 
-  const client = new Anthropic({ apiKey, timeout: 30_000, maxRetries: 1 });
-  const res = await client.messages.create({
-    model: MODEL,
-    max_tokens: 24,
-    system:
+  // No cache breakpoint here: this prompt is ~40 tokens, far below every
+  // provider's minimum cacheable prefix, so a marker would be a no-op.
+  const { text } = await generateText({
+    model: getModel(),
+    maxOutputTokens: 24,
+    instructions:
       "You title a cooking-assistant chat. Reply with ONLY the title: 3–6 " +
       "words, Title Case, describing what the chat is about. No surrounding " +
       "quotes, no trailing punctuation.",
@@ -174,11 +181,7 @@ export async function generateChatTitle(
       content: `Conversation so far:\n${transcript}\n\nTitle:`,
     }],
   });
-  const raw = res.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join(" ");
-  const title = raw
+  const title = text
     .trim()
     .replace(/^["'“”\s]+|["'“”\s.]+$/g, "")
     .replace(/\s+/g, " ")
@@ -188,12 +191,13 @@ export async function generateChatTitle(
 
 export async function runTurn(opts: RunTurnOpts): Promise<void> {
   const { db, session, emit } = opts;
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) {
-    await emit({ type: "error", message: "ANTHROPIC_API_KEY is not set" });
+  if (!hasCredentials()) {
+    await emit({
+      type: "error",
+      message: "OPENROUTER_API_KEY is not set",
+    });
     return;
   }
-  const client = new Anthropic({ apiKey, timeout: 120_000, maxRetries: 1 });
   const system = buildSystemPrompt();
   const householdId = session.household_id;
 
@@ -206,60 +210,87 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
     for (let step = 0; step < MAX_STEPS; step++) {
       const folded = foldConversation(events);
       if (folded.apiMessages.length === 0) return;
-      const apiMessages = await resolveImageBlocks(
+      const apiMessages = await resolveImages(
         folded.apiMessages,
         imageCache,
       );
 
-      // Stream the model's response, emitting text token deltas as they arrive;
-      // `finalMessage()` assembles the complete message (content blocks, usage,
-      // stop_reason) for persistence and tool execution.
-      const stream = client.messages.stream({
-        model: hasImageBlock(apiMessages) ? VISION_MODEL : MODEL,
-        max_tokens: MAX_TOKENS,
-        system,
-        tools: TOOLS,
-        messages: apiMessages,
+      // Stream the model's response, emitting text deltas as they arrive. The
+      // system prompt goes in `instructions` as a SystemModelMessage so it can
+      // carry the cache breakpoint: tools and instructions both render ahead of
+      // the messages, so this one marker caches the whole ~8k-token fixed
+      // prefix. Nothing in it varies by user or session, so it is a single
+      // shared entry per model rather than one per conversation — keep it that
+      // way.
+      const result = streamText({
+        model: getModel(),
+        maxOutputTokens: MAX_TOKENS,
+        instructions: {
+          role: "system",
+          content: system,
+          providerOptions: cacheControl(),
+        },
+        tools: AI_TOOLS,
+        messages: withBreakpoint(toModelMessages(apiMessages), cacheControl()),
       });
-      for await (const ev of stream) {
-        if (ev.type !== "content_block_delta") continue;
-        if (ev.delta.type === "text_delta" && ev.delta.text) {
-          await emit({ type: "text_delta", text: ev.delta.text });
-        } else if (ev.delta.type === "thinking_delta" && ev.delta.thinking) {
-          await emit({ type: "thinking_delta", text: ev.delta.thinking });
+      let streamError: Error | null = null;
+      for await (const part of result.stream) {
+        if (part.type === "text-delta" && part.text) {
+          await emit({ type: "text_delta", text: part.text });
+        } else if (part.type === "reasoning-delta" && part.text) {
+          await emit({ type: "thinking_delta", text: part.text });
+        } else if (part.type === "error") {
+          streamError = part.error instanceof Error
+            ? part.error
+            : new Error(String(part.error));
         }
       }
-      const response: Anthropic.Message = await stream.finalMessage();
+      // A failed request surfaces as an error part rather than a rejected
+      // promise, so rethrow instead of persisting a truncated assistant turn.
+      if (streamError) throw streamError;
 
-      // Token accounting (best-effort).
-      await db.query(
-        `INSERT INTO ocr_usage (user_id, input_tokens, output_tokens, model)
-       VALUES ($1, $2, $3, $4)`,
-        [
-          session.user_id,
-          response.usage.input_tokens,
-          response.usage.output_tokens,
-          response.model,
-        ],
-      ).catch(() => {});
+      const content = toAssistantBlocks(
+        await result.content as Array<{ type: string; [k: string]: unknown }>,
+      );
+      const usage = await result.usage;
+      const finishReason = await result.finishReason;
+      const modelId = (await result.response).modelId;
+      const cost = costOf((await result.finalStep).providerMetadata);
 
+      // Best-effort spend record. Token counts stay on the event; cost is the
+      // number that actually matters and lives only here, so there is one
+      // source of truth for it.
+      await recordUsage(db.query, {
+        userId: session.user_id,
+        sessionId: session.id,
+        model: modelId,
+        cost,
+      });
+
+      const details = usage.inputTokenDetails;
+      const cacheWrite = details?.cacheWriteTokens ?? 0;
+      const cacheRead = details?.cacheReadTokens ?? 0;
+      const uncached = details?.noCacheTokens ?? usage.inputTokens ?? 0;
       const assistantBody: AgentEventBody = {
         type: "assistant_message",
         payload: {
-          content: response.content,
+          content,
           usage: {
-            input_tokens: response.usage.input_tokens,
-            output_tokens: response.usage.output_tokens,
-            model: response.model,
+            input_tokens: uncached,
+            cache_creation_input_tokens: cacheWrite,
+            cache_read_input_tokens: cacheRead,
+            output_tokens: usage.outputTokens ?? 0,
+            model: modelId,
           },
         },
       };
 
-      const toolUses = response.content.filter(
-        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
+      const toolUses = content.filter(
+        (b): b is Extract<AssistantBlock, { type: "tool_call" }> =>
+          b.type === "tool_call",
       );
 
-      if (response.stop_reason !== "tool_use" || toolUses.length === 0) {
+      if (finishReason !== "tool-calls" || toolUses.length === 0) {
         let seq = 0;
         await db.transaction(async (q) => {
           seq = await appendEvent(q, session.id, assistantBody);

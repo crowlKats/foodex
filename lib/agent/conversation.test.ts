@@ -151,7 +151,7 @@ Deno.test("foldConversation: image attachments become marker blocks + timeline i
   const content = apiMessages[0].content as { type: string; text?: string }[];
   assertEquals(content.map((b) => b.type), [
     "text", // "Attached image (media id: …)"
-    "foodex_image",
+    "image_ref",
     "text", // the user text
   ]);
   assert(content[0].text!.includes("m1"));

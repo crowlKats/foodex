@@ -7,7 +7,22 @@
 // the item against the seq of the last user mutation of it. Failing guards return an
 // is_error result and produce NO staging mutation.
 
-import type Anthropic from "@anthropic-ai/sdk";
+/**
+ * A tool the model can call. Plain JSON Schema, deliberately not a provider's
+ * type — these definitions outlive any one SDK, and the AI SDK accepts the
+ * schema as-is (see AI_TOOLS in loop.ts).
+ */
+export interface ToolDef {
+  name: string;
+  description: string;
+  input_schema: {
+    type: "object";
+    properties?: Record<string, unknown>;
+    required?: string[];
+    [k: string]: unknown;
+  };
+}
+
 import type { QueryFn } from "../../db/mod.ts";
 import { escapeLike } from "../../utils.ts";
 import type { AgentEvent, Observation, StagingMutation } from "./events.ts";
@@ -106,7 +121,7 @@ const patchOpsSchema = {
   items: { type: "object" },
 } as const;
 
-export const TOOLS: Anthropic.Tool[] = [
+export const TOOLS: ToolDef[] = [
   {
     name: "list_recipes",
     description:

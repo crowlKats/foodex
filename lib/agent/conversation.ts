@@ -1,25 +1,50 @@
 // Conversation projection: `foldConversation` reduces the event log into the
-// Anthropic `messages[]` for the next API call and a display timeline for the chat UI.
+// messages for the next API call and a display timeline for the chat UI.
+//
+// The messages it emits are provider-neutral; translate.ts converts them to the
+// SDK's shape at send time.
 //
 // User edits/reverts/discards are NEVER sent as their own API messages; they are
 // collapsed into a single "here's what the user changed since your last reply" notice
 // prepended to the next user turn, computed from the point-in-time staging state.
 
-import type Anthropic from "@anthropic-ai/sdk";
-import type { AgentEvent, StagedKind, UserMessageImage } from "./events.ts";
+import type {
+  AgentEvent,
+  AssistantBlock,
+  StagedKind,
+  UserMessageImage,
+} from "./events.ts";
 import { effective, foldStaging, type StagedItem } from "./staging.ts";
 
 /**
- * Placeholder block for an attached image. The fold is pure and cannot read
- * S3, so it emits these markers; the turn loop resolves them into base64
- * image blocks just before calling the API (see resolveImageBlocks).
+ * Reference to an attached image. The fold is pure and cannot read S3, so it
+ * emits these markers; the turn loop swaps them for `image` blocks carrying the
+ * bytes just before calling the API (see resolveImages).
  */
 export interface PendingImageBlock {
-  type: "foodex_image";
+  type: "image_ref";
   media_id: string;
   key: string;
   content_type: string;
 }
+
+/** A block of a user turn as sent to the model. */
+export type UserBlock =
+  | { type: "text"; text: string }
+  | PendingImageBlock
+  | { type: "image"; data: string; media_type: string }
+  | {
+    type: "tool_result";
+    tool_call_id: string;
+    tool_name: string;
+    is_error: boolean;
+    content: string;
+  };
+
+/** A message in the folded conversation, before conversion to the SDK shape. */
+export type FoldMessage =
+  | { role: "user"; content: UserBlock[] }
+  | { role: "assistant"; content: AssistantBlock[] };
 
 /**
  * The change a single stage tool call made, as a before/after snapshot: the
@@ -40,7 +65,7 @@ export type TimelineEntry =
     text: string;
     images?: { media_id: string; url: string }[];
   }
-  | { kind: "assistant"; content: Anthropic.ContentBlock[] }
+  | { kind: "assistant"; content: AssistantBlock[] }
   | {
     kind: "tool_result";
     tool_use_id: string;
@@ -57,7 +82,7 @@ export type TimelineEntry =
   };
 
 export interface Conversation {
-  apiMessages: Anthropic.MessageParam[];
+  apiMessages: FoldMessage[];
   timeline: TimelineEntry[];
 }
 
@@ -112,10 +137,10 @@ function buildNotice(
 }
 
 export function foldConversation(events: AgentEvent[]): Conversation {
-  const apiMessages: Anthropic.MessageParam[] = [];
+  const apiMessages: FoldMessage[] = [];
   const timeline: TimelineEntry[] = [];
 
-  let pendingToolResults: Anthropic.ToolResultBlockParam[] = [];
+  let pendingToolResults: Extract<UserBlock, { type: "tool_result" }>[] = [];
   let touchedSinceTurn = new Set<string>();
   let appliedSinceTurn: string[] = [];
 
@@ -160,7 +185,7 @@ export function foldConversation(events: AgentEvent[]): Conversation {
         );
         touchedSinceTurn = new Set();
         appliedSinceTurn = [];
-        const content: Anthropic.ContentBlockParam[] = [];
+        const content: UserBlock[] = [];
         if (notice.api) content.push({ type: "text", text: notice.api });
         if (notice.display) {
           timeline.push({ kind: "notice", text: notice.display });
@@ -173,14 +198,12 @@ export function foldConversation(events: AgentEvent[]): Conversation {
             type: "text",
             text: `Attached image (media id: ${img.media_id}):`,
           });
-          content.push(
-            {
-              type: "foodex_image",
-              media_id: img.media_id,
-              key: img.key,
-              content_type: img.content_type,
-            } satisfies PendingImageBlock as unknown as Anthropic.ContentBlockParam,
-          );
+          content.push({
+            type: "image_ref",
+            media_id: img.media_id,
+            key: img.key,
+            content_type: img.content_type,
+          });
         }
         if (ev.payload.text) {
           content.push({ type: "text", text: ev.payload.text });
@@ -199,7 +222,7 @@ export function foldConversation(events: AgentEvent[]): Conversation {
         flushToolResults();
         apiMessages.push({
           role: "assistant",
-          content: ev.payload.content as Anthropic.ContentBlockParam[],
+          content: ev.payload.content,
         });
         timeline.push({ kind: "assistant", content: ev.payload.content });
         break;
@@ -208,7 +231,10 @@ export function foldConversation(events: AgentEvent[]): Conversation {
         const p = ev.payload;
         pendingToolResults.push({
           type: "tool_result",
-          tool_use_id: p.tool_use_id,
+          tool_call_id: p.tool_use_id,
+          // Carried through from the log, so the send-time conversion no longer
+          // has to reconstruct it by tracking ids past the matching tool_call.
+          tool_name: p.tool_name,
           content: typeof p.content === "string"
             ? p.content
             : JSON.stringify(p.content),

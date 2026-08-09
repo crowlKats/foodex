@@ -10,8 +10,20 @@
 //    version, so the read-before-write guard (see tools.ts) can derive the observed
 //    version straight from the log without re-parsing tool content.
 
-import type Anthropic from "@anthropic-ai/sdk";
 import type { PatchOp } from "./merge.ts";
+
+// ── Stored content format ──────────────────────────────────────────
+//
+// Deliberately our own, not a provider's. The log is the durable record and
+// outlives whichever model or SDK is in use; a vendor type here would make an
+// external schema the storage contract, and changing providers would mean
+// migrating history. Conversion to the request format happens at send time
+// (see translate.ts).
+
+/** A block of an assistant turn as stored in the log. */
+export type AssistantBlock =
+  | { type: "text"; text: string }
+  | { type: "tool_call"; id: string; name: string; input: unknown };
 
 export type StagedKind =
   | "create_recipe"
@@ -83,8 +95,18 @@ export interface UserMessageEvent {
 export interface AssistantMessageEvent {
   type: "assistant_message";
   payload: {
-    content: Anthropic.ContentBlock[];
-    usage: { input_tokens: number; output_tokens: number; model: string };
+    content: AssistantBlock[];
+    // Token counts only. Cost lives in llm_usage, not here — duplicating it
+    // would give two sources of truth for the same number.
+    usage: {
+      // Uncached prompt tokens only. The full prompt is this plus the two
+      // cache figures below; see the prompt-caching breakpoints in loop.ts.
+      input_tokens: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+      output_tokens: number;
+      model: string;
+    };
   };
 }
 
