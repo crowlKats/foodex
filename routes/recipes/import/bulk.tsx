@@ -18,7 +18,7 @@ export const handlers = handler({
 export default page(function BulkImportPage() {
   return (
     <div>
-      <BackLink href="/recipes/import" label="Back to Import" />
+      <BackLink href="/recipes/new" label="Back to New Recipe" />
 
       <h1 class="text-2xl font-bold mt-4 mb-2">Bulk Import</h1>
       <p class="text-sm text-stone-500 mb-6">

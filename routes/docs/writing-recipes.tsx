@@ -24,7 +24,9 @@ export default page(function WritingRecipesDocs({ url }) {
     >
       <DocSection id="editor" title="The Recipe Editor">
         <p class={`${docProse} mb-3`}>
-          Click <strong>New Recipe</strong> to start from scratch, or{" "}
+          Click <strong>New Recipe</strong> and then{" "}
+          <strong>Fill in the form yourself</strong> to start from scratch, or
+          {" "}
           <strong>Edit</strong>{" "}
           on any of your household's recipes. It's the same editor either way
           (imports and the assistant use it too), organized into four tabs:{" "}

@@ -119,9 +119,9 @@ export default page(function ImportDocs({ url }) {
 
       <DocSection id="import" title="Importing a Recipe">
         <p class={`${docProse} mb-3`}>
-          <strong>Import Recipe</strong>{" "}
+          <strong>New Recipe</strong>{" "}
           takes a recipe in whatever form you have it and turns it into a proper
-          Foodex recipe. Give it any combination of:
+          Foodex recipe. One box, and any combination of:
         </p>
         <ul class="list-disc pl-6 space-y-1 mb-3">
           <li class={docProse}>
@@ -132,14 +132,18 @@ export default page(function ImportDocs({ url }) {
             cards. Any language works, with automatic translation.
           </li>
           <li class={docProse}>
-            Pasted <strong>text</strong>.
+            The recipe <strong>written out</strong> or pasted as text.
           </li>
           <li class={docProse}>
-            Optional <strong>context</strong>{" "}
-            for the extraction: the language, the recipe's name, how many it
-            serves.
+            <strong>Instructions</strong>{" "}
+            alongside any of the above: what language it's in, how many it
+            should serve, "halve the sugar", "make it vegetarian".
           </li>
         </ul>
+        <p class={`${docProse} mb-3`}>
+          Prefer to type it in yourself? The link under the box opens the plain
+          recipe editor, with no assistant involved.
+        </p>
         <p class={`${docProse} mb-3`}>
           The import runs as an assistant session and drops you straight into
           the workbench: the extracted recipe appears in the editor for you to
@@ -147,9 +151,9 @@ export default page(function ImportDocs({ url }) {
           layouts; amounts are the thing to double-check.
         </p>
         <p class={`${docMuted} mb-4`}>
-          Imports you never finished wait under "Pending Imports" on the import
-          page (and in your Assistant conversations), so nothing is lost by
-          closing the tab.
+          Imports you never finished wait under "Pending Imports" on the New
+          Recipe page (and in your Assistant conversations), so nothing is lost
+          by closing the tab.
         </p>
 
         <DocSub title="Bulk Import">

@@ -518,10 +518,7 @@ export default page(function RecipesPage({
         </p>
         {loggedIn && (
           <div class="flex flex-wrap gap-2 justify-center pt-1">
-            <ButtonLink href="/recipes/new" size="sm">New recipe</ButtonLink>
-            <ButtonLink href="/recipes/import" variant="outline" size="sm">
-              Import
-            </ButtonLink>
+            <ButtonLink href="/recipes/new" size="sm">New Recipe</ButtonLink>
           </div>
         )}
       </div>
@@ -543,14 +540,9 @@ export default page(function RecipesPage({
     <div>
       <PageHeader title="Recipes" query={q}>
         {loggedIn && (
-          <>
-            <ButtonLink href="/recipes/import" variant="outline">
-              Import
-            </ButtonLink>
-            <ButtonLink href="/recipes/new">
-              New Recipe
-            </ButtonLink>
-          </>
+          <ButtonLink href="/recipes/new">
+            New Recipe
+          </ButtonLink>
         )}
       </PageHeader>
 

@@ -1,12 +1,12 @@
-import { handler, page } from "./$new.ts";
-import { uniqueSlug } from "../../lib/slug.ts";
-import { logAudit } from "../../lib/audit.ts";
-import type { QueryFn } from "../../db/mod.ts";
-import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
-import { saveRecipeChildren } from "../../lib/recipe-save.ts";
-import RecipeFields from "../../islands/RecipeFields.tsx";
-import { BackLink } from "../../components/BackLink.tsx";
-import { FormActions } from "../../components/recipe-form/ui.tsx";
+import { handler, page } from "./$manual.ts";
+import { uniqueSlug } from "../../../lib/slug.ts";
+import { logAudit } from "../../../lib/audit.ts";
+import type { QueryFn } from "../../../db/mod.ts";
+import type { Ingredient, Recipe, Tool } from "../../../db/types.ts";
+import { saveRecipeChildren } from "../../../lib/recipe-save.ts";
+import RecipeFields from "../../../islands/RecipeFields.tsx";
+import { BackLink } from "../../../components/BackLink.tsx";
+import { FormActions } from "../../../components/recipe-form/ui.tsx";
 
 /** Ingredient/tool pickers plus recipes this household is allowed to see. */
 async function loadRecipeFormOptions(query: QueryFn, householdId: string) {
@@ -41,7 +41,7 @@ export const handlers = handler({
       ctx.state.householdId,
     );
 
-    ctx.state.pageTitle = "New Recipe";
+    ctx.state.pageTitle = "Write a Recipe";
     return {
       data: {
         ...options,
@@ -207,13 +207,13 @@ export default page(
   ) {
     return (
       <div>
-        <BackLink href="/recipes" label="Back to Recipes" />
+        <BackLink href="/recipes/new" label="Back" />
 
         <form method="POST" class="space-y-6 mt-4 pb-16">
-          <FormActions title="New Recipe" submitLabel="Create Recipe" />
+          <FormActions title="Write a Recipe" submitLabel="Create Recipe" />
           <p class="text-sm -mt-4">
-            <a href="/recipes/import" class="link">
-              …or import from URL, text or photos
+            <a href="/recipes/new" class="link">
+              …or hand a link, text or photos to the assistant instead
             </a>
           </p>
 
