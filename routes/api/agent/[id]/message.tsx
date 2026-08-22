@@ -28,6 +28,10 @@ export const handlers = handler({
     if (!session || session.user_id !== ctx.state.user.id) {
       return json({ error: "Not found" }, 404);
     }
+    const householdId = ctx.state.householdId;
+    if (!householdId) {
+      return json({ error: "Join or create a household to do this." }, 403);
+    }
     if (!rateLimit(`agent:${ctx.state.user.id}`, 30, 60_000)) {
       return json({ error: "Too many requests" }, 429);
     }
@@ -58,7 +62,7 @@ export const handlers = handler({
         }
         const resolved = await resolveAttachedImages(
           ctx.state.db.query,
-          session.household_id,
+          householdId,
           imageIds,
         );
         if ("error" in resolved) {
@@ -106,7 +110,12 @@ export const handlers = handler({
         // Heartbeat so the client's watchdog can tell a live-but-quiet turn
         // (long tool call) from a dropped connection.
         ping = setInterval(() => send({ type: "ping" }), 15_000);
-        runTurn({ db, session, emit: (ev) => send(ev) })
+        runTurn({
+          db,
+          session,
+          householdId,
+          emit: (ev) => send(ev),
+        })
           .then(() => maybeRetitle())
           .catch((e) => send({ type: "error", message: String(e) }))
           .finally(() => {

@@ -36,11 +36,22 @@ export const handlers = handler({
     if (recipesRes.rows.length === 0) throw new HttpError(404);
     const recipes = recipesRes.rows;
 
-    const aliasRes = await ctx.state.db.query<{ norm_name: string }>(
-      "SELECT norm_name FROM dish_aliases WHERE dish_id = $1",
-      [dish.id],
-    );
     const ownNorm = dish.name.trim().toLowerCase().replace(/\s+/g, " ");
+    const aliasRes = await ctx.state.db.query<{ norm_name: string }>(
+      `SELECT da.norm_name FROM dish_aliases da
+       WHERE da.dish_id = $1
+         AND (
+           da.norm_name = $3
+           OR EXISTS (
+             SELECT 1 FROM recipes r
+             WHERE r.dish_id = da.dish_id
+               AND (r.private = false OR r.household_id = $2)
+               AND lower(regexp_replace(trim(r.title), '\\s+', ' ', 'g')) =
+                 da.norm_name
+           )
+         )`,
+      [dish.id, ctx.state.householdId, ownNorm],
+    );
     const aliases = aliasRes.rows
       .map((a) => a.norm_name)
       .filter((n) => n !== ownNorm);
@@ -114,7 +125,7 @@ export const handlers = handler({
     );
 
     // Merge targets: every other dish someone could fold this one into.
-    const mergeTargetsRes = ctx.state.user
+    const mergeTargetsRes = ctx.state.isAdmin
       ? await ctx.state.db.query<{ id: string; name: string }>(
         `SELECT d.id, d.name FROM dishes d
          WHERE d.id <> $1
@@ -128,11 +139,13 @@ export const handlers = handler({
       : { rows: [] as { id: string; name: string }[] };
 
     // The merge reassigns every recipe, private ones included; count them
-    // all so the confirmation says what it actually does.
-    const totalRes = await ctx.state.db.query<{ cnt: number }>(
-      "SELECT COUNT(*)::int as cnt FROM recipes WHERE dish_id = $1",
-      [dish.id],
-    );
+    // all so the confirmation says what it actually does. Only admins see it.
+    const totalRes = ctx.state.isAdmin
+      ? await ctx.state.db.query<{ cnt: number }>(
+        "SELECT COUNT(*)::int as cnt FROM recipes WHERE dish_id = $1",
+        [dish.id],
+      )
+      : { rows: [{ cnt: recipes.length }] };
 
     ctx.state.pageTitle = dish.name;
     return {
@@ -145,7 +158,7 @@ export const handlers = handler({
         mergeTargets: mergeTargetsRes.rows,
         totalRecipeCount: totalRes.rows[0].cnt,
         householdId: ctx.state.householdId,
-        loggedIn: ctx.state.user != null,
+        isAdmin: ctx.state.isAdmin,
       },
     };
   },
@@ -168,6 +181,8 @@ export const handlers = handler({
 
     const form = await ctx.req.formData();
     if (form.get("_method") === "MERGE") {
+      // Reassigns every household's recipes and plan entries onto the target.
+      if (!ctx.state.isAdmin) throw new HttpError(404);
       const targetId = String(form.get("target_id"));
       if (!targetId || targetId === dish.id) {
         return new Response(null, {
@@ -233,7 +248,7 @@ export default page(function DishPage({
     mergeTargets,
     totalRecipeCount,
     householdId,
-    loggedIn,
+    isAdmin,
   },
 }) {
   return (
@@ -343,7 +358,7 @@ export default page(function DishPage({
         </div>
       )}
 
-      {loggedIn && (suggestions.length > 0 || mergeTargets.length > 0) && (
+      {isAdmin && (suggestions.length > 0 || mergeTargets.length > 0) && (
         <div class="mt-8 card space-y-3">
           <h2 class="font-semibold">Same dish, different name?</h2>
           {suggestions.length > 0 && (

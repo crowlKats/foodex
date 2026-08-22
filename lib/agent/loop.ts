@@ -62,6 +62,8 @@ interface Db {
 export interface RunTurnOpts {
   db: Db;
   session: AgentSession;
+  /** Current household, not the session's create-time household_id. */
+  householdId: string;
   emit: (ev: TurnEvent) => void | Promise<void>;
 }
 
@@ -190,7 +192,7 @@ export async function generateChatTitle(
 }
 
 export async function runTurn(opts: RunTurnOpts): Promise<void> {
-  const { db, session, emit } = opts;
+  const { db, session, householdId, emit } = opts;
   if (!hasCredentials()) {
     await emit({
       type: "error",
@@ -199,7 +201,6 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
     return;
   }
   const system = buildSystemPrompt();
-  const householdId = session.household_id;
 
   // Any failure anywhere in the turn surfaces as an error event, so the client
   // never hangs on a spinner without explanation.

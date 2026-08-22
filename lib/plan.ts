@@ -16,6 +16,9 @@ import {
   reverseSource,
   type StockItem,
 } from "./pantry.ts";
+import { recipeIsVisible } from "./recipe-visibility.ts";
+
+export { recipeIsVisible } from "./recipe-visibility.ts";
 
 export type PlanStatus = "planned" | "cooked" | "skipped";
 
@@ -232,23 +235,6 @@ export interface AddPlanEntryInput {
   includeInList?: boolean;
   note?: string | null;
   userId?: string | null;
-}
-
-/**
- * Whether this household may see the recipe: public, or private to them.
- * Same predicate pinPlanEntry already uses.
- */
-export async function recipeIsVisible(
-  db: { query: QueryFn },
-  recipeId: string,
-  householdId: string,
-): Promise<boolean> {
-  const res = await db.query(
-    `SELECT 1 FROM recipes
-     WHERE id = $1 AND (private = false OR household_id = $2)`,
-    [recipeId, householdId],
-  );
-  return res.rows.length > 0;
 }
 
 export async function addPlanEntry(
