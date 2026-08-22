@@ -54,6 +54,17 @@ export const handlers = handler({
     };
   },
   async POST(ctx) {
+    // Stores are global rather than household-scoped, so this matches the
+    // index route: any signed-in user may edit them, nobody signed out may.
+    // Without this, delete / rename / currency / locations ran for anonymous
+    // requests; only TOGGLE_OWNED required a household.
+    if (!ctx.state.user) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: "/auth/login" },
+      });
+    }
+
     const id = ctx.params.id;
     const form = await ctx.req.formData();
     const method = form.get("_method");

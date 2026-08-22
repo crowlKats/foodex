@@ -1,11 +1,31 @@
 import { handler, page } from "./$new.ts";
 import { uniqueSlug } from "../../lib/slug.ts";
 import { logAudit } from "../../lib/audit.ts";
+import type { QueryFn } from "../../db/mod.ts";
 import type { Ingredient, Recipe, Tool } from "../../db/types.ts";
 import { saveRecipeChildren } from "../../lib/recipe-save.ts";
 import RecipeFields from "../../islands/RecipeFields.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormActions } from "../../components/recipe-form/ui.tsx";
+
+/** Ingredient/tool pickers plus recipes this household is allowed to see. */
+async function loadRecipeFormOptions(query: QueryFn, householdId: string) {
+  const [ingredientsRes, allToolsRes, allRecipesRes] = await Promise.all([
+    query<Ingredient>(
+      "SELECT id, name, unit FROM ingredients ORDER BY name",
+    ),
+    query<Tool>("SELECT id, name FROM tools ORDER BY name"),
+    query<Recipe>(
+      "SELECT id, title, slug FROM recipes WHERE (private = false OR household_id = $1) ORDER BY title",
+      [householdId],
+    ),
+  ]);
+  return {
+    ingredients: ingredientsRes.rows,
+    allTools: allToolsRes.rows,
+    allRecipes: allRecipesRes.rows,
+  };
+}
 
 export const handlers = handler({
   async GET(ctx) {
@@ -16,23 +36,15 @@ export const handlers = handler({
       });
     }
 
-    const ingredientsRes = await ctx.state.db.query<Ingredient>(
-      "SELECT id, name, unit FROM ingredients ORDER BY name",
-    );
-    const allToolsRes = await ctx.state.db.query<Tool>(
-      "SELECT id, name FROM tools ORDER BY name",
-    );
-    const allRecipesRes = await ctx.state.db.query<Recipe>(
-      "SELECT id, title, slug FROM recipes WHERE (private = false OR household_id = $1) ORDER BY title",
-      [ctx.state.householdId],
+    const options = await loadRecipeFormOptions(
+      ctx.state.db.query,
+      ctx.state.householdId,
     );
 
     ctx.state.pageTitle = "New Recipe";
     return {
       data: {
-        ingredients: ingredientsRes.rows,
-        allTools: allToolsRes.rows,
-        allRecipes: allRecipesRes.rows,
+        ...options,
         error: null as string | null,
       },
     };
@@ -104,20 +116,13 @@ export const handlers = handler({
       : null;
 
     if (!title?.trim()) {
-      const ingredientsRes = await ctx.state.db.query<Ingredient>(
-        "SELECT id, name, unit FROM ingredients ORDER BY name",
-      );
-      const allToolsRes = await ctx.state.db.query<Tool>(
-        "SELECT id, name FROM tools ORDER BY name",
-      );
-      const allRecipesRes = await ctx.state.db.query<Recipe>(
-        "SELECT id, title, slug FROM recipes ORDER BY title",
+      const options = await loadRecipeFormOptions(
+        ctx.state.db.query,
+        ctx.state.householdId,
       );
       return {
         data: {
-          ingredients: ingredientsRes.rows,
-          allTools: allToolsRes.rows,
-          allRecipes: allRecipesRes.rows,
+          ...options,
           error: "Title is required",
         },
       };
@@ -166,21 +171,13 @@ export const handlers = handler({
       });
     } catch (err) {
       if (String(err).includes("unique")) {
-        const [ingredientsRes, allToolsRes, allRecipesRes] = await Promise.all([
-          ctx.state.db.query<Ingredient>(
-            "SELECT id, name, unit FROM ingredients ORDER BY name",
-          ),
-          ctx.state.db.query<Tool>("SELECT id, name FROM tools ORDER BY name"),
-          ctx.state.db.query<Recipe>(
-            "SELECT id, title, slug FROM recipes WHERE (private = false OR household_id = $1) ORDER BY title",
-            [ctx.state.householdId],
-          ),
-        ]);
+        const options = await loadRecipeFormOptions(
+          ctx.state.db.query,
+          ctx.state.householdId,
+        );
         return {
           data: {
-            ingredients: ingredientsRes.rows,
-            allTools: allToolsRes.rows,
-            allRecipes: allRecipesRes.rows,
+            ...options,
             error: `Slug "${slug}" already exists`,
           },
         };

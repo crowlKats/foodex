@@ -38,6 +38,9 @@ export const handlers = handler({
         note: body.note,
         userId,
       });
+      if (entryId == null) {
+        return Response.json({ error: "Recipe not found" }, { status: 404 });
+      }
       return Response.json({ ok: true, entry_id: entryId });
     }
 
@@ -111,6 +114,9 @@ export const handlers = handler({
           scale: body.scale,
           userId,
         });
+        if (cooked.entryId === "") {
+          return Response.json({ error: "Recipe not found" }, { status: 404 });
+        }
         return Response.json(cooked);
       });
     }

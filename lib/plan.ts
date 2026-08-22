@@ -85,6 +85,7 @@ export async function loadPlan(
             m.url as cover_image_url
      FROM plan_entries pe
      LEFT JOIN recipes r ON r.id = pe.recipe_id
+       AND (r.private = false OR r.household_id = pe.household_id)
      LEFT JOIN dishes d ON d.id = pe.dish_id
      LEFT JOIN media m ON m.id = r.cover_image_id
      WHERE pe.household_id = $1 AND pe.status = $2
@@ -233,12 +234,35 @@ export interface AddPlanEntryInput {
   userId?: string | null;
 }
 
+/**
+ * Whether this household may see the recipe: public, or private to them.
+ * Same predicate pinPlanEntry already uses.
+ */
+export async function recipeIsVisible(
+  db: { query: QueryFn },
+  recipeId: string,
+  householdId: string,
+): Promise<boolean> {
+  const res = await db.query(
+    `SELECT 1 FROM recipes
+     WHERE id = $1 AND (private = false OR household_id = $2)`,
+    [recipeId, householdId],
+  );
+  return res.rows.length > 0;
+}
+
 export async function addPlanEntry(
   db: { query: QueryFn },
   input: AddPlanEntryInput,
-): Promise<string> {
+): Promise<string | null> {
   if (!input.recipeId && !input.dishId) {
     throw new Error("plan entry needs a recipe or a dish");
+  }
+  if (
+    input.recipeId &&
+    !(await recipeIsVisible(db, input.recipeId, input.householdId))
+  ) {
+    return null;
   }
   const res = await db.query<{ id: string }>(
     `INSERT INTO plan_entries (
@@ -353,6 +377,7 @@ export async function cookPlanEntry(
             r.output_expires_days, g.name as output_name
      FROM plan_entries pe
      JOIN recipes r ON r.id = pe.recipe_id
+       AND (r.private = false OR r.household_id = pe.household_id)
      LEFT JOIN ingredients g ON g.id = r.output_ingredient_id
      WHERE pe.id = $1 AND pe.household_id = $2`,
     [entryId, householdId],
@@ -454,6 +479,9 @@ export async function cookNow(
   input: AddPlanEntryInput,
 ): Promise<CookResult & { entryId: string }> {
   const entryId = await addPlanEntry(db, { ...input, includeInList: false });
+  if (entryId == null) {
+    return { ok: false, shortfalls: [], produced: null, entryId: "" };
+  }
   const result = await cookPlanEntry(
     db,
     input.householdId,
@@ -477,6 +505,7 @@ export async function loadCookHistory(
             m.url as cover_image_url
      FROM plan_entries pe
      JOIN recipes r ON r.id = pe.recipe_id
+       AND (r.private = false OR r.household_id = pe.household_id)
      LEFT JOIN media m ON m.id = r.cover_image_id
      WHERE pe.household_id = $1 AND pe.status = 'cooked'
      ORDER BY pe.cooked_at DESC
