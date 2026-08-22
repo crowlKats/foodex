@@ -556,13 +556,15 @@ export default page(function RecipeViewPage({
       )}
 
       <div class="flex items-center gap-3 mt-4 mb-2 flex-wrap">
-        <h1 class="text-2xl font-bold flex-1">{recipe.title}</h1>
+        <h1 class="text-2xl font-bold min-w-0 flex-1 max-sm:basis-full">
+          {recipe.title}
+        </h1>
         {recipe.private && (
           <span class="print-hidden text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-2 py-1 rounded">
             private
           </span>
         )}
-        <span class="print-hidden flex items-center gap-3">
+        <span class="print-hidden flex items-center gap-2 flex-wrap max-sm:w-full">
           {loggedIn && (
             <FavoriteButton
               recipeId={recipe.id}
