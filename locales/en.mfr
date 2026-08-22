@@ -180,7 +180,7 @@ auditLog = Audit log
 system = System
 householdsStat = Households
 recipesStat = Recipes
-privateCount = {$count} private
+privateCount = {$count :integer} private
 ingredientsStat = Ingredients
 mediaStat = Media
 assistantChats = Assistant chats
@@ -273,7 +273,7 @@ templatesTitle = Template Syntax
 [household]
 settingsTitle = {$name} Settings
 backToHousehold = Back to Household
-members = Members ({$count})
+members = Members ({$count :integer})
 makeOwner = Make owner
 makeOwnerConfirm = Make {$name} an owner? Owners manage members, invites, and settings, and this frees you to leave the household.
 removeMember = Remove member

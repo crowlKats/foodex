@@ -179,7 +179,7 @@ auditLog = Registro
 system = Sistema
 householdsStat = Nuclei
 recipesStat = Ricette
-privateCount = {$count} private
+privateCount = {$count :integer} private
 ingredientsStat = Ingredienti
 mediaStat = Media
 assistantChats = Chat assistente
@@ -272,7 +272,7 @@ templatesTitle = Sintassi dei template
 [household]
 settingsTitle = Impostazioni di {$name}
 backToHousehold = Torna al nucleo
-members = Membri ({$count})
+members = Membri ({$count :integer})
 makeOwner = Rendi proprietario
 makeOwnerConfirm = Rendere {$name} proprietario? I proprietari gestiscono membri, inviti e impostazioni, e così puoi lasciare il nucleo.
 removeMember = Rimuovi membro

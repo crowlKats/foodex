@@ -1,6 +1,6 @@
-type Msg<P extends Record<string, unknown> = Record<string, never>> =
-  [keyof P] extends [never] ? (params?: P) => string
-    : (params: P) => string;
+type Msg<P = void> = [P] extends [void]
+  ? (params?: Record<string, never>) => string
+  : (params: P) => string;
 
 declare const messages: {
   readonly admin: {
@@ -53,7 +53,7 @@ declare const messages: {
     readonly pageSystem: Msg;
     readonly pageUsers: Msg;
     readonly pendingInvites: Msg<{ count: string }>;
-    readonly privateCount: Msg<{ count: string }>;
+    readonly privateCount: Msg<{ count: number }>;
     readonly providers: Msg;
     readonly recipes: Msg;
     readonly recipesModeration: Msg<{ count: string }>;
@@ -285,7 +285,7 @@ declare const messages: {
     readonly makeOwner: Msg;
     readonly makeOwnerConfirm: Msg<{ name: string }>;
     readonly member: Msg;
-    readonly members: Msg<{ count: string }>;
+    readonly members: Msg<{ count: number }>;
     readonly movingBoxLink: Msg;
     readonly movingOutHint: Msg;
     readonly namePlaceholder: Msg;

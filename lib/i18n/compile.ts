@@ -181,8 +181,8 @@ function emitDtsNode(node: Tree, indent: string): string {
 export function emitTypeScript(catalog: CompiledCatalog): string {
   const tree = toTree(catalog.messages);
   const shape = emitDtsNode(tree, "");
-  return `type Msg<P extends Record<string, unknown> = Record<string, never>> =
-  [keyof P] extends [never] ? (params?: P) => string
+  return `type Msg<P = void> =
+  [P] extends [void] ? (params?: Record<string, never>) => string
     : (params: P) => string;
 
 declare const messages: ${shape};
