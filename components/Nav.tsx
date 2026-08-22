@@ -9,6 +9,7 @@ import { IconFridge } from "@tabler/icons-preact";
 import { IconHome } from "@tabler/icons-preact";
 import { IconScan } from "@tabler/icons-preact";
 import type { User } from "../utils.ts";
+import { catalogFor } from "../lib/i18n/mod.ts";
 
 function isActive(currentPath: string, href: string): boolean {
   if (href === "/recipes") {
@@ -95,30 +96,32 @@ function MobileTab(
 }
 
 export function Nav(
-  { user, shoppingListCount, hasHousehold, isAdmin, currentPath }: {
+  { user, shoppingListCount, hasHousehold, isAdmin, currentPath, locale }: {
     user?: User | null;
     shoppingListCount?: number;
     hasHousehold?: boolean;
     isAdmin?: boolean;
     currentPath: string;
+    locale: string;
   },
 ) {
+  const m = catalogFor(locale);
   // Reference catalogs and the guide sit behind a menu rather than in the bar:
   // the bar only has room for the core workflow before it wraps.
   const moreLinks: NavDropdownLink[] = [
-    { href: "/ingredients", label: "Ingredients", group: "catalogs" },
-    { href: "/stores", label: "Stores", group: "catalogs" },
-    { href: "/tools", label: "Tools", group: "catalogs" },
-    { href: "/docs", label: "User guide", tour: "docs" },
-    ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+    { href: "/ingredients", label: m.nav.ingredients(), group: "catalogs" },
+    { href: "/stores", label: m.nav.stores(), group: "catalogs" },
+    { href: "/tools", label: m.nav.tools(), group: "catalogs" },
+    { href: "/docs", label: m.nav.docs(), tour: "docs" },
+    ...(isAdmin ? [{ href: "/admin", label: m.nav.admin() }] : []),
   ];
   // Below lg the bar shows none of the links, so the menu carries everything
   // the bottom tab bar has no room for as well.
   const compactLinks: NavDropdownLink[] = [
     ...(hasHousehold
       ? [
-        { href: "/agent", label: "Assistant", tour: "assistant" },
-        { href: "/collections", label: "Collections", tour: "collections" },
+        { href: "/agent", label: m.nav.assistant(), tour: "assistant" },
+        { href: "/collections", label: m.nav.collections(), tour: "collections" },
       ]
       : []),
     ...moreLinks,
@@ -142,33 +145,34 @@ export function Nav(
             <div class="hidden lg:flex items-center gap-4 min-w-0">
               <NavLink
                 href="/recipes"
-                label="Recipes"
+                label={m.nav.recipes()}
                 tour="recipes"
                 currentPath={currentPath}
+                locale={locale}
               />
               {hasHousehold && (
                 <>
                   <NavLink
                     href="/collections"
-                    label="Collections"
+                    label={m.nav.collections()}
                     tour="collections"
                     currentPath={currentPath}
                   />
                   <NavLink
                     href="/agent"
-                    label="Assistant"
+                    label={m.nav.assistant()}
                     tour="assistant"
                     currentPath={currentPath}
                   />
                   <NavLink
                     href="/household/pantry"
-                    label="Pantry"
+                    label={m.nav.pantry()}
                     tour="pantry"
                     currentPath={currentPath}
                   />
                   <NavLink
                     href="/plan"
-                    label="Plan"
+                    label={m.nav.plan()}
                     tour="plan"
                     currentPath={currentPath}
                   />
@@ -177,7 +181,7 @@ export function Nav(
               {user && (
                 <NavLink
                   href="/shopping-list"
-                  label="Shopping List"
+                  label={m.nav.shoppingList()}
                   tour="shopping"
                   currentPath={currentPath}
                   badge={shoppingListCount ?? 0}
@@ -193,15 +197,17 @@ export function Nav(
                 trigger={{ kind: "hamburger" }}
                 links={compactLinks}
                 currentPath={currentPath}
+                locale={locale}
               />
               <NavDropdown
                 id="more"
                 class="hidden lg:block"
-                trigger={{ kind: "text", label: "More" }}
+                trigger={{ kind: "text", label: m.nav.more() }}
                 links={moreLinks}
                 currentPath={currentPath}
+                locale={locale}
               />
-              <DarkModeToggle />
+              <DarkModeToggle locale={locale} />
               <a
                 href={hasHousehold ? "/household" : "/households"}
                 data-tour="household"
@@ -211,7 +217,7 @@ export function Nav(
                     ? "text-orange-400"
                     : ""
                 }`}
-                title="Household"
+                title={m.nav.household()}
               >
                 <IconHome class="size-5" />
               </a>
@@ -224,8 +230,9 @@ export function Nav(
                       name: user.name,
                       avatarUrl: user.avatar_url,
                     }}
-                    links={[{ href: "/profile", label: "Profile" }]}
+                    links={[{ href: "/profile", label: m.nav.profile() }]}
                     currentPath={currentPath}
+                    locale={locale}
                     signOut
                   />
                 )
@@ -234,7 +241,7 @@ export function Nav(
                     href="/auth/login"
                     class="text-sm text-stone-400 hover:text-stone-200 whitespace-nowrap"
                   >
-                    Sign in
+                    {m.nav.signIn()}
                   </a>
                 )}
             </div>
@@ -250,7 +257,7 @@ export function Nav(
         <div class="flex items-center justify-around">
           <MobileTab
             href="/recipes"
-            label="Recipes"
+            label={m.nav.recipes()}
             tour="recipes"
             icon={IconToolsKitchen2}
             currentPath={currentPath}
@@ -258,7 +265,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/household/pantry"
-              label="Pantry"
+              label={m.nav.pantry()}
               tour="pantry"
               icon={IconFridge}
               currentPath={currentPath}
@@ -267,7 +274,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/plan"
-              label="Plan"
+              label={m.nav.plan()}
               tour="plan"
               icon={IconCalendar}
               currentPath={currentPath}
@@ -276,7 +283,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/scan"
-              label="Scan"
+              label={m.nav.scan()}
               tour="scan"
               icon={IconScan}
               currentPath={currentPath}
@@ -285,7 +292,7 @@ export function Nav(
           {user && (
             <MobileTab
               href="/shopping-list"
-              label="Shop"
+              label={m.nav.shop()}
               tour="shopping"
               icon={IconShoppingCart}
               currentPath={currentPath}
@@ -294,7 +301,7 @@ export function Nav(
           )}
           <MobileTab
             href={hasHousehold ? "/household" : "/households"}
-            label="Household"
+            label={m.nav.household()}
             tour="household"
             icon={IconHome}
             currentPath={currentPath}

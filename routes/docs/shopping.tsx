@@ -1,4 +1,6 @@
 import { handler, page } from "./$shopping.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -10,16 +12,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Shopping List";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.shoppingTitle();
     return { data: {} };
   },
 });
 
 export default page(function ShoppingDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Shopping List"
+      title={m.docs.shoppingTitle()}
       intro="One list per household, worked out for you: what your plan needs, minus what you already have."
     >
       <DocSection id="how" title="How the List Is Worked Out">

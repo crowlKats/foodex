@@ -1,4 +1,5 @@
 import { ButtonLink } from "./Button.tsx";
+import { useMessages } from "../lib/i18n/provider.tsx";
 
 export const PAGE_SIZE = 50;
 
@@ -20,6 +21,7 @@ export function Pagination(
     url: URL;
   },
 ) {
+  const m = useMessages();
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   if (totalPages <= 1) return null;
 
@@ -34,15 +36,15 @@ export function Pagination(
     <div class="flex items-center justify-center gap-2 mt-4">
       {currentPage > 1 && (
         <ButtonLink href={pageUrl(currentPage - 1)} variant="outline">
-          Prev
+          {m.common.prev()}
         </ButtonLink>
       )}
       <span class="text-sm text-stone-500">
-        Page {currentPage} of {totalPages}
+        {m.common.pageOf({ current: currentPage, total: totalPages })}
       </span>
       {currentPage < totalPages && (
         <ButtonLink href={pageUrl(currentPage + 1)} variant="outline">
-          Next
+          {m.common.next()}
         </ButtonLink>
       )}
     </div>

@@ -14,6 +14,7 @@ import {
   nameRequirementResponse,
 } from "../lib/auth.ts";
 import { loadSessionState } from "../lib/session.ts";
+import { catalogFor, withLocale } from "../lib/i18n/mod.ts";
 import { cleanupStaleAccounts } from "../lib/retention.ts";
 import { deleteFile } from "../lib/s3.ts";
 
@@ -28,6 +29,7 @@ export interface State extends ParentState {
   householdId: string | null;
   isAdmin: boolean;
   pageTitle: string;
+  locale: string;
 }
 
 export default middleware(async function (ctx) {
@@ -55,11 +57,19 @@ export default middleware(async function (ctx) {
   // and onboarding; see householdRequirementResponse for the exemptions.
   if (state.user && !state.householdId) {
     const denied = householdRequirementResponse(new URL(ctx.req.url));
-    if (denied) return denied;
+    if (denied) {
+      if (denied.status === 403) {
+        return Response.json(
+          { error: catalogFor(state.locale).error.needHousehold() },
+          { status: 403 },
+        );
+      }
+      return denied;
+    }
   }
 
   try {
-    return await ctx.next(state);
+    return await withLocale(state.locale, () => ctx.next(state));
   } catch (err) {
     // The framework catches any thrown error and renders _error.tsx without
     // logging it, so a production 500 leaves no trace. HttpErrors are skipped:

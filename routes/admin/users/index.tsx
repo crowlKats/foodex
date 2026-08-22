@@ -8,6 +8,8 @@ import {
   Pagination,
   paginationParams,
 } from "../../../components/Pagination.tsx";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
+import { useMessages } from "../../../lib/i18n/provider.tsx";
 
 interface UserRow {
   id: string;
@@ -67,7 +69,7 @@ export const handlers = handler({
       ]);
     }
 
-    ctx.state.pageTitle = "Admin: Users";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageUsers();
     return {
       data: {
         users: result.rows,
@@ -90,16 +92,25 @@ function ProviderBadge({ label }: { label: string }) {
 export default page(function AdminUsersPage(
   { data: { users, q, currentPage, totalCount }, url },
 ) {
+  const m = useMessages();
   return (
     <div>
-      <PageHeader title="Users" query={q} searchPlaceholder="Search users..." />
+      <PageHeader
+        title={m.admin.users()}
+        query={q}
+        searchPlaceholder={m.admin.searchUsers()}
+      />
       <AdminNav currentPath={url.pathname} />
 
-      <div class="text-sm text-stone-500 mb-3">{totalCount} total</div>
+      <div class="text-sm text-stone-500 mb-3">
+        {m.common.totalCount({ count: totalCount })}
+      </div>
       {users.length === 0
         ? (
-          <EmptyState title={q ? `No users match "${q}"` : "No users yet"}>
-            Accounts appear here as soon as someone signs in for the first time.
+          <EmptyState
+            title={q ? m.admin.noUsersMatch({ query: q }) : m.admin.noUsers()}
+          >
+            {m.admin.noUsersBody()}
           </EmptyState>
         )
         : (
@@ -120,7 +131,9 @@ export default page(function AdminUsersPage(
                   )}
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span class="font-medium">{u.name ?? "(no name)"}</span>
+                      <span class="font-medium">
+                        {u.name ?? m.common.noName()}
+                      </span>
                       {u.has_authentik && <ProviderBadge label="authentik" />}
                       {u.has_github && <ProviderBadge label="github" />}
                       {u.has_google && <ProviderBadge label="google" />}
@@ -129,17 +142,25 @@ export default page(function AdminUsersPage(
                       )}
                     </div>
                     <div class="text-sm text-stone-500 truncate">
-                      {u.email ?? "no email"}
-                      {u.household ? ` · ${u.household}` : " · no household"}
+                      {u.email ?? m.common.noEmail()}
+                      {u.household
+                        ? ` · ${u.household}`
+                        : ` · ${m.admin.noHousehold()}`}
                     </div>
                   </div>
                   <div class="text-right text-xs text-stone-400 shrink-0">
                     <div>
-                      joined {new Date(u.created_at).toISOString().slice(0, 10)}
+                      {m.admin.joined({
+                        date: new Date(u.created_at).toISOString().slice(
+                          0,
+                          10,
+                        ),
+                      })}
                     </div>
                     <div>
-                      {Number(u.session_count)}{" "}
-                      session{Number(u.session_count) === 1 ? "" : "s"}
+                      {m.admin.sessionCount({
+                        count: Number(u.session_count),
+                      })}
                     </div>
                   </div>
                 </div>

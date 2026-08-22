@@ -12,6 +12,8 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 import type { Tool } from "../../db/types.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -60,7 +62,7 @@ export const handlers = handler({
     }
 
     const error = ctx.url.searchParams.get("error") || undefined;
-    ctx.state.pageTitle = "Tools";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).catalog.tools();
     return {
       data: {
         tools: result.rows,
@@ -133,10 +135,11 @@ export default page(
       url,
     },
   ) {
+    const m = useMessages();
     const ownedSet = new Set(ownedToolIds ?? []);
     return (
       <div>
-        <PageHeader title="Tools" query={q} />
+        <PageHeader title={m.catalog.tools()} query={q} />
 
         {error && (
           <div class="alert-error mb-4">
@@ -147,12 +150,12 @@ export default page(
         <div class={`grid gap-6 ${loggedIn ? "md:grid-cols-2" : ""}`}>
           {loggedIn && (
             <div>
-              <h2 class="text-lg font-semibold mb-3">Add Tool</h2>
+              <h2 class="text-lg font-semibold mb-3">{m.catalog.addTool()}</h2>
               <form
                 method="POST"
                 class="card space-y-3"
               >
-                <FormField label="Name">
+                <FormField label={m.common.name()}>
                   <Input
                     type="text"
                     name="name"
@@ -160,7 +163,7 @@ export default page(
                     class="w-full"
                   />
                 </FormField>
-                <FormField label="Description">
+                <FormField label={m.form.description()}>
                   <InputMultiline
                     name="description"
                     rows={3}
@@ -168,7 +171,7 @@ export default page(
                   />
                 </FormField>
                 <Button type="submit">
-                  Add Tool
+                  {m.catalog.addTool()}
                 </Button>
               </form>
             </div>
@@ -176,44 +179,43 @@ export default page(
 
           <div>
             <h2 class="text-lg font-semibold mb-3">
-              All Tools ({totalCount})
+              {m.common.allCount({
+                title: m.catalog.tools(),
+                count: String(totalCount),
+              })}
             </h2>
             {tools.length === 0
               ? q
                 ? (
-                  <EmptyState title={`No tools match "${q}"`}>
-                    Nothing here goes by that name.
+                  <EmptyState title={m.empty.noToolsMatch({ query: q })}>
+                    {m.error.noMatchQuery()}
                   </EmptyState>
                 )
                 : (
-                  <EmptyState title="No tools yet">
-                    Tools are your cookware: a pan, a stand mixer, an oven. A
-                    recipe can reference one along with the settings it needs
-                    ("180 °C", "medium-low") and a note on how it's used, so the
-                    method doesn't have to spell it out every time. {loggedIn
-                      ? "Add your first with the form on this page."
-                      : "Sign in to add one."}
+                  <EmptyState title={m.empty.noTools()}>
+                    {m.empty.noToolsBody()}{" "}
+                    {loggedIn ? m.empty.addFirstForm() : m.empty.signInToAdd()}
                   </EmptyState>
                 )
               : (
                 <div class="space-y-2">
-                  {tools.map((m) => (
+                  {tools.map((tool) => (
                     <a
-                      key={m.id}
-                      href={`/tools/${m.id}`}
+                      key={tool.id}
+                      href={`/tools/${tool.id}`}
                       class="block card card-hover"
                     >
                       <div class="flex items-center gap-2">
-                        <div class="font-medium flex-1">{m.name}</div>
-                        {ownedSet.has(m.id) && (
+                        <div class="font-medium flex-1">{tool.name}</div>
+                        {ownedSet.has(tool.id) && (
                           <span class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
-                            owned
+                            {m.common.owned()}
                           </span>
                         )}
                       </div>
-                      {m.description && (
+                      {tool.description && (
                         <div class="text-sm text-stone-500 truncate">
-                          {m.description}
+                          {tool.description}
                         </div>
                       )}
                     </a>

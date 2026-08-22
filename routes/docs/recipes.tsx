@@ -1,4 +1,6 @@
 import { handler, page } from "./$recipes.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -10,16 +12,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Browsing & Cooking";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.recipesTitle();
     return { data: {} };
   },
 });
 
 export default page(function RecipesDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Browsing & Cooking"
+      title={m.docs.recipesTitle()}
       intro="Finding recipes, reading them at the right scale, and cooking with timers and step-by-step mode."
     >
       <DocSection id="browsing" title="Browsing and Searching">

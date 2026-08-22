@@ -13,6 +13,8 @@ import type {
   HouseholdMember,
 } from "../../db/types.ts";
 import { generateInviteCode } from "../../lib/auth.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -57,7 +59,9 @@ export const handlers = handler({
       ),
     ]);
 
-    ctx.state.pageTitle = `${householdRes.rows[0].name} Settings`;
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).household.settingsTitle({
+      name: householdRes.rows[0].name,
+    });
     return {
       data: {
         household: householdRes.rows[0],
@@ -193,7 +197,7 @@ export const handlers = handler({
           status: 303,
           headers: {
             Location: "/household/settings?error=" + encodeURIComponent(
-              "Make another member an owner before leaving, or delete the household.",
+              catalogFor(ctx.state.locale).household.leaveNeedOwner(),
             ),
           },
         });
@@ -258,6 +262,7 @@ export default page(function HouseholdSettingsPage(
     url,
   },
 ) {
+  const msg = useMessages();
   const isOwner = myRole === "owner";
   const otherOwners = members.some((m) =>
     m.role === "owner" && m.user_id !== state.user!.id
@@ -267,16 +272,18 @@ export default page(function HouseholdSettingsPage(
     <div class="max-w-2xl">
       <a href="/household" class="link text-sm">
         <IconArrowLeft class="size-3.5 inline mr-1" />
-        Back to Household
+        {msg.household.backToHousehold()}
       </a>
-      <h1 class="text-2xl font-bold mt-4 mb-6">{household.name} Settings</h1>
+      <h1 class="text-2xl font-bold mt-4 mb-6">
+        {msg.household.settingsTitle({ name: household.name })}
+      </h1>
 
       {error && <div class="alert-error mb-4">{error}</div>}
 
       <div class="space-y-6">
         <div class="card">
           <h2 class="text-lg font-semibold mb-3">
-            Members ({members.length})
+            {msg.household.members({ count: members.length })}
           </h2>
           <div class="space-y-2">
             {members.map((m) => (
@@ -296,7 +303,7 @@ export default page(function HouseholdSettingsPage(
                     {m.name}
                     {m.user_id === state.user!.id && (
                       <span class="text-xs text-stone-400 ml-1">
-                        (you)
+                        {msg.common.you()}
                       </span>
                     )}
                   </div>
@@ -313,7 +320,9 @@ export default page(function HouseholdSettingsPage(
                       : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400"
                   }`}
                 >
-                  {m.role}
+                  {m.role === "owner"
+                    ? msg.household.owner()
+                    : msg.household.member()}
                 </span>
                 {isOwner && m.user_id !== state.user!.id &&
                   m.role === "member" && (
@@ -329,11 +338,13 @@ export default page(function HouseholdSettingsPage(
                       value={m.user_id}
                     />
                     <ConfirmButton
-                      message={`Make ${m.name} an owner? Owners manage members, invites, and settings, and this frees you to leave the household.`}
+                      message={msg.household.makeOwnerConfirm({
+                        name: m.name ?? "",
+                      })}
                       variant="ghost"
                       size="xs"
                     >
-                      Make owner
+                      {msg.household.makeOwner()}
                     </ConfirmButton>
                   </form>
                 )}
@@ -353,7 +364,7 @@ export default page(function HouseholdSettingsPage(
                       type="submit"
                       variant="danger-ghost"
                       icon={IconTrash}
-                      title="Remove member"
+                      title={msg.household.removeMember()}
                     />
                   </form>
                 )}
@@ -364,34 +375,35 @@ export default page(function HouseholdSettingsPage(
             <form method="POST" class="mt-4">
               <input type="hidden" name="_method" value="LEAVE" />
               <ConfirmButton
-                message="Leave this household? You'll lose access to its recipes, pantry, and lists, and will need an invite or a new household to keep using Foodex."
+                message={msg.household.leaveConfirm()}
                 variant="danger-outline"
                 class="w-full"
               >
-                Leave Household
+                {msg.household.leave()}
               </ConfirmButton>
             </form>
           )}
           {isOwner && !otherOwners && members.length > 1 && (
             <p class="text-xs text-stone-400 mt-4">
-              Moving out? Make another member an owner first, then you can
-              leave.
+              {msg.household.movingOutHint()}
             </p>
           )}
           <p class="text-xs text-stone-400 mt-2">
-            Leaving?{" "}
+            {msg.household.leavingHint()}{" "}
             <a href="/moving-box" class="link">
-              Pack a moving box
+              {msg.household.packBox()}
             </a>{" "}
-            to take recipes with you.
+            {msg.household.packBoxRest()}
           </p>
         </div>
 
         {isOwner && (
           <div class="card">
-            <h2 class="text-lg font-semibold mb-3">Invite Link</h2>
+            <h2 class="text-lg font-semibold mb-3">
+              {msg.household.inviteLink()}
+            </h2>
             <p class="text-xs text-stone-500 mb-3">
-              Share a link so others can join. Links expire after 7 days.
+              {msg.household.inviteHelp()}
             </p>
 
             {invites.length > 0 && (
@@ -436,7 +448,7 @@ export default page(function HouseholdSettingsPage(
                           type="submit"
                           variant="danger-ghost"
                           icon={IconTrash}
-                          title="Revoke"
+                          title={msg.household.revoke()}
                         />
                       </form>
                     </div>
@@ -452,7 +464,7 @@ export default page(function HouseholdSettingsPage(
                 value="CREATE_INVITE"
               />
               <Button type="submit" class="w-full">
-                Generate Invite Link
+                {msg.household.generateInvite()}
               </Button>
             </form>
           </div>
@@ -460,10 +472,12 @@ export default page(function HouseholdSettingsPage(
 
         {isOwner && (
           <div class="card">
-            <h2 class="text-lg font-semibold mb-3">Household Name</h2>
+            <h2 class="text-lg font-semibold mb-3">
+              {msg.household.householdName()}
+            </h2>
             <form method="POST" class="space-y-3">
               <input type="hidden" name="_method" value="UPDATE_NAME" />
-              <FormField label="Household Name">
+              <FormField label={msg.household.householdName()}>
                 <Input
                   type="text"
                   name="name"
@@ -473,7 +487,7 @@ export default page(function HouseholdSettingsPage(
                 />
               </FormField>
               <Button type="submit">
-                Update
+                {msg.common.update()}
               </Button>
             </form>
           </div>
@@ -482,16 +496,16 @@ export default page(function HouseholdSettingsPage(
         {isOwner && (
           <div class="card">
             <h2 class="text-lg font-semibold mb-3 text-red-600">
-              Danger Zone
+              {msg.household.dangerZone()}
             </h2>
             <form method="POST">
               <input type="hidden" name="_method" value="DELETE" />
               <ConfirmButton
-                message="Delete this household? This cannot be undone."
+                message={msg.household.deleteConfirm()}
                 variant="danger"
                 class="w-full"
               >
-                Delete Household
+                {msg.household.deleteHousehold()}
               </ConfirmButton>
             </form>
           </div>

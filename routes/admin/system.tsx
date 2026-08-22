@@ -8,6 +8,8 @@ import { formatBytes } from "../../lib/admin-format.ts";
 import { logAudit } from "../../lib/audit.ts";
 import { cleanupOrphanedMedia } from "../../db/mod.ts";
 import { deleteFile } from "../../lib/s3.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 // Presence checks only; the values themselves never reach the page.
 const features = {
@@ -59,7 +61,7 @@ export const handlers = handler({
         ),
       ]);
 
-    ctx.state.pageTitle = "Admin: System";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageSystem();
     return {
       data: {
         sessions: {
@@ -140,9 +142,10 @@ function FeatureRow({ label, on }: { label: string; on: boolean }) {
 export default page(function AdminSystemPage(
   { data: { sessions, media, aiUsage, msg }, url },
 ) {
+  const m = useMessages();
   return (
     <div>
-      <PageHeader title="System" noSearch />
+      <PageHeader title={m.admin.system()} noSearch />
       <AdminNav currentPath={url.pathname} />
 
       {msg && <div class="alert-success mb-4">{msg}</div>}

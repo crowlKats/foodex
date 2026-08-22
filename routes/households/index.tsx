@@ -7,6 +7,8 @@ import type { Household, HouseholdInvite } from "../../db/types.ts";
 import { logAudit } from "../../lib/audit.ts";
 import { inviteOnly, loginUrl, sanitizeRedirect } from "../../lib/auth.ts";
 import { unpackMovingBox } from "../../lib/moving-box.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -33,7 +35,8 @@ export const handlers = handler({
       });
     }
 
-    ctx.state.pageTitle = "Join or Create Household";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).household
+      .joinOrCreateTitle();
     const boxRes = await ctx.state.db.query<{ cnt: string }>(
       "SELECT COUNT(*) as cnt FROM moving_box_recipes WHERE user_id = $1",
       [ctx.state.user.id],
@@ -77,7 +80,11 @@ export const handlers = handler({
       const code = (form.get("code") as string)?.trim();
       if (!code) {
         return {
-          data: { error: "Invite code is required", redirectTo, inviteOnly },
+          data: {
+            error: catalogFor(ctx.state.locale).household.inviteCodeRequired(),
+            redirectTo,
+            inviteOnly,
+          },
         };
       }
 
@@ -95,7 +102,7 @@ export const handlers = handler({
       if (inviteRes.rows.length === 0) {
         return {
           data: {
-            error: "Invalid or expired invite code",
+            error: catalogFor(ctx.state.locale).household.invalidInvite(),
             redirectTo,
             inviteOnly,
           },
@@ -132,7 +139,7 @@ export const handlers = handler({
     if (inviteOnly) {
       return {
         data: {
-          error: "Foodex is invite-only; households can't be created directly.",
+          error: catalogFor(ctx.state.locale).household.inviteOnlyCreate(),
           redirectTo,
           inviteOnly,
         },
@@ -142,7 +149,13 @@ export const handlers = handler({
     const name = form.get("name") as string;
 
     if (!name?.trim()) {
-      return { data: { error: "Name is required", redirectTo, inviteOnly } };
+      return {
+        data: {
+          error: catalogFor(ctx.state.locale).household.nameRequired(),
+          redirectTo,
+          inviteOnly,
+        },
+      };
     }
 
     const houseRes = await ctx.state.db.query<Pick<Household, "id">>(
@@ -181,18 +194,19 @@ export default page(function HouseholdsPage({ data }) {
     inviteOnly?: boolean;
     boxCount?: number;
   };
+  const m = useMessages();
   const carryRedirect = redirectTo
     ? <input type="hidden" name="redirect" value={redirectTo} />
     : null;
 
   return (
     <div class="max-w-md mx-auto mt-12">
-      <PageHeader title="Get Started" noSearch />
+      <PageHeader title={m.household.getStarted()} noSearch />
 
       <p class="text-stone-500 mb-6">
         {invitesOnly
-          ? "Foodex is invite-only. Join a household with the invite code or link you received; if you don't have one, ask a household member or an operator for an invite."
-          : "Create a new household or join an existing one to manage recipes, tools, stores, and your pantry."}
+          ? m.household.getStartedInviteOnly()
+          : m.household.getStartedBlurb()}
       </p>
 
       {error && (
@@ -203,9 +217,7 @@ export default page(function HouseholdsPage({ data }) {
 
       {(boxCount ?? 0) > 0 && (
         <div class="alert-success mb-4">
-          Your <a href="/moving-box" class="underline">moving box</a> with{" "}
-          {boxCount} recipe{boxCount === 1 ? "" : "s"}{" "}
-          will unpack into the household you join or create.
+          {m.household.boxWillUnpack({ count: boxCount ?? 0 })}
         </div>
       )}
 
@@ -213,48 +225,52 @@ export default page(function HouseholdsPage({ data }) {
         {!invitesOnly && (
           <>
             <div>
-              <h2 class="text-lg font-semibold mb-3">Create Household</h2>
+              <h2 class="text-lg font-semibold mb-3">
+                {m.household.createHousehold()}
+              </h2>
               <form method="POST" class="card space-y-3">
                 {carryRedirect}
-                <FormField label="Name">
+                <FormField label={m.common.name()}>
                   <Input
                     type="text"
                     name="name"
                     required
-                    placeholder="e.g. Smith Family"
+                    placeholder={m.household.namePlaceholder()}
                     class="w-full"
                   />
                 </FormField>
                 <Button type="submit">
-                  Create Household
+                  {m.household.createHousehold()}
                 </Button>
               </form>
             </div>
 
             <div class="flex items-center gap-4">
               <hr class="flex-1 border-stone-300 dark:border-stone-700" />
-              <span class="text-sm text-stone-400">or</span>
+              <span class="text-sm text-stone-400">{m.common.or()}</span>
               <hr class="flex-1 border-stone-300 dark:border-stone-700" />
             </div>
           </>
         )}
 
         <div>
-          <h2 class="text-lg font-semibold mb-3">Join Household</h2>
+          <h2 class="text-lg font-semibold mb-3">
+            {m.household.joinHousehold()}
+          </h2>
           <form method="POST" class="card space-y-3">
             <input type="hidden" name="_method" value="JOIN" />
             {carryRedirect}
-            <FormField label="Invite Code">
+            <FormField label={m.household.inviteCode()}>
               <Input
                 type="text"
                 name="code"
                 required
-                placeholder="Paste invite code..."
+                placeholder={m.household.inviteCodePlaceholder()}
                 class="w-full"
               />
             </FormField>
             <Button type="submit">
-              Join Household
+              {m.household.joinHousehold()}
             </Button>
           </form>
         </div>

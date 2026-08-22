@@ -11,6 +11,8 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 import DeleteChatButton from "../../islands/DeleteChatButton.tsx";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -46,7 +48,7 @@ export const handlers = handler({
       ),
     ]);
 
-    ctx.state.pageTitle = "Assistant";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).agent.title();
     return {
       data: {
         sessions: result.rows,
@@ -79,10 +81,11 @@ export const handlers = handler({
 export default page(function AgentIndex(
   { data: { sessions, q, currentPage, totalCount }, url },
 ) {
+  const m = useMessages();
   return (
     <div>
       <PageHeader
-        title="Assistant"
+        title={m.agent.title()}
         query={q}
         searchPlaceholder="Search conversations..."
       >

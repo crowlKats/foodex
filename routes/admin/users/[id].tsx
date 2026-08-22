@@ -6,6 +6,8 @@ import { SectionHeader } from "../../../components/SectionHeader.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { logAudit } from "../../../lib/audit.ts";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
+import { useMessages } from "../../../lib/i18n/provider.tsx";
 
 interface UserDetail {
   id: string;
@@ -14,6 +16,7 @@ interface UserDetail {
   avatar_url: string | null;
   unit_system: string;
   timezone: string;
+  language: string;
   created_at: Date;
   github_id: string | null;
   google_id: string | null;
@@ -26,7 +29,7 @@ export const handlers = handler({
     const q = ctx.state.db.query;
 
     const userRes = await q<UserDetail>(
-      `SELECT id, name, email, avatar_url, unit_system, timezone, created_at,
+      `SELECT id, name, email, avatar_url, unit_system, timezone, language, created_at,
               github_id, google_id, authentik_id
        FROM users WHERE id = $1`,
       [id],
@@ -60,7 +63,10 @@ export const handlers = handler({
         ),
       ]);
 
-    ctx.state.pageTitle = `Admin: ${user.name ?? user.email ?? "User"}`;
+    const msg = catalogFor(ctx.state.locale);
+    ctx.state.pageTitle = msg.admin.namedTitle({
+      name: user.name ?? user.email ?? msg.admin.noNameUser(),
+    });
     return {
       data: {
         user,
@@ -163,18 +169,19 @@ export default page(function AdminUserDetailPage(
     url,
   },
 ) {
+  const m = useMessages();
   return (
     <div>
-      <PageHeader title={user.name ?? "(no name)"} noSearch />
+      <PageHeader title={user.name ?? m.common.noName()} noSearch />
       <AdminNav currentPath={url.pathname} />
-      <BackLink href="/admin/users" label="All users" />
+      <BackLink href="/admin/users" label={m.admin.allUsers()} />
 
       {error && <div class="alert-error my-4">{error}</div>}
 
       <div class="grid gap-6 md:grid-cols-2 mt-4">
         <div class="space-y-6">
           <div class="card">
-            <SectionHeader title="Account" />
+            <SectionHeader title={m.admin.account()} />
             <div class="flex items-center gap-3 mt-3 mb-4">
               {user.avatar_url && (
                 <img
@@ -184,36 +191,40 @@ export default page(function AdminUserDetailPage(
                 />
               )}
               <div>
-                <div class="font-medium">{user.name ?? "(no name)"}</div>
+                <div class="font-medium">{user.name ?? m.common.noName()}</div>
                 <div class="text-sm text-stone-500">
-                  {user.email ?? "no email"}
+                  {user.email ?? m.common.noEmail()}
                 </div>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
-              <Field label="User ID" value={user.id} />
-              <Field label="Joined" value={formatDate(user.created_at)} />
-              <Field label="Unit system" value={user.unit_system} />
-              <Field label="Timezone" value={user.timezone} />
+              <Field label={m.admin.userId()} value={user.id} />
               <Field
-                label="Providers"
+                label={m.admin.created()}
+                value={formatDate(user.created_at)}
+              />
+              <Field label={m.admin.unitSystem()} value={user.unit_system} />
+              <Field label={m.admin.timezone()} value={user.timezone} />
+              <Field label={m.admin.language()} value={user.language} />
+              <Field
+                label={m.admin.providers()}
                 value={[
                   user.authentik_id && "Authentik",
                   user.github_id && "GitHub",
                   user.google_id && "Google",
-                ].filter(Boolean).join(", ") || "Email only"}
+                ].filter(Boolean).join(", ") || m.admin.emailOnly()}
               />
               <Field
-                label="Household"
+                label={m.profile.household()}
                 value={membership
                   ? `${membership.household} (${membership.role})`
-                  : "none"}
+                  : m.admin.none()}
               />
             </div>
           </div>
 
           <div class="card">
-            <SectionHeader title="Activity" />
+            <SectionHeader title={m.admin.activity()} />
             <div class="grid grid-cols-3 gap-3 mt-3 text-center">
               <div>
                 <div class="text-xl font-bold">{stats.favorites}</div>

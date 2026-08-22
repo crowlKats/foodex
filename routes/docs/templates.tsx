@@ -1,18 +1,21 @@
 import { handler, page } from "./$templates.ts";
 import { docProse, DocSection, DocsPage } from "../../components/DocsPage.tsx";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Template Syntax";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.templatesTitle();
     return { data: {} };
   },
 });
 
 export default page(function TemplateDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Template Syntax"
+      title={m.docs.templatesTitle()}
       intro="The complete reference for recipe step bodies: scaled ingredient references, math, timers, and links to steps, recipes, dishes, and tools."
     >
       <DocSection id="ingredient-references" title="Ingredient References">

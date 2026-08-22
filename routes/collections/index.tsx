@@ -4,6 +4,8 @@ import type { CollectionWithCover } from "../../db/types.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { EmptyState } from "../../components/EmptyState.tsx";
 import { ButtonLink } from "../../components/Button.tsx";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
@@ -64,7 +66,7 @@ export const handlers = handler({
     ]);
     const totalCount = Number(countRes.rows[0].cnt);
 
-    ctx.state.pageTitle = "Collections";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).collections.title();
     return {
       data: {
         collections: result.rows,
@@ -81,33 +83,32 @@ export default page(
   function CollectionsPage(
     { data: { collections, q, currentPage, totalCount, householdId }, url },
   ) {
+    const m = useMessages();
     return (
       <div>
-        <PageHeader title="Collections" query={q}>
+        <PageHeader title={m.collections.title()} query={q}>
           <ButtonLink href="/collections/new">
-            New Collection
+            {m.collections.newTitle()}
           </ButtonLink>
         </PageHeader>
 
         {collections.length === 0
           ? q
             ? (
-              <EmptyState title={`No collections match "${q}"`}>
-                Nothing here goes by that name.
+              <EmptyState title={m.empty.noCollectionsMatch({ query: q })}>
+                {m.error.noMatchQuery()}
               </EmptyState>
             )
             : (
               <EmptyState
-                title="No collections yet"
+                title={m.empty.noCollections()}
                 action={
                   <ButtonLink href="/collections/new" size="sm">
-                    New collection
+                    {m.collections.newTitle()}
                   </ButtonLink>
                 }
               >
-                Collections group recipes however you like: a weeknight set, a
-                Christmas menu, everything you've cooked out of one book. They
-                can be shared with a link.
+                {m.empty.noCollectionsBody()}
               </EmptyState>
             )
           : (
@@ -131,12 +132,12 @@ export default page(
                         <div class="font-medium text-lg">{c.name}</div>
                         {c.private && (
                           <span class="text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-1.5 py-0.5 rounded">
-                            private
+                            {m.recipes.private()}
                           </span>
                         )}
                         {c.household_id !== householdId && (
                           <span class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
-                            shared
+                            {m.common.shared()}
                           </span>
                         )}
                       </div>
@@ -147,8 +148,7 @@ export default page(
                       )}
                     </div>
                     <div class="text-sm text-stone-400 shrink-0">
-                      {c.recipe_count}{" "}
-                      {c.recipe_count === 1 ? "recipe" : "recipes"}
+                      {m.collections.recipeCount({ count: c.recipe_count })}
                     </div>
                   </div>
                 </a>

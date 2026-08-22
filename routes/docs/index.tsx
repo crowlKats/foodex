@@ -6,20 +6,24 @@ import {
   DocSection,
   DocsPage,
 } from "../../components/DocsPage.tsx";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Getting Started";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs
+      .gettingStartedTitle();
     return { data: {} };
   },
 });
 
 export default page(function DocsIndex({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Getting Started"
-      intro="What Foodex is, how to sign in, and how to set up your household."
+      title={m.docs.gettingStartedTitle()}
+      intro={m.docs.gettingStartedIntro()}
     >
       <DocSection id="what-is-foodex" title="What is Foodex?">
         <p class={`${docProse} mb-3`}>

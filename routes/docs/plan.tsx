@@ -1,4 +1,6 @@
 import { handler, page } from "./$plan.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -9,16 +11,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Meal Plan";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.planTitle();
     return { data: {} };
   },
 });
 
 export default page(function PlanDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Meal Plan"
+      title={m.docs.planTitle()}
       intro="The record of what you intend to cook. It drives the shopping list, and cooking from it keeps the pantry honest."
     >
       <DocSection id="role" title="What the Plan Is For">

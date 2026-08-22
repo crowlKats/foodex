@@ -1,4 +1,6 @@
 import { handler, page } from "./$import.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -10,16 +12,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Import & the Assistant";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.importTitle();
     return { data: {} };
   },
 });
 
 export default page(function ImportDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Import & the Assistant"
+      title={m.docs.importTitle()}
       intro="Get recipes in without typing them, and work on your library with an AI that stages every change for your review."
     >
       <DocSection id="assistant" title="The Assistant">

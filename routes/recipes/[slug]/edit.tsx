@@ -11,6 +11,8 @@ import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import RecipeFields from "../../../islands/RecipeFields.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormActions, SubGroup } from "../../../components/recipe-form/ui.tsx";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
+
 export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
@@ -31,7 +33,9 @@ export const handlers = handler({
       });
     }
 
-    ctx.state.pageTitle = `Edit: ${data.recipe.title}`;
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).recipes.editTitle({
+      title: data.recipe.title,
+    });
     return { data };
   },
   async POST(ctx) {

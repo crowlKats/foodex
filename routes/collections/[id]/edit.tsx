@@ -10,6 +10,7 @@ import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePicker from "../../../islands/RecipePicker.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { logAudit } from "../../../lib/audit.ts";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -56,7 +57,9 @@ export const handlers = handler({
       [ctx.state.householdId],
     );
 
-    ctx.state.pageTitle = `Edit ${collRes.rows[0].name}`;
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).collections.editTitle({
+      name: collRes.rows[0].name,
+    });
     return {
       data: {
         collection: collRes.rows[0],

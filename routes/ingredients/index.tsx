@@ -9,6 +9,8 @@ import { Select } from "../../components/Select.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { logAudit } from "../../lib/audit.ts";
 import IngredientNameInput from "../../islands/IngredientNameInput.tsx";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
@@ -61,7 +63,7 @@ export const handlers = handler({
       ctx.state.db.query("SELECT id, name FROM ingredients"),
     ]);
     const error = ctx.url.searchParams.get("error") || undefined;
-    ctx.state.pageTitle = "Ingredients";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).catalog.ingredients();
     return {
       data: {
         ingredients: result.rows,
@@ -158,9 +160,10 @@ export default page(
       url,
     },
   ) {
+    const m = useMessages();
     return (
       <div>
-        <PageHeader title="Ingredients" query={q} />
+        <PageHeader title={m.catalog.ingredients()} query={q} />
 
         {error && (
           <div class="alert-error mb-4">
@@ -173,15 +176,17 @@ export default page(
         >
           {loggedIn && (
             <div class="lg:col-span-1">
-              <h2 class="text-lg font-semibold mb-3">Add Ingredient</h2>
+              <h2 class="text-lg font-semibold mb-3">
+                {m.catalog.addIngredient()}
+              </h2>
               <form
                 method="POST"
                 class="card space-y-3"
               >
-                <FormField label="Name">
+                <FormField label={m.common.name()}>
                   <IngredientNameInput existing={existingNames} />
                 </FormField>
-                <FormField label="Unit">
+                <FormField label={m.form.unit()}>
                   <UnitSelect name="unit" required />
                 </FormField>
 
@@ -240,24 +245,23 @@ export default page(
 
           <div class={loggedIn ? "lg:col-span-2" : ""}>
             <h2 class="text-lg font-semibold mb-3">
-              All Ingredients ({totalCount})
+              {m.common.allCount({
+                title: m.catalog.ingredients(),
+                count: String(totalCount),
+              })}
             </h2>
             {ingredients.length === 0
               ? q
                 ? (
-                  <EmptyState title={`No ingredients match "${q}"`}>
-                    Nothing in the catalog goes by that name. Try a shorter
-                    search, or add it below.
+                  <EmptyState title={m.empty.noIngredientsMatch({ query: q })}>
+                    {m.empty.noIngredientsMatchBody()}
                   </EmptyState>
                 )
                 : (
-                  <EmptyState title="No ingredients yet">
-                    Ingredients are the shared catalog that recipes, your pantry
-                    and the shopping list all point at. Linking a recipe line to
-                    one is what lets Foodex track stock, prices and
-                    substitutions across recipes. {loggedIn
-                      ? "Use the Add Ingredient form to create the first one."
-                      : "Sign in to add one."}
+                  <EmptyState title={m.empty.noIngredients()}>
+                    {m.empty.noIngredientsBody()} {loggedIn
+                      ? m.empty.addIngredientFirst()
+                      : m.empty.signInToAdd()}
                   </EmptyState>
                 )
               : (

@@ -2,6 +2,7 @@ import { handler, page } from "./$index.ts";
 import PlanView from "../../islands/PlanView.tsx";
 import { loadCookHistory, loadPlan, suggestRecipes } from "../../lib/plan.ts";
 import { expiringSoon, loadStock } from "../../lib/pantry.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
 
 const WARN_DAYS = 3;
 
@@ -25,7 +26,7 @@ export const handlers = handler({
       suggestRecipes(ctx.state.db, householdId, stock, expiring),
     ]);
 
-    ctx.state.pageTitle = "Meal Plan";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).plan.title();
     return {
       data: {
         entries,

@@ -9,6 +9,7 @@ import {
   getOAuthStateFromRequest,
   signupAllowed,
 } from "../../../lib/auth.ts";
+import { localeFromRequest } from "../../../lib/i18n/locale.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -47,14 +48,14 @@ export const handlers = handler({
     }
 
     const result = await ctx.state.db.query(
-      `INSERT INTO users (github_id, email, name, avatar_url)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (github_id, email, name, avatar_url, language)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (github_id) DO UPDATE SET
          email = COALESCE(EXCLUDED.email, users.email),
          name = COALESCE(users.name, EXCLUDED.name),
          avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url)
        RETURNING id`,
-      [githubId, email, name, avatarUrl],
+      [githubId, email, name, avatarUrl, localeFromRequest(ctx.req)],
     );
     const userId = result.rows[0].id as string;
 

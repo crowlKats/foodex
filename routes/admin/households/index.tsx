@@ -11,6 +11,8 @@ import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { generateInviteCode } from "../../../lib/auth.ts";
 import { sendHouseholdInviteEmail } from "../../../lib/email.ts";
 import { logAudit } from "../../../lib/audit.ts";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
+import { useMessages } from "../../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
@@ -99,7 +101,7 @@ export const handlers = handler({
        ORDER BY hi.created_at DESC`,
     );
 
-    ctx.state.pageTitle = "Admin: Households";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageHouseholds();
     return {
       data: {
         households: result.rows,
@@ -225,12 +227,13 @@ export default page(function AdminHouseholdsPage(
     url,
   },
 ) {
+  const m = useMessages();
   return (
     <div>
       <PageHeader
-        title="Households"
+        title={m.admin.households()}
         query={q}
-        searchPlaceholder="Search households..."
+        searchPlaceholder={m.admin.searchHouseholds()}
       />
       <AdminNav currentPath={url.pathname} />
 
@@ -239,15 +242,14 @@ export default page(function AdminHouseholdsPage(
 
       <div class="grid gap-6 md:grid-cols-2 mb-8">
         <div class="card">
-          <SectionHeader title="Invite a new user" />
+          <SectionHeader title={m.admin.inviteUser()} />
           <p class="text-sm text-stone-500 my-3">
-            Creates an empty household and emails an invite link. The invitee
-            becomes its owner and picks the name when they join.
+            {m.admin.inviteUserHelp()}
           </p>
           <form method="POST" class="flex gap-2 items-end">
             <input type="hidden" name="_method" value="INVITE" />
             <div class="flex-1">
-              <FormField label="Email">
+              <FormField label={m.common.email()}>
                 <Input
                   type="email"
                   name="email"
@@ -257,16 +259,18 @@ export default page(function AdminHouseholdsPage(
                 />
               </FormField>
             </div>
-            <Button type="submit">Invite</Button>
+            <Button type="submit">{m.admin.invite()}</Button>
           </form>
         </div>
 
         <div class="card">
-          <SectionHeader title={`Pending invites (${invites.length})`} />
+          <SectionHeader
+            title={m.admin.pendingInvites({ count: String(invites.length) })}
+          />
           {invites.length === 0
             ? (
               <p class="text-sm text-stone-500 mt-3">
-                No outstanding invites.
+                {m.admin.noOutstandingInvites()}
               </p>
             )
             : (
@@ -277,11 +281,11 @@ export default page(function AdminHouseholdsPage(
                     <div key={i.id}>
                       <div class="flex items-center gap-2">
                         <span class="font-medium flex-1 truncate">
-                          {i.invited_email ?? "(no email)"}
+                          {i.invited_email ?? m.common.noEmail()}
                         </span>
                         {expired && (
                           <span class="text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-1.5 py-0.5">
-                            expired
+                            {m.common.expired()}
                           </span>
                         )}
                         <form method="POST">
@@ -292,13 +296,13 @@ export default page(function AdminHouseholdsPage(
                           />
                           <input type="hidden" name="invite_id" value={i.id} />
                           <ConfirmButton
-                            message={`Revoke the invite for ${
-                              i.invited_email ?? "this address"
-                            }? Its empty household is removed too.`}
+                            message={m.admin.revokeInviteConfirm({
+                              email: i.invited_email ?? m.admin.thisAddress(),
+                            })}
                             variant="danger-outline"
                             size="xs"
                           >
-                            Revoke
+                            {m.household.revoke()}
                           </ConfirmButton>
                         </form>
                       </div>
@@ -313,14 +317,17 @@ export default page(function AdminHouseholdsPage(
         </div>
       </div>
 
-      <div class="text-sm text-stone-500 mb-3">{totalCount} total</div>
+      <div class="text-sm text-stone-500 mb-3">
+        {m.common.totalCount({ count: totalCount })}
+      </div>
       {households.length === 0
         ? (
           <EmptyState
-            title={q ? `No households match "${q}"` : "No households yet"}
+            title={q
+              ? m.admin.noHouseholdsMatch({ query: q })
+              : m.admin.noHouseholds()}
           >
-            A household is created during onboarding, so one appears here for
-            every active account or group.
+            {m.admin.noHouseholdsBody()}
           </EmptyState>
         )
         : (

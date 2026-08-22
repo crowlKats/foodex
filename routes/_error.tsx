@@ -5,6 +5,8 @@ import { HttpError } from "fresh/errors";
 import { Nav } from "../components/Nav.tsx";
 import { ButtonLink } from "../components/Button.tsx";
 import { loadSessionState } from "../lib/session.ts";
+import { I18nProvider } from "../lib/i18n/provider.tsx";
+import { catalogFor } from "../lib/i18n/mod.ts";
 
 export const handlers = handler(async (ctx) => ({
   data: await loadSessionState(ctx.req),
@@ -22,15 +24,18 @@ export const handlers = handler(async (ctx) => ({
 export default page(function ErrorPage({ error, url, data }) {
   const status = error instanceof HttpError ? error.status : 500;
   const notFound = status === 404;
+  const locale = data.locale;
+  const m = catalogFor(locale);
 
   return (
-    <>
+    <I18nProvider locale={locale}>
       <Nav
         user={data.user}
         shoppingListCount={data.shoppingListCount}
         hasHousehold={data.householdId != null}
         isAdmin={data.isAdmin}
         currentPath={url.pathname}
+        locale={locale}
       />
       <main class="flex-1 overflow-y-auto">
         <div class="max-w-md mx-auto px-4 py-16 text-center">
@@ -38,27 +43,19 @@ export default page(function ErrorPage({ error, url, data }) {
             {status}
           </p>
           <h1 class="text-2xl font-bold mt-4">
-            {notFound ? "We couldn't find that page" : "Something went wrong"}
+            {notFound ? m.error.notFoundTitle() : m.error.serverTitle()}
           </h1>
           <p class="text-stone-500 mt-2">
-            {notFound
-              ? (
-                <>
-                  Nothing lives at{" "}
-                  <code class="text-stone-600 dark:text-stone-400 break-all">
-                    {url.pathname}
-                  </code>. The link may be out of date, or the recipe may have
-                  been renamed or deleted.
-                </>
-              )
-              : "The page failed to load. Trying again often works; if it doesn't, the problem is on our side."}
+            {notFound ? m.error.notFoundBody() : m.error.serverBody()}
           </p>
           <div class="flex flex-wrap gap-2 justify-center mt-6">
-            <ButtonLink href="/recipes">Browse recipes</ButtonLink>
-            <ButtonLink href="/" variant="outline">Home</ButtonLink>
+            <ButtonLink href="/recipes">{m.error.browseRecipes()}</ButtonLink>
+            <ButtonLink href="/" variant="outline">
+              {m.common.home()}
+            </ButtonLink>
           </div>
         </div>
       </main>
-    </>
+    </I18nProvider>
   );
 });

@@ -2,6 +2,8 @@ import { handler, page } from "./$index.ts";
 import { AdminNav } from "../../components/AdminNav.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { formatBytes } from "../../lib/admin-format.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 interface Counts {
   households: number;
@@ -40,7 +42,7 @@ export const handlers = handler({
       Object.entries(raw).map(([k, v]) => [k, Number(v)]),
     ) as unknown as Counts;
 
-    ctx.state.pageTitle = "Admin";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.title();
     return { data: { counts } };
   },
 });
@@ -67,41 +69,45 @@ function StatCard(
 
 export default page(function AdminDashboard({ data, url }) {
   const { counts } = data;
+  const m = useMessages();
   return (
     <div>
-      <PageHeader title="Admin" noSearch />
+      <PageHeader title={m.admin.title()} noSearch />
       <AdminNav currentPath={url.pathname} />
 
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Households"
+          label={m.admin.householdsStat()}
           value={String(counts.households)}
           href="/admin/households"
         />
         <StatCard
-          label="Recipes"
+          label={m.admin.recipesStat()}
           value={String(counts.recipes)}
-          detail={`${counts.private_recipes} private`}
+          detail={m.admin.privateCount({ count: counts.private_recipes })}
           href="/admin/recipes"
         />
         <StatCard
-          label="Ingredients"
+          label={m.admin.ingredientsStat()}
           value={String(counts.ingredients)}
           href="/ingredients"
         />
         <StatCard
-          label="Media"
+          label={m.admin.mediaStat()}
           value={String(counts.media_count)}
           detail={formatBytes(counts.media_bytes)}
           href="/admin/system"
         />
         <StatCard
-          label="Assistant chats"
+          label={m.admin.assistantChats()}
           value={String(counts.agent_sessions)}
         />
-        <StatCard label="Collections" value={String(counts.collections)} />
         <StatCard
-          label="Stores / Tools / Dishes"
+          label={m.admin.collectionsStat()}
+          value={String(counts.collections)}
+        />
+        <StatCard
+          label={m.admin.storesToolsDishes()}
           value={`${counts.stores} / ${counts.tools} / ${counts.dishes}`}
         />
       </div>

@@ -1,4 +1,6 @@
 import { handler, page } from "./$writing-recipes.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -10,16 +12,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Writing Recipes";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.writingTitle();
     return { data: {} };
   },
 });
 
 export default page(function WritingRecipesDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Writing Recipes"
+      title={m.docs.writingTitle()}
       intro="The recipe editor from front to back: the basics, ingredients and their keys, steps and sections, and the advanced options."
     >
       <DocSection id="editor" title="The Recipe Editor">

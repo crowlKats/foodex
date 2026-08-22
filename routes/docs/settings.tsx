@@ -1,4 +1,6 @@
 import { handler, page } from "./$settings.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   docProse,
@@ -8,16 +10,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Settings";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.settingsTitle();
     return { data: {} };
   },
 });
 
 export default page(function SettingsDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Settings"
+      title={m.docs.settingsTitle()}
       intro="Your profile, display preferences, notifications, and putting Foodex on your phone."
     >
       <DocSection id="profile" title="Profile">

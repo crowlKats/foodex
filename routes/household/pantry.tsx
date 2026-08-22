@@ -8,6 +8,7 @@ import type {
   PantryItem,
   Store,
 } from "../../db/types.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -39,7 +40,7 @@ export const handlers = handler({
         ),
       ]);
 
-    ctx.state.pageTitle = "Pantry";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).pantry.title();
     return {
       data: {
         household: householdRes.rows[0],

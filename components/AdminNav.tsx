@@ -1,10 +1,12 @@
+import { useMessages } from "../lib/i18n/provider.tsx";
+
 const TABS = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/households", label: "Households" },
-  { href: "/admin/recipes", label: "Recipes" },
-  { href: "/admin/audit", label: "Audit log" },
-  { href: "/admin/system", label: "System" },
+  { href: "/admin", key: "overview" as const },
+  { href: "/admin/users", key: "users" as const },
+  { href: "/admin/households", key: "households" as const },
+  { href: "/admin/recipes", key: "recipes" as const },
+  { href: "/admin/audit", key: "auditLog" as const },
+  { href: "/admin/system", key: "system" as const },
 ];
 
 function isActive(currentPath: string, href: string): boolean {
@@ -14,6 +16,7 @@ function isActive(currentPath: string, href: string): boolean {
 
 /** Section tabs shown at the top of every admin page. */
 export function AdminNav({ currentPath }: { currentPath: string }) {
+  const m = useMessages();
   return (
     <div class="tab-bar mb-6">
       {TABS.map((t) => (
@@ -22,7 +25,7 @@ export function AdminNav({ currentPath }: { currentPath: string }) {
           href={t.href}
           class={`tab ${isActive(currentPath, t.href) ? "tab-active" : ""}`}
         >
-          {t.label}
+          {m.admin[t.key]()}
         </a>
       ))}
     </div>

@@ -9,6 +9,7 @@ import { loginUrl } from "../lib/auth.ts";
 import { packRecipe } from "../lib/moving-box.ts";
 import { deleteFile } from "../lib/s3.ts";
 import { logAudit } from "../lib/audit.ts";
+import { catalogFor } from "../lib/i18n/mod.ts";
 
 interface BoxItem {
   id: string;
@@ -56,7 +57,7 @@ export const handlers = handler({
         }),
     ]);
 
-    ctx.state.pageTitle = "Moving Box";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).movingBox.title();
     return {
       data: {
         box: box.rows,

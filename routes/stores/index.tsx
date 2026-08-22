@@ -14,6 +14,8 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 import type { StoreWithLocationCount } from "../../db/types.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -73,7 +75,7 @@ export const handlers = handler({
     }
 
     const error = ctx.url.searchParams.get("error") || undefined;
-    ctx.state.pageTitle = "Stores";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).catalog.stores();
     return {
       data: {
         stores: result.rows,
@@ -162,10 +164,11 @@ export default page(
       url,
     },
   ) {
+    const m = useMessages();
     const ownedSet = new Set(ownedStoreIds ?? []);
     return (
       <div>
-        <PageHeader title="Stores" query={q} />
+        <PageHeader title={m.catalog.stores()} query={q} />
 
         {error && (
           <div class="alert-error mb-4">
@@ -176,12 +179,12 @@ export default page(
         <div class={`grid gap-6 ${loggedIn ? "md:grid-cols-2" : ""}`}>
           {loggedIn && (
             <div>
-              <h2 class="text-lg font-semibold mb-3">Add Store</h2>
+              <h2 class="text-lg font-semibold mb-3">{m.catalog.addStore()}</h2>
               <form
                 method="POST"
                 class="card space-y-3"
               >
-                <FormField label="Name">
+                <FormField label={m.common.name()}>
                   <Input
                     type="text"
                     name="name"
@@ -203,7 +206,7 @@ export default page(
                   </Select>
                 </FormField>
                 <Button type="submit">
-                  Add Store
+                  {m.catalog.addStore()}
                 </Button>
               </form>
             </div>
@@ -211,23 +214,22 @@ export default page(
 
           <div>
             <h2 class="text-lg font-semibold mb-3">
-              All Stores ({totalCount})
+              {m.common.allCount({
+                title: m.catalog.stores(),
+                count: String(totalCount),
+              })}
             </h2>
             {stores.length === 0
               ? q
                 ? (
-                  <EmptyState title={`No stores match "${q}"`}>
-                    Nothing here goes by that name.
+                  <EmptyState title={m.empty.noStoresMatch({ query: q })}>
+                    {m.error.noMatchQuery()}
                   </EmptyState>
                 )
                 : (
-                  <EmptyState title="No stores yet">
-                    Stores are the shops you buy from. Recording one lets you
-                    attach prices to ingredients, which is what puts a running
-                    total on the shopping list and lets it group your list by
-                    where you're going. {loggedIn
-                      ? "Add your first with the form on this page."
-                      : "Sign in to add one."}
+                  <EmptyState title={m.empty.noStores()}>
+                    {m.empty.noStoresBody()}{" "}
+                    {loggedIn ? m.empty.addFirstForm() : m.empty.signInToAdd()}
                   </EmptyState>
                 )
               : (

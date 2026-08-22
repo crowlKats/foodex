@@ -1,4 +1,6 @@
 import { handler, page } from "./$organizing.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -10,16 +12,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Collections & Dishes";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.organizingTitle();
     return { data: {} };
   },
 });
 
 export default page(function OrganizingDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Collections & Dishes"
+      title={m.docs.organizingTitle()}
       intro="Two ways to bring recipes together: collections you curate yourself, and dishes that group every version of the same thing."
     >
       <DocSection id="collections" title="Collections">

@@ -8,6 +8,7 @@ import { Input, InputMultiline } from "../../components/Input.tsx";
 import { Checkbox } from "../../components/Checkbox.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import RecipePicker from "../../islands/RecipePicker.tsx";
+import { catalogFor } from "../../lib/i18n/mod.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -25,7 +26,7 @@ export const handlers = handler({
       [ctx.state.householdId],
     );
 
-    ctx.state.pageTitle = "New Collection";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).collections.newTitle();
     return {
       data: {
         allRecipes: recipesRes.rows,

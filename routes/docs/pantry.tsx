@@ -1,4 +1,6 @@
 import { handler, page } from "./$pantry.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -9,16 +11,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Pantry";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.pantryTitle();
     return { data: {} };
   },
 });
 
 export default page(function PantryDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Pantry"
+      title={m.docs.pantryTitle()}
       intro="Your household's shared inventory: what's in the kitchen, when it expires, and how stock moves in and out."
     >
       <DocSection id="basics" title="How the Pantry Works">
