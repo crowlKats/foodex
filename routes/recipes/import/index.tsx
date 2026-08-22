@@ -2,7 +2,9 @@ import { handler, page } from "./$index.ts";
 import type { RecipeDraft } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import ImportStart from "../../../islands/ImportStart.tsx";
-import { catalogFor } from "../../../lib/i18n/mod.ts";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -21,7 +23,9 @@ export const handlers = handler({
       [ctx.state.householdId],
     );
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).recipes.importTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "recipes.importTitle",
+    ).format();
     return { data: { drafts: draftsRes.rows } };
   },
 });

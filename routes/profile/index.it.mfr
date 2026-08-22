@@ -1,0 +1,23 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+profile.title = Profilo
+
+profile.displayName = Nome visualizzato
+
+profile.displayNameHelp = Visibile agli altri membri del tuo nucleo.
+
+profile.preferences = Preferenze
+
+profile.unitSystem = Sistema di unità
+
+profile.metric = Metriche (g, ml, cm)
+
+profile.imperial = Imperiali (oz, fl oz, inch)
+
+profile.language = Lingua
+
+profile.languageHelp = La lingua di pulsanti, etichette e del resto dell'interfaccia. Le ricette restano in inglese.
+
+profile.signOut = Esci

@@ -1,6 +1,4 @@
 import { handler, page } from "./$import.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -9,20 +7,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.importTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.importTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function ImportDocs({ url }) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title={m.docs.importTitle()}
+      title={trans("docs.importTitle")}
       intro="Get recipes in without typing them, and work on your library with an AI that stages every change for your review."
     >
       <DocSection id="assistant" title="The Assistant">

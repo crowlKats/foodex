@@ -1,0 +1,13 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+catalog.stores = Stores
+
+catalog.addStore = Add Store
+
+empty.noStores = No stores yet
+
+empty.noStoresMatch = No stores match "{$query}"
+
+empty.noStoresBody = Stores are the shops you buy from. Recording one lets you attach prices to ingredients, which is what puts a running total on the shopping list and lets it group your list by shop.

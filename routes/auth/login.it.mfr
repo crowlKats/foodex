@@ -1,0 +1,19 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+auth.signInTitle = Accedi
+
+auth.signInHeading = Accedi a Foodex
+
+auth.continueGithub = Continua con GitHub
+
+auth.continueGoogle = Continua con Google
+
+auth.continueAuthentik = Continua con Authentik
+
+auth.continueEmail = Continua con l'email
+
+auth.emailPlaceholder = Indirizzo email
+
+auth.captchaFailed = Verifica captcha non riuscita. Riprova.

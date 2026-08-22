@@ -8,7 +8,9 @@ import type {
   PantryItem,
   Store,
 } from "../../db/types.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "./pantry.en.mfr";
+import it from "./pantry.it.mfr";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -40,7 +42,9 @@ export const handlers = handler({
         ),
       ]);
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).pantry.title();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "pantry.title",
+    ).format();
     return {
       data: {
         household: householdRes.rows[0],

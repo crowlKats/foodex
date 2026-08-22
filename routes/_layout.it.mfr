@@ -1,0 +1,7 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+sudo.banner = Sudo: stai agendo come {$name}. Le modifiche sono registrate a nome di {$admin}.
+
+sudo.exit = Esci da sudo

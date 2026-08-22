@@ -8,7 +8,9 @@ import { Input, InputMultiline } from "../../components/Input.tsx";
 import { Checkbox } from "../../components/Checkbox.tsx";
 import MediaUpload from "../../islands/MediaUpload.tsx";
 import RecipePicker from "../../islands/RecipePicker.tsx";
-import { catalogFor } from "../../lib/i18n/mod.ts";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "./new.en.mfr";
+import it from "./new.it.mfr";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -26,7 +28,9 @@ export const handlers = handler({
       [ctx.state.householdId],
     );
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).collections.newTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "collections.newTitle",
+    ).format();
     return {
       data: {
         allRecipes: recipesRes.rows,

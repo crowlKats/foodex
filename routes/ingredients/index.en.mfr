@@ -1,0 +1,17 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+catalog.ingredients = Ingredients
+
+catalog.addIngredient = Add Ingredient
+
+empty.noIngredients = No ingredients yet
+
+empty.noIngredientsMatch = No ingredients match "{$query}"
+
+empty.noIngredientsBody = Ingredients are the shared catalog that recipes, your pantry and the shopping list all point at. Linking a recipe line to one is what lets Foodex track stock, prices and substitutions.
+
+empty.noIngredientsMatchBody = Nothing in the catalog goes by that name. Try a shorter search, or add it below.
+
+empty.addIngredientFirst = Use the Add Ingredient form to create the first one.

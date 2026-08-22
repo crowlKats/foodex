@@ -1,7 +1,9 @@
 import { handler, page } from "./$bulk.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import BulkImport from "../../../islands/BulkImport.tsx";
-import { catalogFor } from "../../../lib/i18n/mod.ts";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import en from "./bulk.en.mfr";
+import it from "./bulk.it.mfr";
 
 export const handlers = handler({
   GET(ctx) {
@@ -11,8 +13,9 @@ export const handlers = handler({
         headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
       });
     }
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).recipes
-      .bulkImportTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "recipes.bulkImportTitle",
+    ).format();
     return { data: {} };
   },
 });

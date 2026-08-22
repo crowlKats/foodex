@@ -1,7 +1,9 @@
 import { handler, page } from "./$scan.ts";
 import type { Ingredient, Store } from "../db/types.ts";
 import ScanView from "../islands/ScanView.tsx";
-import { catalogFor } from "../lib/i18n/mod.ts";
+import { pickBundle } from "../lib/i18n/locale.ts";
+import en from "./scan.en.mfr";
+import it from "./scan.it.mfr";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -21,7 +23,9 @@ export const handlers = handler({
       ),
     ]);
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).scan.title();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "scan.title",
+    ).format();
     return {
       data: {
         householdId: ctx.state.householdId,

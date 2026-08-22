@@ -1,0 +1,57 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+welcome.tourRecipesTitle = Recipes
+
+welcome.tourRecipesBody = The shared cookbook. Browse and cook what every household has added, and add your own: import recipes from photos, web pages, or pasted text instead of typing them.
+
+welcome.tourCollectionsTitle = Collections
+
+welcome.tourCollectionsBody = Group recipes however you like: a weeknight set, a holiday menu, everything from one book. Collections can be shared with other households by link.
+
+welcome.tourCollectionsFallback = On a phone, Collections lives in this menu.
+
+welcome.tourAssistantTitle = Assistant
+
+welcome.tourAssistantBody = A chat that helps with the tedious parts: finding, importing, and reworking recipes. Everything it proposes is staged for your review before it touches anything.
+
+welcome.tourAssistantFallback = On a phone, the Assistant lives in this menu.
+
+welcome.tourPantryTitle = Pantry
+
+welcome.tourPantryBody = What's in your kitchen. The pantry powers the "ready to make" filter, tells recipes what you already have, and warns you before things expire.
+
+welcome.tourScanTitle = Scan
+
+welcome.tourScanBody = The barcode scanner. Point your camera at your groceries as you unpack them and they land in the pantry, with the name and package size filled in for you.
+
+welcome.tourPlanTitle = Plan
+
+welcome.tourPlanBody = What you intend to cook. Planning a meal puts its missing ingredients on the shopping list, and cooking it updates the pantry.
+
+welcome.tourShoppingTitle = Shopping List
+
+welcome.tourShoppingBody = Worked out for you: whatever your plan needs that the pantry can't cover. Tick items off as you buy them and they land straight in the pantry.
+
+welcome.tourCatalogsTitle = Ingredients, Stores & Tools
+
+welcome.tourCatalogsBody = Shared reference catalogs. Record what things cost where, and which kitchen tools you own; that's what powers cost estimates and the "ready to make" filter.
+
+welcome.tourCatalogsFallback = On a phone, these catalogs live in this menu.
+
+welcome.tourDocsTitle = The Guide
+
+welcome.tourDocsBody = Full documentation for everything you just saw, whenever you need the details.
+
+welcome.tourDocsFallback = On a phone, the guide lives in this menu.
+
+welcome.tourHouseholdTitle = Your Household
+
+welcome.tourHouseholdBody = The people you cook with: members, invites, and settings. Everything you've just seen is shared with them. Next up: create your household or join one with an invite.
+
+welcome.heading = Welcome to Foodex
+
+welcome.tourIntro = A one-minute tour of what's what.
+
+welcome.getStarted = Get started

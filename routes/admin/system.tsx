@@ -8,8 +8,12 @@ import { formatBytes } from "../../lib/admin-format.ts";
 import { logAudit } from "../../lib/audit.ts";
 import { cleanupOrphanedMedia } from "../../db/mod.ts";
 import { deleteFile } from "../../lib/s3.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "./system.en.mfr";
+import it from "./system.it.mfr";
+
+const t = createT({ en, it });
 
 // Presence checks only; the values themselves never reach the page.
 const features = {
@@ -61,7 +65,9 @@ export const handlers = handler({
         ),
       ]);
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageSystem();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "admin.pageSystem",
+    ).format();
     return {
       data: {
         sessions: {
@@ -142,10 +148,10 @@ function FeatureRow({ label, on }: { label: string; on: boolean }) {
 export default page(function AdminSystemPage(
   { data: { sessions, media, aiUsage, msg }, url },
 ) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <div>
-      <PageHeader title={m.admin.system()} noSearch />
+      <PageHeader title={trans("admin.pageSystem")} noSearch />
       <AdminNav currentPath={url.pathname} />
 
       {msg && <div class="alert-success mb-4">{msg}</div>}

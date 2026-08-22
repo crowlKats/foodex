@@ -1,6 +1,4 @@
 import { handler, page } from "./$plan.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -8,20 +6,28 @@ import {
   DocSection,
   DocsPage,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.planTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.planTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function PlanDocs({ url }) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title={m.docs.planTitle()}
+      title={trans("docs.planTitle")}
       intro="The record of what you intend to cook. It drives the shopping list, and cooking from it keeps the pantry honest."
     >
       <DocSection id="role" title="What the Plan Is For">

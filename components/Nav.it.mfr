@@ -1,0 +1,37 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+nav.recipes = Ricette
+
+nav.collections = Collezioni
+
+nav.assistant = Assistente
+
+nav.pantry = Dispensa
+
+nav.plan = Piano
+
+nav.shoppingList = Lista della spesa
+
+nav.shop = Spesa
+
+nav.ingredients = Ingredienti
+
+nav.stores = Negozi
+
+nav.tools = Attrezzi
+
+nav.admin = Amministrazione
+
+nav.docs = Guida
+
+nav.household = Nucleo
+
+nav.signIn = Accedi
+
+nav.signOut = Esci
+
+nav.menu = Menu
+
+nav.scan = Scansiona

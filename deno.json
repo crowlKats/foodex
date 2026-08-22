@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "@/": "./"
+  },
+  "tasks": {
+    "types": "deno run --allow-read --allow-write scripts/generate-mfr-types.ts",
+    "types:watch": "deno run --allow-read --allow-write scripts/generate-mfr-types.ts --watch",
+    "dev": "deno task types:watch & vite"
+  },
+  "exclude": ["**/_fresh/*", "_types", ".output"],
+  "compilerOptions": {
+    "rootDirs": [".", "./_types"]
+  }
+}

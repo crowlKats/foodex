@@ -1,0 +1,21 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+admin.title = Admin
+
+admin.householdsStat = Households
+
+admin.recipesStat = Recipes
+
+admin.privateCount = {$count :integer} private
+
+admin.ingredientsStat = Ingredients
+
+admin.mediaStat = Media
+
+admin.assistantChats = Assistant chats
+
+admin.collectionsStat = Collections
+
+admin.storesToolsDishes = Stores / Tools / Dishes

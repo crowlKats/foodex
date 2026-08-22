@@ -1,0 +1,38 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+household.joinOrCreateTitle = Unisciti o crea un nucleo
+
+household.getStarted = Inizia
+
+household.getStartedBlurb = Crea un nuovo nucleo o unisciti a uno esistente per gestire ricette, attrezzi, negozi e la dispensa.
+
+household.getStartedInviteOnly = Foodex è solo su invito. Unisciti a un nucleo con il codice o il link che hai ricevuto; se non ne hai uno, chiedi a un membro o a un operatore.
+
+household.createHousehold = Crea nucleo
+
+household.joinHousehold = Unisciti a un nucleo
+
+household.inviteCode = Codice invito
+
+household.inviteCodePlaceholder = Incolla il codice invito...
+
+household.namePlaceholder = es. Famiglia Rossi
+
+household.inviteCodeRequired = Il codice invito è obbligatorio
+
+household.invalidInvite = Codice invito non valido o scaduto
+
+household.inviteOnlyCreate = Foodex è solo su invito; i nuclei non si possono creare direttamente.
+
+household.nameRequired = Il nome è obbligatorio
+
+household.boxWillUnpack =
+  
+  .input {$count :integer}
+  .match $count
+  one {{Il tuo scatolone con {$count} ricetta verrà disimballato nel nucleo a cui ti unisci o che crei.}}
+  * {{Il tuo scatolone con {$count} ricette verrà disimballato nel nucleo a cui ti unisci o che crei.}}
+
+household.movingBoxLink = scatolone

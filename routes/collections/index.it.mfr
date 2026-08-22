@@ -1,0 +1,22 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+collections.title = Collezioni
+
+collections.newTitle = Nuova collezione
+
+collections.recipeCount =
+  
+  .input {$count :integer}
+  .match $count
+  one {{{$count} ricetta}}
+  * {{{$count} ricette}}
+
+empty.noCollections = Nessuna collezione ancora
+
+empty.noCollectionsMatch = Nessuna collezione corrisponde a "{$query}"
+
+empty.noCollectionsBody = Raggruppa le ricette in un set per i feriali, un menù di festa, o qualunque altra cosa. Le collezioni si possono condividere con altri nuclei.
+
+recipes.private = Privata

@@ -1,0 +1,22 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+collections.title = Collections
+
+collections.newTitle = New Collection
+
+collections.recipeCount =
+  
+  .input {$count :integer}
+  .match $count
+  one {{{$count} recipe}}
+  * {{{$count} recipes}}
+
+empty.noCollections = No collections yet
+
+empty.noCollectionsMatch = No collections match "{$query}"
+
+empty.noCollectionsBody = Group recipes into a weeknight set, a holiday menu, or whatever else you cook from. Collections can be shared with other households.
+
+recipes.private = Private

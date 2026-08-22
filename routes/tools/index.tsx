@@ -12,8 +12,13 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 import type { Tool } from "../../db/types.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -62,7 +67,9 @@ export const handlers = handler({
     }
 
     const error = ctx.url.searchParams.get("error") || undefined;
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).catalog.tools();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "catalog.tools",
+    ).format();
     return {
       data: {
         tools: result.rows,
@@ -135,11 +142,12 @@ export default page(
       url,
     },
   ) {
-    const m = useMessages();
+    const trans = t.use();
+    const sharedTrans = shared.use();
     const ownedSet = new Set(ownedToolIds ?? []);
     return (
       <div>
-        <PageHeader title={m.catalog.tools()} query={q} />
+        <PageHeader title={trans("catalog.tools")} query={q} />
 
         {error && (
           <div class="alert-error mb-4">
@@ -150,12 +158,12 @@ export default page(
         <div class={`grid gap-6 ${loggedIn ? "md:grid-cols-2" : ""}`}>
           {loggedIn && (
             <div>
-              <h2 class="text-lg font-semibold mb-3">{m.catalog.addTool()}</h2>
+              <h2 class="text-lg font-semibold mb-3">{t("catalog.addTool")}</h2>
               <form
                 method="POST"
                 class="card space-y-3"
               >
-                <FormField label={m.common.name()}>
+                <FormField label={sharedTrans("common.name")}>
                   <Input
                     type="text"
                     name="name"
@@ -163,7 +171,7 @@ export default page(
                     class="w-full"
                   />
                 </FormField>
-                <FormField label={m.form.description()}>
+                <FormField label={sharedTrans("form.description")}>
                   <InputMultiline
                     name="description"
                     rows={3}
@@ -171,7 +179,7 @@ export default page(
                   />
                 </FormField>
                 <Button type="submit">
-                  {m.catalog.addTool()}
+                  {t("catalog.addTool")}
                 </Button>
               </form>
             </div>
@@ -179,22 +187,23 @@ export default page(
 
           <div>
             <h2 class="text-lg font-semibold mb-3">
-              {m.common.allCount({
-                title: m.catalog.tools(),
+              {shared("common.allCount", {
+                title: trans("catalog.tools"),
                 count: String(totalCount),
               })}
             </h2>
             {tools.length === 0
               ? q
                 ? (
-                  <EmptyState title={m.empty.noToolsMatch({ query: q })}>
-                    {m.error.noMatchQuery()}
+                  <EmptyState title={trans("empty.noToolsMatch", { query: q })}>
+                    {shared("error.noMatchQuery")}
                   </EmptyState>
                 )
                 : (
-                  <EmptyState title={m.empty.noTools()}>
-                    {m.empty.noToolsBody()}{" "}
-                    {loggedIn ? m.empty.addFirstForm() : m.empty.signInToAdd()}
+                  <EmptyState title={trans("empty.noTools")}>
+                    {t("empty.noToolsBody")} {loggedIn
+                      ? shared("empty.addFirstForm")
+                      : shared("empty.signInToAdd")}
                   </EmptyState>
                 )
               : (
@@ -209,7 +218,7 @@ export default page(
                         <div class="font-medium flex-1">{tool.name}</div>
                         {ownedSet.has(tool.id) && (
                           <span class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
-                            {m.common.owned()}
+                            {shared("common.owned")}
                           </span>
                         )}
                       </div>

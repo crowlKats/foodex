@@ -14,8 +14,13 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 import type { StoreWithLocationCount } from "../../db/types.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -75,7 +80,9 @@ export const handlers = handler({
     }
 
     const error = ctx.url.searchParams.get("error") || undefined;
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).catalog.stores();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "catalog.stores",
+    ).format();
     return {
       data: {
         stores: result.rows,
@@ -164,11 +171,12 @@ export default page(
       url,
     },
   ) {
-    const m = useMessages();
+    const trans = t.use();
+    const sharedTrans = shared.use();
     const ownedSet = new Set(ownedStoreIds ?? []);
     return (
       <div>
-        <PageHeader title={m.catalog.stores()} query={q} />
+        <PageHeader title={trans("catalog.stores")} query={q} />
 
         {error && (
           <div class="alert-error mb-4">
@@ -179,12 +187,14 @@ export default page(
         <div class={`grid gap-6 ${loggedIn ? "md:grid-cols-2" : ""}`}>
           {loggedIn && (
             <div>
-              <h2 class="text-lg font-semibold mb-3">{m.catalog.addStore()}</h2>
+              <h2 class="text-lg font-semibold mb-3">
+                {t("catalog.addStore")}
+              </h2>
               <form
                 method="POST"
                 class="card space-y-3"
               >
-                <FormField label={m.common.name()}>
+                <FormField label={sharedTrans("common.name")}>
                   <Input
                     type="text"
                     name="name"
@@ -206,7 +216,7 @@ export default page(
                   </Select>
                 </FormField>
                 <Button type="submit">
-                  {m.catalog.addStore()}
+                  {t("catalog.addStore")}
                 </Button>
               </form>
             </div>
@@ -214,22 +224,25 @@ export default page(
 
           <div>
             <h2 class="text-lg font-semibold mb-3">
-              {m.common.allCount({
-                title: m.catalog.stores(),
+              {shared("common.allCount", {
+                title: trans("catalog.stores"),
                 count: String(totalCount),
               })}
             </h2>
             {stores.length === 0
               ? q
                 ? (
-                  <EmptyState title={m.empty.noStoresMatch({ query: q })}>
-                    {m.error.noMatchQuery()}
+                  <EmptyState
+                    title={trans("empty.noStoresMatch", { query: q })}
+                  >
+                    {shared("error.noMatchQuery")}
                   </EmptyState>
                 )
                 : (
-                  <EmptyState title={m.empty.noStores()}>
-                    {m.empty.noStoresBody()}{" "}
-                    {loggedIn ? m.empty.addFirstForm() : m.empty.signInToAdd()}
+                  <EmptyState title={trans("empty.noStores")}>
+                    {t("empty.noStoresBody")} {loggedIn
+                      ? shared("empty.addFirstForm")
+                      : shared("empty.signInToAdd")}
                   </EmptyState>
                 )
               : (

@@ -1,0 +1,15 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+admin.overview = Panoramica
+
+admin.users = Utenti
+
+admin.households = Nuclei
+
+admin.recipes = Ricette
+
+admin.auditLog = Registro
+
+admin.system = Sistema

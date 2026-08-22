@@ -1,0 +1,63 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+docs.title = Documentation
+
+docs.gettingStarted = Getting started
+
+docs.recipes = Browsing & cooking
+
+docs.writingRecipes = Writing recipes
+
+docs.importAssistant = Import & the assistant
+
+docs.pantry = Pantry
+
+docs.plan = Meal plan
+
+docs.shopping = Shopping list
+
+docs.organizing = Collections & dishes
+
+docs.households = Households
+
+docs.ingredients = Ingredients & prices
+
+docs.settings = Settings
+
+docs.templates = Template syntax
+
+docs.groupLearn = Learn
+
+docs.groupDayToDay = Day to day
+
+docs.groupOrganize = Organize & share
+
+docs.groupReference = Reference
+
+docs.gettingStartedTitle = Getting Started
+
+docs.gettingStartedIntro = What Foodex is, how to sign in, and how to set up your household.
+
+docs.recipesTitle = Browsing & Cooking
+
+docs.writingTitle = Writing Recipes
+
+docs.importTitle = Import & the Assistant
+
+docs.pantryTitle = Pantry
+
+docs.planTitle = Meal Plan
+
+docs.shoppingTitle = Shopping List
+
+docs.organizingTitle = Collections & Dishes
+
+docs.householdsTitle = Households
+
+docs.ingredientsTitle = Ingredients & Prices
+
+docs.settingsTitle = Settings
+
+docs.templatesTitle = Template Syntax

@@ -1,0 +1,7 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+pwa.install = Install Foodex
+
+pwa.installBody = Tap the menu in your browser, then Share → View More → Add to Home Screen.

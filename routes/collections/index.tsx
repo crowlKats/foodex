@@ -4,13 +4,18 @@ import type { CollectionWithCover } from "../../db/types.ts";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { EmptyState } from "../../components/EmptyState.tsx";
 import { ButtonLink } from "../../components/Button.tsx";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
   paginationParams,
 } from "../../components/Pagination.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -66,7 +71,9 @@ export const handlers = handler({
     ]);
     const totalCount = Number(countRes.rows[0].cnt);
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).collections.title();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "collections.title",
+    ).format();
     return {
       data: {
         collections: result.rows,
@@ -83,32 +90,34 @@ export default page(
   function CollectionsPage(
     { data: { collections, q, currentPage, totalCount, householdId }, url },
   ) {
-    const m = useMessages();
+    const trans = t.use();
     return (
       <div>
-        <PageHeader title={m.collections.title()} query={q}>
+        <PageHeader title={trans("collections.title")} query={q}>
           <ButtonLink href="/collections/new">
-            {m.collections.newTitle()}
+            {t("collections.newTitle")}
           </ButtonLink>
         </PageHeader>
 
         {collections.length === 0
           ? q
             ? (
-              <EmptyState title={m.empty.noCollectionsMatch({ query: q })}>
-                {m.error.noMatchQuery()}
+              <EmptyState
+                title={trans("empty.noCollectionsMatch", { query: q })}
+              >
+                {shared("error.noMatchQuery")}
               </EmptyState>
             )
             : (
               <EmptyState
-                title={m.empty.noCollections()}
+                title={trans("empty.noCollections")}
                 action={
                   <ButtonLink href="/collections/new" size="sm">
-                    {m.collections.newTitle()}
+                    {t("collections.newTitle")}
                   </ButtonLink>
                 }
               >
-                {m.empty.noCollectionsBody()}
+                {t("empty.noCollectionsBody")}
               </EmptyState>
             )
           : (
@@ -132,12 +141,12 @@ export default page(
                         <div class="font-medium text-lg">{c.name}</div>
                         {c.private && (
                           <span class="text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-1.5 py-0.5 rounded">
-                            {m.recipes.private()}
+                            {t("recipes.private")}
                           </span>
                         )}
                         {c.household_id !== householdId && (
                           <span class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
-                            {m.common.shared()}
+                            {shared("common.shared")}
                           </span>
                         )}
                       </div>
@@ -148,7 +157,7 @@ export default page(
                       )}
                     </div>
                     <div class="text-sm text-stone-400 shrink-0">
-                      {m.collections.recipeCount({ count: c.recipe_count })}
+                      {t("collections.recipeCount", { count: c.recipe_count })}
                     </div>
                   </div>
                 </a>

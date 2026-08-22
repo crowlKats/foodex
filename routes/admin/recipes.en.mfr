@@ -1,0 +1,15 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+admin.pageRecipes = Admin: Recipes
+
+admin.searchRecipes = Search recipes...
+
+admin.recipesModeration = {$count} total, private ones included. Deleting here is for moderation; it can't be undone.
+
+admin.noRecipes = No recipes yet
+
+admin.noRecipesMatch = No recipes match "{$query}"
+
+admin.noRecipesBody = Every recipe on the platform shows up in this list, including ones marked private.

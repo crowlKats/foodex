@@ -1,0 +1,63 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+docs.title = Documentazione
+
+docs.gettingStarted = Per iniziare
+
+docs.recipes = Sfogliare e cucinare
+
+docs.writingRecipes = Scrivere ricette
+
+docs.importAssistant = Importare e l'assistente
+
+docs.pantry = Dispensa
+
+docs.plan = Piano pasti
+
+docs.shopping = Lista della spesa
+
+docs.organizing = Collezioni e piatti
+
+docs.households = Nuclei
+
+docs.ingredients = Ingredienti e prezzi
+
+docs.settings = Impostazioni
+
+docs.templates = Sintassi dei template
+
+docs.groupLearn = Imparare
+
+docs.groupDayToDay = Tutti i giorni
+
+docs.groupOrganize = Organizzare e condividere
+
+docs.groupReference = Riferimento
+
+docs.gettingStartedTitle = Per iniziare
+
+docs.gettingStartedIntro = Cos'è Foodex, come accedere e come impostare il nucleo.
+
+docs.recipesTitle = Sfogliare e cucinare
+
+docs.writingTitle = Scrivere ricette
+
+docs.importTitle = Importare e l'assistente
+
+docs.pantryTitle = Dispensa
+
+docs.planTitle = Piano pasti
+
+docs.shoppingTitle = Lista della spesa
+
+docs.organizingTitle = Collezioni e piatti
+
+docs.householdsTitle = Nuclei
+
+docs.ingredientsTitle = Ingredienti e prezzi
+
+docs.settingsTitle = Impostazioni
+
+docs.templatesTitle = Sintassi dei template

@@ -5,13 +5,17 @@ import { PageHeader } from "../../components/PageHeader.tsx";
 import { EmptyState } from "../../components/EmptyState.tsx";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { logAudit } from "../../lib/audit.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
   paginationParams,
 } from "../../components/Pagination.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "./recipes.en.mfr";
+import it from "./recipes.it.mfr";
+
+const t = createT({ en, it });
 
 interface RecipeRow {
   id: string;
@@ -62,7 +66,9 @@ export const handlers = handler({
       ]);
     }
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageRecipes();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "admin.pageRecipes",
+    ).format();
     return {
       data: {
         recipes: result.rows,
@@ -105,27 +111,27 @@ export const handlers = handler({
 export default page(function AdminRecipesPage(
   { data: { recipes, q, currentPage, totalCount }, url },
 ) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <div>
       <PageHeader
-        title={m.admin.recipes()}
+        title={trans("admin.pageRecipes")}
         query={q}
-        searchPlaceholder={m.admin.searchRecipes()}
+        searchPlaceholder={trans("admin.searchRecipes")}
       />
       <AdminNav currentPath={url.pathname} />
 
       <p class="text-sm text-stone-500 mb-3">
-        {m.admin.recipesModeration({ count: String(totalCount) })}
+        {t("admin.recipesModeration", { count: String(totalCount) })}
       </p>
       {recipes.length === 0
         ? (
           <EmptyState
             title={q
-              ? m.admin.noRecipesMatch({ query: q })
-              : m.admin.noRecipes()}
+              ? trans("admin.noRecipesMatch", { query: q })
+              : trans("admin.noRecipes")}
           >
-            {m.admin.noRecipesBody()}
+            {t("admin.noRecipesBody")}
           </EmptyState>
         )
         : (

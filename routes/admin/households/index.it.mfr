@@ -1,0 +1,27 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+admin.pageHouseholds = Admin: Nuclei
+
+admin.searchHouseholds = Cerca nuclei...
+
+admin.inviteUser = Invita un nuovo utente
+
+admin.inviteUserHelp = Crea un nucleo vuoto e invia un link per email. Chi accetta ne diventa proprietario e sceglie il nome quando entra.
+
+admin.invite = Invita
+
+admin.pendingInvites = Inviti in sospeso ({$count})
+
+admin.noOutstandingInvites = Nessun invito in sospeso.
+
+admin.revokeInviteConfirm = Revocare l'invito per {$email}? Anche il nucleo vuoto viene rimosso.
+
+admin.thisAddress = questo indirizzo
+
+admin.noHouseholds = Nessun nucleo ancora
+
+admin.noHouseholdsMatch = Nessun nucleo corrisponde a "{$query}"
+
+admin.noHouseholdsBody = Un nucleo si crea in fase di onboarding, quindi ne compare uno per ogni account che ha finito quel passaggio.

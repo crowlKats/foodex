@@ -1,0 +1,5 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+admin.pageSystem = Admin: Sistema

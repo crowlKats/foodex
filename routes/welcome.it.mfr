@@ -1,0 +1,17 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+welcome.title = Benvenuto
+
+welcome.heading = Benvenuto su Foodex
+
+welcome.blurb = Una cosa sola prima di cucinare: come ti chiamiamo?
+
+welcome.nameLabel = Il tuo nome
+
+welcome.namePlaceholder = Come ti vedono gli altri del nucleo
+
+welcome.tourIntro = Un minuto per orientarti.
+
+welcome.getStarted = Inizia

@@ -1,0 +1,5 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+recipes.importTitle = Importa ricetta

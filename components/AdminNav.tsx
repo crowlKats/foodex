@@ -1,4 +1,8 @@
-import { useMessages } from "../lib/i18n/provider.tsx";
+import { createT } from "./Translation.tsx";
+import en from "./AdminNav.en.mfr";
+import it from "./AdminNav.it.mfr";
+
+const t = createT({ en, it });
 
 const TABS = [
   { href: "/admin", key: "overview" as const },
@@ -16,16 +20,15 @@ function isActive(currentPath: string, href: string): boolean {
 
 /** Section tabs shown at the top of every admin page. */
 export function AdminNav({ currentPath }: { currentPath: string }) {
-  const m = useMessages();
   return (
     <div class="tab-bar mb-6">
-      {TABS.map((t) => (
+      {TABS.map((tab) => (
         <a
-          key={t.href}
-          href={t.href}
-          class={`tab ${isActive(currentPath, t.href) ? "tab-active" : ""}`}
+          key={tab.href}
+          href={tab.href}
+          class={`tab ${isActive(currentPath, tab.href) ? "tab-active" : ""}`}
         >
-          {m.admin[t.key]()}
+          {t(`admin.${tab.key}`)}
         </a>
       ))}
     </div>

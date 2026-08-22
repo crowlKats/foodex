@@ -1,0 +1,7 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+recipes.ingredients = Ingredients
+
+recipes.tools = Tools

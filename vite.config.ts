@@ -1,7 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import { fresh } from "fresh/vite";
 import tailwindcss from "@tailwindcss/vite";
-import { messageformatResources } from "./lib/i18n/vite-plugin.ts";
+import mfr from "./vite-plugin-mfr.ts";
 
 /**
  * Some JSR packages (e.g. `@luca/highlightable-textarea`) publish raw Deno
@@ -28,7 +28,7 @@ function denoSpecifiers(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [denoSpecifiers(), messageformatResources(), fresh(), tailwindcss()],
+  plugins: [denoSpecifiers(), fresh(), tailwindcss(), mfr()],
   server: {
     host: "0.0.0.0",
   },

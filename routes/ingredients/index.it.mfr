@@ -1,0 +1,17 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+catalog.ingredients = Ingredienti
+
+catalog.addIngredient = Aggiungi ingrediente
+
+empty.noIngredients = Nessun ingrediente ancora
+
+empty.noIngredientsMatch = Nessun ingrediente corrisponde a "{$query}"
+
+empty.noIngredientsBody = Gli ingredienti sono il catalogo condiviso a cui puntano ricette, dispensa e lista della spesa. Collegare una riga a uno permette a Foodex di tracciare scorte, prezzi e sostituzioni.
+
+empty.noIngredientsMatchBody = Nel catalogo non c'è nulla con quel nome. Prova una ricerca più corta, o aggiungilo sotto.
+
+empty.addIngredientFirst = Usa il modulo Aggiungi ingrediente per crearne il primo.

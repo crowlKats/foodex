@@ -2,7 +2,7 @@ import { IconShare } from "@tabler/icons-preact";
 import { IconCheck } from "@tabler/icons-preact";
 import { useSignal } from "@preact/signals";
 import { Button } from "../components/Button.tsx";
-import { catalogFor } from "../lib/i18n/mod.ts";
+import { t } from "../locales/shared.ts";
 
 interface ShareButtonProps {
   url: string;
@@ -10,7 +10,6 @@ interface ShareButtonProps {
 }
 
 export default function ShareButton({ url, title }: ShareButtonProps) {
-  const m = catalogFor();
   const copied = useSignal(false);
 
   async function handleClick() {
@@ -34,7 +33,7 @@ export default function ShareButton({ url, title }: ShareButtonProps) {
       icon={copied.value ? IconCheck : IconShare}
       onClick={handleClick}
     >
-      {copied.value ? m.common.copied() : m.common.share()}
+      {copied.value ? t("common.copied") : t("common.share")}
     </Button>
   );
 }

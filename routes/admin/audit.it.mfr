@@ -1,0 +1,17 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+admin.pageAudit = Admin: Registro
+
+admin.searchAudit = Cerca azioni, oggetti, autori, dettagli...
+
+admin.noAudit = Nessuna operazione registrata ancora
+
+admin.noAuditBody = Creare, modificare o eliminare ricette, ingredienti, negozi, attrezzi, collezioni e nuclei finisce qui, così come le applicazioni dell'assistente e le azioni admin.
+
+admin.noAuditMatch = Nessuna voce corrisponde a questi filtri
+
+admin.noAuditMatchBody = Prova una ricerca più corta, un intervallo più ampio, o cancella i filtri.
+
+admin.clearFilters = Cancella tutti i filtri

@@ -1,0 +1,9 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+auth.checkEmailTitle = Check Your Email
+
+auth.checkEmailHeading = Check your email
+
+auth.checkEmailBody = We've sent a sign-in link to that address. Follow it to sign in, or to create your account if this is your first time here. The link expires in 15 minutes.
