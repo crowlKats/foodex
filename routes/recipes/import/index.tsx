@@ -2,6 +2,7 @@ import { handler, page } from "./$index.ts";
 import type { RecipeDraft } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import ImportStart from "../../../islands/ImportStart.tsx";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -20,7 +21,7 @@ export const handlers = handler({
       [ctx.state.householdId],
     );
 
-    ctx.state.pageTitle = "Import Recipe";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).recipes.importTitle();
     return { data: { drafts: draftsRes.rows } };
   },
 });

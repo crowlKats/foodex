@@ -2,6 +2,7 @@ import { handler, page } from "./$index.ts";
 import ShoppingListView from "../../islands/ShoppingListView.tsx";
 import { projectShoppingList } from "../../lib/shopping-list.ts";
 import type { Ingredient, Store } from "../../db/types.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -85,7 +86,7 @@ export const handlers = handler({
     const vmMatch = cookie.match(/(?:^|;\s*)sl_view=(source|store)/);
     const viewMode = (vmMatch?.[1] ?? "store") as "source" | "store";
 
-    ctx.state.pageTitle = "Shopping List";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).shopping.title();
     return {
       data: {
         lines: projected.lines,

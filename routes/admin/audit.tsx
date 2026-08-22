@@ -6,6 +6,8 @@ import { FilterChip } from "../../components/FilterChip.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import { escapeLike } from "../../utils.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
@@ -138,7 +140,7 @@ export const handlers = handler({
       householdName = hRes.rows[0]?.name ?? "deleted household";
     }
 
-    ctx.state.pageTitle = "Admin: Audit log";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageAudit();
     return {
       data: {
         entries: result.rows,
@@ -194,14 +196,15 @@ export default page(function AdminAuditPage(
     url,
   },
 ) {
+  const m = useMessages();
   const hasFilters = Object.values(filters).some((v) => v !== "");
   const f = filters;
   return (
     <div>
       <PageHeader
-        title="Audit log"
+        title={m.admin.auditLog()}
         query={f.q}
-        searchPlaceholder="Search actions, targets, actors, details..."
+        searchPlaceholder={m.admin.searchAudit()}
         searchPreserve={{
           type: f.type,
           source: f.source,
@@ -225,7 +228,7 @@ export default page(function AdminAuditPage(
         <div class="flex flex-wrap gap-x-8 gap-y-3">
           <div>
             <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-              Type
+              {m.common.type()}
             </div>
             <div class="flex flex-wrap gap-1.5">
               {types.map((t) => (
@@ -240,7 +243,7 @@ export default page(function AdminAuditPage(
           </div>
           <div>
             <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-              Source
+              {m.common.source()}
             </div>
             <div class="flex flex-wrap gap-1.5">
               {sources.map((s) => (
@@ -266,18 +269,18 @@ export default page(function AdminAuditPage(
             ))}
             <div>
               <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-                From
+                {m.common.from()}
               </div>
               <Input type="date" name="from" value={f.from} size="sm" />
             </div>
             <div>
               <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-                To
+                {m.common.to()}
               </div>
               <Input type="date" name="to" value={f.to} size="sm" />
             </div>
             <Button type="submit" variant="outline" size="sm">
-              Apply
+              {m.common.apply()}
             </Button>
           </form>
         </div>
@@ -312,7 +315,7 @@ export default page(function AdminAuditPage(
             </span>
             {hasFilters && (
               <a href="/admin/audit" class="link text-xs ml-auto">
-                Clear all filters
+                {m.admin.clearFilters()}
               </a>
             )}
           </div>
@@ -322,16 +325,13 @@ export default page(function AdminAuditPage(
       {entries.length === 0
         ? hasFilters
           ? (
-            <EmptyState title="No entries match these filters">
-              Try a shorter search, a wider date range, or{" "}
-              <a href="/admin/audit" class="link">clear all filters</a>.
+            <EmptyState title={m.admin.noAuditMatch()}>
+              {m.admin.noAuditMatchBody()}
             </EmptyState>
           )
           : (
-            <EmptyState title="No edit operations recorded yet">
-              Creating, editing, or deleting recipes, ingredients, stores,
-              tools, collections, and households lands here as it happens, as do
-              assistant applies and admin actions.
+            <EmptyState title={m.admin.noAudit()}>
+              {m.admin.noAuditBody()}
             </EmptyState>
           )
         : (

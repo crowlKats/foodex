@@ -5,7 +5,10 @@ import {
   sanitizeRedirect,
   signupAllowed,
 } from "../../../lib/auth.ts";
+import { localeFromRequest } from "../../../lib/i18n/locale.ts";
 import { ButtonLink } from "../../../components/Button.tsx";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
+import { useMessages } from "../../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -28,7 +31,8 @@ export const handlers = handler({
     );
 
     if (result.rows.length === 0) {
-      ctx.state.pageTitle = "Invalid Link";
+      ctx.state.pageTitle = catalogFor(ctx.state.locale).auth
+        .invalidLinkTitle();
       return { data: {} };
     }
 
@@ -42,17 +46,18 @@ export const handlers = handler({
       existing.rows.length === 0 &&
       !await signupAllowed(ctx.state.db.query, redirect_to)
     ) {
-      ctx.state.pageTitle = "Invite Required";
+      ctx.state.pageTitle = catalogFor(ctx.state.locale).auth
+        .inviteRequiredTitle();
       return { data: { inviteRequired: true } };
     }
 
     const userResult = await ctx.state.db.query<{ id: string }>(
-      `INSERT INTO users (email, name)
-       VALUES ($1, NULL)
+      `INSERT INTO users (email, name, language)
+       VALUES ($1, NULL, $2)
        ON CONFLICT (email) WHERE email IS NOT NULL DO UPDATE SET
          email = EXCLUDED.email
        RETURNING id`,
-      [email],
+      [email, localeFromRequest(ctx.req)],
     );
     const userId = userResult.rows[0].id;
 
@@ -75,21 +80,20 @@ export const handlers = handler({
 
 export default page(function InvalidTokenPage({ data }) {
   const { inviteRequired } = data as { inviteRequired?: boolean };
+  const m = useMessages();
 
   if (inviteRequired) {
     return (
       <div class="max-w-sm mx-auto mt-16">
         <h1 class="text-2xl font-bold text-center mb-4">
-          Invite required
+          {m.auth.inviteRequiredHeading()}
         </h1>
         <div class="card">
           <p class="text-stone-600 dark:text-stone-400 mb-4">
-            New accounts on this Foodex instance can only be created through an
-            invite link. If someone invited you, open their invite link and sign
-            in from there.
+            {m.auth.inviteRequired()}
           </p>
           <ButtonLink href="/auth/login" variant="outline" class="w-full">
-            Back to sign in
+            {m.auth.backToSignIn()}
           </ButtonLink>
         </div>
       </div>
@@ -99,15 +103,14 @@ export default page(function InvalidTokenPage({ data }) {
   return (
     <div class="max-w-sm mx-auto mt-16">
       <h1 class="text-2xl font-bold text-center mb-4">
-        Invalid or expired link
+        {m.auth.invalidLinkHeading()}
       </h1>
       <div class="card">
         <p class="text-stone-600 dark:text-stone-400 mb-4">
-          This sign-in link has expired or has already been used. Please request
-          a new one.
+          {m.auth.invalidLinkBody()}
         </p>
         <ButtonLink href="/auth/login" variant="outline" class="w-full">
-          Back to sign in
+          {m.auth.backToSignIn()}
         </ButtonLink>
       </div>
     </div>

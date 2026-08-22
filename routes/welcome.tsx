@@ -4,6 +4,8 @@ import { Input } from "../components/Input.tsx";
 import { FormField } from "../components/FormField.tsx";
 import { sanitizeRedirect } from "../lib/auth.ts";
 import WelcomeTour from "../islands/WelcomeTour.tsx";
+import { catalogFor } from "../lib/i18n/mod.ts";
+import { useMessages } from "../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   GET(ctx) {
@@ -21,7 +23,7 @@ export const handlers = handler({
         headers: { Location: redirect ?? "/" },
       });
     }
-    ctx.state.pageTitle = "Welcome";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).welcome.title();
     // The tour needs a name to exist first; without one, fall back to the form.
     return { data: { redirect, tour: tour && ctx.state.user.name != null } };
   },
@@ -61,21 +63,22 @@ export const handlers = handler({
   },
 });
 
-export default page(function WelcomePage({ data }) {
+export default page(function WelcomePage({ data, state }) {
   if (data.tour) {
-    return <WelcomeTour target={data.redirect ?? "/"} />;
+    return <WelcomeTour target={data.redirect ?? "/"} locale={state.locale} />;
   }
+  const m = useMessages();
   return (
     <div class="max-w-md mx-auto mt-12">
-      <h1 class="text-2xl font-bold mb-2">Welcome to Foodex</h1>
+      <h1 class="text-2xl font-bold mb-2">{m.welcome.heading()}</h1>
       <p class="text-stone-600 dark:text-stone-400 mb-6">
-        One quick thing before you get cooking: what should we call you?
+        {m.welcome.blurb()}
       </p>
       <form method="POST" class="card space-y-4">
         {data.redirect && (
           <input type="hidden" name="redirect" value={data.redirect} />
         )}
-        <FormField label="Your name">
+        <FormField label={m.welcome.nameLabel()}>
           <Input
             type="text"
             name="name"
@@ -83,11 +86,11 @@ export default page(function WelcomePage({ data }) {
             maxLength={100}
             autofocus
             class="w-full"
-            placeholder="How your household sees you"
+            placeholder={m.welcome.namePlaceholder()}
           />
         </FormField>
         <Button type="submit" class="w-full">
-          Continue
+          {m.common.continue()}
         </Button>
       </form>
     </div>

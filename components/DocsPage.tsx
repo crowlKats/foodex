@@ -1,42 +1,47 @@
 import type { ComponentChildren } from "preact";
+import { useMessages } from "../lib/i18n/provider.tsx";
+import type { Messages } from "../lib/i18n/mod.ts";
 
 export interface DocsPageInfo {
   href: string;
-  label: string;
+  label: (m: Messages) => string;
 }
 
 /** Sidebar structure and reading order for the docs section. */
-export const DOCS_GROUPS: { label: string; pages: DocsPageInfo[] }[] = [
+export const DOCS_GROUPS: {
+  label: (m: Messages) => string;
+  pages: DocsPageInfo[];
+}[] = [
   {
-    label: "Learn",
+    label: (m) => m.docs.groupLearn(),
     pages: [
-      { href: "/docs", label: "Getting started" },
-      { href: "/docs/recipes", label: "Browsing & cooking" },
-      { href: "/docs/writing-recipes", label: "Writing recipes" },
-      { href: "/docs/import", label: "Import & the assistant" },
+      { href: "/docs", label: (m) => m.docs.gettingStarted() },
+      { href: "/docs/recipes", label: (m) => m.docs.recipes() },
+      { href: "/docs/writing-recipes", label: (m) => m.docs.writingRecipes() },
+      { href: "/docs/import", label: (m) => m.docs.importAssistant() },
     ],
   },
   {
-    label: "Day to day",
+    label: (m) => m.docs.groupDayToDay(),
     pages: [
-      { href: "/docs/pantry", label: "Pantry" },
-      { href: "/docs/plan", label: "Meal plan" },
-      { href: "/docs/shopping", label: "Shopping list" },
+      { href: "/docs/pantry", label: (m) => m.docs.pantry() },
+      { href: "/docs/plan", label: (m) => m.docs.plan() },
+      { href: "/docs/shopping", label: (m) => m.docs.shopping() },
     ],
   },
   {
-    label: "Organize & share",
+    label: (m) => m.docs.groupOrganize(),
     pages: [
-      { href: "/docs/organizing", label: "Collections & dishes" },
-      { href: "/docs/household", label: "Households" },
-      { href: "/docs/ingredients", label: "Ingredients & prices" },
+      { href: "/docs/organizing", label: (m) => m.docs.organizing() },
+      { href: "/docs/household", label: (m) => m.docs.households() },
+      { href: "/docs/ingredients", label: (m) => m.docs.ingredients() },
     ],
   },
   {
-    label: "Reference",
+    label: (m) => m.docs.groupReference(),
     pages: [
-      { href: "/docs/settings", label: "Settings" },
-      { href: "/docs/templates", label: "Template syntax" },
+      { href: "/docs/settings", label: (m) => m.docs.settings() },
+      { href: "/docs/templates", label: (m) => m.docs.templates() },
     ],
   },
 ];
@@ -90,12 +95,13 @@ export function DocNote(
 }
 
 function NavLinks({ currentPath }: { currentPath: string }) {
+  const m = useMessages();
   return (
     <nav class="space-y-5">
       {DOCS_GROUPS.map((group) => (
-        <div key={group.label}>
+        <div key={group.label(m)}>
           <div class="text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-stone-500 mb-1.5">
-            {group.label}
+            {group.label(m)}
           </div>
           <ul class="space-y-0.5">
             {group.pages.map((p) => {
@@ -110,7 +116,7 @@ function NavLinks({ currentPath }: { currentPath: string }) {
                         : "border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:border-stone-400"
                     }`}
                   >
-                    {p.label}
+                    {p.label(m)}
                   </a>
                 </li>
               );
@@ -134,6 +140,7 @@ export function DocsPage(
     children: ComponentChildren;
   },
 ) {
+  const m = useMessages();
   const index = FLAT_PAGES.findIndex((p) => p.href === currentPath);
   const prev = index > 0 ? FLAT_PAGES[index - 1] : null;
   const next = index >= 0 && index < FLAT_PAGES.length - 1
@@ -144,14 +151,14 @@ export function DocsPage(
     <div class="flex gap-10 items-start">
       {/* Desktop sidebar */}
       <aside class="hidden md:block w-52 shrink-0 sticky top-6">
-        <div class="font-bold mb-4">Documentation</div>
+        <div class="font-bold mb-4">{m.docs.title()}</div>
         <NavLinks currentPath={currentPath} />
       </aside>
 
       <div class="flex-1 min-w-0 max-w-3xl">
         {/* Mobile navigation */}
         <details class="md:hidden card mb-6">
-          <summary class="font-bold cursor-pointer">Documentation</summary>
+          <summary class="font-bold cursor-pointer">{m.docs.title()}</summary>
           <div class="mt-4">
             <NavLinks currentPath={currentPath} />
           </div>
@@ -169,13 +176,13 @@ export function DocsPage(
             {prev
               ? (
                 <a href={prev.href} class="link">
-                  &larr; {prev.label}
+                  &larr; {prev.label(m)}
                 </a>
               )
               : <span />}
             {next && (
               <a href={next.href} class="link text-right">
-                {next.label} &rarr;
+                {next.label(m)} &rarr;
               </a>
             )}
           </div>

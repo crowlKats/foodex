@@ -1,6 +1,7 @@
 import { handler, page } from "./$bulk.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import BulkImport from "../../../islands/BulkImport.tsx";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
 
 export const handlers = handler({
   GET(ctx) {
@@ -10,7 +11,8 @@ export const handlers = handler({
         headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
       });
     }
-    ctx.state.pageTitle = "Bulk Import";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).recipes
+      .bulkImportTitle();
     return { data: {} };
   },
 });

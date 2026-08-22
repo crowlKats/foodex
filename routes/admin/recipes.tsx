@@ -5,6 +5,8 @@ import { PageHeader } from "../../components/PageHeader.tsx";
 import { EmptyState } from "../../components/EmptyState.tsx";
 import ConfirmButton from "../../islands/ConfirmButton.tsx";
 import { logAudit } from "../../lib/audit.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
@@ -60,7 +62,7 @@ export const handlers = handler({
       ]);
     }
 
-    ctx.state.pageTitle = "Admin: Recipes";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageRecipes();
     return {
       data: {
         recipes: result.rows,
@@ -103,25 +105,27 @@ export const handlers = handler({
 export default page(function AdminRecipesPage(
   { data: { recipes, q, currentPage, totalCount }, url },
 ) {
+  const m = useMessages();
   return (
     <div>
       <PageHeader
-        title="Recipes"
+        title={m.admin.recipes()}
         query={q}
-        searchPlaceholder="Search recipes..."
+        searchPlaceholder={m.admin.searchRecipes()}
       />
       <AdminNav currentPath={url.pathname} />
 
       <p class="text-sm text-stone-500 mb-3">
-        {totalCount}{" "}
-        total, private ones included. Deleting here is for moderation; it can't
-        be undone.
+        {m.admin.recipesModeration({ count: String(totalCount) })}
       </p>
       {recipes.length === 0
         ? (
-          <EmptyState title={q ? `No recipes match "${q}"` : "No recipes yet"}>
-            Every recipe on the platform shows up in this list, including ones
-            marked private.
+          <EmptyState
+            title={q
+              ? m.admin.noRecipesMatch({ query: q })
+              : m.admin.noRecipes()}
+          >
+            {m.admin.noRecipesBody()}
           </EmptyState>
         )
         : (

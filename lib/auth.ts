@@ -199,7 +199,9 @@ export function nameRequirementResponse(url: URL): Response | null {
   });
 }
 
-export function householdRequirementResponse(url: URL): Response | null {
+export function householdRequirementResponse(
+  url: URL,
+): Response | null {
   const path = url.pathname;
 
   if (path.startsWith("/api")) {

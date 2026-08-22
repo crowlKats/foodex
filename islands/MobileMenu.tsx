@@ -1,17 +1,20 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { IconMenu2, IconX } from "@tabler/icons-preact";
+import { catalogFor } from "../lib/i18n/mod.ts";
 
 /**
  * Hamburger menu in the mobile top bar for the pages the bottom tab bar has
  * no room for. Hidden on sm+ where the full desktop nav shows everything.
  */
 export default function MobileMenu(
-  { hasHousehold, currentPath }: {
+  { hasHousehold, currentPath, locale }: {
     hasHousehold?: boolean;
     currentPath: string;
+    locale: string;
   },
 ) {
+  const m = catalogFor(locale);
   const open = useSignal(false);
   const container = useRef<HTMLDivElement>(null);
 
@@ -34,14 +37,14 @@ export default function MobileMenu(
   const links = [
     ...(hasHousehold
       ? [
-        { href: "/agent", label: "Assistant" },
-        { href: "/collections", label: "Collections" },
+        { href: "/agent", label: m.nav.assistant() },
+        { href: "/collections", label: m.nav.collections() },
       ]
       : []),
-    { href: "/ingredients", label: "Ingredients" },
-    { href: "/stores", label: "Stores" },
-    { href: "/tools", label: "Tools" },
-    { href: "/docs", label: "User guide" },
+    { href: "/ingredients", label: m.nav.ingredients() },
+    { href: "/stores", label: m.nav.stores() },
+    { href: "/tools", label: m.nav.tools() },
+    { href: "/docs", label: m.nav.docs() },
   ];
 
   return (
@@ -50,7 +53,7 @@ export default function MobileMenu(
         type="button"
         data-tour="menu"
         class="nav-link flex items-center cursor-pointer"
-        title="Menu"
+        title={m.nav.menu()}
         aria-expanded={open.value}
         onClick={() => open.value = !open.value}
       >

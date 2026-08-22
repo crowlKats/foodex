@@ -2,6 +2,7 @@ import { handler, page } from "./$[token].ts";
 import { HttpError } from "fresh/errors";
 import { projectShoppingList } from "../../../lib/shopping-list.ts";
 import SharedShoppingList from "../../../islands/SharedShoppingList.tsx";
+import { catalogFor } from "../../../lib/i18n/mod.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -27,7 +28,7 @@ export const handlers = handler({
       list.household_id,
     );
 
-    ctx.state.pageTitle = "Shopping List";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).shopping.title();
     return {
       data: {
         lines: projected.lines.map((line) => ({

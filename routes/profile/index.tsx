@@ -3,6 +3,8 @@ import type { Household } from "../../db/types.ts";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import { Select } from "../../components/Select.tsx";
+import { catalogFor, isLocale, SUPPORTED_LOCALES } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -24,7 +26,7 @@ export const handlers = handler({
       }
     }
 
-    ctx.state.pageTitle = "Profile";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).profile.title();
     return { data: { householdName } };
   },
   async POST(ctx) {
@@ -42,6 +44,14 @@ export const handlers = handler({
       await ctx.state.db.query(
         "UPDATE users SET unit_system = $1 WHERE id = $2",
         [unitSystem, ctx.state.user.id],
+      );
+    }
+
+    const language = form.get("language");
+    if (typeof language === "string" && isLocale(language)) {
+      await ctx.state.db.query(
+        "UPDATE users SET language = $1 WHERE id = $2",
+        [language, ctx.state.user.id],
       );
     }
 
@@ -63,6 +73,7 @@ export const handlers = handler({
 export default page(
   function ProfilePage({ data, state }) {
     const user = state.user!;
+    const m = useMessages();
 
     return (
       <div class="max-w-md mx-auto">
@@ -81,9 +92,9 @@ export default page(
         </div>
 
         <div class="card mb-4">
-          <h2 class="text-lg font-semibold mb-3">Display Name</h2>
+          <h2 class="text-lg font-semibold mb-3">{m.profile.displayName()}</h2>
           <p class="text-xs text-stone-500 mb-3">
-            Shown to other members of your household.
+            {m.profile.displayNameHelp()}
           </p>
           <form method="POST" class="flex gap-2">
             <Input
@@ -94,34 +105,58 @@ export default page(
               maxLength={100}
               class="flex-1 min-w-0"
             />
-            <Button type="submit">Save</Button>
+            <Button type="submit">{m.common.save()}</Button>
           </form>
         </div>
 
         <div class="card mb-4">
-          <h2 class="text-lg font-semibold mb-3">Preferences</h2>
-          <form method="POST">
-            <label class="text-sm font-medium block mb-1">Unit system</label>
-            <div class="flex gap-2">
-              <Select name="unit_system" class="flex-1">
-                <option value="metric" selected={state.unitSystem === "metric"}>
-                  Metric (g, ml, cm)
+          <h2 class="text-lg font-semibold mb-3">{m.profile.preferences()}</h2>
+          <form method="POST" class="space-y-4">
+            <div>
+              <label class="text-sm font-medium block mb-1">
+                {m.profile.unitSystem()}
+              </label>
+              <Select name="unit_system" class="w-full">
+                <option
+                  value="metric"
+                  selected={state.unitSystem === "metric"}
+                >
+                  {m.profile.metric()}
                 </option>
                 <option
                   value="imperial"
                   selected={state.unitSystem === "imperial"}
                 >
-                  Imperial (oz, fl oz, inch)
+                  {m.profile.imperial()}
                 </option>
               </Select>
-              <Button type="submit">Save</Button>
             </div>
+            <div>
+              <label class="text-sm font-medium block mb-1">
+                {m.profile.language()}
+              </label>
+              <p class="text-xs text-stone-500 mb-2">
+                {m.profile.languageHelp()}
+              </p>
+              <Select name="language" class="w-full">
+                {SUPPORTED_LOCALES.map((loc) => (
+                  <option
+                    key={loc}
+                    value={loc}
+                    selected={state.locale === loc}
+                  >
+                    {m.language[loc]()}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button type="submit">{m.common.save()}</Button>
           </form>
         </div>
 
         {data.householdName && (
           <div class="card mb-4">
-            <h2 class="text-lg font-semibold mb-2">Household</h2>
+            <h2 class="text-lg font-semibold mb-2">{m.profile.household()}</h2>
             <a
               href="/household"
               class="link"
@@ -137,7 +172,7 @@ export default page(
         }
         <form method="POST" action="/auth/logout">
           <Button type="submit" variant="danger-outline" class="w-full">
-            Sign out
+            {m.profile.signOut()}
           </Button>
         </form>
       </div>

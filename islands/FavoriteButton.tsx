@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import { IconHeart } from "@tabler/icons-preact";
 import { IconHeartFilled } from "@tabler/icons-preact";
 import { Button, type IconComponent } from "../components/Button.tsx";
+import { catalogFor } from "../lib/i18n/mod.ts";
 
 interface Props {
   recipeId: string;
@@ -13,6 +14,7 @@ const HeartFilledRed: IconComponent = ({ class: c }) => (
 );
 
 export default function FavoriteButton({ recipeId, initialFavorited }: Props) {
+  const m = catalogFor();
   const favorited = useSignal(initialFavorited);
   const loading = useSignal(false);
 
@@ -40,9 +42,11 @@ export default function FavoriteButton({ recipeId, initialFavorited }: Props) {
       onClick={toggle}
       variant="outline"
       icon={favorited.value ? HeartFilledRed : IconHeart}
-      title={favorited.value ? "Remove from favorites" : "Add to favorites"}
+      title={favorited.value
+        ? m.recipes.removeFavorite()
+        : m.recipes.addFavorite()}
     >
-      {favorited.value ? "Favorited" : "Favorite"}
+      {favorited.value ? m.recipes.favorited() : m.recipes.favorite()}
     </Button>
   );
 }

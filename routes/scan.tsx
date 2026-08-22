@@ -1,6 +1,7 @@
 import { handler, page } from "./$scan.ts";
 import type { Ingredient, Store } from "../db/types.ts";
 import ScanView from "../islands/ScanView.tsx";
+import { catalogFor } from "../lib/i18n/mod.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -20,7 +21,7 @@ export const handlers = handler({
       ),
     ]);
 
-    ctx.state.pageTitle = "Scan";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).scan.title();
     return {
       data: {
         householdId: ctx.state.householdId,

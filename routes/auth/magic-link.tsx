@@ -6,6 +6,8 @@ import {
 } from "../../lib/auth.ts";
 import { sendMagicLinkEmail } from "../../lib/email.ts";
 import { ButtonLink } from "../../components/Button.tsx";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 
 export const handlers = handler({
   async POST(ctx) {
@@ -74,23 +76,24 @@ export const handlers = handler({
     // The confirmation is unconditional: the link is sent to any address,
     // and following it signs in or creates the account. Send failures are
     // logged but not surfaced; the page would leak nothing useful anyway.
-    ctx.state.pageTitle = "Check Your Email";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).auth.checkEmailTitle();
     return { data: {} };
   },
 });
 
 export default page(function MagicLinkSentPage() {
+  const m = useMessages();
   return (
     <div class="max-w-sm mx-auto mt-16">
-      <h1 class="text-2xl font-bold text-center mb-4">Check your email</h1>
+      <h1 class="text-2xl font-bold text-center mb-4">
+        {m.auth.checkEmailHeading()}
+      </h1>
       <div class="card">
         <p class="text-stone-600 dark:text-stone-400 mb-4">
-          We've sent a sign-in link to that address. Follow it to sign in, or to
-          create your account if this is your first time here. The link expires
-          in 15 minutes.
+          {m.auth.checkEmailBody()}
         </p>
         <ButtonLink href="/auth/login" variant="outline" class="w-full">
-          Back to sign in
+          {m.auth.backToSignIn()}
         </ButtonLink>
       </div>
     </div>

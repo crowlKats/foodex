@@ -7,6 +7,8 @@ export interface User {
   email: string | null;
   avatar_url: string | null;
   unit_system: UnitSystem;
+  /** BCP 47 UI language stored on the user (e.g. en, it). */
+  language: string;
   /**
    * Set while an admin is sudoing: this User is the impersonated target and
    * `sudoBy` is the real admin. Everything acting on `user` sees the target;

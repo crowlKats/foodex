@@ -1,4 +1,6 @@
 import { handler, page } from "./$household.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -10,16 +12,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Households";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.householdsTitle();
     return { data: {} };
   },
 });
 
 export default page(function HouseholdDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Households"
+      title={m.docs.householdsTitle()}
       intro="Members and roles, your household's equipment and stores, and how to move out without losing your recipes."
     >
       <DocSection id="members" title="Members and Roles">

@@ -1,4 +1,6 @@
 import { handler, page } from "./$ingredients.ts";
+import { catalogFor } from "../../lib/i18n/mod.ts";
+import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   DocNote,
   docProse,
@@ -9,16 +11,17 @@ import {
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Ingredients & Prices";
+    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.ingredientsTitle();
     return { data: {} };
   },
 });
 
 export default page(function IngredientsDocs({ url }) {
+  const m = useMessages();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Ingredients & Prices"
+      title={m.docs.ingredientsTitle()}
       intro="The shared ingredient catalog that connects recipes, pantry, and shopping, and the price data that powers cost estimates."
     >
       <DocSection id="catalog" title="The Ingredient Catalog">

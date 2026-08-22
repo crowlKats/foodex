@@ -30,6 +30,7 @@ import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
 import { IconCalendar } from "@tabler/icons-preact";
+import { catalogFor } from "../lib/i18n/mod.ts";
 
 interface ActiveTimer {
   id: number;
@@ -139,6 +140,7 @@ export default function RecipeView(
     sourceRecipes,
   }: RecipeViewProps,
 ) {
+  const m = catalogFor();
   const layout = computeSectionLayout(steps, sections);
   const unitSystem = unitSystemProp ?? "metric";
   const pantryItems = pantryItemsProp ?? [];
@@ -810,7 +812,7 @@ export default function RecipeView(
     const ratio = getCurrentRatio();
     return (
       <details class="cooking-mode-ingredients">
-        <summary>Ingredients</summary>
+        <summary>{m.recipes.ingredients()}</summary>
         <ul>
           {ingredients.map((ing) => {
             const scaled = ing.amount * ratio;
@@ -1295,7 +1297,7 @@ export default function RecipeView(
                 </div>
               );
             })()}
-            <h2 class="font-semibold mb-2">Ingredients</h2>
+            <h2 class="font-semibold mb-2">{m.recipes.ingredients()}</h2>
             <ul class="space-y-1.5">
               {shoppable.map((ing) => {
                 const ratio = getCurrentRatio();
@@ -1549,7 +1551,7 @@ export default function RecipeView(
         )}
         {tools && tools.length > 0 && (
           <div class="card">
-            <h2 class="font-semibold mb-2">Tools</h2>
+            <h2 class="font-semibold mb-2">{m.recipes.tools()}</h2>
             <ul class="space-y-1">
               {tools.map((t) => (
                 <li key={t.id} class="text-sm">

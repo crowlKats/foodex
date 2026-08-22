@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { SearchBar } from "./SearchBar.tsx";
+import { useMessages } from "../lib/i18n/provider.tsx";
 
 interface PageHeaderProps {
   title: string;
@@ -15,6 +16,7 @@ export function PageHeader(
   { title, query, searchPlaceholder, searchPreserve, children, noSearch }:
     PageHeaderProps,
 ) {
+  const m = useMessages();
   return (
     <div class="mb-6 space-y-3 sm:space-y-0">
       {
@@ -29,7 +31,7 @@ export function PageHeader(
             <SearchBar
               query={query}
               placeholder={searchPlaceholder ??
-                `Search ${title.toLowerCase()}...`}
+                m.common.searchPlaceholder({ title })}
               preserve={searchPreserve}
             />
           </div>
