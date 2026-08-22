@@ -75,7 +75,7 @@ function findMenu(): { id: string; anchor: Anchor } | null {
 }
 
 function tourSteps(
-  trans: (key: string) => string,
+  trans: ReturnType<typeof t.use>,
 ): Step[] {
   return [
     {
