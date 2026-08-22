@@ -728,6 +728,7 @@ export async function executeTool(
             ? input.planned_for
             : null,
         });
+        if (entryId == null) return err(`No recipe "${slug}"`);
         return {
           content: {
             ok: true,
