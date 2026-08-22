@@ -1,42 +1,52 @@
 import type { ComponentChildren } from "preact";
+import { createT } from "./Translation.tsx";
+import en from "./DocsPage.en.mfr";
+import it from "./DocsPage.it.mfr";
+
+const t = createT({ en, it });
+
+type DocsKey = Parameters<ReturnType<typeof t.use>>[0];
 
 export interface DocsPageInfo {
   href: string;
-  label: string;
+  labelKey: DocsKey;
 }
 
 /** Sidebar structure and reading order for the docs section. */
-export const DOCS_GROUPS: { label: string; pages: DocsPageInfo[] }[] = [
+export const DOCS_GROUPS: {
+  labelKey: DocsKey;
+  pages: DocsPageInfo[];
+}[] = [
   {
-    label: "Learn",
+    labelKey: "docs.groupLearn",
     pages: [
-      { href: "/docs", label: "Getting started" },
-      { href: "/docs/recipes", label: "Browsing & cooking" },
-      { href: "/docs/writing-recipes", label: "Writing recipes" },
-      { href: "/docs/import", label: "Import & the assistant" },
+      { href: "/docs", labelKey: "docs.gettingStarted" },
+      { href: "/docs/recipes", labelKey: "docs.recipes" },
+      { href: "/docs/writing-recipes", labelKey: "docs.writingRecipes" },
+      { href: "/docs/import", labelKey: "docs.importAssistant" },
     ],
   },
   {
-    label: "Day to day",
+    labelKey: "docs.groupDayToDay",
     pages: [
-      { href: "/docs/pantry", label: "Pantry" },
-      { href: "/docs/plan", label: "Meal plan" },
-      { href: "/docs/shopping", label: "Shopping list" },
+      { href: "/docs/pantry", labelKey: "docs.pantry" },
+      { href: "/docs/plan", labelKey: "docs.plan" },
+      { href: "/docs/shopping", labelKey: "docs.shopping" },
     ],
   },
   {
-    label: "Organize & share",
+    labelKey: "docs.groupOrganize",
     pages: [
-      { href: "/docs/organizing", label: "Collections & dishes" },
-      { href: "/docs/household", label: "Households" },
-      { href: "/docs/ingredients", label: "Ingredients & prices" },
+      { href: "/docs/organizing", labelKey: "docs.organizing" },
+      { href: "/docs/household", labelKey: "docs.households" },
+      { href: "/docs/ingredients", labelKey: "docs.ingredients" },
     ],
   },
   {
-    label: "Reference",
+    labelKey: "docs.groupReference",
     pages: [
-      { href: "/docs/settings", label: "Settings" },
-      { href: "/docs/templates", label: "Template syntax" },
+      { href: "/docs/settings", labelKey: "docs.settings" },
+      { href: "/docs/templates", labelKey: "docs.templates" },
     ],
   },
 ];
@@ -93,9 +103,9 @@ function NavLinks({ currentPath }: { currentPath: string }) {
   return (
     <nav class="space-y-5">
       {DOCS_GROUPS.map((group) => (
-        <div key={group.label}>
+        <div key={group.labelKey}>
           <div class="text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-stone-500 mb-1.5">
-            {group.label}
+            {t(group.labelKey)}
           </div>
           <ul class="space-y-0.5">
             {group.pages.map((p) => {
@@ -110,7 +120,7 @@ function NavLinks({ currentPath }: { currentPath: string }) {
                         : "border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200 hover:border-stone-400"
                     }`}
                   >
-                    {p.label}
+                    {t(p.labelKey)}
                   </a>
                 </li>
               );
@@ -134,6 +144,7 @@ export function DocsPage(
     children: ComponentChildren;
   },
 ) {
+  const trans = t.use();
   const index = FLAT_PAGES.findIndex((p) => p.href === currentPath);
   const prev = index > 0 ? FLAT_PAGES[index - 1] : null;
   const next = index >= 0 && index < FLAT_PAGES.length - 1
@@ -144,14 +155,14 @@ export function DocsPage(
     <div class="flex gap-10 items-start">
       {/* Desktop sidebar */}
       <aside class="hidden md:block w-52 shrink-0 sticky top-6">
-        <div class="font-bold mb-4">Documentation</div>
+        <div class="font-bold mb-4">{t("docs.title")}</div>
         <NavLinks currentPath={currentPath} />
       </aside>
 
       <div class="flex-1 min-w-0 max-w-3xl">
         {/* Mobile navigation */}
         <details class="md:hidden card mb-6">
-          <summary class="font-bold cursor-pointer">Documentation</summary>
+          <summary class="font-bold cursor-pointer">{t("docs.title")}</summary>
           <div class="mt-4">
             <NavLinks currentPath={currentPath} />
           </div>
@@ -169,13 +180,13 @@ export function DocsPage(
             {prev
               ? (
                 <a href={prev.href} class="link">
-                  &larr; {prev.label}
+                  &larr; {trans(prev.labelKey)}
                 </a>
               )
               : <span />}
             {next && (
               <a href={next.href} class="link text-right">
-                {next.label} &rarr;
+                {trans(next.labelKey)} &rarr;
               </a>
             )}
           </div>

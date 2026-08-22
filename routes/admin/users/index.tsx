@@ -8,6 +8,13 @@ import {
   Pagination,
   paginationParams,
 } from "../../../components/Pagination.tsx";
+import { createT } from "../../../components/Translation.tsx";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import { t as shared } from "../../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 interface UserRow {
   id: string;
@@ -67,7 +74,9 @@ export const handlers = handler({
       ]);
     }
 
-    ctx.state.pageTitle = "Admin: Users";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "admin.pageUsers",
+    ).format();
     return {
       data: {
         users: result.rows,
@@ -90,16 +99,27 @@ function ProviderBadge({ label }: { label: string }) {
 export default page(function AdminUsersPage(
   { data: { users, q, currentPage, totalCount }, url },
 ) {
+  const trans = t.use();
   return (
     <div>
-      <PageHeader title="Users" query={q} searchPlaceholder="Search users..." />
+      <PageHeader
+        title={trans("admin.pageUsers")}
+        query={q}
+        searchPlaceholder={trans("admin.searchUsers")}
+      />
       <AdminNav currentPath={url.pathname} />
 
-      <div class="text-sm text-stone-500 mb-3">{totalCount} total</div>
+      <div class="text-sm text-stone-500 mb-3">
+        {shared("common.totalCount", { count: totalCount })}
+      </div>
       {users.length === 0
         ? (
-          <EmptyState title={q ? `No users match "${q}"` : "No users yet"}>
-            Accounts appear here as soon as someone signs in for the first time.
+          <EmptyState
+            title={q
+              ? trans("admin.noUsersMatch", { query: q })
+              : trans("admin.noUsers")}
+          >
+            {t("admin.noUsersBody")}
           </EmptyState>
         )
         : (
@@ -120,7 +140,9 @@ export default page(function AdminUsersPage(
                   )}
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span class="font-medium">{u.name ?? "(no name)"}</span>
+                      <span class="font-medium">
+                        {u.name ?? shared("common.noName")}
+                      </span>
                       {u.has_authentik && <ProviderBadge label="authentik" />}
                       {u.has_github && <ProviderBadge label="github" />}
                       {u.has_google && <ProviderBadge label="google" />}
@@ -129,17 +151,25 @@ export default page(function AdminUsersPage(
                       )}
                     </div>
                     <div class="text-sm text-stone-500 truncate">
-                      {u.email ?? "no email"}
-                      {u.household ? ` · ${u.household}` : " · no household"}
+                      {u.email ?? shared("common.noEmail")}
+                      {u.household
+                        ? ` · ${u.household}`
+                        : ` · ${trans("admin.noHousehold")}`}
                     </div>
                   </div>
                   <div class="text-right text-xs text-stone-400 shrink-0">
                     <div>
-                      joined {new Date(u.created_at).toISOString().slice(0, 10)}
+                      {t("admin.joined", {
+                        date: new Date(u.created_at).toISOString().slice(
+                          0,
+                          10,
+                        ),
+                      })}
                     </div>
                     <div>
-                      {Number(u.session_count)}{" "}
-                      session{Number(u.session_count) === 1 ? "" : "s"}
+                      {t("admin.sessionCount", {
+                        count: Number(u.session_count),
+                      })}
                     </div>
                   </div>
                 </div>

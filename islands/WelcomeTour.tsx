@@ -1,6 +1,12 @@
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { Button, ButtonLink } from "../components/Button.tsx";
+import { createT } from "../components/Translation.tsx";
+import { t as shared } from "../locales/shared.ts";
+import en from "./WelcomeTour.en.mfr";
+import it from "./WelcomeTour.it.mfr";
+
+const t = createT({ en, it });
 
 interface Step {
   /**
@@ -16,74 +22,6 @@ interface Step {
   /** Drop the step entirely when no target is visible (e.g. Scan on desktop). */
   optional?: boolean;
 }
-
-const STEPS: Step[] = [
-  {
-    targets: ["recipes"],
-    title: "Recipes",
-    body:
-      "The shared cookbook. Browse and cook what every household has added, and add your own: import recipes from photos, web pages, or pasted text instead of typing them.",
-  },
-  {
-    targets: ["collections", "menu"],
-    title: "Collections",
-    body:
-      "Group recipes however you like: a weeknight set, a holiday menu, everything from one book. Collections can be shared with other households by link.",
-    fallbackNote: "On a phone, Collections lives in this menu.",
-  },
-  {
-    targets: ["assistant", "menu"],
-    title: "Assistant",
-    body:
-      "A chat that helps with the tedious parts: finding, importing, and reworking recipes. Everything it proposes is staged for your review before it touches anything.",
-    fallbackNote: "On a phone, the Assistant lives in this menu.",
-  },
-  {
-    targets: ["pantry"],
-    title: "Pantry",
-    body:
-      'What\'s in your kitchen. The pantry powers the "ready to make" filter, tells recipes what you already have, and warns you before things expire.',
-  },
-  {
-    targets: ["scan"],
-    title: "Scan",
-    body:
-      "The barcode scanner. Point your camera at your groceries as you unpack them and they land in the pantry, with the name and package size filled in for you.",
-    optional: true,
-  },
-  {
-    targets: ["plan"],
-    title: "Plan",
-    body:
-      "What you intend to cook. Planning a meal puts its missing ingredients on the shopping list, and cooking it updates the pantry.",
-  },
-  {
-    targets: ["shopping"],
-    title: "Shopping List",
-    body:
-      "Worked out for you: whatever your plan needs that the pantry can't cover. Tick items off as you buy them and they land straight in the pantry.",
-  },
-  {
-    targets: ["catalogs", "menu"],
-    title: "Ingredients, Stores & Tools",
-    body:
-      'Shared reference catalogs. Record what things cost where, and which kitchen tools you own; that\'s what powers cost estimates and the "ready to make" filter.',
-    fallbackNote: "On a phone, these catalogs live in this menu.",
-  },
-  {
-    targets: ["docs", "menu"],
-    title: "The Guide",
-    body:
-      "Full documentation for everything you just saw, whenever you need the details.",
-    fallbackNote: "On a phone, the guide lives in this menu.",
-  },
-  {
-    targets: ["household"],
-    title: "Your Household",
-    body:
-      "The people you cook with: members, invites, and settings. Everything you've just seen is shared with them. Next up: create your household or join one with an invite.",
-  },
-];
 
 interface Anchor {
   top: number;
@@ -119,8 +57,75 @@ function findAnchor(step: Step): Anchor | null {
   return null;
 }
 
+function tourSteps(
+  trans: ReturnType<typeof t.use>,
+): Step[] {
+  return [
+    {
+      targets: ["recipes"],
+      title: trans("welcome.tourRecipesTitle"),
+      body: trans("welcome.tourRecipesBody"),
+    },
+    {
+      targets: ["collections", "menu"],
+      title: trans("welcome.tourCollectionsTitle"),
+      body: trans("welcome.tourCollectionsBody"),
+      fallbackNote: trans("welcome.tourCollectionsFallback"),
+    },
+    {
+      targets: ["assistant", "menu"],
+      title: trans("welcome.tourAssistantTitle"),
+      body: trans("welcome.tourAssistantBody"),
+      fallbackNote: trans("welcome.tourAssistantFallback"),
+    },
+    {
+      targets: ["pantry"],
+      title: trans("welcome.tourPantryTitle"),
+      body: trans("welcome.tourPantryBody"),
+    },
+    {
+      targets: ["scan"],
+      title: trans("welcome.tourScanTitle"),
+      body: trans("welcome.tourScanBody"),
+      optional: true,
+    },
+    {
+      targets: ["plan"],
+      title: trans("welcome.tourPlanTitle"),
+      body: trans("welcome.tourPlanBody"),
+    },
+    {
+      targets: ["shopping"],
+      title: trans("welcome.tourShoppingTitle"),
+      body: trans("welcome.tourShoppingBody"),
+    },
+    {
+      targets: ["catalogs", "menu"],
+      title: trans("welcome.tourCatalogsTitle"),
+      body: trans("welcome.tourCatalogsBody"),
+      fallbackNote: trans("welcome.tourCatalogsFallback"),
+    },
+    {
+      targets: ["docs", "menu"],
+      title: trans("welcome.tourDocsTitle"),
+      body: trans("welcome.tourDocsBody"),
+      fallbackNote: trans("welcome.tourDocsFallback"),
+    },
+    {
+      targets: ["household"],
+      title: trans("welcome.tourHouseholdTitle"),
+      body: trans("welcome.tourHouseholdBody"),
+    },
+  ];
+}
+
 /** Walkthrough that rings each nav item in turn, shown once after sign-up. */
-export default function WelcomeTour({ target }: { target: string }) {
+export default function WelcomeTour(
+  { target }: { target: string },
+) {
+  const trans = t.use();
+  const sharedTrans = shared.use();
+  const STEPS = tourSteps(trans);
   const steps = useSignal(STEPS);
   const index = useSignal(0);
   const anchor = useSignal<Anchor | null>(null);
@@ -185,9 +190,9 @@ export default function WelcomeTour({ target }: { target: string }) {
       <div class={a ? "" : "max-w-lg mx-auto mt-12"} style={cardStyle}>
         {!a && (
           <>
-            <h1 class="text-2xl font-bold mb-2">Welcome to Foodex</h1>
+            <h1 class="text-2xl font-bold mb-2">{t("welcome.heading")}</h1>
             <p class="text-stone-600 dark:text-stone-400 mb-6">
-              A one-minute tour of what's what.
+              {t("welcome.tourIntro")}
             </p>
           </>
         )}
@@ -219,7 +224,7 @@ export default function WelcomeTour({ target }: { target: string }) {
                 href={target}
                 class="text-sm text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 mr-1"
               >
-                Skip
+                {sharedTrans("common.skip")}
               </a>
             )}
             {index.value > 0 && (
@@ -229,13 +234,13 @@ export default function WelcomeTour({ target }: { target: string }) {
                 size="sm"
                 onClick={() => go(index.value - 1)}
               >
-                Back
+                {sharedTrans("common.back")}
               </Button>
             )}
             {last
               ? (
                 <ButtonLink href={target} size="sm" class="whitespace-nowrap">
-                  Get started
+                  {t("welcome.getStarted")}
                 </ButtonLink>
               )
               : (
@@ -244,7 +249,7 @@ export default function WelcomeTour({ target }: { target: string }) {
                   size="sm"
                   onClick={() => go(index.value + 1)}
                 >
-                  Next
+                  {sharedTrans("common.next")}
                 </Button>
               )}
           </div>

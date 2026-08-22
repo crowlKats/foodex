@@ -1,0 +1,144 @@
+@locale en
+---
+
+common.save = Save
+
+common.cancel = Cancel
+
+common.delete = Delete
+
+common.edit = Edit
+
+common.update = Update
+
+common.create = Create
+
+common.back = Back
+
+common.continue = Continue
+
+common.search = Search
+
+common.share = Share
+
+common.copied = Copied!
+
+common.close = Close
+
+common.dismiss = Dismiss
+
+common.or = or
+
+common.you = (you)
+
+common.home = Home
+
+common.shared = Shared
+
+common.owned = owned
+
+common.expired = expired
+
+common.allCount = All {$title} ({$count})
+
+common.apply = Apply
+
+common.invite = Invite
+
+common.from = From
+
+common.to = To
+
+common.type = Type
+
+common.source = Source
+
+common.prev = Prev
+
+common.next = Next
+
+common.skip = Skip
+
+common.backTo = Back
+
+common.name = Name
+
+common.email = Email
+
+common.required = Required
+
+common.loading = Loading…
+
+common.error = Error
+
+common.remove = Remove
+
+common.add = Add
+
+common.import = Import
+
+common.new = New
+
+common.settings = Settings
+
+common.searchPlaceholder = Search {$title}...
+
+common.pageOf =
+  
+  .input {$current :integer}
+  .input {$total :integer}
+  .match $current
+  * {{Page {$current} of {$total}}}
+
+common.descending = Descending
+
+common.ascending = Ascending
+
+common.totalCount =
+  
+  .input {$count :integer}
+  .match $count
+  one {{{$count} total}}
+  * {{{$count} total}}
+
+common.noName = (no name)
+
+common.noEmail = no email
+
+common.darkMode = Toggle dark mode
+
+error.notFoundTitle = We couldn't find that page
+
+error.notFoundBody = Nothing lives at this address. The link may be out of date, or the recipe may have been renamed or deleted.
+
+error.serverTitle = Something went wrong
+
+error.serverBody = The page failed to load. Trying again often works; if it doesn't, the problem is on our side.
+
+error.browseRecipes = Browse recipes
+
+error.needHousehold = Join or create a household to do this.
+
+error.generic = Something went wrong. Please try again.
+
+error.noMatchQuery = Nothing here goes by that name.
+
+language.en = English
+
+language.it = Italiano
+
+form.unit = Unit
+
+form.description = Description
+
+empty.signInToAdd = Sign in to add one.
+
+empty.addFirstForm = Add your first with the form on this page.
+
+auth.backToSignIn = Back to sign in
+
+auth.inviteRequired = New accounts on this Foodex instance can only be created through an invite link. If someone invited you, open their invite link and sign in from there.
+
+household.revoke = Revoke
+
+profile.household = Household

@@ -1,0 +1,56 @@
+@locale it
+---
+
+welcome.tourRecipesTitle = Ricette
+
+welcome.tourRecipesBody = Il ricettario condiviso. Sfoglia e cucina ciò che ogni nucleo ha aggiunto, e aggiungi le tue: importa da foto, pagine web o testo incollato invece di digitare tutto.
+
+welcome.tourCollectionsTitle = Collezioni
+
+welcome.tourCollectionsBody = Raggruppa le ricette come preferisci: i lunedì sera, un menù di festa, tutto da un libro. Le collezioni si possono condividere con altri nuclei tramite link.
+
+welcome.tourCollectionsFallback = Sul telefono, Collezioni è in questo menu.
+
+welcome.tourAssistantTitle = Assistente
+
+welcome.tourAssistantBody = Una chat che aiuta con le parti noiose: trovare, importare e rielaborare ricette. Tutto ciò che propone resta in bozza finché non lo rivedi tu.
+
+welcome.tourAssistantFallback = Sul telefono, l'Assistente è in questo menu.
+
+welcome.tourPantryTitle = Dispensa
+
+welcome.tourPantryBody = Cosa c'è in cucina. La dispensa alimenta il filtro "pronto da cucinare", dice alle ricette cosa hai già e ti avvisa prima che scada.
+
+welcome.tourScanTitle = Scansiona
+
+welcome.tourScanBody = Lo scanner di codici a barre. Inquadra la spesa mentre la disimballi e finisce in dispensa, con nome e formato già compilati.
+
+welcome.tourPlanTitle = Piano
+
+welcome.tourPlanBody = Cosa intendi cucinare. Pianificare un pasto mette gli ingredienti mancanti in lista della spesa; cucinarlo aggiorna la dispensa.
+
+welcome.tourShoppingTitle = Lista della spesa
+
+welcome.tourShoppingBody = Calcolata per te: ciò che il piano richiede e la dispensa non copre. Spunta gli articoli mentre li compri e vanno dritti in dispensa.
+
+welcome.tourCatalogsTitle = Ingredienti, negozi e attrezzi
+
+welcome.tourCatalogsBody = Cataloghi di riferimento condivisi. Segna quanto costano le cose e quali attrezzi hai; da lì arrivano i costi stimati e il filtro "pronto da cucinare".
+
+welcome.tourCatalogsFallback = Sul telefono, questi cataloghi sono in questo menu.
+
+welcome.tourDocsTitle = La guida
+
+welcome.tourDocsBody = La documentazione completa di tutto quello che hai appena visto, quando ti servono i dettagli.
+
+welcome.tourDocsFallback = Sul telefono, la guida è in questo menu.
+
+welcome.tourHouseholdTitle = Il tuo nucleo
+
+welcome.tourHouseholdBody = Le persone con cui cucini: membri, inviti e impostazioni. Tutto ciò che hai visto è condiviso con loro. Ora: crea un nucleo o unisciti con un invito.
+
+welcome.heading = Benvenuto su Foodex
+
+welcome.tourIntro = Un minuto per orientarti.
+
+welcome.getStarted = Inizia

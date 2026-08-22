@@ -4,6 +4,11 @@ import { layout } from "./$_layout.ts";
 import { Head } from "fresh/runtime";
 import { Nav } from "../components/Nav.tsx";
 import PwaInstallPrompt from "../islands/PwaInstallPrompt.tsx";
+import { createT, LocaleProvider } from "../components/Translation.tsx";
+import en from "./_layout.en.mfr";
+import it from "./_layout.it.mfr";
+
+const t = createT({ en, it });
 
 export default layout(function AppLayout({ Component, state, url }) {
   // Full-bleed (no max-width wrapper, no page scroll) for the scanner and the
@@ -16,12 +21,21 @@ export default layout(function AppLayout({ Component, state, url }) {
   const navPreview = url.pathname === "/welcome" &&
     url.searchParams.get("tour") === "1";
   return (
-    <>
+    <LocaleProvider locale={state.locale}>
       {state.pageTitle !== "Foodex" && (
         <Head>
           <title>{`${state.pageTitle} - Foodex`}</title>
         </Head>
       )}
+      <Head>
+        <script
+          // deno-lint-ignore react-no-danger
+          dangerouslySetInnerHTML={{
+            __html: `globalThis.__LOCALE__ = ${JSON.stringify(state.locale)};`,
+          }}
+        />
+        <html lang={state.locale} />
+      </Head>
       <Nav
         user={state.user}
         shoppingListCount={state.shoppingListCount}
@@ -32,9 +46,10 @@ export default layout(function AppLayout({ Component, state, url }) {
       {state.user?.sudoBy && (
         <div class="bg-red-600 text-white text-sm px-4 py-1.5 flex items-center gap-3">
           <span class="flex-1">
-            <strong>Sudo:</strong> acting as{" "}
-            {state.user.name}. Changes are recorded under{" "}
-            {state.user.sudoBy.name}'s name.
+            {t("sudo.banner", {
+              name: state.user.name ?? "",
+              admin: state.user.sudoBy.name ?? "",
+            })}
           </span>
           <form method="POST" action="/admin/sudo">
             <input type="hidden" name="_method" value="EXIT" />
@@ -42,7 +57,7 @@ export default layout(function AppLayout({ Component, state, url }) {
               type="submit"
               class="underline font-semibold cursor-pointer whitespace-nowrap"
             >
-              Exit sudo
+              {t("sudo.exit")}
             </button>
           </form>
         </div>
@@ -69,6 +84,6 @@ export default layout(function AppLayout({ Component, state, url }) {
         )}
       </main>
       <PwaInstallPrompt />
-    </>
+    </LocaleProvider>
   );
 });

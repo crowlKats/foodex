@@ -2,6 +2,12 @@ import { handler, page } from "./$index.ts";
 import { AdminNav } from "../../components/AdminNav.tsx";
 import { PageHeader } from "../../components/PageHeader.tsx";
 import { formatBytes } from "../../lib/admin-format.ts";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 interface Counts {
   households: number;
@@ -40,7 +46,9 @@ export const handlers = handler({
       Object.entries(raw).map(([k, v]) => [k, Number(v)]),
     ) as unknown as Counts;
 
-    ctx.state.pageTitle = "Admin";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "admin.title",
+    ).format();
     return { data: { counts } };
   },
 });
@@ -67,41 +75,47 @@ function StatCard(
 
 export default page(function AdminDashboard({ data, url }) {
   const { counts } = data;
+  const trans = t.use();
   return (
     <div>
-      <PageHeader title="Admin" noSearch />
+      <PageHeader title={trans("admin.title")} noSearch />
       <AdminNav currentPath={url.pathname} />
 
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Households"
+          label={trans("admin.householdsStat")}
           value={String(counts.households)}
           href="/admin/households"
         />
         <StatCard
-          label="Recipes"
+          label={trans("admin.recipesStat")}
           value={String(counts.recipes)}
-          detail={`${counts.private_recipes} private`}
+          detail={trans("admin.privateCount", {
+            count: counts.private_recipes,
+          })}
           href="/admin/recipes"
         />
         <StatCard
-          label="Ingredients"
+          label={trans("admin.ingredientsStat")}
           value={String(counts.ingredients)}
           href="/ingredients"
         />
         <StatCard
-          label="Media"
+          label={trans("admin.mediaStat")}
           value={String(counts.media_count)}
           detail={formatBytes(counts.media_bytes)}
           href="/admin/system"
         />
         <StatCard
-          label="Assistant chats"
+          label={trans("admin.assistantChats")}
           value={String(counts.agent_sessions)}
         />
-        <StatCard label="Collections" value={String(counts.collections)} />
         <StatCard
-          label="Stores / Tools / Dishes"
+          label={trans("admin.collectionsStat")}
+          value={String(counts.collections)}
+        />
+        <StatCard
+          label={trans("admin.storesToolsDishes")}
           value={`${counts.stores} / ${counts.tools} / ${counts.dishes}`}
         />
       </div>

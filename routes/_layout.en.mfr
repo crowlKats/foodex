@@ -1,0 +1,6 @@
+@locale en
+---
+
+sudo.banner = Sudo: acting as {$name}. Changes are recorded under {$admin}'s name.
+
+sudo.exit = Exit sudo

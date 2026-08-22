@@ -1,0 +1,8 @@
+@locale it
+---
+
+auth.checkEmailTitle = Controlla la tua email
+
+auth.checkEmailHeading = Controlla la tua email
+
+auth.checkEmailBody = Abbiamo inviato un link di accesso a quell'indirizzo. Seguilo per accedere, o per creare l'account se è la prima volta. Il link scade tra 15 minuti.

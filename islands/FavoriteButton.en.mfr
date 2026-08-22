@@ -1,0 +1,10 @@
+@locale en
+---
+
+recipes.favorite = Favorite
+
+recipes.favorited = Favorited
+
+recipes.addFavorite = Add to favorites
+
+recipes.removeFavorite = Remove from favorites

@@ -1,0 +1,12 @@
+@locale it
+---
+
+catalog.tools = Attrezzi
+
+catalog.addTool = Aggiungi attrezzo
+
+empty.noTools = Nessun attrezzo ancora
+
+empty.noToolsMatch = Nessun attrezzo corrisponde a "{$query}"
+
+empty.noToolsBody = Gli attrezzi sono le tue pentole: una padella, una planetaria, un forno. Una ricetta può riferirne uno con le impostazioni ("180 °C", "fuoco medio") e una nota su come si usa.

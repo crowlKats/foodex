@@ -16,6 +16,13 @@ import {
   Pagination,
   paginationParams,
 } from "../../../components/Pagination.tsx";
+import { createT } from "../../../components/Translation.tsx";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import { t as shared } from "../../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 interface HouseholdRow {
   id: string;
@@ -99,7 +106,9 @@ export const handlers = handler({
        ORDER BY hi.created_at DESC`,
     );
 
-    ctx.state.pageTitle = "Admin: Households";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "admin.pageHouseholds",
+    ).format();
     return {
       data: {
         households: result.rows,
@@ -225,12 +234,14 @@ export default page(function AdminHouseholdsPage(
     url,
   },
 ) {
+  const trans = t.use();
+  const sharedTrans = shared.use();
   return (
     <div>
       <PageHeader
-        title="Households"
+        title={trans("admin.pageHouseholds")}
         query={q}
-        searchPlaceholder="Search households..."
+        searchPlaceholder={trans("admin.searchHouseholds")}
       />
       <AdminNav currentPath={url.pathname} />
 
@@ -239,15 +250,14 @@ export default page(function AdminHouseholdsPage(
 
       <div class="grid gap-6 md:grid-cols-2 mb-8">
         <div class="card">
-          <SectionHeader title="Invite a new user" />
+          <SectionHeader title={trans("admin.inviteUser")} />
           <p class="text-sm text-stone-500 my-3">
-            Creates an empty household and emails an invite link. The invitee
-            becomes its owner and picks the name when they join.
+            {t("admin.inviteUserHelp")}
           </p>
           <form method="POST" class="flex gap-2 items-end">
             <input type="hidden" name="_method" value="INVITE" />
             <div class="flex-1">
-              <FormField label="Email">
+              <FormField label={sharedTrans("common.email")}>
                 <Input
                   type="email"
                   name="email"
@@ -257,16 +267,20 @@ export default page(function AdminHouseholdsPage(
                 />
               </FormField>
             </div>
-            <Button type="submit">Invite</Button>
+            <Button type="submit">{t("admin.invite")}</Button>
           </form>
         </div>
 
         <div class="card">
-          <SectionHeader title={`Pending invites (${invites.length})`} />
+          <SectionHeader
+            title={trans("admin.pendingInvites", {
+              count: String(invites.length),
+            })}
+          />
           {invites.length === 0
             ? (
               <p class="text-sm text-stone-500 mt-3">
-                No outstanding invites.
+                {t("admin.noOutstandingInvites")}
               </p>
             )
             : (
@@ -277,11 +291,11 @@ export default page(function AdminHouseholdsPage(
                     <div key={i.id}>
                       <div class="flex items-center gap-2">
                         <span class="font-medium flex-1 truncate">
-                          {i.invited_email ?? "(no email)"}
+                          {i.invited_email ?? shared("common.noEmail")}
                         </span>
                         {expired && (
                           <span class="text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-1.5 py-0.5">
-                            expired
+                            {shared("common.expired")}
                           </span>
                         )}
                         <form method="POST">
@@ -292,13 +306,14 @@ export default page(function AdminHouseholdsPage(
                           />
                           <input type="hidden" name="invite_id" value={i.id} />
                           <ConfirmButton
-                            message={`Revoke the invite for ${
-                              i.invited_email ?? "this address"
-                            }? Its empty household is removed too.`}
+                            message={trans("admin.revokeInviteConfirm", {
+                              email: i.invited_email ??
+                                trans("admin.thisAddress"),
+                            })}
                             variant="danger-outline"
                             size="xs"
                           >
-                            Revoke
+                            {shared("household.revoke")}
                           </ConfirmButton>
                         </form>
                       </div>
@@ -313,14 +328,17 @@ export default page(function AdminHouseholdsPage(
         </div>
       </div>
 
-      <div class="text-sm text-stone-500 mb-3">{totalCount} total</div>
+      <div class="text-sm text-stone-500 mb-3">
+        {shared("common.totalCount", { count: totalCount })}
+      </div>
       {households.length === 0
         ? (
           <EmptyState
-            title={q ? `No households match "${q}"` : "No households yet"}
+            title={q
+              ? trans("admin.noHouseholdsMatch", { query: q })
+              : trans("admin.noHouseholds")}
           >
-            A household is created during onboarding, so one appears here for
-            every active account or group.
+            {t("admin.noHouseholdsBody")}
           </EmptyState>
         )
         : (

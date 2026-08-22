@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import { fresh } from "fresh/vite";
 import tailwindcss from "@tailwindcss/vite";
+import mfr from "./vite-plugin-mfr.ts";
 
 /**
  * Some JSR packages (e.g. `@luca/highlightable-textarea`) publish raw Deno
@@ -27,7 +28,7 @@ function denoSpecifiers(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [denoSpecifiers(), fresh(), tailwindcss()],
+  plugins: [denoSpecifiers(), fresh(), tailwindcss(), mfr()],
   server: {
     host: "0.0.0.0",
   },
@@ -35,6 +36,10 @@ export default defineConfig({
   // instead of handing raw `.tsx` to the runtime, which can't strip types
   // under node_modules.
   ssr: {
-    noExternal: ["@luca/highlightable-textarea", /@jsr\//],
+    noExternal: [
+      "@luca/highlightable-textarea",
+      "@luca/messageformat-resources",
+      /@jsr\//,
+    ],
   },
 });

@@ -1,0 +1,36 @@
+@locale en
+---
+
+nav.recipes = Recipes
+
+nav.collections = Collections
+
+nav.assistant = Assistant
+
+nav.pantry = Pantry
+
+nav.plan = Plan
+
+nav.shoppingList = Shopping List
+
+nav.shop = Shop
+
+nav.ingredients = Ingredients
+
+nav.stores = Stores
+
+nav.tools = Tools
+
+nav.admin = Admin
+
+nav.docs = User Guide
+
+nav.household = Household
+
+nav.signIn = Sign in
+
+nav.signOut = Sign out
+
+nav.menu = Menu
+
+nav.scan = Scan

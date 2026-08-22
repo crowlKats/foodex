@@ -1,0 +1,18 @@
+@locale en
+---
+
+auth.signInTitle = Sign In
+
+auth.signInHeading = Sign in to Foodex
+
+auth.continueGithub = Continue with GitHub
+
+auth.continueGoogle = Continue with Google
+
+auth.continueAuthentik = Continue with Authentik
+
+auth.continueEmail = Continue with email
+
+auth.emailPlaceholder = Email address
+
+auth.captchaFailed = Captcha verification failed. Please try again.

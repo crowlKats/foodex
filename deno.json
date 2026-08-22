@@ -1,0 +1,28 @@
+{
+  "imports": {
+    "@/": "./"
+  },
+  "tasks": {
+    "types": "deno run --allow-read --allow-write scripts/generate-mfr-types.ts",
+    "types:watch": "deno run --allow-read --allow-write scripts/generate-mfr-types.ts --watch",
+    "dev": "deno task types:watch & vite"
+  },
+  "exclude": ["**/_fresh/*", "_types", ".output"],
+  "unstable": ["sloppy-imports"],
+  "lint": {
+    "rules": {
+      "exclude": ["no-sloppy-imports"]
+    }
+  },
+  "compilerOptions": {
+    "lib": ["esnext", "dom", "dom.iterable", "dom.asynciterable", "deno.ns"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["vite/client"],
+    "rootDirs": [".", "./_types", "./.fresh/types"]
+  }
+}

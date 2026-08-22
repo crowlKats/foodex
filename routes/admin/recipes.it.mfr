@@ -1,0 +1,14 @@
+@locale it
+---
+
+admin.pageRecipes = Admin: Ricette
+
+admin.searchRecipes = Cerca ricette...
+
+admin.recipesModeration = {$count} in totale, private incluse. Eliminare da qui è per moderazione; non si può annullare.
+
+admin.noRecipes = Nessuna ricetta ancora
+
+admin.noRecipesMatch = Nessuna ricetta corrisponde a "{$query}"
+
+admin.noRecipesBody = Ogni ricetta della piattaforma compare in questo elenco, anche quelle private.

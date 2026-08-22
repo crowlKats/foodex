@@ -13,6 +13,13 @@ import type {
   HouseholdMember,
 } from "../../db/types.ts";
 import { generateInviteCode } from "../../lib/auth.ts";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./settings.en.mfr";
+import it from "./settings.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -57,7 +64,11 @@ export const handlers = handler({
       ),
     ]);
 
-    ctx.state.pageTitle = `${householdRes.rows[0].name} Settings`;
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "household.settingsTitle",
+    ).format({
+      name: householdRes.rows[0].name,
+    });
     return {
       data: {
         household: householdRes.rows[0],
@@ -193,7 +204,9 @@ export const handlers = handler({
           status: 303,
           headers: {
             Location: "/household/settings?error=" + encodeURIComponent(
-              "Make another member an owner before leaving, or delete the household.",
+              pickBundle(ctx.state.locale, { en, it }).get(
+                "household.leaveNeedOwner",
+              ).format(),
             ),
           },
         });
@@ -258,6 +271,8 @@ export default page(function HouseholdSettingsPage(
     url,
   },
 ) {
+  const trans = t.use();
+  const sharedTrans = shared.use();
   const isOwner = myRole === "owner";
   const otherOwners = members.some((m) =>
     m.role === "owner" && m.user_id !== state.user!.id
@@ -267,16 +282,18 @@ export default page(function HouseholdSettingsPage(
     <div class="max-w-2xl">
       <a href="/household" class="link text-sm">
         <IconArrowLeft class="size-3.5 inline mr-1" />
-        Back to Household
+        {t("household.backToHousehold")}
       </a>
-      <h1 class="text-2xl font-bold mt-4 mb-6">{household.name} Settings</h1>
+      <h1 class="text-2xl font-bold mt-4 mb-6">
+        {t("household.settingsTitle", { name: household.name })}
+      </h1>
 
       {error && <div class="alert-error mb-4">{error}</div>}
 
       <div class="space-y-6">
         <div class="card">
           <h2 class="text-lg font-semibold mb-3">
-            Members ({members.length})
+            {t("household.members", { count: members.length })}
           </h2>
           <div class="space-y-2">
             {members.map((m) => (
@@ -296,7 +313,7 @@ export default page(function HouseholdSettingsPage(
                     {m.name}
                     {m.user_id === state.user!.id && (
                       <span class="text-xs text-stone-400 ml-1">
-                        (you)
+                        {shared("common.you")}
                       </span>
                     )}
                   </div>
@@ -313,7 +330,9 @@ export default page(function HouseholdSettingsPage(
                       : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400"
                   }`}
                 >
-                  {m.role}
+                  {m.role === "owner"
+                    ? t("household.owner")
+                    : t("household.member")}
                 </span>
                 {isOwner && m.user_id !== state.user!.id &&
                   m.role === "member" && (
@@ -329,11 +348,13 @@ export default page(function HouseholdSettingsPage(
                       value={m.user_id}
                     />
                     <ConfirmButton
-                      message={`Make ${m.name} an owner? Owners manage members, invites, and settings, and this frees you to leave the household.`}
+                      message={trans("household.makeOwnerConfirm", {
+                        name: m.name ?? "",
+                      })}
                       variant="ghost"
                       size="xs"
                     >
-                      Make owner
+                      {t("household.makeOwner")}
                     </ConfirmButton>
                   </form>
                 )}
@@ -353,7 +374,7 @@ export default page(function HouseholdSettingsPage(
                       type="submit"
                       variant="danger-ghost"
                       icon={IconTrash}
-                      title="Remove member"
+                      title={trans("household.removeMember")}
                     />
                   </form>
                 )}
@@ -364,34 +385,35 @@ export default page(function HouseholdSettingsPage(
             <form method="POST" class="mt-4">
               <input type="hidden" name="_method" value="LEAVE" />
               <ConfirmButton
-                message="Leave this household? You'll lose access to its recipes, pantry, and lists, and will need an invite or a new household to keep using Foodex."
+                message={trans("household.leaveConfirm")}
                 variant="danger-outline"
                 class="w-full"
               >
-                Leave Household
+                {t("household.leave")}
               </ConfirmButton>
             </form>
           )}
           {isOwner && !otherOwners && members.length > 1 && (
             <p class="text-xs text-stone-400 mt-4">
-              Moving out? Make another member an owner first, then you can
-              leave.
+              {t("household.movingOutHint")}
             </p>
           )}
           <p class="text-xs text-stone-400 mt-2">
-            Leaving?{" "}
+            {t("household.leavingHint")}{" "}
             <a href="/moving-box" class="link">
-              Pack a moving box
+              {t("household.packBox")}
             </a>{" "}
-            to take recipes with you.
+            {t("household.packBoxRest")}
           </p>
         </div>
 
         {isOwner && (
           <div class="card">
-            <h2 class="text-lg font-semibold mb-3">Invite Link</h2>
+            <h2 class="text-lg font-semibold mb-3">
+              {t("household.inviteLink")}
+            </h2>
             <p class="text-xs text-stone-500 mb-3">
-              Share a link so others can join. Links expire after 7 days.
+              {t("household.inviteHelp")}
             </p>
 
             {invites.length > 0 && (
@@ -436,7 +458,7 @@ export default page(function HouseholdSettingsPage(
                           type="submit"
                           variant="danger-ghost"
                           icon={IconTrash}
-                          title="Revoke"
+                          title={sharedTrans("household.revoke")}
                         />
                       </form>
                     </div>
@@ -452,7 +474,7 @@ export default page(function HouseholdSettingsPage(
                 value="CREATE_INVITE"
               />
               <Button type="submit" class="w-full">
-                Generate Invite Link
+                {t("household.generateInvite")}
               </Button>
             </form>
           </div>
@@ -460,10 +482,12 @@ export default page(function HouseholdSettingsPage(
 
         {isOwner && (
           <div class="card">
-            <h2 class="text-lg font-semibold mb-3">Household Name</h2>
+            <h2 class="text-lg font-semibold mb-3">
+              {t("household.householdName")}
+            </h2>
             <form method="POST" class="space-y-3">
               <input type="hidden" name="_method" value="UPDATE_NAME" />
-              <FormField label="Household Name">
+              <FormField label={trans("household.householdName")}>
                 <Input
                   type="text"
                   name="name"
@@ -473,7 +497,7 @@ export default page(function HouseholdSettingsPage(
                 />
               </FormField>
               <Button type="submit">
-                Update
+                {shared("common.update")}
               </Button>
             </form>
           </div>
@@ -482,16 +506,16 @@ export default page(function HouseholdSettingsPage(
         {isOwner && (
           <div class="card">
             <h2 class="text-lg font-semibold mb-3 text-red-600">
-              Danger Zone
+              {t("household.dangerZone")}
             </h2>
             <form method="POST">
               <input type="hidden" name="_method" value="DELETE" />
               <ConfirmButton
-                message="Delete this household? This cannot be undone."
+                message={trans("household.deleteConfirm")}
                 variant="danger"
                 class="w-full"
               >
-                Delete Household
+                {t("household.deleteHousehold")}
               </ConfirmButton>
             </form>
           </div>

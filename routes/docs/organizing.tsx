@@ -7,19 +7,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Collections & Dishes";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.organizingTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function OrganizingDocs({ url }) {
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Collections & Dishes"
+      title={trans("docs.organizingTitle")}
       intro="Two ways to bring recipes together: collections you curate yourself, and dishes that group every version of the same thing."
     >
       <DocSection id="collections" title="Collections">

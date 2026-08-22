@@ -29,6 +29,13 @@ import { IconUsers } from "@tabler/icons-preact";
 import { IconFilter } from "@tabler/icons-preact";
 import { IconX } from "@tabler/icons-preact";
 import SortSelect from "../../islands/SortSelect.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle, tagMessageKey } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 const SORT_OPTIONS = [
   {
@@ -340,7 +347,9 @@ export const handlers = handler({
       dish_count: r.dish_id ? dishCounts.get(r.dish_id) ?? 0 : 0,
     }));
 
-    ctx.state.pageTitle = "Recipes";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "recipes.title",
+    ).format();
     return {
       data: {
         recipes,
@@ -427,6 +436,7 @@ export default page(function RecipesPage({
   },
   url,
 }) {
+  const trans = t.use();
   const current = {
     q: q || undefined,
     favorites: favoritesOnly,
@@ -458,17 +468,16 @@ export default page(function RecipesPage({
     if (cookableOnly && pantryIsEmpty) {
       return (
         <div class="card text-center py-8 space-y-2">
-          <p class="font-medium">Nothing is ready to make yet</p>
+          <p class="font-medium">{t("empty.nothingReady")}</p>
           <p class="text-stone-500 text-sm">
-            "Ready to make" only shows recipes your pantry already covers, and
-            your pantry is empty.
+            {t("empty.nothingReadyBody")}
           </p>
           <div class="flex flex-wrap gap-2 justify-center pt-1">
             <ButtonLink href="/household/pantry" size="sm">
-              Stock the pantry
+              {t("empty.stockPantry")}
             </ButtonLink>
             <ButtonLink href={clearHref} variant="outline" size="sm">
-              Show all recipes
+              {t("empty.showAllRecipes")}
             </ButtonLink>
           </div>
         </div>
@@ -478,14 +487,16 @@ export default page(function RecipesPage({
     if (q) {
       return (
         <div class="card text-center py-8 space-y-2">
-          <p class="font-medium">No recipes match "{q}"</p>
+          <p class="font-medium">{t("empty.noRecipesMatch", { query: q })}</p>
           <p class="text-stone-500 text-sm">
-            Try a shorter search{hasFilters ? ", or clear the filters" : ""}.
+            {hasFilters
+              ? t("empty.noRecipesMatchBodyFilters")
+              : t("empty.noRecipesMatchBody")}
           </p>
           {hasFilters && (
             <div class="pt-1">
               <ButtonLink href={clearHref} variant="outline" size="sm">
-                Clear all filters
+                {t("empty.clearAllFilters")}
               </ButtonLink>
             </div>
           )}
@@ -496,13 +507,13 @@ export default page(function RecipesPage({
     if (hasFilters) {
       return (
         <div class="card text-center py-8 space-y-2">
-          <p class="font-medium">No recipes match these filters</p>
+          <p class="font-medium">{t("empty.noRecipesFilters")}</p>
           <p class="text-stone-500 text-sm">
-            Nothing in the collection fits every filter you've picked.
+            {t("empty.noRecipesFiltersBody")}
           </p>
           <div class="pt-1">
             <ButtonLink href={clearHref} variant="outline" size="sm">
-              Clear all filters
+              {t("empty.clearAllFilters")}
             </ButtonLink>
           </div>
         </div>
@@ -511,16 +522,17 @@ export default page(function RecipesPage({
 
     return (
       <div class="card text-center py-8 space-y-2">
-        <p class="font-medium">No recipes yet</p>
+        <p class="font-medium">{t("empty.noRecipes")}</p>
         <p class="text-stone-500 text-sm">
-          Write one from scratch, or import one from a URL, a photo or a block
-          of text.
+          {t("empty.noRecipesBody")}
         </p>
         {loggedIn && (
           <div class="flex flex-wrap gap-2 justify-center pt-1">
-            <ButtonLink href="/recipes/new" size="sm">New recipe</ButtonLink>
+            <ButtonLink href="/recipes/new" size="sm">
+              {t("empty.newRecipe")}
+            </ButtonLink>
             <ButtonLink href="/recipes/import" variant="outline" size="sm">
-              Import
+              {shared("common.import")}
             </ButtonLink>
           </div>
         )}
@@ -541,14 +553,14 @@ export default page(function RecipesPage({
 
   return (
     <div>
-      <PageHeader title="Recipes" query={q}>
+      <PageHeader title={trans("recipes.title")} query={q}>
         {loggedIn && (
           <>
             <ButtonLink href="/recipes/import" variant="outline">
-              Import
+              {shared("common.import")}
             </ButtonLink>
             <ButtonLink href="/recipes/new">
-              New Recipe
+              {t("recipes.newRecipe")}
             </ButtonLink>
           </>
         )}
@@ -576,7 +588,7 @@ export default page(function RecipesPage({
           <summary class="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-sm text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200">
             <span class="inline-flex items-center gap-1.5 h-10">
               <IconFilter class="size-4" />
-              <span>Filters</span>
+              <span>{t("recipes.filters")}</span>
               {hasFilters && (
                 <span class="count-badge count-badge-soft">
                   {difficulty.length + mealTypes.length + dietary.length +
@@ -589,12 +601,12 @@ export default page(function RecipesPage({
             {loggedIn && (
               <div>
                 <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-                  Show only
+                  {t("recipes.showOnly")}
                 </div>
                 <div class="flex flex-wrap gap-1.5">
                   {hasHousehold && (
                     <FilterChip
-                      label="Ready to make"
+                      label={trans("recipes.readyToMake")}
                       active={cookableOnly}
                       href={filterUrl(current, {
                         cookable: cookableOnly ? undefined : "1",
@@ -602,7 +614,7 @@ export default page(function RecipesPage({
                     />
                   )}
                   <FilterChip
-                    label="Favourites"
+                    label={trans("recipes.favourites")}
                     active={favoritesOnly}
                     href={filterUrl(current, {
                       favorites: favoritesOnly ? undefined : "1",
@@ -613,13 +625,13 @@ export default page(function RecipesPage({
             )}
             <div>
               <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-                Difficulty
+                {t("recipes.difficulty")}
               </div>
               <div class="flex flex-wrap gap-1.5">
                 {DIFFICULTY_LEVELS.map((d) => (
                   <FilterChip
                     key={d}
-                    label={d}
+                    label={trans(tagMessageKey(d) as "tags.easy")}
                     active={difficulty.includes(d)}
                     href={toggleArrayFilter("difficulty", d, difficulty)}
                   />
@@ -628,13 +640,13 @@ export default page(function RecipesPage({
             </div>
             <div>
               <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-                Meal Type
+                {t("recipes.mealType")}
               </div>
               <div class="flex flex-wrap gap-1.5">
                 {MEAL_TYPES.map((mt) => (
                   <FilterChip
                     key={mt}
-                    label={mt}
+                    label={trans(tagMessageKey(mt) as "tags.breakfast")}
                     active={mealTypes.includes(mt)}
                     href={toggleArrayFilter("meal_type", mt, mealTypes)}
                   />
@@ -643,13 +655,13 @@ export default page(function RecipesPage({
             </div>
             <div>
               <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-                Dietary
+                {t("recipes.dietary")}
               </div>
               <div class="flex flex-wrap gap-1.5">
                 {DIETARY_TAGS.map((dt) => (
                   <FilterChip
                     key={dt}
-                    label={dt}
+                    label={trans(tagMessageKey(dt) as "tags.breakfast")}
                     active={dietary.includes(dt)}
                     href={toggleArrayFilter("dietary", dt, dietary)}
                   />
@@ -668,7 +680,7 @@ export default page(function RecipesPage({
                 class="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
               >
                 <IconX class="size-3.5" />
-                Clear all filters
+                {t("empty.clearAllFilters")}
               </a>
             )}
           </div>
@@ -682,7 +694,13 @@ export default page(function RecipesPage({
             })}
             options={SORT_OPTIONS.map((o) => ({
               value: o.value,
-              label: o.label,
+              label: o.value === "newest"
+                ? trans("recipes.sortNewest")
+                : o.value === "alphabetical"
+                ? trans("recipes.sortAlpha")
+                : o.value === "quickest"
+                ? trans("recipes.sortQuickest")
+                : trans("recipes.sortIngredients"),
               href: filterUrl(current, {
                 sort: o.value === "newest" ? undefined : o.value,
                 desc: undefined,

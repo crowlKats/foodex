@@ -10,6 +10,12 @@ import {
   Pagination,
   paginationParams,
 } from "../../components/Pagination.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "./recipes.en.mfr";
+import it from "./recipes.it.mfr";
+
+const t = createT({ en, it });
 
 interface RecipeRow {
   id: string;
@@ -60,7 +66,9 @@ export const handlers = handler({
       ]);
     }
 
-    ctx.state.pageTitle = "Admin: Recipes";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "admin.pageRecipes",
+    ).format();
     return {
       data: {
         recipes: result.rows,
@@ -103,25 +111,27 @@ export const handlers = handler({
 export default page(function AdminRecipesPage(
   { data: { recipes, q, currentPage, totalCount }, url },
 ) {
+  const trans = t.use();
   return (
     <div>
       <PageHeader
-        title="Recipes"
+        title={trans("admin.pageRecipes")}
         query={q}
-        searchPlaceholder="Search recipes..."
+        searchPlaceholder={trans("admin.searchRecipes")}
       />
       <AdminNav currentPath={url.pathname} />
 
       <p class="text-sm text-stone-500 mb-3">
-        {totalCount}{" "}
-        total, private ones included. Deleting here is for moderation; it can't
-        be undone.
+        {t("admin.recipesModeration", { count: String(totalCount) })}
       </p>
       {recipes.length === 0
         ? (
-          <EmptyState title={q ? `No recipes match "${q}"` : "No recipes yet"}>
-            Every recipe on the platform shows up in this list, including ones
-            marked private.
+          <EmptyState
+            title={q
+              ? trans("admin.noRecipesMatch", { query: q })
+              : trans("admin.noRecipes")}
+          >
+            {t("admin.noRecipesBody")}
           </EmptyState>
         )
         : (

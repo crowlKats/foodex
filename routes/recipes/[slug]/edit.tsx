@@ -11,6 +11,10 @@ import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import RecipeFields from "../../../islands/RecipeFields.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import { FormActions, SubGroup } from "../../../components/recipe-form/ui.tsx";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import en from "./edit.en.mfr";
+import it from "./edit.it.mfr";
+
 export const handlers = handler({
   async GET(ctx) {
     const slug = ctx.params.slug;
@@ -31,7 +35,9 @@ export const handlers = handler({
       });
     }
 
-    ctx.state.pageTitle = `Edit: ${data.recipe.title}`;
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "recipes.editTitle",
+    ).format({ title: data.recipe.title });
     return { data };
   },
   async POST(ctx) {

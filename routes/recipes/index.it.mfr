@@ -1,0 +1,94 @@
+@locale it
+---
+
+recipes.title = Ricette
+
+recipes.newRecipe = Nuova ricetta
+
+recipes.filters = Filtri
+
+recipes.showOnly = Mostra solo
+
+recipes.readyToMake = Pronto da cucinare
+
+recipes.favourites = Preferiti
+
+recipes.difficulty = Difficoltà
+
+recipes.mealType = Tipo di pasto
+
+recipes.dietary = Dieta
+
+recipes.sortNewest = Più recenti
+
+recipes.sortAlpha = A–Z
+
+recipes.sortQuickest = Tempo totale
+
+recipes.sortIngredients = Ingredienti
+
+empty.noRecipes = Nessuna ricetta ancora
+
+empty.noRecipesBody = Scrivine una da zero, o importane una da un URL, una foto o un blocco di testo.
+
+empty.noRecipesMatch = Nessuna ricetta corrisponde a "{$query}"
+
+empty.noRecipesMatchBody = Prova una ricerca più corta.
+
+empty.noRecipesMatchBodyFilters = Prova una ricerca più corta, o cancella i filtri.
+
+empty.noRecipesFilters = Nessuna ricetta corrisponde a questi filtri
+
+empty.noRecipesFiltersBody = Niente nella raccolta soddisfa tutti i filtri che hai scelto.
+
+empty.nothingReady = Niente è pronto da cucinare
+
+empty.nothingReadyBody = "Pronto da cucinare" mostra solo le ricette già coperte dalla dispensa, e la dispensa è vuota.
+
+empty.stockPantry = Riempi la dispensa
+
+empty.showAllRecipes = Mostra tutte le ricette
+
+empty.clearAllFilters = Cancella tutti i filtri
+
+empty.newRecipe = Nuova ricetta
+
+tags.breakfast = colazione
+
+tags.lunch = pranzo
+
+tags.dinner = cena
+
+tags.snack = spuntino
+
+tags.dessert = dessert
+
+tags.appetizer = antipasto
+
+tags.side = contorno
+
+tags.drink = bevanda
+
+tags.easy = facile
+
+tags.medium = media
+
+tags.hard = difficile
+
+tags.vegetarian = vegetariano
+
+tags.vegan = vegano
+
+tags.pescetarian = pescetariano
+
+tags.glutenFree = senza glutine
+
+tags.dairyFree = senza latticini
+
+tags.nutFree = senza frutta secca
+
+tags.lowCarb = low-carb
+
+tags.keto = chetogenica
+
+tags.paleo = paleo

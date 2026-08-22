@@ -7,6 +7,9 @@ import { saveRecipeChildren } from "../../lib/recipe-save.ts";
 import RecipeFields from "../../islands/RecipeFields.tsx";
 import { BackLink } from "../../components/BackLink.tsx";
 import { FormActions } from "../../components/recipe-form/ui.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "./new.en.mfr";
+import it from "./new.it.mfr";
 
 /** Ingredient/tool pickers plus recipes this household is allowed to see. */
 async function loadRecipeFormOptions(query: QueryFn, householdId: string) {
@@ -41,7 +44,9 @@ export const handlers = handler({
       ctx.state.householdId,
     );
 
-    ctx.state.pageTitle = "New Recipe";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "recipes.newTitle",
+    ).format();
     return {
       data: {
         ...options,

@@ -11,6 +11,11 @@ import { IconHome } from "@tabler/icons-preact";
 import { IconScan } from "@tabler/icons-preact";
 import { IconShieldCog } from "@tabler/icons-preact";
 import type { User } from "../utils.ts";
+import { createT } from "./Translation.tsx";
+import en from "./Nav.en.mfr";
+import it from "./Nav.it.mfr";
+
+const t = createT({ en, it });
 
 function isActive(currentPath: string, href: string): boolean {
   if (href === "/recipes") {
@@ -72,6 +77,7 @@ export function Nav(
     currentPath: string;
   },
 ) {
+  const trans = t.use();
   return (
     <>
       {/* ── Top bar ── */}
@@ -94,7 +100,7 @@ export function Nav(
                     isActive(currentPath, "/recipes") ? "text-orange-400" : ""
                   }`}
                 >
-                  Recipes
+                  {t("nav.recipes")}
                 </a>
                 {hasHousehold && (
                   <a
@@ -106,7 +112,7 @@ export function Nav(
                         : ""
                     }`}
                   >
-                    Collections
+                    {t("nav.collections")}
                   </a>
                 )}
                 {hasHousehold && (
@@ -117,7 +123,7 @@ export function Nav(
                       isActive(currentPath, "/agent") ? "text-orange-400" : ""
                     }`}
                   >
-                    Assistant
+                    {t("nav.assistant")}
                   </a>
                 )}
                 {hasHousehold && (
@@ -131,7 +137,7 @@ export function Nav(
                           : ""
                       }`}
                     >
-                      Pantry
+                      {t("nav.pantry")}
                     </a>
                     <a
                       href="/plan"
@@ -140,7 +146,7 @@ export function Nav(
                         isActive(currentPath, "/plan") ? "text-orange-400" : ""
                       }`}
                     >
-                      Plan
+                      {t("nav.plan")}
                     </a>
                   </>
                 )}
@@ -154,7 +160,7 @@ export function Nav(
                         : ""
                     }`}
                   >
-                    Shopping List
+                    {t("nav.shoppingList")}
                     <span
                       data-shopping-badge
                       class={`count-badge count-badge-accent ml-1.5 ${
@@ -180,7 +186,7 @@ export function Nav(
                       : "hover:text-stone-200"
                   }`}
                 >
-                  Ingredients
+                  {t("nav.ingredients")}
                 </a>
                 <a
                   href="/stores"
@@ -190,7 +196,7 @@ export function Nav(
                       : "hover:text-stone-200"
                   }`}
                 >
-                  Stores
+                  {t("nav.stores")}
                 </a>
                 <a
                   href="/tools"
@@ -200,7 +206,7 @@ export function Nav(
                       : "hover:text-stone-200"
                   }`}
                 >
-                  Tools
+                  {t("nav.tools")}
                 </a>
               </div>
             </div>
@@ -217,7 +223,7 @@ export function Nav(
                   class={`nav-link ${
                     currentPath.startsWith("/admin") ? "text-orange-400" : ""
                   }`}
-                  title="Admin"
+                  title={trans("nav.admin")}
                 >
                   <IconShieldCog class="size-5" />
                 </a>
@@ -228,7 +234,7 @@ export function Nav(
                 class={`nav-link hidden sm:block ${
                   currentPath.startsWith("/docs") ? "text-orange-400" : ""
                 }`}
-                title="User Guide"
+                title={trans("nav.docs")}
               >
                 <IconBook class="size-5" />
               </a>
@@ -242,7 +248,7 @@ export function Nav(
                     ? "text-orange-400"
                     : ""
                 }`}
-                title="Household"
+                title={trans("nav.household")}
               >
                 <IconHome class="size-5" />
               </a>
@@ -271,7 +277,7 @@ export function Nav(
                         type="submit"
                         class="text-sm text-stone-400 hover:text-stone-200 cursor-pointer"
                       >
-                        Sign out
+                        {t("nav.signOut")}
                       </button>
                     </form>
                   </div>
@@ -281,7 +287,7 @@ export function Nav(
                     href="/auth/login"
                     class="text-sm text-stone-400 hover:text-stone-200"
                   >
-                    Sign in
+                    {t("nav.signIn")}
                   </a>
                 )}
             </div>
@@ -297,7 +303,7 @@ export function Nav(
         <div class="flex items-center justify-around">
           <MobileTab
             href="/recipes"
-            label="Recipes"
+            label={trans("nav.recipes")}
             tour="recipes"
             icon={IconToolsKitchen2}
             currentPath={currentPath}
@@ -305,7 +311,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/household/pantry"
-              label="Pantry"
+              label={trans("nav.pantry")}
               tour="pantry"
               icon={IconFridge}
               currentPath={currentPath}
@@ -314,7 +320,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/plan"
-              label="Plan"
+              label={trans("nav.plan")}
               tour="plan"
               icon={IconCalendar}
               currentPath={currentPath}
@@ -323,7 +329,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/scan"
-              label="Scan"
+              label={trans("nav.scan")}
               tour="scan"
               icon={IconScan}
               currentPath={currentPath}
@@ -332,7 +338,7 @@ export function Nav(
           {user && (
             <MobileTab
               href="/shopping-list"
-              label="Shop"
+              label={trans("nav.shop")}
               tour="shopping"
               icon={IconShoppingCart}
               currentPath={currentPath}
@@ -341,7 +347,7 @@ export function Nav(
           )}
           <MobileTab
             href={hasHousehold ? "/household" : "/households"}
-            label="Household"
+            label={trans("nav.household")}
             tour="household"
             icon={IconHome}
             currentPath={currentPath}

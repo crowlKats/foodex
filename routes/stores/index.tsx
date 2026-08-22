@@ -14,6 +14,13 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 import type { StoreWithLocationCount } from "../../db/types.ts";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -73,7 +80,9 @@ export const handlers = handler({
     }
 
     const error = ctx.url.searchParams.get("error") || undefined;
-    ctx.state.pageTitle = "Stores";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "catalog.stores",
+    ).format();
     return {
       data: {
         stores: result.rows,
@@ -162,10 +171,12 @@ export default page(
       url,
     },
   ) {
+    const trans = t.use();
+    const sharedTrans = shared.use();
     const ownedSet = new Set(ownedStoreIds ?? []);
     return (
       <div>
-        <PageHeader title="Stores" query={q} />
+        <PageHeader title={trans("catalog.stores")} query={q} />
 
         {error && (
           <div class="alert-error mb-4">
@@ -176,12 +187,14 @@ export default page(
         <div class={`grid gap-6 ${loggedIn ? "md:grid-cols-2" : ""}`}>
           {loggedIn && (
             <div>
-              <h2 class="text-lg font-semibold mb-3">Add Store</h2>
+              <h2 class="text-lg font-semibold mb-3">
+                {t("catalog.addStore")}
+              </h2>
               <form
                 method="POST"
                 class="card space-y-3"
               >
-                <FormField label="Name">
+                <FormField label={sharedTrans("common.name")}>
                   <Input
                     type="text"
                     name="name"
@@ -203,7 +216,7 @@ export default page(
                   </Select>
                 </FormField>
                 <Button type="submit">
-                  Add Store
+                  {t("catalog.addStore")}
                 </Button>
               </form>
             </div>
@@ -211,23 +224,25 @@ export default page(
 
           <div>
             <h2 class="text-lg font-semibold mb-3">
-              All Stores ({totalCount})
+              {shared("common.allCount", {
+                title: trans("catalog.stores"),
+                count: String(totalCount),
+              })}
             </h2>
             {stores.length === 0
               ? q
                 ? (
-                  <EmptyState title={`No stores match "${q}"`}>
-                    Nothing here goes by that name.
+                  <EmptyState
+                    title={trans("empty.noStoresMatch", { query: q })}
+                  >
+                    {shared("error.noMatchQuery")}
                   </EmptyState>
                 )
                 : (
-                  <EmptyState title="No stores yet">
-                    Stores are the shops you buy from. Recording one lets you
-                    attach prices to ingredients, which is what puts a running
-                    total on the shopping list and lets it group your list by
-                    where you're going. {loggedIn
-                      ? "Add your first with the form on this page."
-                      : "Sign in to add one."}
+                  <EmptyState title={trans("empty.noStores")}>
+                    {t("empty.noStoresBody")} {loggedIn
+                      ? shared("empty.addFirstForm")
+                      : shared("empty.signInToAdd")}
                   </EmptyState>
                 )
               : (

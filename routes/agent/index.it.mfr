@@ -1,0 +1,8 @@
+@locale it
+---
+
+agent.title = Assistente
+
+empty.noConversations = Nessuna conversazione ancora
+
+empty.noConversationsMatch = Nessuna conversazione corrisponde a "{$query}"

@@ -4,14 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "deno task types:watch & vite",
     "dev:full": "bash scripts/dev-full.sh",
     "build": "vite build",
     "preview": "vite preview",
     "start": "deno run -A --env-file=.env .output/server/index.mjs",
     "test": "deno test -A --no-check",
-    "typecheck": "deno check routes islands components lib db entry.server.ts entry.client.ts utils.ts",
-    "check": "deno fmt --check routes islands components lib db examples *.ts && deno lint routes islands components lib db examples *.ts && vite build && deno task typecheck",
+    "types": "deno run --allow-read --allow-write scripts/generate-mfr-types.ts",
+    "types:watch": "deno run --allow-read --allow-write scripts/generate-mfr-types.ts --watch",
+    "typecheck": "deno task types && deno check routes islands components lib db locales entry.server.ts entry.client.ts utils.ts",
+    "check": "deno fmt --check routes islands components lib db examples scripts locales *.ts && deno lint routes islands components lib db examples scripts locales *.ts && deno task types && vite build && deno task typecheck",
     "migrate": "deno run -A --env-file=.env db/migrate.ts",
     "examples": "deno run -A --env-file=.env examples/import.ts"
   },
@@ -36,7 +38,9 @@
     "barcode-detector": "^3.2.1",
     "zxing-wasm": "^3.1.2",
     "zod": "^3.25.76",
-    "preact-render-to-string": "^6.7.0"
+    "preact-render-to-string": "^6.7.0",
+    "@luca/messageformat-resources": "jsr:^0.1.0",
+    "messageformat": "^4.0.0"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",

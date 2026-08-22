@@ -6,20 +6,29 @@ import {
   DocSection,
   DocsPage,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Getting Started";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.gettingStartedTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function DocsIndex({ url }) {
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Getting Started"
-      intro="What Foodex is, how to sign in, and how to set up your household."
+      title={trans("docs.gettingStartedTitle")}
+      intro={trans("docs.gettingStartedIntro")}
     >
       <DocSection id="what-is-foodex" title="What is Foodex?">
         <p class={`${docProse} mb-3`}>

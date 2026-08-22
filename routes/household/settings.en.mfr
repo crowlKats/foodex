@@ -1,0 +1,46 @@
+@locale en
+---
+
+household.settingsTitle = {$name} Settings
+
+household.backToHousehold = Back to Household
+
+household.members = Members ({$count :integer})
+
+household.makeOwner = Make owner
+
+household.makeOwnerConfirm = Make {$name} an owner? Owners manage members, invites, and settings, and this frees you to leave the household.
+
+household.removeMember = Remove member
+
+household.leave = Leave Household
+
+household.leaveConfirm = Leave this household? You'll lose access to its recipes, pantry, and lists, and will need an invite or a new household to keep using Foodex.
+
+household.leaveNeedOwner = Make another member an owner before leaving, or delete the household.
+
+household.movingOutHint = Moving out? Make another member an owner first, then you can leave.
+
+household.leavingHint = Leaving?
+
+household.packBox = Pack a moving box
+
+household.packBoxRest = to take recipes with you.
+
+household.inviteLink = Invite Link
+
+household.inviteHelp = Share a link so others can join. Links expire after 7 days.
+
+household.generateInvite = Generate Invite Link
+
+household.householdName = Household Name
+
+household.dangerZone = Danger Zone
+
+household.deleteHousehold = Delete Household
+
+household.deleteConfirm = Delete this household? This cannot be undone.
+
+household.owner = owner
+
+household.member = member

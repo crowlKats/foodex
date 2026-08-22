@@ -1,0 +1,10 @@
+@locale it
+---
+
+recipes.favorite = Preferito
+
+recipes.favorited = Tra i preferiti
+
+recipes.addFavorite = Aggiungi ai preferiti
+
+recipes.removeFavorite = Togli dai preferiti

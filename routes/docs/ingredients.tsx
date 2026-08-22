@@ -6,19 +6,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Ingredients & Prices";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.ingredientsTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function IngredientsDocs({ url }) {
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Ingredients & Prices"
+      title={trans("docs.ingredientsTitle")}
       intro="The shared ingredient catalog that connects recipes, pantry, and shopping, and the price data that powers cost estimates."
     >
       <DocSection id="catalog" title="The Ingredient Catalog">

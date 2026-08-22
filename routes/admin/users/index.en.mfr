@@ -1,0 +1,23 @@
+@locale en
+---
+
+admin.pageUsers = Admin: Users
+
+admin.searchUsers = Search users...
+
+admin.noUsers = No users yet
+
+admin.noUsersMatch = No users match "{$query}"
+
+admin.noUsersBody = Accounts appear here as soon as someone signs in for the first time.
+
+admin.joined = joined {$date}
+
+admin.sessionCount =
+  
+  .input {$count :integer}
+  .match $count
+  one {{{$count} session}}
+  * {{{$count} sessions}}
+
+admin.noHousehold = no household
