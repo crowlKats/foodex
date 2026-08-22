@@ -1,11 +1,7 @@
 import { assertEquals } from "@std/assert";
-import { MessageFormat } from "messageformat";
-import {
-  compileCatalog,
-  emitJavaScript,
-  emitTypeScript,
-  extractParams,
-} from "./compile.ts";
+import { flatten, parse } from "@luca/messageformat-resources";
+import { MessageFormat, parseMessage } from "messageformat";
+import { join } from "node:path";
 import {
   matchSupported,
   negotiateLocale,
@@ -17,6 +13,8 @@ function visible(s: string): string {
   return s.replace(/[\u2066-\u2069]/g, "");
 }
 
+const ROOT = new URL("../../", import.meta.url).pathname;
+
 const FIXTURE = `# test catalog
 @locale en
 ---
@@ -27,7 +25,7 @@ hello = Hello, {$name}!
 items =
   .input {$count :integer}
   .match $count
-  one {{You have {$count} item.}}
+    one {{You have {$count} item.}}
   *   {{You have {$count} items.}}
 
 [nav]
@@ -63,97 +61,147 @@ Deno.test("matchSupported: primary subtag of BCP 47", () => {
   assertEquals(matchSupported("de-DE"), null);
 });
 
-Deno.test("extractParams: reads MF2 placeholders and :integer", () => {
-  assertEquals(extractParams("Hello, {$name}!"), [
-    { name: "name", tsType: "string" },
-  ]);
-  assertEquals(extractParams(".input {$count :integer}"), [
-    { name: "count", tsType: "number" },
-  ]);
-});
-
-Deno.test("compileCatalog: parse + flatten .mfr into nested keys", () => {
-  const catalog = compileCatalog(FIXTURE);
-  assertEquals(catalog.locale, "en");
-  const keys = catalog.messages.map((m) => m.key);
-  assertEquals(keys.includes("hello"), true);
-  assertEquals(keys.includes("items"), true);
-  assertEquals(keys.includes("nav.recipes"), true);
+Deno.test("parse + flatten .mfr into dotted keys", () => {
+  const resource = parse(FIXTURE);
+  const messages = flatten(resource);
+  assertEquals(resource.meta.find((m) => m.key === "locale")?.value, "en");
+  assertEquals(messages.has("hello"), true);
+  assertEquals(messages.has("items"), true);
+  assertEquals(messages.has("nav.recipes"), true);
 });
 
 Deno.test("compiled messages format with the MF2 MessageFormat class", () => {
-  const catalog = compileCatalog(FIXTURE);
-  const hello = catalog.messages.find((m) => m.key === "hello")!;
-  const items = catalog.messages.find((m) => m.key === "items")!;
+  const messages = flatten(parse(FIXTURE));
+  const hello = messages.get("hello")!.message;
+  const items = messages.get("items")!.message;
   assertEquals(
-    visible(new MessageFormat("en", hello.source).format({ name: "Luca" })),
+    visible(new MessageFormat("en", hello).format({ name: "Luca" })),
     "Hello, Luca!",
   );
   assertEquals(
-    visible(new MessageFormat("en", items.source).format({ count: 1 })),
+    visible(new MessageFormat("en", items).format({ count: 1 })),
     "You have 1 item.",
   );
   assertEquals(
-    visible(new MessageFormat("en", items.source).format({ count: 3 })),
+    visible(new MessageFormat("en", items).format({ count: 3 })),
     "You have 3 items.",
   );
 });
 
-Deno.test("emitJavaScript: imports messageformat and exports formatters", () => {
-  const js = emitJavaScript(compileCatalog(FIXTURE));
-  assertEquals(js.includes('from "messageformat"'), true);
-  assertEquals(js.includes("new MessageFormat"), true);
-  assertEquals(js.includes("nav:"), true);
-  assertEquals(js.includes("recipes:"), true);
-  assertEquals(js.includes("@messageformat/core"), false);
+Deno.test("vite-plugin-mfr: lazy get(key) + MessageFormat, not ICU MF1", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../../vite-plugin-mfr.ts", import.meta.url),
+  );
+  assertEquals(src.includes('from "messageformat"'), true);
+  assertEquals(src.includes("new MessageFormat"), true);
+  assertEquals(src.includes("get(key)"), true);
+  assertEquals(src.includes("@messageformat/core"), false);
+  assertEquals(src.includes("emitTypeScript"), false);
 });
 
-Deno.test("emitTypeScript: types placeholders as required params", () => {
-  const dts = emitTypeScript(compileCatalog(FIXTURE));
-  assertEquals(dts.includes("name: string"), true);
-  assertEquals(dts.includes("count: number"), true);
-  assertEquals(dts.includes("readonly recipes:"), true);
+Deno.test("generate-mfr-types: Bundle + parseMessage vars as unknown", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../../scripts/generate-mfr-types.ts", import.meta.url),
+  );
+  assertEquals(src.includes("Bundle<Messages>"), true);
+  assertEquals(src.includes('from "@/components/Translation.tsx"'), true);
+  assertEquals(src.includes("_types"), true);
+  assertEquals(src.includes("parseMessage"), true);
+  assertEquals(src.includes("unknown"), true);
+
+  const variables = new Set<string>();
+  function visit(node: unknown): void {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item);
+      return;
+    }
+    const obj = node as Record<string, unknown>;
+    if (obj.type === "variable" && typeof obj.name === "string") {
+      variables.add(obj.name);
+    }
+    for (const value of Object.values(obj)) visit(value);
+  }
+  visit(parseMessage("Hello, {$name}!"));
+  assertEquals([...variables], ["name"]);
 });
 
-Deno.test("English and Italian resource files compile", async () => {
-  const enSrc = await Deno.readTextFile(
-    new URL("../../locales/en.mfr", import.meta.url),
-  );
-  const itSrc = await Deno.readTextFile(
-    new URL("../../locales/it.mfr", import.meta.url),
-  );
-  const en = compileCatalog(enSrc, "en");
-  const it = compileCatalog(itSrc, "it");
-  assertEquals(en.locale, "en");
-  assertEquals(it.locale, "it");
-  const enKeys = new Set(en.messages.map((m) => m.key));
-  const itKeys = new Set(it.messages.map((m) => m.key));
-  assertEquals(enKeys.has("nav.recipes"), true);
-  assertEquals(itKeys.has("nav.recipes"), true);
-  assertEquals(enKeys.has("profile.language"), true);
-  assertEquals(itKeys.has("admin.title"), true);
-  // Italian is a real catalog, not an empty stub.
-  assertEquals(it.messages.length > 50, true);
-  // Format a couple of shipped strings to prove they are valid MF2.
-  const recipes = en.messages.find((m) => m.key === "nav.recipes")!;
-  assertEquals(new MessageFormat("en", recipes.source).format(), "Recipes");
-  const itRecipes = it.messages.find((m) => m.key === "nav.recipes")!;
-  assertEquals(
-    new MessageFormat("it", itRecipes.source).format(),
-    "Ricette",
-  );
+async function findMfrFiles(
+  dir: string,
+  files: string[] = [],
+): Promise<string[]> {
+  for await (const entry of Deno.readDir(dir)) {
+    const path = join(dir, entry.name);
+    if (
+      entry.isDirectory &&
+      !entry.name.startsWith("_") &&
+      !entry.name.startsWith(".") &&
+      entry.name !== "node_modules"
+    ) {
+      await findMfrFiles(path, files);
+    } else if (entry.isFile && entry.name.endsWith(".mfr")) {
+      files.push(path);
+    }
+  }
+  return files;
+}
+
+Deno.test("every .en.mfr has a matching .it.mfr with the same keys", async () => {
+  const files = await findMfrFiles(ROOT);
+  const enFiles = files.filter((f) => f.endsWith(".en.mfr"));
+  assertEquals(enFiles.length > 10, true);
+  for (const enPath of enFiles) {
+    const itPath = enPath.replace(/\.en\.mfr$/, ".it.mfr");
+    const enSrc = await Deno.readTextFile(enPath);
+    const itSrc = await Deno.readTextFile(itPath);
+    const enKeys = [...flatten(parse(enSrc)).keys()].sort();
+    const itKeys = [...flatten(parse(itSrc)).keys()].sort();
+    assertEquals(itKeys, enKeys, `key mismatch in ${enPath}`);
+  }
 });
 
-Deno.test("Italian catalog covers every English key", async () => {
-  const enSrc = await Deno.readTextFile(
-    new URL("../../locales/en.mfr", import.meta.url),
+Deno.test("shared catalog holds common/error strings; pages do not duplicate them", async () => {
+  const sharedEn = flatten(
+    parse(await Deno.readTextFile(join(ROOT, "locales/shared.en.mfr"))),
   );
-  const itSrc = await Deno.readTextFile(
-    new URL("../../locales/it.mfr", import.meta.url),
+  assertEquals(sharedEn.has("common.save"), true);
+  assertEquals(sharedEn.has("error.needHousehold"), true);
+  assertEquals(sharedEn.has("language.it"), true);
+
+  const profile = flatten(
+    parse(
+      await Deno.readTextFile(join(ROOT, "routes/profile/index.en.mfr")),
+    ),
   );
-  const en = compileCatalog(enSrc, "en");
-  const it = compileCatalog(itSrc, "it");
-  const itKeys = new Set(it.messages.map((m) => m.key));
-  const missing = en.messages.map((m) => m.key).filter((k) => !itKeys.has(k));
-  assertEquals(missing, []);
+  assertEquals(profile.has("profile.title"), true);
+  assertEquals(profile.has("common.save"), false);
+  assertEquals(profile.has("language.en"), false);
+
+  const nav = flatten(
+    parse(await Deno.readTextFile(join(ROOT, "components/Nav.en.mfr"))),
+  );
+  assertEquals(nav.has("nav.recipes"), true);
+  assertEquals(nav.has("common.save"), false);
+});
+
+Deno.test("Nav English and Italian format as valid MF2", async () => {
+  const en = flatten(
+    parse(await Deno.readTextFile(join(ROOT, "components/Nav.en.mfr"))),
+  );
+  const it = flatten(
+    parse(await Deno.readTextFile(join(ROOT, "components/Nav.it.mfr"))),
+  );
+  const recipes = en.get("nav.recipes")!.message;
+  const itRecipes = it.get("nav.recipes")!.message;
+  assertEquals(new MessageFormat("en", recipes).format(), "Recipes");
+  assertEquals(new MessageFormat("it", itRecipes).format(), "Ricette");
+});
+
+Deno.test("Italian shared catalog is a real catalog, not an empty stub", async () => {
+  const it = flatten(
+    parse(await Deno.readTextFile(join(ROOT, "locales/shared.it.mfr"))),
+  );
+  assertEquals(it.size > 20, true);
+  const save = it.get("common.save")!.message;
+  assertEquals(new MessageFormat("it", save).format(), "Salva");
 });

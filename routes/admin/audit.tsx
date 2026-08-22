@@ -6,13 +6,18 @@ import { FilterChip } from "../../components/FilterChip.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Input } from "../../components/Input.tsx";
 import { escapeLike } from "../../utils.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
   paginationParams,
 } from "../../components/Pagination.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./audit.en.mfr";
+import it from "./audit.it.mfr";
+
+const t = createT({ en, it });
 
 interface AuditRow {
   id: string;
@@ -140,7 +145,9 @@ export const handlers = handler({
       householdName = hRes.rows[0]?.name ?? "deleted household";
     }
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageAudit();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "admin.pageAudit",
+    ).format();
     return {
       data: {
         entries: result.rows,
@@ -196,15 +203,15 @@ export default page(function AdminAuditPage(
     url,
   },
 ) {
-  const m = useMessages();
+  const trans = t.use();
   const hasFilters = Object.values(filters).some((v) => v !== "");
   const f = filters;
   return (
     <div>
       <PageHeader
-        title={m.admin.auditLog()}
+        title={trans("admin.pageAudit")}
         query={f.q}
-        searchPlaceholder={m.admin.searchAudit()}
+        searchPlaceholder={trans("admin.searchAudit")}
         searchPreserve={{
           type: f.type,
           source: f.source,
@@ -228,22 +235,22 @@ export default page(function AdminAuditPage(
         <div class="flex flex-wrap gap-x-8 gap-y-3">
           <div>
             <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-              {m.common.type()}
+              {shared("common.type")}
             </div>
             <div class="flex flex-wrap gap-1.5">
-              {types.map((t) => (
+              {types.map((type) => (
                 <FilterChip
-                  key={t}
-                  label={t}
-                  active={f.type === t}
-                  href={filterUrl(f, { type: f.type === t ? "" : t })}
+                  key={type}
+                  label={type}
+                  active={f.type === type}
+                  href={filterUrl(f, { type: f.type === type ? "" : type })}
                 />
               ))}
             </div>
           </div>
           <div>
             <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-              {m.common.source()}
+              {shared("common.source")}
             </div>
             <div class="flex flex-wrap gap-1.5">
               {sources.map((s) => (
@@ -269,18 +276,18 @@ export default page(function AdminAuditPage(
             ))}
             <div>
               <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-                {m.common.from()}
+                {shared("common.from")}
               </div>
               <Input type="date" name="from" value={f.from} size="sm" />
             </div>
             <div>
               <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
-                {m.common.to()}
+                {shared("common.to")}
               </div>
               <Input type="date" name="to" value={f.to} size="sm" />
             </div>
             <Button type="submit" variant="outline" size="sm">
-              {m.common.apply()}
+              {shared("common.apply")}
             </Button>
           </form>
         </div>
@@ -315,7 +322,7 @@ export default page(function AdminAuditPage(
             </span>
             {hasFilters && (
               <a href="/admin/audit" class="link text-xs ml-auto">
-                {m.admin.clearFilters()}
+                {t("admin.clearFilters")}
               </a>
             )}
           </div>
@@ -325,13 +332,13 @@ export default page(function AdminAuditPage(
       {entries.length === 0
         ? hasFilters
           ? (
-            <EmptyState title={m.admin.noAuditMatch()}>
-              {m.admin.noAuditMatchBody()}
+            <EmptyState title={trans("admin.noAuditMatch")}>
+              {t("admin.noAuditMatchBody")}
             </EmptyState>
           )
           : (
-            <EmptyState title={m.admin.noAudit()}>
-              {m.admin.noAuditBody()}
+            <EmptyState title={trans("admin.noAudit")}>
+              {t("admin.noAuditBody")}
             </EmptyState>
           )
         : (

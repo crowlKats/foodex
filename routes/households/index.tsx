@@ -7,8 +7,13 @@ import type { Household, HouseholdInvite } from "../../db/types.ts";
 import { logAudit } from "../../lib/audit.ts";
 import { inviteOnly, loginUrl, sanitizeRedirect } from "../../lib/auth.ts";
 import { unpackMovingBox } from "../../lib/moving-box.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -35,8 +40,9 @@ export const handlers = handler({
       });
     }
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).household
-      .joinOrCreateTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "household.joinOrCreateTitle",
+    ).format();
     const boxRes = await ctx.state.db.query<{ cnt: string }>(
       "SELECT COUNT(*) as cnt FROM moving_box_recipes WHERE user_id = $1",
       [ctx.state.user.id],
@@ -81,7 +87,9 @@ export const handlers = handler({
       if (!code) {
         return {
           data: {
-            error: catalogFor(ctx.state.locale).household.inviteCodeRequired(),
+            error: pickBundle(ctx.state.locale, { en, it }).get(
+              "household.inviteCodeRequired",
+            ).format(),
             redirectTo,
             inviteOnly,
           },
@@ -102,7 +110,9 @@ export const handlers = handler({
       if (inviteRes.rows.length === 0) {
         return {
           data: {
-            error: catalogFor(ctx.state.locale).household.invalidInvite(),
+            error: pickBundle(ctx.state.locale, { en, it }).get(
+              "household.invalidInvite",
+            ).format(),
             redirectTo,
             inviteOnly,
           },
@@ -139,7 +149,9 @@ export const handlers = handler({
     if (inviteOnly) {
       return {
         data: {
-          error: catalogFor(ctx.state.locale).household.inviteOnlyCreate(),
+          error: pickBundle(ctx.state.locale, { en, it }).get(
+            "household.inviteOnlyCreate",
+          ).format(),
           redirectTo,
           inviteOnly,
         },
@@ -151,7 +163,9 @@ export const handlers = handler({
     if (!name?.trim()) {
       return {
         data: {
-          error: catalogFor(ctx.state.locale).household.nameRequired(),
+          error: pickBundle(ctx.state.locale, { en, it }).get(
+            "household.nameRequired",
+          ).format(),
           redirectTo,
           inviteOnly,
         },
@@ -194,19 +208,20 @@ export default page(function HouseholdsPage({ data }) {
     inviteOnly?: boolean;
     boxCount?: number;
   };
-  const m = useMessages();
+  const trans = t.use();
+  const sharedTrans = shared.use();
   const carryRedirect = redirectTo
     ? <input type="hidden" name="redirect" value={redirectTo} />
     : null;
 
   return (
     <div class="max-w-md mx-auto mt-12">
-      <PageHeader title={m.household.getStarted()} noSearch />
+      <PageHeader title={trans("household.getStarted")} noSearch />
 
       <p class="text-stone-500 mb-6">
         {invitesOnly
-          ? m.household.getStartedInviteOnly()
-          : m.household.getStartedBlurb()}
+          ? t("household.getStartedInviteOnly")
+          : t("household.getStartedBlurb")}
       </p>
 
       {error && (
@@ -217,7 +232,7 @@ export default page(function HouseholdsPage({ data }) {
 
       {(boxCount ?? 0) > 0 && (
         <div class="alert-success mb-4">
-          {m.household.boxWillUnpack({ count: boxCount ?? 0 })}
+          {t("household.boxWillUnpack", { count: boxCount ?? 0 })}
         </div>
       )}
 
@@ -226,28 +241,28 @@ export default page(function HouseholdsPage({ data }) {
           <>
             <div>
               <h2 class="text-lg font-semibold mb-3">
-                {m.household.createHousehold()}
+                {t("household.createHousehold")}
               </h2>
               <form method="POST" class="card space-y-3">
                 {carryRedirect}
-                <FormField label={m.common.name()}>
+                <FormField label={sharedTrans("common.name")}>
                   <Input
                     type="text"
                     name="name"
                     required
-                    placeholder={m.household.namePlaceholder()}
+                    placeholder={trans("household.namePlaceholder")}
                     class="w-full"
                   />
                 </FormField>
                 <Button type="submit">
-                  {m.household.createHousehold()}
+                  {t("household.createHousehold")}
                 </Button>
               </form>
             </div>
 
             <div class="flex items-center gap-4">
               <hr class="flex-1 border-stone-300 dark:border-stone-700" />
-              <span class="text-sm text-stone-400">{m.common.or()}</span>
+              <span class="text-sm text-stone-400">{shared("common.or")}</span>
               <hr class="flex-1 border-stone-300 dark:border-stone-700" />
             </div>
           </>
@@ -255,22 +270,22 @@ export default page(function HouseholdsPage({ data }) {
 
         <div>
           <h2 class="text-lg font-semibold mb-3">
-            {m.household.joinHousehold()}
+            {t("household.joinHousehold")}
           </h2>
           <form method="POST" class="card space-y-3">
             <input type="hidden" name="_method" value="JOIN" />
             {carryRedirect}
-            <FormField label={m.household.inviteCode()}>
+            <FormField label={trans("household.inviteCode")}>
               <Input
                 type="text"
                 name="code"
                 required
-                placeholder={m.household.inviteCodePlaceholder()}
+                placeholder={trans("household.inviteCodePlaceholder")}
                 class="w-full"
               />
             </FormField>
             <Button type="submit">
-              {m.household.joinHousehold()}
+              {t("household.joinHousehold")}
             </Button>
           </form>
         </div>

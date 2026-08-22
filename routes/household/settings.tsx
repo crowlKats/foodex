@@ -13,8 +13,13 @@ import type {
   HouseholdMember,
 } from "../../db/types.ts";
 import { generateInviteCode } from "../../lib/auth.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./settings.en.mfr";
+import it from "./settings.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -59,7 +64,9 @@ export const handlers = handler({
       ),
     ]);
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).household.settingsTitle({
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "household.settingsTitle",
+    ).format({
       name: householdRes.rows[0].name,
     });
     return {
@@ -197,7 +204,9 @@ export const handlers = handler({
           status: 303,
           headers: {
             Location: "/household/settings?error=" + encodeURIComponent(
-              catalogFor(ctx.state.locale).household.leaveNeedOwner(),
+              pickBundle(ctx.state.locale, { en, it }).get(
+                "household.leaveNeedOwner",
+              ).format(),
             ),
           },
         });
@@ -262,7 +271,8 @@ export default page(function HouseholdSettingsPage(
     url,
   },
 ) {
-  const msg = useMessages();
+  const trans = t.use();
+  const sharedTrans = shared.use();
   const isOwner = myRole === "owner";
   const otherOwners = members.some((m) =>
     m.role === "owner" && m.user_id !== state.user!.id
@@ -272,10 +282,10 @@ export default page(function HouseholdSettingsPage(
     <div class="max-w-2xl">
       <a href="/household" class="link text-sm">
         <IconArrowLeft class="size-3.5 inline mr-1" />
-        {msg.household.backToHousehold()}
+        {t("household.backToHousehold")}
       </a>
       <h1 class="text-2xl font-bold mt-4 mb-6">
-        {msg.household.settingsTitle({ name: household.name })}
+        {t("household.settingsTitle", { name: household.name })}
       </h1>
 
       {error && <div class="alert-error mb-4">{error}</div>}
@@ -283,7 +293,7 @@ export default page(function HouseholdSettingsPage(
       <div class="space-y-6">
         <div class="card">
           <h2 class="text-lg font-semibold mb-3">
-            {msg.household.members({ count: members.length })}
+            {t("household.members", { count: members.length })}
           </h2>
           <div class="space-y-2">
             {members.map((m) => (
@@ -303,7 +313,7 @@ export default page(function HouseholdSettingsPage(
                     {m.name}
                     {m.user_id === state.user!.id && (
                       <span class="text-xs text-stone-400 ml-1">
-                        {msg.common.you()}
+                        {shared("common.you")}
                       </span>
                     )}
                   </div>
@@ -321,8 +331,8 @@ export default page(function HouseholdSettingsPage(
                   }`}
                 >
                   {m.role === "owner"
-                    ? msg.household.owner()
-                    : msg.household.member()}
+                    ? t("household.owner")
+                    : t("household.member")}
                 </span>
                 {isOwner && m.user_id !== state.user!.id &&
                   m.role === "member" && (
@@ -338,13 +348,13 @@ export default page(function HouseholdSettingsPage(
                       value={m.user_id}
                     />
                     <ConfirmButton
-                      message={msg.household.makeOwnerConfirm({
+                      message={trans("household.makeOwnerConfirm", {
                         name: m.name ?? "",
                       })}
                       variant="ghost"
                       size="xs"
                     >
-                      {msg.household.makeOwner()}
+                      {t("household.makeOwner")}
                     </ConfirmButton>
                   </form>
                 )}
@@ -364,7 +374,7 @@ export default page(function HouseholdSettingsPage(
                       type="submit"
                       variant="danger-ghost"
                       icon={IconTrash}
-                      title={msg.household.removeMember()}
+                      title={trans("household.removeMember")}
                     />
                   </form>
                 )}
@@ -375,35 +385,35 @@ export default page(function HouseholdSettingsPage(
             <form method="POST" class="mt-4">
               <input type="hidden" name="_method" value="LEAVE" />
               <ConfirmButton
-                message={msg.household.leaveConfirm()}
+                message={trans("household.leaveConfirm")}
                 variant="danger-outline"
                 class="w-full"
               >
-                {msg.household.leave()}
+                {t("household.leave")}
               </ConfirmButton>
             </form>
           )}
           {isOwner && !otherOwners && members.length > 1 && (
             <p class="text-xs text-stone-400 mt-4">
-              {msg.household.movingOutHint()}
+              {t("household.movingOutHint")}
             </p>
           )}
           <p class="text-xs text-stone-400 mt-2">
-            {msg.household.leavingHint()}{" "}
+            {t("household.leavingHint")}{" "}
             <a href="/moving-box" class="link">
-              {msg.household.packBox()}
+              {t("household.packBox")}
             </a>{" "}
-            {msg.household.packBoxRest()}
+            {t("household.packBoxRest")}
           </p>
         </div>
 
         {isOwner && (
           <div class="card">
             <h2 class="text-lg font-semibold mb-3">
-              {msg.household.inviteLink()}
+              {t("household.inviteLink")}
             </h2>
             <p class="text-xs text-stone-500 mb-3">
-              {msg.household.inviteHelp()}
+              {t("household.inviteHelp")}
             </p>
 
             {invites.length > 0 && (
@@ -448,7 +458,7 @@ export default page(function HouseholdSettingsPage(
                           type="submit"
                           variant="danger-ghost"
                           icon={IconTrash}
-                          title={msg.household.revoke()}
+                          title={sharedTrans("household.revoke")}
                         />
                       </form>
                     </div>
@@ -464,7 +474,7 @@ export default page(function HouseholdSettingsPage(
                 value="CREATE_INVITE"
               />
               <Button type="submit" class="w-full">
-                {msg.household.generateInvite()}
+                {t("household.generateInvite")}
               </Button>
             </form>
           </div>
@@ -473,11 +483,11 @@ export default page(function HouseholdSettingsPage(
         {isOwner && (
           <div class="card">
             <h2 class="text-lg font-semibold mb-3">
-              {msg.household.householdName()}
+              {t("household.householdName")}
             </h2>
             <form method="POST" class="space-y-3">
               <input type="hidden" name="_method" value="UPDATE_NAME" />
-              <FormField label={msg.household.householdName()}>
+              <FormField label={trans("household.householdName")}>
                 <Input
                   type="text"
                   name="name"
@@ -487,7 +497,7 @@ export default page(function HouseholdSettingsPage(
                 />
               </FormField>
               <Button type="submit">
-                {msg.common.update()}
+                {shared("common.update")}
               </Button>
             </form>
           </div>
@@ -496,16 +506,16 @@ export default page(function HouseholdSettingsPage(
         {isOwner && (
           <div class="card">
             <h2 class="text-lg font-semibold mb-3 text-red-600">
-              {msg.household.dangerZone()}
+              {t("household.dangerZone")}
             </h2>
             <form method="POST">
               <input type="hidden" name="_method" value="DELETE" />
               <ConfirmButton
-                message={msg.household.deleteConfirm()}
+                message={trans("household.deleteConfirm")}
                 variant="danger"
                 class="w-full"
               >
-                {msg.household.deleteHousehold()}
+                {t("household.deleteHousehold")}
               </ConfirmButton>
             </form>
           </div>

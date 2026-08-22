@@ -1,0 +1,5 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+collections.newTitle = Nuova collezione

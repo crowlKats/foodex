@@ -1,6 +1,4 @@
 import { handler, page } from "./$ingredients.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   DocNote,
   docProse,
@@ -8,20 +6,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.ingredientsTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.ingredientsTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function IngredientsDocs({ url }) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title={m.docs.ingredientsTitle()}
+      title={trans("docs.ingredientsTitle")}
       intro="The shared ingredient catalog that connects recipes, pantry, and shopping, and the price data that powers cost estimates."
     >
       <DocSection id="catalog" title="The Ingredient Catalog">

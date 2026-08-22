@@ -1,0 +1,38 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+household.joinOrCreateTitle = Join or Create Household
+
+household.getStarted = Get Started
+
+household.getStartedBlurb = Create a new household or join an existing one to manage recipes, tools, stores, and your pantry.
+
+household.getStartedInviteOnly = Foodex is invite-only. Join a household with the invite code or link you received; if you don't have one, ask a household member or an operator for an invite.
+
+household.createHousehold = Create Household
+
+household.joinHousehold = Join Household
+
+household.inviteCode = Invite Code
+
+household.inviteCodePlaceholder = Paste invite code...
+
+household.namePlaceholder = e.g. Smith Family
+
+household.inviteCodeRequired = Invite code is required
+
+household.invalidInvite = Invalid or expired invite code
+
+household.inviteOnlyCreate = Foodex is invite-only; households can't be created directly.
+
+household.nameRequired = Name is required
+
+household.boxWillUnpack =
+  
+  .input {$count :integer}
+  .match $count
+  one {{Your moving box with {$count} recipe will unpack into the household you join or create.}}
+  * {{Your moving box with {$count} recipes will unpack into the household you join or create.}}
+
+household.movingBoxLink = moving box

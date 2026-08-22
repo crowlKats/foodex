@@ -2,11 +2,12 @@ import "../styles.css";
 
 import { handler, page } from "./$_error.ts";
 import { HttpError } from "fresh/errors";
+import { Head } from "fresh/runtime";
 import { Nav } from "../components/Nav.tsx";
 import { ButtonLink } from "../components/Button.tsx";
 import { loadSessionState } from "../lib/session.ts";
-import { I18nProvider } from "../lib/i18n/provider.tsx";
-import { catalogFor } from "../lib/i18n/mod.ts";
+import { LocaleProvider } from "../components/Translation.tsx";
+import { t } from "../locales/shared.ts";
 
 export const handlers = handler(async (ctx) => ({
   data: await loadSessionState(ctx.req),
@@ -25,17 +26,24 @@ export default page(function ErrorPage({ error, url, data }) {
   const status = error instanceof HttpError ? error.status : 500;
   const notFound = status === 404;
   const locale = data.locale;
-  const m = catalogFor(locale);
 
   return (
-    <I18nProvider locale={locale}>
+    <LocaleProvider locale={locale}>
+      <Head>
+        <script
+          // deno-lint-ignore react-no-danger
+          dangerouslySetInnerHTML={{
+            __html: `globalThis.__LOCALE__ = ${JSON.stringify(locale)};`,
+          }}
+        />
+        <html lang={locale} />
+      </Head>
       <Nav
         user={data.user}
         shoppingListCount={data.shoppingListCount}
         hasHousehold={data.householdId != null}
         isAdmin={data.isAdmin}
         currentPath={url.pathname}
-        locale={locale}
       />
       <main class="flex-1 overflow-y-auto">
         <div class="max-w-md mx-auto px-4 py-16 text-center">
@@ -43,19 +51,19 @@ export default page(function ErrorPage({ error, url, data }) {
             {status}
           </p>
           <h1 class="text-2xl font-bold mt-4">
-            {notFound ? m.error.notFoundTitle() : m.error.serverTitle()}
+            {notFound ? t("error.notFoundTitle") : t("error.serverTitle")}
           </h1>
           <p class="text-stone-500 mt-2">
-            {notFound ? m.error.notFoundBody() : m.error.serverBody()}
+            {notFound ? t("error.notFoundBody") : t("error.serverBody")}
           </p>
           <div class="flex flex-wrap gap-2 justify-center mt-6">
-            <ButtonLink href="/recipes">{m.error.browseRecipes()}</ButtonLink>
+            <ButtonLink href="/recipes">{t("error.browseRecipes")}</ButtonLink>
             <ButtonLink href="/" variant="outline">
-              {m.common.home()}
+              {t("common.home")}
             </ButtonLink>
           </div>
         </div>
       </main>
-    </I18nProvider>
+    </LocaleProvider>
   );
 });

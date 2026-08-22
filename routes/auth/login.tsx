@@ -18,8 +18,13 @@ import { IconBrandGithub } from "@tabler/icons-preact";
 import { IconBrandGoogle } from "@tabler/icons-preact";
 import { IconKey } from "@tabler/icons-preact";
 import { IconMail } from "@tabler/icons-preact";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./login.en.mfr";
+import it from "./login.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
@@ -34,7 +39,9 @@ export const handlers = handler({
     const state = generateOAuthState();
     const baseUrl = `${ctx.url.protocol}//${ctx.url.host}`;
     const req = new Request(baseUrl);
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).auth.signInTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "auth.signInTitle",
+    ).format();
     const headers = new Headers();
     headers.append("Set-Cookie", createOAuthStateCookie(state));
     // Always write the redirect cookie, so a plain visit to the login page
@@ -62,22 +69,22 @@ export const handlers = handler({
 });
 
 export default page(function LoginPage({ data }) {
-  const m = useMessages();
+  const trans = t.use();
   const hasOAuthProvider = data.githubUrl || data.googleUrl ||
     data.authentikUrl;
   return (
     <div class="max-w-sm mx-auto mt-16">
       <h1 class="text-2xl font-bold text-center mb-8">
-        {m.auth.signInHeading()}
+        {t("auth.signInHeading")}
       </h1>
       {data.error === "captcha" && (
         <div class="mb-4 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-          {m.auth.captchaFailed()}
+          {t("auth.captchaFailed")}
         </div>
       )}
       {data.error === "invite_required" && (
         <div class="mb-4 rounded-md bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-          {m.auth.inviteRequired()}
+          {shared("auth.inviteRequired")}
         </div>
       )}
       <div class="card space-y-3">
@@ -88,7 +95,7 @@ export default page(function LoginPage({ data }) {
             class="w-full"
           >
             <IconBrandGithub class="size-5" />
-            {m.auth.continueGithub()}
+            {t("auth.continueGithub")}
           </ButtonLink>
         )}
         {data.googleUrl && (
@@ -98,7 +105,7 @@ export default page(function LoginPage({ data }) {
             class="w-full"
           >
             <IconBrandGoogle class="size-5" />
-            {m.auth.continueGoogle()}
+            {t("auth.continueGoogle")}
           </ButtonLink>
         )}
         {data.authentikUrl && (
@@ -108,13 +115,13 @@ export default page(function LoginPage({ data }) {
             class="w-full"
           >
             <IconKey class="size-5" />
-            {m.auth.continueAuthentik()}
+            {t("auth.continueAuthentik")}
           </ButtonLink>
         )}
         {hasOAuthProvider && (
           <div class="flex items-center gap-3 my-1">
             <div class="flex-1 border-t border-stone-300 dark:border-stone-600" />
-            <span class="text-sm text-stone-500">{m.common.or()}</span>
+            <span class="text-sm text-stone-500">{shared("common.or")}</span>
             <div class="flex-1 border-t border-stone-300 dark:border-stone-600" />
           </div>
         )}
@@ -125,7 +132,7 @@ export default page(function LoginPage({ data }) {
           <Input
             type="email"
             name="email"
-            placeholder={m.auth.emailPlaceholder()}
+            placeholder={trans("auth.emailPlaceholder")}
             required
             class="w-full"
           />
@@ -183,7 +190,7 @@ export default page(function LoginPage({ data }) {
             disabled={!!data.hcaptchaSitekey}
           >
             <IconMail class="size-5" />
-            {m.auth.continueEmail()}
+            {t("auth.continueEmail")}
           </Button>
         </form>
       </div>

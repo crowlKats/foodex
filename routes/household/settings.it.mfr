@@ -1,0 +1,47 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+household.settingsTitle = Impostazioni di {$name}
+
+household.backToHousehold = Torna al nucleo
+
+household.members = Membri ({$count :integer})
+
+household.makeOwner = Rendi proprietario
+
+household.makeOwnerConfirm = Rendere {$name} proprietario? I proprietari gestiscono membri, inviti e impostazioni, e così puoi lasciare il nucleo.
+
+household.removeMember = Rimuovi membro
+
+household.leave = Lascia il nucleo
+
+household.leaveConfirm = Lasciare questo nucleo? Perderai ricette, dispensa e liste, e ti servirà un invito o un nuovo nucleo per continuare a usare Foodex.
+
+household.leaveNeedOwner = Rendi proprietario un altro membro prima di uscire, oppure elimina il nucleo.
+
+household.movingOutHint = Ti trasferisci? Rendi proprietario un altro membro, poi puoi uscire.
+
+household.leavingHint = Te ne vai?
+
+household.packBox = Prepara uno scatolone
+
+household.packBoxRest = per portarti dietro le ricette.
+
+household.inviteLink = Link di invito
+
+household.inviteHelp = Condividi un link perché altri si uniscano. I link scadono dopo 7 giorni.
+
+household.generateInvite = Genera link di invito
+
+household.householdName = Nome del nucleo
+
+household.dangerZone = Zona pericolosa
+
+household.deleteHousehold = Elimina nucleo
+
+household.deleteConfirm = Eliminare questo nucleo? L'operazione non si può annullare.
+
+household.owner = proprietario
+
+household.member = membro

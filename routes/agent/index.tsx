@@ -11,8 +11,12 @@ import {
   paginationParams,
 } from "../../components/Pagination.tsx";
 import DeleteChatButton from "../../islands/DeleteChatButton.tsx";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -48,7 +52,9 @@ export const handlers = handler({
       ),
     ]);
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).agent.title();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "agent.title",
+    ).format();
     return {
       data: {
         sessions: result.rows,
@@ -81,11 +87,11 @@ export const handlers = handler({
 export default page(function AgentIndex(
   { data: { sessions, q, currentPage, totalCount }, url },
 ) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <div>
       <PageHeader
-        title={m.agent.title()}
+        title={trans("agent.title")}
         query={q}
         searchPlaceholder="Search conversations..."
       >
@@ -97,13 +103,15 @@ export default page(function AgentIndex(
       {sessions.length === 0
         ? q
           ? (
-            <EmptyState title={`No conversations match "${q}"`}>
+            <EmptyState
+              title={trans("empty.noConversationsMatch", { query: q })}
+            >
               Nothing here goes by that name.
             </EmptyState>
           )
           : (
             <EmptyState
-              title="No conversations yet"
+              title={trans("empty.noConversations")}
               action={
                 <form method="POST">
                   <Button type="submit" size="sm">New chat</Button>

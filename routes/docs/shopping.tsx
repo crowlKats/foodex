@@ -1,6 +1,4 @@
 import { handler, page } from "./$shopping.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -9,20 +7,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.shoppingTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.shoppingTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function ShoppingDocs({ url }) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title={m.docs.shoppingTitle()}
+      title={trans("docs.shoppingTitle")}
       intro="One list per household, worked out for you: what your plan needs, minus what you already have."
     >
       <DocSection id="how" title="How the List Is Worked Out">

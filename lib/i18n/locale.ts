@@ -77,3 +77,17 @@ export function negotiateLocale(
 export function localeFromRequest(req: Request): Locale {
   return negotiateLocale(null, req.headers.get("accept-language"));
 }
+
+/** Pick the compiled `.mfr` bundle for a request locale. */
+export function pickBundle<T>(
+  locale: string,
+  bundles: Record<Locale, T>,
+): T {
+  return bundles[negotiateLocale(locale)];
+}
+
+/** Hyphenated recipe tag (`gluten-free`) → catalog key (`tags.glutenFree`). */
+export function tagMessageKey(tag: string): string {
+  return "tags." +
+    tag.replace(/-([a-z])/g, (_unused, c: string) => c.toUpperCase());
+}

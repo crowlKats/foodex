@@ -1,0 +1,13 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+catalog.tools = Tools
+
+catalog.addTool = Add Tool
+
+empty.noTools = No tools yet
+
+empty.noToolsMatch = No tools match "{$query}"
+
+empty.noToolsBody = Tools are your cookware: a pan, a stand mixer, an oven. A recipe can reference one along with the settings it needs ("180 °C", "medium-low") and a note on how it's used.

@@ -1,0 +1,9 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+agent.title = Assistant
+
+empty.noConversations = No conversations yet
+
+empty.noConversationsMatch = No conversations match "{$query}"

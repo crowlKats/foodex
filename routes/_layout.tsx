@@ -4,8 +4,11 @@ import { layout } from "./$_layout.ts";
 import { Head } from "fresh/runtime";
 import { Nav } from "../components/Nav.tsx";
 import PwaInstallPrompt from "../islands/PwaInstallPrompt.tsx";
-import { I18nProvider } from "../lib/i18n/provider.tsx";
-import { catalogFor } from "../lib/i18n/mod.ts";
+import { createT, LocaleProvider } from "../components/Translation.tsx";
+import en from "./_layout.en.mfr";
+import it from "./_layout.it.mfr";
+
+const t = createT({ en, it });
 
 export default layout(function AppLayout({ Component, state, url }) {
   // Full-bleed (no max-width wrapper, no page scroll) for the scanner and the
@@ -23,9 +26,8 @@ export default layout(function AppLayout({ Component, state, url }) {
   // household setup, which is where the tour sends them anyway.
   const navPreview = url.pathname === "/welcome" &&
     url.searchParams.get("tour") === "1";
-  const m = catalogFor(state.locale);
   return (
-    <I18nProvider locale={state.locale}>
+    <LocaleProvider locale={state.locale}>
       {state.pageTitle !== "Foodex" && (
         <Head>
           <title>{`${state.pageTitle} - Foodex`}</title>
@@ -35,11 +37,10 @@ export default layout(function AppLayout({ Component, state, url }) {
         <script
           // deno-lint-ignore react-no-danger
           dangerouslySetInnerHTML={{
-            __html: `document.documentElement.lang=${
-              JSON.stringify(state.locale)
-            }`,
+            __html: `globalThis.__LOCALE__ = ${JSON.stringify(state.locale)};`,
           }}
         />
+        <html lang={state.locale} />
       </Head>
       <Nav
         user={state.user}
@@ -47,12 +48,11 @@ export default layout(function AppLayout({ Component, state, url }) {
         hasHousehold={state.householdId != null || navPreview}
         isAdmin={state.isAdmin}
         currentPath={url.pathname}
-        locale={state.locale}
       />
       {state.user?.sudoBy && (
         <div class="bg-red-600 text-white text-sm px-4 py-1.5 flex items-center gap-3">
           <span class="flex-1">
-            {m.sudo.banner({
+            {t("sudo.banner", {
               name: state.user.name ?? "",
               admin: state.user.sudoBy.name ?? "",
             })}
@@ -63,7 +63,7 @@ export default layout(function AppLayout({ Component, state, url }) {
               type="submit"
               class="underline font-semibold cursor-pointer whitespace-nowrap"
             >
-              {m.sudo.exit()}
+              {t("sudo.exit")}
             </button>
           </form>
         </div>
@@ -89,7 +89,7 @@ export default layout(function AppLayout({ Component, state, url }) {
           </div>
         )}
       </main>
-      <PwaInstallPrompt locale={state.locale} />
-    </I18nProvider>
+      <PwaInstallPrompt />
+    </LocaleProvider>
   );
 });

@@ -1,26 +1,32 @@
 import { handler, page } from "./$settings.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   docProse,
   DocSection,
   DocsPage,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.settingsTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.settingsTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function SettingsDocs({ url }) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title={m.docs.settingsTitle()}
+      title={trans("docs.settingsTitle")}
       intro="Your profile, display preferences, notifications, and putting Foodex on your phone."
     >
       <DocSection id="profile" title="Profile">

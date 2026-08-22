@@ -1,0 +1,13 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+auth.invalidLinkTitle = Invalid Link
+
+auth.invalidLinkHeading = Invalid or expired link
+
+auth.invalidLinkBody = This sign-in link has expired or has already been used. Please request a new one.
+
+auth.inviteRequiredTitle = Invite Required
+
+auth.inviteRequiredHeading = Invite required

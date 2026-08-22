@@ -1,7 +1,11 @@
 import { useEffect, useRef } from "preact/hooks";
 import { IconChevronDown, IconMenu2, IconX } from "@tabler/icons-preact";
 import { menuPinnedByTour, openMenu } from "../lib/menu-state.ts";
-import { catalogFor } from "../lib/i18n/mod.ts";
+import { createT } from "../components/Translation.tsx";
+import en from "../components/Nav.en.mfr";
+import it from "../components/Nav.it.mfr";
+
+const t = createT({ en, it });
 
 export interface NavDropdownLink {
   href: string;
@@ -89,19 +93,18 @@ function renderLinks(links: NavDropdownLink[], currentPath: string) {
  * inside it.
  */
 export default function NavDropdown(
-  { id, trigger, links, currentPath, locale, signOut, class: className }: {
+  { id, trigger, links, currentPath, signOut, class: className }: {
     /** Unique among the top bar's dropdowns. */
     id: string;
     trigger: Trigger;
     links: NavDropdownLink[];
     currentPath: string;
-    locale: string;
     /** Append a sign-out button below the links. */
     signOut?: boolean;
     class?: string;
   },
 ) {
-  const m = catalogFor(locale);
+  const trans = t.use();
   const open = openMenu.value === id;
   const container = useRef<HTMLDivElement>(null);
   // Only menus that hold walkthrough anchors advertise themselves to the tour.
@@ -138,7 +141,7 @@ export default function NavDropdown(
         class={`nav-link flex items-center cursor-pointer ${
           active ? "text-orange-400" : ""
         }`}
-        title={trigger.kind === "text" ? trigger.label : m.nav.menu()}
+        title={trigger.kind === "text" ? trigger.label : trans("nav.menu")}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => openMenu.value = open ? null : id}
@@ -164,7 +167,11 @@ export default function NavDropdown(
                 class="size-7 rounded-full"
               />
             )
-            : <span class="text-sm">{trigger.name ?? m.nav.account()}</span>
+            : (
+              <span class="text-sm">
+                {trigger.name ?? trans("nav.account")}
+              </span>
+            )
         )}
       </button>
       {
@@ -190,7 +197,7 @@ export default function NavDropdown(
                 type="submit"
                 class="block w-full text-left px-4 py-2.5 text-sm font-medium text-stone-400 hover:bg-stone-800 hover:text-stone-200 cursor-pointer"
               >
-                {m.nav.signOut()}
+                {t("nav.signOut")}
               </button>
             </form>
           )}

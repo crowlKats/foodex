@@ -1,0 +1,145 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+common.save = Salva
+
+common.cancel = Annulla
+
+common.delete = Elimina
+
+common.edit = Modifica
+
+common.update = Aggiorna
+
+common.create = Crea
+
+common.back = Indietro
+
+common.continue = Continua
+
+common.search = Cerca
+
+common.share = Condividi
+
+common.copied = Copiato!
+
+common.close = Chiudi
+
+common.dismiss = Chiudi
+
+common.or = oppure
+
+common.you = (tu)
+
+common.home = Home
+
+common.shared = Condiviso
+
+common.owned = in possesso
+
+common.expired = scaduto
+
+common.allCount = Tutti {$title} ({$count})
+
+common.apply = Applica
+
+common.invite = Invita
+
+common.from = Da
+
+common.to = A
+
+common.type = Tipo
+
+common.source = Fonte
+
+common.prev = Prec
+
+common.next = Succ
+
+common.skip = Salta
+
+common.backTo = Indietro
+
+common.name = Nome
+
+common.email = Email
+
+common.required = Obbligatorio
+
+common.loading = Caricamento…
+
+common.error = Errore
+
+common.remove = Rimuovi
+
+common.add = Aggiungi
+
+common.import = Importa
+
+common.new = Nuovo
+
+common.settings = Impostazioni
+
+common.searchPlaceholder = Cerca {$title}...
+
+common.pageOf =
+  
+  .input {$current :integer}
+  .input {$total :integer}
+  .match $current
+  * {{Pagina {$current} di {$total}}}
+
+common.descending = Decrescente
+
+common.ascending = Crescente
+
+common.totalCount =
+  
+  .input {$count :integer}
+  .match $count
+  one {{{$count} in totale}}
+  * {{{$count} in totale}}
+
+common.noName = (senza nome)
+
+common.noEmail = nessuna email
+
+common.darkMode = Attiva/disattiva tema scuro
+
+error.notFoundTitle = Non abbiamo trovato quella pagina
+
+error.notFoundBody = A questo indirizzo non c'è niente. Il link potrebbe essere vecchio, o la ricetta è stata rinominata o cancellata.
+
+error.serverTitle = Qualcosa è andato storto
+
+error.serverBody = La pagina non si è caricata. Spesso basta riprovare; se non basta, il problema è dalla nostra parte.
+
+error.browseRecipes = Sfoglia le ricette
+
+error.needHousehold = Unisciti a un nucleo o creane uno per farlo.
+
+error.generic = Qualcosa è andato storto. Riprova.
+
+error.noMatchQuery = Nessun risultato con quel nome.
+
+language.en = English
+
+language.it = Italiano
+
+form.unit = Unità
+
+form.description = Descrizione
+
+empty.signInToAdd = Accedi per aggiungerne uno.
+
+empty.addFirstForm = Aggiungi il primo con il modulo in questa pagina.
+
+auth.backToSignIn = Torna all'accesso
+
+auth.inviteRequired = Su questa installazione di Foodex i nuovi account si creano solo con un invito. Se qualcuno ti ha invitato, apri il suo link e accedi da lì.
+
+household.revoke = Revoca
+
+profile.household = Nucleo

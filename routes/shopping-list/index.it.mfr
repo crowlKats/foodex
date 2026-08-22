@@ -1,0 +1,5 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+shopping.title = Lista della spesa

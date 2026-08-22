@@ -1,6 +1,4 @@
 import { handler, page } from "./$organizing.ts";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   docMuted,
   DocNote,
@@ -9,20 +7,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs.organizingTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.organizingTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function OrganizingDocs({ url }) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title={m.docs.organizingTitle()}
+      title={trans("docs.organizingTitle")}
       intro="Two ways to bring recipes together: collections you curate yourself, and dishes that group every version of the same thing."
     >
       <DocSection id="collections" title="Collections">

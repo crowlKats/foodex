@@ -1,0 +1,5 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+collections.editTitle = Edit {$name}

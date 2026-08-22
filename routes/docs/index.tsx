@@ -6,24 +6,29 @@ import {
   DocSection,
   DocsPage,
 } from "../../components/DocsPage.tsx";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).docs
-      .gettingStartedTitle();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.gettingStartedTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function DocsIndex({ url }) {
-  const m = useMessages();
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title={m.docs.gettingStartedTitle()}
-      intro={m.docs.gettingStartedIntro()}
+      title={trans("docs.gettingStartedTitle")}
+      intro={trans("docs.gettingStartedIntro")}
     >
       <DocSection id="what-is-foodex" title="What is Foodex?">
         <p class={`${docProse} mb-3`}>

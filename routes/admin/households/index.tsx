@@ -11,13 +11,18 @@ import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { generateInviteCode } from "../../../lib/auth.ts";
 import { sendHouseholdInviteEmail } from "../../../lib/email.ts";
 import { logAudit } from "../../../lib/audit.ts";
-import { catalogFor } from "../../../lib/i18n/mod.ts";
-import { useMessages } from "../../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
   paginationParams,
 } from "../../../components/Pagination.tsx";
+import { createT } from "../../../components/Translation.tsx";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import { t as shared } from "../../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 interface HouseholdRow {
   id: string;
@@ -101,7 +106,9 @@ export const handlers = handler({
        ORDER BY hi.created_at DESC`,
     );
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).admin.pageHouseholds();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "admin.pageHouseholds",
+    ).format();
     return {
       data: {
         households: result.rows,
@@ -227,13 +234,14 @@ export default page(function AdminHouseholdsPage(
     url,
   },
 ) {
-  const m = useMessages();
+  const trans = t.use();
+  const sharedTrans = shared.use();
   return (
     <div>
       <PageHeader
-        title={m.admin.households()}
+        title={trans("admin.pageHouseholds")}
         query={q}
-        searchPlaceholder={m.admin.searchHouseholds()}
+        searchPlaceholder={trans("admin.searchHouseholds")}
       />
       <AdminNav currentPath={url.pathname} />
 
@@ -242,14 +250,14 @@ export default page(function AdminHouseholdsPage(
 
       <div class="grid gap-6 md:grid-cols-2 mb-8">
         <div class="card">
-          <SectionHeader title={m.admin.inviteUser()} />
+          <SectionHeader title={trans("admin.inviteUser")} />
           <p class="text-sm text-stone-500 my-3">
-            {m.admin.inviteUserHelp()}
+            {t("admin.inviteUserHelp")}
           </p>
           <form method="POST" class="flex gap-2 items-end">
             <input type="hidden" name="_method" value="INVITE" />
             <div class="flex-1">
-              <FormField label={m.common.email()}>
+              <FormField label={sharedTrans("common.email")}>
                 <Input
                   type="email"
                   name="email"
@@ -259,18 +267,20 @@ export default page(function AdminHouseholdsPage(
                 />
               </FormField>
             </div>
-            <Button type="submit">{m.admin.invite()}</Button>
+            <Button type="submit">{t("admin.invite")}</Button>
           </form>
         </div>
 
         <div class="card">
           <SectionHeader
-            title={m.admin.pendingInvites({ count: String(invites.length) })}
+            title={trans("admin.pendingInvites", {
+              count: String(invites.length),
+            })}
           />
           {invites.length === 0
             ? (
               <p class="text-sm text-stone-500 mt-3">
-                {m.admin.noOutstandingInvites()}
+                {t("admin.noOutstandingInvites")}
               </p>
             )
             : (
@@ -281,11 +291,11 @@ export default page(function AdminHouseholdsPage(
                     <div key={i.id}>
                       <div class="flex items-center gap-2">
                         <span class="font-medium flex-1 truncate">
-                          {i.invited_email ?? m.common.noEmail()}
+                          {i.invited_email ?? shared("common.noEmail")}
                         </span>
                         {expired && (
                           <span class="text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-1.5 py-0.5">
-                            {m.common.expired()}
+                            {shared("common.expired")}
                           </span>
                         )}
                         <form method="POST">
@@ -296,13 +306,14 @@ export default page(function AdminHouseholdsPage(
                           />
                           <input type="hidden" name="invite_id" value={i.id} />
                           <ConfirmButton
-                            message={m.admin.revokeInviteConfirm({
-                              email: i.invited_email ?? m.admin.thisAddress(),
+                            message={trans("admin.revokeInviteConfirm", {
+                              email: i.invited_email ??
+                                trans("admin.thisAddress"),
                             })}
                             variant="danger-outline"
                             size="xs"
                           >
-                            {m.household.revoke()}
+                            {shared("household.revoke")}
                           </ConfirmButton>
                         </form>
                       </div>
@@ -318,16 +329,16 @@ export default page(function AdminHouseholdsPage(
       </div>
 
       <div class="text-sm text-stone-500 mb-3">
-        {m.common.totalCount({ count: totalCount })}
+        {shared("common.totalCount", { count: totalCount })}
       </div>
       {households.length === 0
         ? (
           <EmptyState
             title={q
-              ? m.admin.noHouseholdsMatch({ query: q })
-              : m.admin.noHouseholds()}
+              ? trans("admin.noHouseholdsMatch", { query: q })
+              : trans("admin.noHouseholds")}
           >
-            {m.admin.noHouseholdsBody()}
+            {t("admin.noHouseholdsBody")}
           </EmptyState>
         )
         : (

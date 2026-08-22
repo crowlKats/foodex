@@ -9,7 +9,9 @@ import { loginUrl } from "../lib/auth.ts";
 import { packRecipe } from "../lib/moving-box.ts";
 import { deleteFile } from "../lib/s3.ts";
 import { logAudit } from "../lib/audit.ts";
-import { catalogFor } from "../lib/i18n/mod.ts";
+import { pickBundle } from "../lib/i18n/locale.ts";
+import en from "./moving-box.en.mfr";
+import it from "./moving-box.it.mfr";
 
 interface BoxItem {
   id: string;
@@ -57,7 +59,9 @@ export const handlers = handler({
         }),
     ]);
 
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).movingBox.title();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "movingBox.title",
+    ).format();
     return {
       data: {
         box: box.rows,

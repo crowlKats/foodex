@@ -5,10 +5,14 @@ import {
   sanitizeRedirect,
   signupAllowed,
 } from "../../../lib/auth.ts";
-import { localeFromRequest } from "../../../lib/i18n/locale.ts";
+import { localeFromRequest, pickBundle } from "../../../lib/i18n/locale.ts";
 import { ButtonLink } from "../../../components/Button.tsx";
-import { catalogFor } from "../../../lib/i18n/mod.ts";
-import { useMessages } from "../../../lib/i18n/provider.tsx";
+import { createT } from "../../../components/Translation.tsx";
+import { t as shared } from "../../../locales/shared.ts";
+import en from "./email.en.mfr";
+import it from "./email.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -31,8 +35,9 @@ export const handlers = handler({
     );
 
     if (result.rows.length === 0) {
-      ctx.state.pageTitle = catalogFor(ctx.state.locale).auth
-        .invalidLinkTitle();
+      ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+        "auth.invalidLinkTitle",
+      ).format();
       return { data: {} };
     }
 
@@ -46,8 +51,9 @@ export const handlers = handler({
       existing.rows.length === 0 &&
       !await signupAllowed(ctx.state.db.query, redirect_to)
     ) {
-      ctx.state.pageTitle = catalogFor(ctx.state.locale).auth
-        .inviteRequiredTitle();
+      ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+        "auth.inviteRequiredTitle",
+      ).format();
       return { data: { inviteRequired: true } };
     }
 
@@ -80,20 +86,19 @@ export const handlers = handler({
 
 export default page(function InvalidTokenPage({ data }) {
   const { inviteRequired } = data as { inviteRequired?: boolean };
-  const m = useMessages();
 
   if (inviteRequired) {
     return (
       <div class="max-w-sm mx-auto mt-16">
         <h1 class="text-2xl font-bold text-center mb-4">
-          {m.auth.inviteRequiredHeading()}
+          {t("auth.inviteRequiredHeading")}
         </h1>
         <div class="card">
           <p class="text-stone-600 dark:text-stone-400 mb-4">
-            {m.auth.inviteRequired()}
+            {shared("auth.inviteRequired")}
           </p>
           <ButtonLink href="/auth/login" variant="outline" class="w-full">
-            {m.auth.backToSignIn()}
+            {shared("auth.backToSignIn")}
           </ButtonLink>
         </div>
       </div>
@@ -103,14 +108,14 @@ export default page(function InvalidTokenPage({ data }) {
   return (
     <div class="max-w-sm mx-auto mt-16">
       <h1 class="text-2xl font-bold text-center mb-4">
-        {m.auth.invalidLinkHeading()}
+        {t("auth.invalidLinkHeading")}
       </h1>
       <div class="card">
         <p class="text-stone-600 dark:text-stone-400 mb-4">
-          {m.auth.invalidLinkBody()}
+          {t("auth.invalidLinkBody")}
         </p>
         <ButtonLink href="/auth/login" variant="outline" class="w-full">
-          {m.auth.backToSignIn()}
+          {shared("auth.backToSignIn")}
         </ButtonLink>
       </div>
     </div>

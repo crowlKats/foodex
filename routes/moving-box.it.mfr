@@ -1,0 +1,11 @@
+# Foodex UI chrome. Recipes stay English.
+@locale it
+---
+
+movingBox.title = Scatolone
+
+empty.betweenHouseholds = Sei tra un nucleo e l'altro
+
+empty.betweenHouseholdsPacked = Unisciti o crea un nucleo e lo scatolone verrà disimballato lì.
+
+empty.betweenHouseholdsEmpty = Non c'è niente di imballato. Se hai lasciato un nucleo senza fare lo scatolone, chiedi a chi è rimasto di condividere ciò che ti serve.

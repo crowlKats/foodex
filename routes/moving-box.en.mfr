@@ -1,0 +1,11 @@
+# Foodex UI chrome. Recipes stay English.
+@locale en
+---
+
+movingBox.title = Moving Box
+
+empty.betweenHouseholds = You're between households
+
+empty.betweenHouseholdsPacked = Join or create a household and the box unpacks there.
+
+empty.betweenHouseholdsEmpty = There's nothing packed. If you left a household without packing, ask a remaining member to share what you need.

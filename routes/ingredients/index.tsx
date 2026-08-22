@@ -9,13 +9,18 @@ import { Select } from "../../components/Select.tsx";
 import { getCurrencySymbol } from "../../lib/currencies.ts";
 import { logAudit } from "../../lib/audit.ts";
 import IngredientNameInput from "../../islands/IngredientNameInput.tsx";
-import { catalogFor } from "../../lib/i18n/mod.ts";
-import { useMessages } from "../../lib/i18n/provider.tsx";
 import {
   getPage,
   Pagination,
   paginationParams,
 } from "../../components/Pagination.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 const INGREDIENT_SELECT = `SELECT g.*,
   (SELECT COUNT(*) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as store_count,
@@ -63,7 +68,9 @@ export const handlers = handler({
       ctx.state.db.query("SELECT id, name FROM ingredients"),
     ]);
     const error = ctx.url.searchParams.get("error") || undefined;
-    ctx.state.pageTitle = catalogFor(ctx.state.locale).catalog.ingredients();
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "catalog.ingredients",
+    ).format();
     return {
       data: {
         ingredients: result.rows,
@@ -160,10 +167,11 @@ export default page(
       url,
     },
   ) {
-    const m = useMessages();
+    const trans = t.use();
+    const sharedTrans = shared.use();
     return (
       <div>
-        <PageHeader title={m.catalog.ingredients()} query={q} />
+        <PageHeader title={trans("catalog.ingredients")} query={q} />
 
         {error && (
           <div class="alert-error mb-4">
@@ -177,16 +185,16 @@ export default page(
           {loggedIn && (
             <div class="lg:col-span-1">
               <h2 class="text-lg font-semibold mb-3">
-                {m.catalog.addIngredient()}
+                {t("catalog.addIngredient")}
               </h2>
               <form
                 method="POST"
                 class="card space-y-3"
               >
-                <FormField label={m.common.name()}>
+                <FormField label={sharedTrans("common.name")}>
                   <IngredientNameInput existing={existingNames} />
                 </FormField>
-                <FormField label={m.form.unit()}>
+                <FormField label={sharedTrans("form.unit")}>
                   <UnitSelect name="unit" required />
                 </FormField>
 
@@ -245,23 +253,25 @@ export default page(
 
           <div class={loggedIn ? "lg:col-span-2" : ""}>
             <h2 class="text-lg font-semibold mb-3">
-              {m.common.allCount({
-                title: m.catalog.ingredients(),
+              {shared("common.allCount", {
+                title: trans("catalog.ingredients"),
                 count: String(totalCount),
               })}
             </h2>
             {ingredients.length === 0
               ? q
                 ? (
-                  <EmptyState title={m.empty.noIngredientsMatch({ query: q })}>
-                    {m.empty.noIngredientsMatchBody()}
+                  <EmptyState
+                    title={trans("empty.noIngredientsMatch", { query: q })}
+                  >
+                    {t("empty.noIngredientsMatchBody")}
                   </EmptyState>
                 )
                 : (
-                  <EmptyState title={m.empty.noIngredients()}>
-                    {m.empty.noIngredientsBody()} {loggedIn
-                      ? m.empty.addIngredientFirst()
-                      : m.empty.signInToAdd()}
+                  <EmptyState title={trans("empty.noIngredients")}>
+                    {t("empty.noIngredientsBody")} {loggedIn
+                      ? t("empty.addIngredientFirst")
+                      : shared("empty.signInToAdd")}
                   </EmptyState>
                 )
               : (

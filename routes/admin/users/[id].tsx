@@ -6,8 +6,13 @@ import { SectionHeader } from "../../../components/SectionHeader.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { logAudit } from "../../../lib/audit.ts";
-import { catalogFor } from "../../../lib/i18n/mod.ts";
-import { useMessages } from "../../../lib/i18n/provider.tsx";
+import { createT } from "../../../components/Translation.tsx";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import { t as shared } from "../../../locales/shared.ts";
+import en from "./[id].en.mfr";
+import it from "./[id].it.mfr";
+
+const t = createT({ en, it });
 
 interface UserDetail {
   id: string;
@@ -63,9 +68,9 @@ export const handlers = handler({
         ),
       ]);
 
-    const msg = catalogFor(ctx.state.locale);
-    ctx.state.pageTitle = msg.admin.namedTitle({
-      name: user.name ?? user.email ?? msg.admin.noNameUser(),
+    const msg = pickBundle(ctx.state.locale, { en, it });
+    ctx.state.pageTitle = msg.get("admin.namedTitle").format({
+      name: user.name ?? user.email ?? msg.get("admin.noNameUser").format(),
     });
     return {
       data: {
@@ -169,19 +174,20 @@ export default page(function AdminUserDetailPage(
     url,
   },
 ) {
-  const m = useMessages();
+  const trans = t.use();
+  const sharedTrans = shared.use();
   return (
     <div>
-      <PageHeader title={user.name ?? m.common.noName()} noSearch />
+      <PageHeader title={user.name ?? sharedTrans("common.noName")} noSearch />
       <AdminNav currentPath={url.pathname} />
-      <BackLink href="/admin/users" label={m.admin.allUsers()} />
+      <BackLink href="/admin/users" label={trans("admin.allUsers")} />
 
       {error && <div class="alert-error my-4">{error}</div>}
 
       <div class="grid gap-6 md:grid-cols-2 mt-4">
         <div class="space-y-6">
           <div class="card">
-            <SectionHeader title={m.admin.account()} />
+            <SectionHeader title={trans("admin.account")} />
             <div class="flex items-center gap-3 mt-3 mb-4">
               {user.avatar_url && (
                 <img
@@ -191,54 +197,61 @@ export default page(function AdminUserDetailPage(
                 />
               )}
               <div>
-                <div class="font-medium">{user.name ?? m.common.noName()}</div>
+                <div class="font-medium">
+                  {user.name ?? shared("common.noName")}
+                </div>
                 <div class="text-sm text-stone-500">
-                  {user.email ?? m.common.noEmail()}
+                  {user.email ?? shared("common.noEmail")}
                 </div>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
-              <Field label={m.admin.userId()} value={user.id} />
+              <Field label={trans("admin.userId")} value={user.id} />
               <Field
-                label={m.admin.created()}
+                label={trans("admin.created")}
                 value={formatDate(user.created_at)}
               />
-              <Field label={m.admin.unitSystem()} value={user.unit_system} />
-              <Field label={m.admin.timezone()} value={user.timezone} />
-              <Field label={m.admin.language()} value={user.language} />
               <Field
-                label={m.admin.providers()}
+                label={trans("admin.unitSystem")}
+                value={user.unit_system}
+              />
+              <Field label={trans("admin.timezone")} value={user.timezone} />
+              <Field label={trans("admin.language")} value={user.language} />
+              <Field
+                label={trans("admin.providers")}
                 value={[
                   user.authentik_id && "Authentik",
                   user.github_id && "GitHub",
                   user.google_id && "Google",
-                ].filter(Boolean).join(", ") || m.admin.emailOnly()}
+                ].filter(Boolean).join(", ") || trans("admin.emailOnly")}
               />
               <Field
-                label={m.profile.household()}
+                label={sharedTrans("profile.household")}
                 value={membership
                   ? `${membership.household} (${membership.role})`
-                  : m.admin.none()}
+                  : trans("admin.none")}
               />
             </div>
           </div>
 
           <div class="card">
-            <SectionHeader title={m.admin.activity()} />
+            <SectionHeader title={trans("admin.activity")} />
             <div class="grid grid-cols-3 gap-3 mt-3 text-center">
               <div>
                 <div class="text-xl font-bold">{stats.favorites}</div>
-                <div class="text-xs text-stone-500">favorites</div>
+                <div class="text-xs text-stone-500">{t("admin.favorites")}</div>
               </div>
               <div>
                 <div class="text-xl font-bold">{stats.agentSessions}</div>
-                <div class="text-xs text-stone-500">assistant chats</div>
+                <div class="text-xs text-stone-500">
+                  {t("admin.agentSessions")}
+                </div>
               </div>
               <div>
                 <div class="text-xl font-bold">
                   {stats.aiTokens.toLocaleString("en-US")}
                 </div>
-                <div class="text-xs text-stone-500">AI tokens</div>
+                <div class="text-xs text-stone-500">{t("admin.aiTokens")}</div>
               </div>
             </div>
           </div>
@@ -307,7 +320,7 @@ export default page(function AdminUserDetailPage(
           )}
 
           <div class="card border-red-300 dark:border-red-900">
-            <SectionHeader title="Danger zone" />
+            <SectionHeader title={trans("admin.dangerZone")} />
             <p class="text-sm text-stone-500 mt-3">
               Deleting removes the account with its sessions, favorites, and
               assistant chats. Households and their recipes stay, even ones this
