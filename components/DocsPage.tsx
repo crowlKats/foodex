@@ -5,14 +5,16 @@ import it from "./DocsPage.it.mfr";
 
 const t = createT({ en, it });
 
+type DocsKey = Parameters<ReturnType<typeof t.use>>[0];
+
 export interface DocsPageInfo {
   href: string;
-  labelKey: string;
+  labelKey: DocsKey;
 }
 
 /** Sidebar structure and reading order for the docs section. */
 export const DOCS_GROUPS: {
-  labelKey: string;
+  labelKey: DocsKey;
   pages: DocsPageInfo[];
 }[] = [
   {
