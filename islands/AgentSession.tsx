@@ -874,7 +874,7 @@ export default function AgentSession(props: Props) {
             /* Fixed width = open width, so the content slides in as one piece
             instead of reflowing while the container animates. */
           }
-          <div class="h-full w-screen md:w-[66.6667vw]">
+          <div class="h-full min-h-0 w-screen md:w-[66.6667vw]">
             {drawerMode === "edit" && editingItem
               ? (
                 <EditDrawer
@@ -1306,7 +1306,7 @@ function Drawer(
           onClick={onClose}
         />
       </div>
-      <div class="flex-1 overflow-y-auto p-4">{children}</div>
+      <div class="flex-1 min-h-0 overflow-y-auto p-4">{children}</div>
       {footer && (
         <div class="border-t-2 border-stone-200 dark:border-stone-700 p-3 shrink-0">
           {footer}
@@ -1338,7 +1338,7 @@ function ApplyDrawer(p: PreviewModalProps) {
       title={`Proposed changes (${p.staging.length})`}
       onClose={p.onClose}
       footer={
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
           <Button
             type="button"
             onClick={p.onApply}
@@ -2036,10 +2036,20 @@ function EditDrawer(p: EditItemModalProps) {
       onClose={onCancel}
       footer={
         <div class="flex gap-2">
-          <Button type="button" disabled={saving} onClick={save}>
+          <Button
+            type="button"
+            class="flex-1 lg:flex-none"
+            disabled={saving}
+            onClick={save}
+          >
             {saving ? "Saving…" : "Save"}
           </Button>
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button
+            type="button"
+            variant="outline"
+            class="flex-1 lg:flex-none"
+            onClick={onCancel}
+          >
             Cancel
           </Button>
         </div>
@@ -2289,14 +2299,15 @@ function WorkbenchPane(p: WorkbenchProps) {
           <span class="text-xs uppercase tracking-wide text-stone-500 shrink-0">
             {KIND_LABEL[item.kind] ?? item.kind}
           </span>
-          <span class="font-medium truncate">{stagedName(item)}</span>
+          <span class="font-medium truncate min-w-0">{stagedName(item)}</span>
           {item.user_edited && (
             <span class="text-xs text-orange-600 shrink-0">edited</span>
           )}
           {
             /* Grouped left to right: destructive icons, then the save
               actions, then the panel toggle; thin rules keep the groups
-              readable at a glance. */
+              readable at a glance. On small screens Save lives in a footer
+              above the tab bar — this row overflows and gets clipped. */
           }
           <div class="ml-auto flex items-center gap-2 shrink-0">
             <RecipePreview formId="workbench-recipe-form" size="sm" />
@@ -2335,11 +2346,12 @@ function WorkbenchPane(p: WorkbenchProps) {
                 ) p.onDiscard(item.id);
               }}
             />
-            <div class="w-0.5 h-5 bg-stone-200 dark:bg-stone-700" />
+            <div class="max-lg:hidden w-0.5 h-5 bg-stone-200 dark:bg-stone-700" />
             <Button
               type="button"
               variant="outline"
               size="sm"
+              class="max-lg:hidden"
               disabled={!dirty || busy}
               onClick={save}
             >
@@ -2348,6 +2360,7 @@ function WorkbenchPane(p: WorkbenchProps) {
             <Button
               type="button"
               size="sm"
+              class="max-lg:hidden"
               disabled={busy || !!conflict}
               onClick={applyNow}
             >
@@ -2367,7 +2380,7 @@ function WorkbenchPane(p: WorkbenchProps) {
           </div>
         </div>
       </div>
-      <div class="flex-1 min-h-0 overflow-y-auto p-4 pb-16">
+      <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:pb-16">
         <div
           class="max-w-3xl mx-auto space-y-4"
           onChange={(e) => {
@@ -2447,6 +2460,32 @@ function WorkbenchPane(p: WorkbenchProps) {
             </div>
           )}
         </div>
+      </div>
+      {
+        /* Mobile: Save/Apply in a footer so they stay tappable above the
+          fixed tab bar. The header row is too wide and overflow-hidden
+          clips them off the right edge. */
+      }
+      <div class="lg:hidden shrink-0 border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950 p-3 flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          class="flex-1"
+          disabled={!dirty || busy}
+          onClick={save}
+        >
+          {saving ? "Saving…" : "Save edits"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          class="flex-1"
+          disabled={busy || !!conflict}
+          onClick={applyNow}
+        >
+          {item.kind === "create_recipe" ? "Save to library" : "Apply"}
+        </Button>
       </div>
     </div>
   );
