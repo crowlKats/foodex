@@ -266,7 +266,7 @@ Deno.test("foldStaging: editing steps 6–8 keeps their positions in the full re
   );
 
   const it = foldStaging(events).get("m1")!;
-  const effSteps = (effective(it).steps as { id: string; body: string }[]);
+  const effSteps = effective(it).steps as { id: string; body: string }[];
   assertEquals(effSteps.map((s) => s.id), steps.map((s) => s.id));
   assertEquals(effSteps[5].body, "Edited 6");
   assertEquals(effSteps[6].body, "Edited 7");
@@ -276,7 +276,7 @@ Deno.test("foldStaging: editing steps 6–8 keeps their positions in the full re
   assertEquals(stepDisplayNumber("s8", effSteps, steps), 8);
 
   const serialized = serializePending(foldStaging(events))[0];
-  const shown = (serialized.effective.steps as { id: string }[]);
+  const shown = serialized.effective.steps as { id: string }[];
   assertEquals(shown.map((s) => s.id), steps.map((s) => s.id));
 });
 
@@ -316,7 +316,7 @@ Deno.test("foldStaging: a scalar set of steps 6–8 does not collapse them to 1�
   );
 
   const it = foldStaging(events).get("m1")!;
-  const effSteps = (effective(it).steps as { id: string; body: string }[]);
+  const effSteps = effective(it).steps as { id: string; body: string }[];
   assertEquals(effSteps.length, 8);
   assertEquals(effSteps.map((s) => s.id), steps.map((s) => s.id));
   assertEquals(
