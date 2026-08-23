@@ -120,11 +120,100 @@ function setPath(obj: Obj, path: string, value: unknown): void {
   cur[parts[parts.length - 1]] = value;
 }
 
+function isCollectionField(path: string): path is Collection {
+  return Object.prototype.hasOwnProperty.call(RECIPE_SCHEMA.collections, path);
+}
+
+/**
+ * Merge a whole-array write onto a keyed collection without dropping rows
+ * the write omitted. Models sometimes `set` path "steps" to only the rows
+ * they edited; treating that as a replacement renumbers those steps to 1..n
+ * and deletes the rest. Update matching keys, append new ones, keep the
+ * others. Reorder only when the write includes every existing key.
+ */
+function mergeCollectionArray(
+  existing: Obj[],
+  incoming: Obj[],
+  collection: Collection,
+): Obj[] {
+  const list = existing.map((it) => clone(it));
+  const incomingKeys: string[] = [];
+  for (const item of incoming) {
+    const k = itemKey(collection, item);
+    incomingKeys.push(k);
+    const idx = list.findIndex((it) => itemKey(collection, it) === k);
+    if (idx >= 0) list[idx] = clone(item);
+    else list.push(clone(item));
+  }
+  const existingKeys = existing.map((it) => itemKey(collection, it));
+  const incomingSet = new Set(incomingKeys.filter((k) => k !== ""));
+  const specifiedAllExisting = existingKeys.length > 0 &&
+    existingKeys.every((k) => k !== "" && incomingSet.has(k));
+  if (specifiedAllExisting) {
+    const pos = new Map(incomingKeys.map((k, i) => [k, i]));
+    list.sort((a, b) => {
+      const ai = pos.get(itemKey(collection, a)) ?? Number.MAX_SAFE_INTEGER;
+      const bi = pos.get(itemKey(collection, b)) ?? Number.MAX_SAFE_INTEGER;
+      return ai - bi;
+    });
+  }
+  return list;
+}
+
+/**
+ * 1-based position of a step in the full recipe. Prefers `after` unless that
+ * list is a shorter subset of `before` (a patched slice), in which case the
+ * original position is kept so edited steps 6–8 stay labeled 6–8.
+ */
+export function stepDisplayNumber(
+  id: string,
+  afterSteps: unknown,
+  beforeSteps: unknown,
+): number {
+  const asList = (v: unknown): Obj[] => Array.isArray(v) ? v as Obj[] : [];
+  const idxOf = (list: Obj[], key: string) =>
+    list.findIndex((s) => String(s?.id ?? "") === key);
+
+  const after = asList(afterSteps);
+  const before = asList(beforeSteps);
+  const a = idxOf(after, id);
+  const b = idxOf(before, id);
+
+  const afterIsSubset = after.length > 0 && after.length < before.length &&
+    after.every((s) => {
+      const k = String(s?.id ?? "");
+      return k !== "" && idxOf(before, k) >= 0;
+    });
+
+  if (afterIsSubset && b >= 0) return b + 1;
+  if (a >= 0) return a + 1;
+  if (b >= 0) return b + 1;
+  return 1;
+}
+
 /** Apply an ordered list of ops onto a deep clone of `base`. */
 export function applyPatch<T extends Obj>(base: T, ops: PatchOp[]): T {
   const out: Obj = clone(base);
   for (const op of ops) {
     if (isScalarSet(op)) {
+      if (isCollectionField(op.path) && Array.isArray(op.value)) {
+        const existing =
+          (Array.isArray(out[op.path]) ? out[op.path] : []) as Obj[];
+        const incoming = op.value as Obj[];
+        const existingKeys = new Set(
+          existing.map((it) => itemKey(op.path, it)).filter((k) => k !== ""),
+        );
+        const incomingKeys = incoming.map((it) => itemKey(op.path, it));
+        // Only the "edited slice" case: every incoming row already exists
+        // and some rows were omitted. A full rewrite still replaces.
+        const isEditedSlice = incoming.length > 0 &&
+          incoming.length < existing.length &&
+          incomingKeys.every((k) => k !== "" && existingKeys.has(k));
+        if (isEditedSlice) {
+          out[op.path] = mergeCollectionArray(existing, incoming, op.path);
+          continue;
+        }
+      }
       setPath(out, op.path, op.value);
       continue;
     }
