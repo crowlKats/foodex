@@ -149,8 +149,10 @@ export default function RecipePreview({ formId, size }: Props = {}) {
         Preview
       </Button>
       {open.value && (
+        // Mobile: sit below the iOS status bar. sm+ already has pt-12, so
+        // don't stack env(safe-area-inset-top) on large screens.
         <div
-          class="fixed inset-0 z-50 flex items-start justify-center pt-4 sm:pt-12 bg-black/50"
+          class="fixed inset-0 z-50 flex items-start justify-center pt-[calc(1rem+env(safe-area-inset-top))] sm:pt-12 bg-black/50"
           onClick={(e) => {
             if (e.target === e.currentTarget) open.value = false;
             e.stopPropagation();
