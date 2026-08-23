@@ -60,7 +60,7 @@ export const handlers = handler({
 
 export default page(function AgentSessionPage({ data }) {
   return (
-    <div class="h-full flex flex-col">
+    <div class="h-full min-h-0 flex-1 flex flex-col">
       <div class="shrink-0 flex items-center gap-3 px-4 py-2 border-b-2 border-stone-200 dark:border-stone-700">
         <BackLink href="/agent" label="Conversations" />
         <h1 id="agent-chat-title" class="font-bold truncate flex-1 min-w-0">

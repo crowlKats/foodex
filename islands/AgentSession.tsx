@@ -736,7 +736,7 @@ export default function AgentSession(props: Props) {
           </div>
 
           {/* Composer with the staged-changes pills attached on top */}
-          <div class="border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950">
+          <div class="shrink-0 border-t-2 border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950">
             <div class="max-w-3xl mx-auto p-3 space-y-2">
               {error && <div class="alert-error text-sm">{error}</div>}
               {staging.length > 0 && !shell && (
