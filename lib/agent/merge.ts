@@ -196,21 +196,21 @@ export function applyPatch<T extends Obj>(base: T, ops: PatchOp[]): T {
   const out: Obj = clone(base);
   for (const op of ops) {
     if (isScalarSet(op)) {
-      if (isCollectionField(op.path) && Array.isArray(op.value)) {
-        const existing =
-          (Array.isArray(out[op.path]) ? out[op.path] : []) as Obj[];
+      const field = op.path;
+      if (isCollectionField(field) && Array.isArray(op.value)) {
+        const existing = (Array.isArray(out[field]) ? out[field] : []) as Obj[];
         const incoming = op.value as Obj[];
         const existingKeys = new Set(
-          existing.map((it) => itemKey(op.path, it)).filter((k) => k !== ""),
+          existing.map((it) => itemKey(field, it)).filter((k) => k !== ""),
         );
-        const incomingKeys = incoming.map((it) => itemKey(op.path, it));
+        const incomingKeys = incoming.map((it) => itemKey(field, it));
         // Only the "edited slice" case: every incoming row already exists
         // and some rows were omitted. A full rewrite still replaces.
         const isEditedSlice = incoming.length > 0 &&
           incoming.length < existing.length &&
           incomingKeys.every((k) => k !== "" && existingKeys.has(k));
         if (isEditedSlice) {
-          out[op.path] = mergeCollectionArray(existing, incoming, op.path);
+          out[field] = mergeCollectionArray(existing, incoming, field);
           continue;
         }
       }
