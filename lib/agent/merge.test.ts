@@ -9,6 +9,7 @@ import {
   type PatchOp,
   pathOf,
   RECIPE_SCHEMA,
+  stepDisplayNumber,
 } from "./merge.ts";
 
 function baseRecipe() {
@@ -261,4 +262,93 @@ Deno.test("deepEqual: nested + arrays", () => {
   assert(deepEqual({ a: [1, { b: 2 }] }, { a: [1, { b: 2 }] }));
   assert(!deepEqual({ a: 1 }, { a: 1, b: 2 }));
   assert(!deepEqual([1, 2], [2, 1]));
+});
+
+function eightSteps() {
+  return Array.from({ length: 8 }, (_, i) => ({
+    id: `s${i + 1}`,
+    title: `Step ${i + 1}`,
+    body: `Body ${i + 1}`,
+  }));
+}
+
+Deno.test("applyPatch: keyed sets on later steps keep the full list and order", () => {
+  const base = { title: "Long", steps: eightSteps() };
+  const out = applyPatch(base, [
+    {
+      op: "set",
+      collection: "steps",
+      key: "s6",
+      field: "body",
+      value: "Edited 6",
+    },
+    {
+      op: "set",
+      collection: "steps",
+      key: "s7",
+      field: "body",
+      value: "Edited 7",
+    },
+    {
+      op: "set",
+      collection: "steps",
+      key: "s8",
+      field: "body",
+      value: "Edited 8",
+    },
+  ]);
+  assertEquals(out.steps.map((s) => s.id), eightSteps().map((s) => s.id));
+  assertEquals(out.steps[0].body, "Body 1");
+  assertEquals(out.steps[5].body, "Edited 6");
+  assertEquals(out.steps[6].body, "Edited 7");
+  assertEquals(out.steps[7].body, "Edited 8");
+  assertEquals(stepDisplayNumber("s6", out.steps, base.steps), 6);
+  assertEquals(stepDisplayNumber("s7", out.steps, base.steps), 7);
+  assertEquals(stepDisplayNumber("s8", out.steps, base.steps), 8);
+});
+
+Deno.test("applyPatch: scalar set of a later-step slice does not drop earlier steps", () => {
+  const base = { title: "Long", steps: eightSteps() };
+  const out = applyPatch(base, [{
+    op: "set",
+    path: "steps",
+    value: [
+      { id: "s6", title: "Step 6", body: "Edited 6" },
+      { id: "s7", title: "Step 7", body: "Edited 7" },
+      { id: "s8", title: "Step 8", body: "Edited 8" },
+    ],
+  }]);
+  assertEquals(out.steps.map((s) => s.id), eightSteps().map((s) => s.id));
+  assertEquals(out.steps[0].body, "Body 1");
+  assertEquals(out.steps[4].body, "Body 5");
+  assertEquals(out.steps[5].body, "Edited 6");
+  assertEquals(out.steps[6].body, "Edited 7");
+  assertEquals(out.steps[7].body, "Edited 8");
+});
+
+Deno.test("applyPatch: scalar set of a full steps list still replaces", () => {
+  const base = { title: "Long", steps: eightSteps() };
+  const replacement = [
+    { id: "n1", title: "Only", body: "one" },
+    { id: "n2", title: "Two", body: "two" },
+  ];
+  const out = applyPatch(base, [{
+    op: "set",
+    path: "steps",
+    value: replacement,
+  }]);
+  assertEquals(out.steps.map((s) => s.id), ["n1", "n2"]);
+});
+
+Deno.test("stepDisplayNumber: a compact slice of steps 6–8 stays 6–8", () => {
+  const before = eightSteps();
+  const afterSlice = [
+    { id: "s6", body: "Edited 6" },
+    { id: "s7", body: "Edited 7" },
+    { id: "s8", body: "Edited 8" },
+  ];
+  assertEquals(stepDisplayNumber("s6", afterSlice, before), 6);
+  assertEquals(stepDisplayNumber("s7", afterSlice, before), 7);
+  assertEquals(stepDisplayNumber("s8", afterSlice, before), 8);
+  assertEquals(stepDisplayNumber("s1", afterSlice, before), 1);
 });

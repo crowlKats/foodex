@@ -1,11 +1,13 @@
 import { assert, assertEquals } from "@std/assert";
 import type { AgentEvent } from "./events.ts";
+import { stepDisplayNumber } from "./merge.ts";
 import {
   agentProposal,
   effective,
   foldStaging,
   isUserEdited,
   pendingItems,
+  serializePending,
 } from "./staging.ts";
 
 // Minimal event constructors (seq assigned positionally).
@@ -212,4 +214,113 @@ Deno.test("foldStaging: user_staged creates a pending item like a tool create", 
   assertEquals(effective(it).title, "Renamed");
   assertEquals(agentProposal(it).title, "Migrated Draft");
   assertEquals(pendingItems(map).length, 1);
+});
+
+Deno.test("foldStaging: editing steps 6–8 keeps their positions in the full recipe", () => {
+  const steps = Array.from({ length: 8 }, (_, i) => ({
+    id: `s${i + 1}`,
+    title: `Step ${i + 1}`,
+    body: `Body ${i + 1}`,
+  }));
+  const events = log(
+    {
+      type: "tool_result",
+      payload: {
+        tool_use_id: "m1",
+        tool_name: "edit_recipe",
+        is_error: false,
+        content: {},
+        staged: {
+          op: "seed",
+          kind: "edit_recipe",
+          item_id: "m1",
+          target: { slug: "long", recipe_id: "r1" },
+          base_version: "v1",
+          base_data: { title: "Long", steps },
+          ops: [
+            {
+              op: "set",
+              collection: "steps",
+              key: "s6",
+              field: "body",
+              value: "Edited 6",
+            },
+            {
+              op: "set",
+              collection: "steps",
+              key: "s7",
+              field: "body",
+              value: "Edited 7",
+            },
+            {
+              op: "set",
+              collection: "steps",
+              key: "s8",
+              field: "body",
+              value: "Edited 8",
+            },
+          ],
+        },
+      },
+    },
+  );
+
+  const it = foldStaging(events).get("m1")!;
+  const effSteps = effective(it).steps as { id: string; body: string }[];
+  assertEquals(effSteps.map((s) => s.id), steps.map((s) => s.id));
+  assertEquals(effSteps[5].body, "Edited 6");
+  assertEquals(effSteps[6].body, "Edited 7");
+  assertEquals(effSteps[7].body, "Edited 8");
+  assertEquals(stepDisplayNumber("s6", effSteps, steps), 6);
+  assertEquals(stepDisplayNumber("s7", effSteps, steps), 7);
+  assertEquals(stepDisplayNumber("s8", effSteps, steps), 8);
+
+  const serialized = serializePending(foldStaging(events))[0];
+  const shown = serialized.effective.steps as { id: string }[];
+  assertEquals(shown.map((s) => s.id), steps.map((s) => s.id));
+});
+
+Deno.test("foldStaging: a scalar set of steps 6–8 does not collapse them to 1–3", () => {
+  const steps = Array.from({ length: 8 }, (_, i) => ({
+    id: `s${i + 1}`,
+    title: `Step ${i + 1}`,
+    body: `Body ${i + 1}`,
+  }));
+  const events = log(
+    {
+      type: "tool_result",
+      payload: {
+        tool_use_id: "m1",
+        tool_name: "edit_recipe",
+        is_error: false,
+        content: {},
+        staged: {
+          op: "seed",
+          kind: "edit_recipe",
+          item_id: "m1",
+          target: { slug: "long", recipe_id: "r1" },
+          base_version: "v1",
+          base_data: { title: "Long", steps },
+          ops: [{
+            op: "set",
+            path: "steps",
+            value: [
+              { id: "s6", title: "Step 6", body: "Edited 6" },
+              { id: "s7", title: "Step 7", body: "Edited 7" },
+              { id: "s8", title: "Step 8", body: "Edited 8" },
+            ],
+          }],
+        },
+      },
+    },
+  );
+
+  const it = foldStaging(events).get("m1")!;
+  const effSteps = effective(it).steps as { id: string; body: string }[];
+  assertEquals(effSteps.length, 8);
+  assertEquals(effSteps.map((s) => s.id), steps.map((s) => s.id));
+  assertEquals(
+    ["s6", "s7", "s8"].map((id) => stepDisplayNumber(id, effSteps, steps)),
+    [6, 7, 8],
+  );
 });

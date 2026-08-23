@@ -33,6 +33,7 @@ import RecipePreview from "./RecipePreview.tsx";
 import { Markdown } from "../components/Markdown.tsx";
 import { Checkbox } from "../components/Checkbox.tsx";
 import { formDataToRecipeData } from "../lib/recipe-form-data.ts";
+import { stepDisplayNumber } from "../lib/agent/merge.ts";
 import { uploadImages } from "../lib/image-downscale.ts";
 
 interface IngredientOption {
@@ -1974,6 +1975,7 @@ function StagedItemDiff(
             {steps.map((r) => (
               <li
                 key={r.k}
+                value={stepDisplayNumber(r.k, a.steps, b.steps)}
                 class={r.s === "added" || r.s === "removed"
                   ? `${DIFF_HL[r.s]} px-1`
                   : ""}
