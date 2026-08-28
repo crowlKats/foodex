@@ -334,10 +334,10 @@ export const TOOLS: ToolDef[] = [
     name: "fetch_recipe_structured",
     description:
       "Extract structured recipe data (schema.org JSON-LD, or a Foodex export) directly " +
-      "from a recipe page URL. Fast and exact when the site provides it. When importing " +
-      "from a URL try this FIRST, and fall back to fetch_url if it finds nothing. The " +
-      "result may be incomplete (no sections/tags/tools); verify and fill gaps before " +
-      "proposing.",
+      "from a recipe page URL. Fast and exact when the site provides it. Only when the " +
+      "user provided a URL (not when they attached recipe photos): try this FIRST, and " +
+      "fall back to fetch_url if it finds nothing. The result may be incomplete (no " +
+      "sections/tags/tools); verify and fill gaps before proposing.",
     input_schema: {
       type: "object",
       properties: { url: { type: "string" } },
