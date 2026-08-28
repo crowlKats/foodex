@@ -2,7 +2,7 @@ import { assert, assertEquals, assertRejects } from "@std/assert";
 import type { FilePart } from "ai";
 import { foldConversation } from "./conversation.ts";
 import type { AgentEvent } from "./events.ts";
-import { resolveImages } from "./loop.ts";
+import { resolveImages } from "./images.ts";
 import { toModelMessages } from "./translate.ts";
 
 function log(...bodies: Omit<AgentEvent, "seq">[]): AgentEvent[] {

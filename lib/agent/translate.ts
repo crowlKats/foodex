@@ -8,7 +8,7 @@
 //   - A tool result is a block inside a user turn in our fold, but its own
 //     `role: "tool"` message in the SDK.
 //   - Attached images are stored as S3 references and resolved to bytes just
-//     before sending, so the fold stays pure (see resolveImages in loop.ts).
+//     before sending, so the fold stays pure (see resolveImages in images.ts).
 
 import type { AssistantContent, ModelMessage, ToolResultPart } from "ai";
 import type { ProviderOptions } from "./model.ts";
