@@ -90,11 +90,6 @@ function formString(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value : "";
 }
 
-export function isImageFile(value: FormDataEntryValue): value is File {
-  return value instanceof File && value.size > 0 &&
-    (!value.type || value.type.startsWith("image/"));
-}
-
 export function isShareRecordFresh(
   record: { createdAt?: number },
   now = Date.now(),
