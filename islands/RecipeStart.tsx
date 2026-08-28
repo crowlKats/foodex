@@ -1,8 +1,10 @@
 import { useSignal } from "@preact/signals";
+import { useEffect } from "preact/hooks";
 import { IconLoader2, IconPhoto, IconX } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
 import { InputMultiline } from "../components/Input.tsx";
 import { uploadImages } from "../lib/image-downscale.ts";
+import { sharedImportText, takeIncomingShare } from "../lib/share-target.ts";
 
 const PLACEHOLDER = [
   "Paste a link to import from…",
@@ -16,9 +18,14 @@ const PLACEHOLDER = [
  * recipe text, photos, instructions, or any mix of them. Submitting seeds an
  * assistant session with that message and lands on the session, where the
  * recipe is extracted and staged for review.
+ *
+ * `initialText` is the URL/text from a GET share (or the query-string echo
+ * of a POST share). Shared photos arrive via the service worker stash.
  */
-export default function RecipeStart() {
-  const text = useSignal("");
+export default function RecipeStart(
+  { initialText = "" }: { initialText?: string },
+) {
+  const text = useSignal(initialText);
   const files = useSignal<{ file: File; preview: string }[]>([]);
   const dragging = useSignal(false);
   const submitting = useSignal(false);
@@ -26,7 +33,7 @@ export default function RecipeStart() {
 
   function addFiles(newFiles: FileList | File[]) {
     const images = Array.from(newFiles).filter((f) =>
-      f.type.startsWith("image/")
+      !f.type || f.type.startsWith("image/")
     );
     if (images.length === 0) return;
     files.value = [
@@ -34,6 +41,29 @@ export default function RecipeStart() {
       ...images.map((file) => ({ file, preview: URL.createObjectURL(file) })),
     ];
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const shared = await takeIncomingShare();
+      if (cancelled || !shared) return;
+      const incoming = sharedImportText(shared);
+      // Don't clobber a URL that already landed via query params, or text
+      // the user has started editing, unless the stash has a fuller paste.
+      if (
+        incoming &&
+        (!text.value.trim() ||
+          (text.value === initialText &&
+            incoming.length > text.value.trim().length))
+      ) {
+        text.value = incoming;
+      }
+      if (shared.files.length > 0) addFiles(shared.files);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function removeFile(index: number) {
     URL.revokeObjectURL(files.value[index]?.preview ?? "");
