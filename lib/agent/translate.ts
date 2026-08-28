@@ -63,13 +63,19 @@ export function toModelMessages(messages: FoldMessage[]): ModelMessage[] {
           if (Array.isArray(parts)) parts.push({ type: "text", text: b.text });
           break;
         case "image":
-          // Tagged `{ type: "data" }` with raw bytes. A bare string `data` is
-          // tried as a URL first by the AI SDK (`new URL(content)`), so base64
-          // (or a leaked serve URL) never reaches the vision model as pixels.
+          // User-facing FilePart.data is FileData | DataContent | URL
+          // (@ai-sdk/provider-utils FilePart). Pass the Uint8Array directly
+          // (DataContent). convertToLanguageModelV4FilePart wraps that as
+          // `{ type: "data", data: bytes }` for the provider; nesting the
+          // tagged object ourselves is the *internal* V4 shape, and a
+          // validator/JSON.stringify can walk the bytes as `{0:255,…}` and
+          // stall the turn with no chat output.
+          // A bare base64 string is also wrong: the SDK tries `new URL`
+          // first, which was the original "URL was not available" bug.
           if (Array.isArray(parts)) {
             parts.push({
               type: "file",
-              data: { type: "data", data: b.data },
+              data: b.data,
               mediaType: b.media_type,
             });
           }
