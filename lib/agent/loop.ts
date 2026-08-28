@@ -22,14 +22,10 @@ import type { AgentSession } from "../../db/types.ts";
 import type { AgentEvent, AgentEventBody, AssistantBlock } from "./events.ts";
 import { recordUsage } from "./usage.ts";
 import { appendEvent, loadEvents } from "./session.ts";
-import {
-  foldConversation,
-  type FoldMessage,
-  type UserBlock,
-} from "./conversation.ts";
+import { foldConversation } from "./conversation.ts";
 import { executeTool, TOOLS } from "./tools.ts";
 import { buildSystemPrompt } from "./system-prompt.ts";
-import { getFile } from "../s3.ts";
+import { resolveImages } from "./images.ts";
 
 const MAX_STEPS = 24;
 const MAX_TOKENS = 8192;
@@ -63,57 +59,6 @@ export interface RunTurnOpts {
   db: Db;
   session: AgentSession;
   emit: (ev: TurnEvent) => void | Promise<void>;
-}
-
-// ── attached images ─────────────────────────────────────────────────
-
-async function loadBase64(key: string): Promise<string | null> {
-  const f = await getFile(key);
-  if (!f) return null;
-  const bytes = new Uint8Array(await new Response(f.body).arrayBuffer());
-  let bin = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(bin);
-}
-
-/**
- * Replace the fold's `image_ref` markers with blocks carrying the bytes, read
- * from S3. `cache` spans the steps of one turn, so each image is fetched at
- * most once per turn.
- */
-async function resolveImages(
-  messages: FoldMessage[],
-  cache: Map<string, string | null>,
-): Promise<FoldMessage[]> {
-  const out: FoldMessage[] = [];
-  for (const m of messages) {
-    if (m.role === "assistant") {
-      out.push(m);
-      continue;
-    }
-    const blocks: UserBlock[] = [];
-    for (const b of m.content) {
-      if (b.type !== "image_ref") {
-        blocks.push(b);
-        continue;
-      }
-      let data = cache.get(b.key);
-      if (data === undefined) {
-        data = await loadBase64(b.key);
-        cache.set(b.key, data);
-      }
-      blocks.push(
-        data == null
-          ? { type: "text", text: "[attached image is no longer available]" }
-          : { type: "image", data, media_type: b.content_type },
-      );
-    }
-    out.push({ role: "user", content: blocks });
-  }
-  return out;
 }
 
 // Tool schemas are reused verbatim from TOOLS — the AI SDK accepts the existing
@@ -205,7 +150,7 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
   // never hangs on a spinner without explanation.
   try {
     let events = await loadEvents(db.query, session.id, session.head_seq);
-    const imageCache = new Map<string, string | null>();
+    const imageCache = new Map<string, Uint8Array>();
 
     for (let step = 0; step < MAX_STEPS; step++) {
       const folded = foldConversation(events);

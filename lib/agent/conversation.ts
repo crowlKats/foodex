@@ -19,7 +19,7 @@ import { effective, foldStaging, type StagedItem } from "./staging.ts";
 /**
  * Reference to an attached image. The fold is pure and cannot read S3, so it
  * emits these markers; the turn loop swaps them for `image` blocks carrying the
- * bytes just before calling the API (see resolveImages).
+ * bytes just before calling the API (see resolveImages in images.ts).
  */
 export interface PendingImageBlock {
   type: "image_ref";
@@ -32,7 +32,7 @@ export interface PendingImageBlock {
 export type UserBlock =
   | { type: "text"; text: string }
   | PendingImageBlock
-  | { type: "image"; data: string; media_type: string }
+  | { type: "image"; data: Uint8Array; media_type: string }
   | {
     type: "tool_result";
     tool_call_id: string;
