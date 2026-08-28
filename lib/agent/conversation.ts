@@ -172,6 +172,7 @@ function withPhotoSourceNote(messages: FoldMessage[]): FoldMessage[] {
   }
   if (idx < 0) return messages;
   const m = messages[idx];
+  if (m.role !== "user") return messages;
   const n = imageCountOf(m.content);
   if (n === 0) return messages;
   const note = photoSourceNote(n);
