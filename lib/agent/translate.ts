@@ -63,12 +63,13 @@ export function toModelMessages(messages: FoldMessage[]): ModelMessage[] {
           if (Array.isArray(parts)) parts.push({ type: "text", text: b.text });
           break;
         case "image":
-          // A `file` part with an image mediaType, not the older `image` part —
-          // that one is deprecated and warns on every turn carrying a photo.
+          // Tagged `{ type: "data" }` with raw bytes. A bare string `data` is
+          // tried as a URL first by the AI SDK (`new URL(content)`), so base64
+          // (or a leaked serve URL) never reaches the vision model as pixels.
           if (Array.isArray(parts)) {
             parts.push({
               type: "file",
-              data: b.data,
+              data: { type: "data", data: b.data },
               mediaType: b.media_type,
             });
           }

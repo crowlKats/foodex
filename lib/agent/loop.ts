@@ -67,26 +67,23 @@ export interface RunTurnOpts {
 
 // ── attached images ─────────────────────────────────────────────────
 
-async function loadBase64(key: string): Promise<string | null> {
+async function loadAttachmentBytes(key: string): Promise<Uint8Array | null> {
   const f = await getFile(key);
   if (!f) return null;
-  const bytes = new Uint8Array(await new Response(f.body).arrayBuffer());
-  let bin = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(bin);
+  return new Uint8Array(await new Response(f.body).arrayBuffer());
 }
 
 /**
  * Replace the fold's `image_ref` markers with blocks carrying the bytes, read
  * from S3. `cache` spans the steps of one turn, so each image is fetched at
- * most once per turn.
+ * most once per turn. A missing object fails the turn rather than dropping
+ * the photo (which left the model with only the media-id text, so it tried
+ * fetch_url).
  */
-async function resolveImages(
+export async function resolveImages(
   messages: FoldMessage[],
-  cache: Map<string, string | null>,
+  cache: Map<string, Uint8Array>,
+  load: (key: string) => Promise<Uint8Array | null> = loadAttachmentBytes,
 ): Promise<FoldMessage[]> {
   const out: FoldMessage[] = [];
   for (const m of messages) {
@@ -102,14 +99,16 @@ async function resolveImages(
       }
       let data = cache.get(b.key);
       if (data === undefined) {
-        data = await loadBase64(b.key);
-        cache.set(b.key, data);
+        const loaded = await load(b.key);
+        if (loaded == null) {
+          throw new Error(
+            `Could not load attached image (media id: ${b.media_id}).`,
+          );
+        }
+        cache.set(b.key, loaded);
+        data = loaded;
       }
-      blocks.push(
-        data == null
-          ? { type: "text", text: "[attached image is no longer available]" }
-          : { type: "image", data, media_type: b.content_type },
-      );
+      blocks.push({ type: "image", data, media_type: b.content_type });
     }
     out.push({ role: "user", content: blocks });
   }
@@ -205,7 +204,7 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
   // never hangs on a spinner without explanation.
   try {
     let events = await loadEvents(db.query, session.id, session.head_seq);
-    const imageCache = new Map<string, string | null>();
+    const imageCache = new Map<string, Uint8Array>();
 
     for (let step = 0; step < MAX_STEPS; step++) {
       const folded = foldConversation(events);
