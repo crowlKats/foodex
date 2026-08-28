@@ -136,6 +136,56 @@ function buildNotice(
   return { api, display: editNotice };
 }
 
+/**
+ * Instruction injected on the latest user turn when it has photos. "Import
+ * this recipe" otherwise looks like a URL-import task: the auto-router
+ * classifies from text, and the system prompt's URL section is easy to
+ * follow without looking at the pixels. Follow-up turns with the same photo
+ * already work; this makes the first turn unambiguous too.
+ */
+export function photoSourceNote(imageCount: number): string {
+  const noun = imageCount === 1 ? "photo" : "photos";
+  return (
+    `[System note] The user attached ${imageCount} ${noun} of the recipe. ` +
+    `Transcribe from the image(s). Do not ask for a URL.`
+  );
+}
+
+function isToolResultOnly(m: FoldMessage): boolean {
+  return m.role === "user" &&
+    m.content.length > 0 &&
+    m.content.every((b) => b.type === "tool_result");
+}
+
+function imageCountOf(content: UserBlock[]): number {
+  return content.filter((b) => b.type === "image_ref" || b.type === "image")
+    .length;
+}
+
+/** Prepend `photoSourceNote` on the latest real user turn iff it has images. */
+function withPhotoSourceNote(messages: FoldMessage[]): FoldMessage[] {
+  let idx = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role !== "user" || isToolResultOnly(messages[i])) continue;
+    idx = i;
+    break;
+  }
+  if (idx < 0) return messages;
+  const m = messages[idx];
+  const n = imageCountOf(m.content);
+  if (n === 0) return messages;
+  const note = photoSourceNote(n);
+  if (m.content.some((b) => b.type === "text" && b.text === note)) {
+    return messages;
+  }
+  const out = messages.slice();
+  out[idx] = {
+    role: "user",
+    content: [{ type: "text", text: note }, ...m.content],
+  };
+  return out;
+}
+
 export function foldConversation(events: AgentEvent[]): Conversation {
   const apiMessages: FoldMessage[] = [];
   const timeline: TimelineEntry[] = [];
@@ -325,5 +375,5 @@ export function foldConversation(events: AgentEvent[]): Conversation {
   }
 
   flushToolResults();
-  return { apiMessages, timeline };
+  return { apiMessages: withPhotoSourceNote(apiMessages), timeline };
 }

@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import type { AgentEvent } from "./events.ts";
-import { foldConversation } from "./conversation.ts";
+import { foldConversation, photoSourceNote } from "./conversation.ts";
 
 function log(...bodies: Omit<AgentEvent, "seq">[]): AgentEvent[] {
   return bodies.map((b, i) => ({ ...b, seq: i + 1 } as AgentEvent));
@@ -150,11 +150,13 @@ Deno.test("foldConversation: image attachments become marker blocks + timeline i
   const { apiMessages, timeline } = foldConversation(events);
   const content = apiMessages[0].content as { type: string; text?: string }[];
   assertEquals(content.map((b) => b.type), [
+    "text", // photo-source note
     "text", // "Attached image (media id: …)"
     "image_ref",
     "text", // the user text
   ]);
-  assert(content[0].text!.includes("m1"));
+  assertEquals(content[0].text, photoSourceNote(1));
+  assert(content[1].text!.includes("m1"));
   const user = timeline[0];
   assert(user.kind === "user");
   assertEquals(user.images, [{
@@ -187,4 +189,114 @@ Deno.test("foldConversation: user_staged reports via notice on the next user tur
   const action = timeline.find((e) => e.kind === "user_action");
   assert(action && action.kind === "user_action");
   assertEquals(action.action, "staged");
+});
+
+const JPEG_IMG = {
+  media_id: "m1",
+  key: "uploads/x.jpg",
+  content_type: "image/jpeg",
+  url: "/api/media/file/uploads/x.jpg",
+};
+
+function latestUserBlocks(events: AgentEvent[]) {
+  const { apiMessages } = foldConversation(events);
+  for (let i = apiMessages.length - 1; i >= 0; i--) {
+    const m = apiMessages[i];
+    if (m.role !== "user") continue;
+    if (
+      m.content.length > 0 &&
+      m.content.every((b) => b.type === "tool_result")
+    ) {
+      continue;
+    }
+    return m.content as { type: string; text?: string }[];
+  }
+  return [];
+}
+
+Deno.test("foldConversation: photo-source note iff the latest user_message has images", () => {
+  const note1 = photoSourceNote(1);
+  const note2 = photoSourceNote(2);
+
+  const firstTurn = log({
+    type: "user_message",
+    payload: { text: "Please import this recipe.", images: [JPEG_IMG] },
+  });
+  assertEquals(latestUserBlocks(firstTurn)[0].text, note1);
+
+  // A later text-only turn drops the note from the whole request, including
+  // the earlier photo message — it is only for the current user turn.
+  const textFollowUp = log(
+    {
+      type: "user_message",
+      payload: { text: "Please import this recipe.", images: [JPEG_IMG] },
+    },
+    {
+      type: "assistant_message",
+      payload: {
+        content: [{
+          type: "text",
+          text: "I'll need the URL of the recipe first.",
+        }],
+        usage: { input_tokens: 1, output_tokens: 1, model: "m" },
+      },
+    },
+    { type: "user_message", payload: { text: "here is the photo" } },
+  );
+  assert(
+    !JSON.stringify(foldConversation(textFollowUp).apiMessages).includes(
+      "Transcribe from the image(s)",
+    ),
+  );
+  assertEquals(latestUserBlocks(textFollowUp)[0].text, "here is the photo");
+
+  const jpeg2 = { ...JPEG_IMG, media_id: "m2", key: "uploads/y.jpg" };
+  const photoFollowUp = log(
+    { type: "user_message", payload: { text: "hi" } },
+    {
+      type: "assistant_message",
+      payload: {
+        content: [{ type: "text", text: "hello" }],
+        usage: { input_tokens: 1, output_tokens: 1, model: "m" },
+      },
+    },
+    {
+      type: "user_message",
+      payload: {
+        text: "Please import this recipe.",
+        images: [JPEG_IMG, jpeg2],
+      },
+    },
+  );
+  const { apiMessages } = foldConversation(photoFollowUp);
+  const earlier = apiMessages[0].content as { type: string; text?: string }[];
+  assertEquals(earlier[0].text, "hi");
+  assertEquals(latestUserBlocks(photoFollowUp)[0].text, note2);
+
+  // Tool results after a photo turn are not a new user_message; the note stays.
+  const midTurn = log(
+    {
+      type: "user_message",
+      payload: { text: "Please import this recipe.", images: [JPEG_IMG] },
+    },
+    {
+      type: "assistant_message",
+      payload: {
+        content: [
+          { type: "tool_use", id: "tu1", name: "list_recipes", input: {} },
+        ] as never,
+        usage: { input_tokens: 1, output_tokens: 1, model: "m" },
+      },
+    },
+    {
+      type: "tool_result",
+      payload: {
+        tool_use_id: "tu1",
+        tool_name: "list_recipes",
+        is_error: false,
+        content: [],
+      },
+    },
+  );
+  assertEquals(latestUserBlocks(midTurn)[0].text, note1);
 });
