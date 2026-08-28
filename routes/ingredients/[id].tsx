@@ -87,6 +87,7 @@ export const handlers = handler({
         sourceRecipes: sourceRecipesRes.rows,
         usedInRecipes: usedInRecipesRes.rows,
         loggedIn: ctx.state.user != null,
+        isAdmin: ctx.state.isAdmin,
         error: ctx.url.searchParams.get("error"),
       },
     };
@@ -148,6 +149,9 @@ export const handlers = handler({
     }
 
     if (method === "MERGE") {
+      // Reparents pantry, recipes and shopping data across every household.
+      // Same 404 as /admin so regular accounts probing the method learn nothing.
+      if (!ctx.state.isAdmin) throw new HttpError(404);
       const targetId = String(form.get("target_id"));
       if (!targetId || targetId === id) {
         return new Response(null, {
@@ -423,6 +427,7 @@ export default page(
         sourceRecipes,
         usedInRecipes,
         loggedIn,
+        isAdmin,
         error,
       },
     },
@@ -509,42 +514,44 @@ export default page(
                 </form>
               </div>
 
-              <div>
-                <h2 class="text-lg font-semibold mb-3">Merge Into</h2>
-                <p class="text-xs text-stone-500 mb-3">
-                  Replace this ingredient with another. All recipes, pantry
-                  items, and shopping list references will be moved to the
-                  target. This ingredient will be deleted.
-                </p>
-                <form method="POST" class="flex gap-2">
-                  <input type="hidden" name="_method" value="MERGE" />
-                  {
-                    /* min-w-0: a flex item's min-width:auto keeps the select
+              {isAdmin && (
+                <div>
+                  <h2 class="text-lg font-semibold mb-3">Merge Into</h2>
+                  <p class="text-xs text-stone-500 mb-3">
+                    Replace this ingredient with another. All recipes, pantry
+                    items, and shopping list references will be moved to the
+                    target. This ingredient will be deleted.
+                  </p>
+                  <form method="POST" class="flex gap-2">
+                    <input type="hidden" name="_method" value="MERGE" />
+                    {
+                      /* min-w-0: a flex item's min-width:auto keeps the select
                        as wide as its longest option name, shoving the Merge
                        button past the card edge. */
-                  }
-                  <Select
-                    name="target_id"
-                    required
-                    class="flex-1 min-w-0"
-                    size="sm"
-                  >
-                    <option value="">Select target...</option>
-                    {otherIngredients.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name}
-                        {i.unit ? ` (${i.unit})` : ""}
-                      </option>
-                    ))}
-                  </Select>
-                  <ConfirmButton
-                    message={`Merge "${ingredient.name}" into another ingredient? This cannot be undone.`}
-                    variant="danger"
-                  >
-                    Merge
-                  </ConfirmButton>
-                </form>
-              </div>
+                    }
+                    <Select
+                      name="target_id"
+                      required
+                      class="flex-1 min-w-0"
+                      size="sm"
+                    >
+                      <option value="">Select target...</option>
+                      {otherIngredients.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.name}
+                          {i.unit ? ` (${i.unit})` : ""}
+                        </option>
+                      ))}
+                    </Select>
+                    <ConfirmButton
+                      message={`Merge "${ingredient.name}" into another ingredient? This cannot be undone.`}
+                      variant="danger"
+                    >
+                      Merge
+                    </ConfirmButton>
+                  </form>
+                </div>
+              )}
 
               <div>
                 <h2 class="text-lg font-semibold mb-3">

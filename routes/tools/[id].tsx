@@ -42,6 +42,7 @@ export const handlers = handler({
         usage: usageRes.rows,
         householdHasTool,
         loggedIn: ctx.state.user != null,
+        isAdmin: ctx.state.isAdmin,
       },
     };
   },
@@ -58,6 +59,8 @@ export const handlers = handler({
     const method = form.get("_method");
 
     if (method === "DELETE") {
+      // ON DELETE CASCADE strips this tool from every household's recipes.
+      if (!ctx.state.isAdmin) throw new HttpError(404);
       const deleted = await ctx.state.db.query<{ name: string }>(
         "DELETE FROM tools WHERE id = $1 RETURNING name",
         [id],
@@ -129,7 +132,9 @@ export const handlers = handler({
 });
 
 export default page(
-  function ToolDetail({ data: { tool, usage, householdHasTool, loggedIn } }) {
+  function ToolDetail(
+    { data: { tool, usage, householdHasTool, loggedIn, isAdmin } },
+  ) {
     return (
       <div>
         <BackLink href="/tools" label="Back to Tools" />
@@ -139,31 +144,48 @@ export default page(
         <div class="grid gap-6 lg:grid-cols-3">
           <div>
             <h2 class="text-lg font-semibold mb-3">Details</h2>
-            <form
-              method="POST"
-              class="card space-y-3"
-            >
-              <FormField label="Name">
-                <Input
-                  type="text"
-                  name="name"
-                  value={tool.name}
-                  required
-                  class="w-full"
-                />
-              </FormField>
-              <FormField label="Description">
-                <InputMultiline
-                  name="description"
-                  rows={4}
-                  class="w-full"
-                  value={tool.description ?? ""}
-                />
-              </FormField>
-              <Button type="submit">
-                Save
-              </Button>
-            </form>
+            {loggedIn
+              ? (
+                <form
+                  method="POST"
+                  class="card space-y-3"
+                >
+                  <FormField label="Name">
+                    <Input
+                      type="text"
+                      name="name"
+                      value={tool.name}
+                      required
+                      class="w-full"
+                    />
+                  </FormField>
+                  <FormField label="Description">
+                    <InputMultiline
+                      name="description"
+                      rows={4}
+                      class="w-full"
+                      value={tool.description ?? ""}
+                    />
+                  </FormField>
+                  <Button type="submit">
+                    Save
+                  </Button>
+                </form>
+              )
+              : (
+                <div class="card space-y-3">
+                  <div>
+                    <div class="text-sm text-stone-500">Name</div>
+                    <div>{tool.name}</div>
+                  </div>
+                  {tool.description && (
+                    <div>
+                      <div class="text-sm text-stone-500">Description</div>
+                      <div class="whitespace-pre-wrap">{tool.description}</div>
+                    </div>
+                  )}
+                </div>
+              )}
 
             {loggedIn && (
               <form method="POST" class="mt-4">
@@ -180,15 +202,17 @@ export default page(
               </form>
             )}
 
-            <form method="POST" class="mt-4">
-              <input type="hidden" name="_method" value="DELETE" />
-              <ConfirmButton
-                message="Delete this tool?"
-                variant="danger"
-              >
-                Delete Tool
-              </ConfirmButton>
-            </form>
+            {isAdmin && (
+              <form method="POST" class="mt-4">
+                <input type="hidden" name="_method" value="DELETE" />
+                <ConfirmButton
+                  message="Delete this tool?"
+                  variant="danger"
+                >
+                  Delete Tool
+                </ConfirmButton>
+              </form>
+            )}
           </div>
 
           <div class="lg:col-span-2">

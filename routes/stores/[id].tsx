@@ -209,38 +209,56 @@ export default page(
           <div class="space-y-4">
             <div>
               <h2 class="text-lg font-semibold mb-3">Details</h2>
-              <form
-                method="POST"
-                class="card space-y-3"
-              >
-                <FormField label="Name">
-                  <Input
-                    type="text"
-                    name="name"
-                    value={store.name}
-                    required
-                    class="w-full"
-                  />
-                </FormField>
-                <FormField label="Currency">
-                  <Select name="currency" class="w-full">
-                    {CURRENCIES.map((c) => (
-                      <option
-                        key={c.code}
-                        value={c.code}
-                        selected={c.code === (store.currency ?? "EUR")}
-                      >
-                        {c.symbol} {c.name}
-                      </option>
-                    ))}
-                  </Select>
-                </FormField>
-                <div class="flex gap-2">
-                  <Button type="submit">
-                    Save
-                  </Button>
-                </div>
-              </form>
+              {loggedIn
+                ? (
+                  <form
+                    method="POST"
+                    class="card space-y-3"
+                  >
+                    <FormField label="Name">
+                      <Input
+                        type="text"
+                        name="name"
+                        value={store.name}
+                        required
+                        class="w-full"
+                      />
+                    </FormField>
+                    <FormField label="Currency">
+                      <Select name="currency" class="w-full">
+                        {CURRENCIES.map((c) => (
+                          <option
+                            key={c.code}
+                            value={c.code}
+                            selected={c.code === (store.currency ?? "EUR")}
+                          >
+                            {c.symbol} {c.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormField>
+                    <div class="flex gap-2">
+                      <Button type="submit">
+                        Save
+                      </Button>
+                    </div>
+                  </form>
+                )
+                : (
+                  <div class="card space-y-3">
+                    <div>
+                      <div class="text-sm text-stone-500">Name</div>
+                      <div>{store.name}</div>
+                    </div>
+                    <div>
+                      <div class="text-sm text-stone-500">Currency</div>
+                      <div>
+                        {getCurrencySymbol(store.currency ?? "EUR")}{" "}
+                        {store.currency ?? "EUR"}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
               {loggedIn && (
                 <form method="POST" class="mt-4">
@@ -257,15 +275,17 @@ export default page(
                 </form>
               )}
 
-              <form method="POST" class="mt-4">
-                <input type="hidden" name="_method" value="DELETE" />
-                <ConfirmButton
-                  message="Delete this store?"
-                  variant="danger"
-                >
-                  Delete Store
-                </ConfirmButton>
-              </form>
+              {loggedIn && (
+                <form method="POST" class="mt-4">
+                  <input type="hidden" name="_method" value="DELETE" />
+                  <ConfirmButton
+                    message="Delete this store?"
+                    variant="danger"
+                  >
+                    Delete Store
+                  </ConfirmButton>
+                </form>
+              )}
             </div>
 
             <div>
@@ -280,38 +300,42 @@ export default page(
                       class="card p-3 flex justify-between items-center"
                     >
                       <span class="text-sm">{loc.address}</span>
-                      <form method="POST">
-                        <input
-                          type="hidden"
-                          name="_method"
-                          value="DELETE_LOCATION"
-                        />
-                        <input
-                          type="hidden"
-                          name="location_id"
-                          value={loc.id}
-                        />
-                        <button
-                          type="submit"
-                          class="text-red-500 hover:text-red-700 text-sm cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      </form>
+                      {loggedIn && (
+                        <form method="POST">
+                          <input
+                            type="hidden"
+                            name="_method"
+                            value="DELETE_LOCATION"
+                          />
+                          <input
+                            type="hidden"
+                            name="location_id"
+                            value={loc.id}
+                          />
+                          <button
+                            type="submit"
+                            class="text-red-500 hover:text-red-700 text-sm cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </form>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
-              <form method="POST" class="flex gap-2">
-                <input type="hidden" name="_method" value="ADD_LOCATION" />
-                <Input
-                  type="text"
-                  name="address"
-                  placeholder="Add address..."
-                  class="flex-1"
-                />
-                <Button type="submit">Add</Button>
-              </form>
+              {loggedIn && (
+                <form method="POST" class="flex gap-2">
+                  <input type="hidden" name="_method" value="ADD_LOCATION" />
+                  <Input
+                    type="text"
+                    name="address"
+                    placeholder="Add address..."
+                    class="flex-1"
+                  />
+                  <Button type="submit">Add</Button>
+                </form>
+              )}
             </div>
           </div>
 

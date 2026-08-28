@@ -1,9 +1,16 @@
 import { handler } from "./$[...key].ts";
+import { mediaIsReadable } from "../../../../lib/media-access.ts";
 import { getFile } from "../../../../lib/s3.ts";
 
 export const handlers = handler({
   async GET(ctx) {
     const key = decodeURIComponent(ctx.params.key);
+
+    if (
+      !(await mediaIsReadable(ctx.state.db, key, ctx.state.householdId))
+    ) {
+      return new Response("Not found", { status: 404 });
+    }
 
     const file = await getFile(key);
     if (!file) {

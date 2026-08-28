@@ -1,4 +1,5 @@
 import { handler } from "./$favorite.ts";
+import { recipeIsVisible } from "../../../lib/recipe-visibility.ts";
 import { FavoriteBody, parseJsonBody } from "../../../lib/validation.ts";
 
 export const handlers = handler({
@@ -24,14 +25,20 @@ export const handlers = handler({
       return new Response(JSON.stringify({ favorited: false }), {
         headers: { "Content-Type": "application/json" },
       });
-    } else {
-      await ctx.state.db.query(
-        "INSERT INTO recipe_favorites (user_id, recipe_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-        [ctx.state.user.id, recipe_id],
-      );
-      return new Response(JSON.stringify({ favorited: true }), {
-        headers: { "Content-Type": "application/json" },
-      });
     }
+
+    if (
+      !(await recipeIsVisible(ctx.state.db, recipe_id, ctx.state.householdId))
+    ) {
+      return Response.json({ error: "Recipe not found" }, { status: 404 });
+    }
+
+    await ctx.state.db.query(
+      "INSERT INTO recipe_favorites (user_id, recipe_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+      [ctx.state.user.id, recipe_id],
+    );
+    return new Response(JSON.stringify({ favorited: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
   },
 });

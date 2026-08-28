@@ -130,9 +130,10 @@ export const handlers = handler({
       `SELECT rr.*, r.title as ref_title, r.slug as ref_slug
        FROM recipe_references rr
        JOIN recipes r ON r.id = rr.referenced_recipe_id
+         AND (r.private = false OR r.household_id = $2)
        WHERE rr.recipe_id = $1
        ORDER BY rr.sort_order, rr.id`,
-      [recipe.id],
+      [recipe.id, ctx.state.householdId],
     );
 
     const tagsRes = await ctx.state.db.query<RecipeTag>(
@@ -337,8 +338,10 @@ export const handlers = handler({
 
     // Count forks of this recipe
     const forkCountRes = await ctx.state.db.query<{ count: number }>(
-      "SELECT count(*)::int as count FROM recipes WHERE forked_from_id = $1",
-      [recipe.id],
+      `SELECT count(*)::int as count FROM recipes
+       WHERE forked_from_id = $1
+         AND (private = false OR household_id = $2)`,
+      [recipe.id, ctx.state.householdId],
     );
     const forkCount = forkCountRes.rows[0]?.count ?? 0;
 

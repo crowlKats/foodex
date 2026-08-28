@@ -91,6 +91,10 @@ export const handlers = handler({
     const db = ctx.state.db;
     // authSession returned above when there is no user.
     const user = ctx.state.user as User;
+    const householdId = ctx.state.householdId;
+    if (!householdId) {
+      return json({ error: "Join or create a household to do this." }, 403);
+    }
 
     // The panel is read-only while the agent is mid-turn.
     if (isTurnActive(s.id)) {
@@ -239,7 +243,7 @@ export const handlers = handler({
                   (dep.kind === "create_ingredient" ||
                     dep.kind === "edit_ingredient")
                 ) {
-                  const depOutcome = await applyStaged(q, s.household_id, dep);
+                  const depOutcome = await applyStaged(q, householdId, dep);
                   if (depOutcome.result?.ingredient_id) {
                     await appendEvent(q, s.id, {
                       type: "apply",
@@ -248,7 +252,7 @@ export const handlers = handler({
                     await auditApply(
                       q,
                       user,
-                      s.household_id,
+                      householdId,
                       dep,
                       depOutcome.result,
                     );
@@ -262,7 +266,7 @@ export const handlers = handler({
               return out;
             };
 
-            const outcome = await applyStaged(q, s.household_id, item, {
+            const outcome = await applyStaged(q, householdId, item, {
               resolveIngredientId,
             });
             if (outcome.result) {
@@ -273,7 +277,7 @@ export const handlers = handler({
               await auditApply(
                 q,
                 user,
-                s.household_id,
+                householdId,
                 item,
                 outcome.result,
               );

@@ -1,5 +1,6 @@
 import { handler } from "./$recipes.ts";
 import { logAudit } from "../../../lib/audit.ts";
+import { recipeIsVisible } from "../../../lib/recipe-visibility.ts";
 import {
   CollectionRecipesBody,
   parseJsonBody,
@@ -14,21 +15,33 @@ export const handlers = handler({
     const result = await parseJsonBody(ctx.req, CollectionRecipesBody);
     if (!result.success) return result.response;
     const { action, collection_id, recipe_id } = result.data;
+    const householdId = ctx.state.householdId;
 
     // Verify the user's household owns this collection
     const collRes = await ctx.state.db.query<{ name: string }>(
       "SELECT name FROM collections WHERE id = $1 AND household_id = $2",
-      [collection_id, ctx.state.householdId],
+      [collection_id, householdId],
     );
     if (collRes.rows.length === 0) {
       return new Response(null, { status: 403 });
     }
     const collectionName = collRes.rows[0].name;
 
-    const recipeRes = await ctx.state.db.query<{ title: string }>(
-      "SELECT title FROM recipes WHERE id = $1",
-      [recipe_id],
+    const visible = await recipeIsVisible(
+      ctx.state.db,
+      recipe_id,
+      householdId,
     );
+    if (action === "add" && !visible) {
+      return Response.json({ error: "Recipe not found" }, { status: 404 });
+    }
+
+    const recipeRes = visible
+      ? await ctx.state.db.query<{ title: string }>(
+        "SELECT title FROM recipes WHERE id = $1",
+        [recipe_id],
+      )
+      : { rows: [] as { title: string }[] };
     const recipeTitle = recipeRes.rows[0]?.title;
 
     if (action === "add") {
