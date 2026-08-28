@@ -10,6 +10,7 @@ import {
   runTurn,
   type TurnEvent,
 } from "../../../../lib/agent/loop.ts";
+import { formatTurnError } from "../../../../lib/agent/turn-error.ts";
 import { resolveAttachedImages } from "../../../../lib/agent/attachments.ts";
 import { acquireTurn, releaseTurn } from "../../../../lib/agent/lock.ts";
 import { rateLimit } from "../../../../lib/rate-limit.ts";
@@ -108,7 +109,7 @@ export const handlers = handler({
         ping = setInterval(() => send({ type: "ping" }), 15_000);
         runTurn({ db, session, emit: (ev) => send(ev) })
           .then(() => maybeRetitle())
-          .catch((e) => send({ type: "error", message: String(e) }))
+          .catch((e) => send({ type: "error", message: formatTurnError(e) }))
           .finally(() => {
             clearInterval(ping);
             releaseTurn(session.id);

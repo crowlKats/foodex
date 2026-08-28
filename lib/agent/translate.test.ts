@@ -4,6 +4,7 @@ import { foldConversation } from "./conversation.ts";
 import type { AgentEvent } from "./events.ts";
 import { resolveImages } from "./images.ts";
 import { toModelMessages } from "./translate.ts";
+import { emptyAssistantError, formatTurnError } from "./turn-error.ts";
 
 function log(...bodies: Omit<AgentEvent, "seq">[]): AgentEvent[] {
   return bodies.map((b, i) => ({ ...b, seq: i + 1 } as AgentEvent));
@@ -21,7 +22,19 @@ function filePart(messages: ReturnType<typeof toModelMessages>): FilePart {
   return part;
 }
 
-Deno.test("toModelMessages: attached photos are tagged inline bytes, not a URL string", () => {
+/** User-facing FilePart.data is DataContent | URL | tagged FileData. We send bytes. */
+function assertInlineBytes(part: FilePart, bytes: Uint8Array) {
+  assertEquals(part.mediaType, "image/jpeg");
+  assert(
+    part.data instanceof Uint8Array,
+    "FilePart.data must be a Uint8Array, not a tagged { type: 'data' } wrapper or a string",
+  );
+  assertEquals(part.data, bytes);
+  assert(typeof part.data !== "string");
+  assert(!(part.data instanceof URL));
+}
+
+Deno.test("toModelMessages: attached photos are Uint8Array file data, not a URL string", () => {
   const messages = toModelMessages([{
     role: "user",
     content: [
@@ -34,11 +47,7 @@ Deno.test("toModelMessages: attached photos are tagged inline bytes, not a URL s
     ],
   }]);
 
-  const part = filePart(messages);
-  assertEquals(part.mediaType, "image/jpeg");
-  assertEquals(part.data, { type: "data", data: JPEG_BYTES });
-  assert(typeof part.data !== "string");
-  assert(!(part.data instanceof URL));
+  assertInlineBytes(filePart(messages), JPEG_BYTES);
 });
 
 Deno.test("resolveImages: image_ref becomes a byte block", async () => {
@@ -71,9 +80,7 @@ Deno.test("resolveImages: image_ref becomes a byte block", async () => {
     { type: "text", text: "Add the recipe from this photo to the library." },
   ]);
 
-  const part = filePart(toModelMessages(out));
-  assertEquals(part.data, { type: "data", data: JPEG_BYTES });
-  assertEquals(part.mediaType, "image/jpeg");
+  assertInlineBytes(filePart(toModelMessages(out)), JPEG_BYTES);
 });
 
 Deno.test("resolveImages: S3 miss fails the turn instead of dropping the photo", async () => {
@@ -96,4 +103,35 @@ Deno.test("resolveImages: S3 miss fails the turn instead of dropping the photo",
     Error,
     "Could not load attached image (media id: m1).",
   );
+});
+
+Deno.test("emptyAssistantError: blank model output is an error, not a persisted bubble", () => {
+  assertEquals(
+    emptyAssistantError([], "stop"),
+    "The assistant returned no content.",
+  );
+  assertEquals(
+    emptyAssistantError([], "error"),
+    "The assistant returned no content (error).",
+  );
+  assertEquals(
+    emptyAssistantError([{ type: "text" }], "stop"),
+    null,
+  );
+});
+
+Deno.test("formatTurnError: never empty, truncates huge dumps", () => {
+  assertEquals(
+    formatTurnError(new Error("")),
+    "The assistant failed to respond.",
+  );
+  assertEquals(formatTurnError({}), "The assistant failed to respond.");
+  assertEquals(
+    formatTurnError(new Error("Could not load attached image (media id: m1).")),
+    "Could not load attached image (media id: m1).",
+  );
+  const huge = "x".repeat(4000);
+  const out = formatTurnError(new Error(huge));
+  assert(out.endsWith("…"));
+  assert(out.length < 1600);
 });

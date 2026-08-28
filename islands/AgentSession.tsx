@@ -233,8 +233,10 @@ export default function AgentSession(props: Props) {
       setError(
         ctrl.signal.aborted
           ? "Lost connection to the assistant. Reload the page to see the latest."
-          : (e as Error).message,
+          : ((e as Error).message || "The assistant failed to respond."),
       );
+      setMobileView("chat");
+      setImporting(false);
     } finally {
       clearTimeout(watchdog);
       setLive(null);
@@ -315,7 +317,9 @@ export default function AgentSession(props: Props) {
         break;
       }
       case "error":
-        setError(ev.message);
+        setError(ev.message || "The assistant failed to respond.");
+        setMobileView("chat");
+        setImporting(false);
         break;
     }
     queueMicrotask(() => {
@@ -710,6 +714,7 @@ export default function AgentSession(props: Props) {
                 />
               ))}
               {live && <LiveTurnView live={live} names={names} />}
+              {error && <div class="alert-error text-sm">{error}</div>}
               {timeline.length === 0 && !live && (
                 <div class="space-y-3">
                   <p class="text-stone-400 text-sm">
@@ -1013,7 +1018,16 @@ function TimelineItem(
   const text = blocks.filter((b) => b.type === "text").map((b) => b.text).join(
     "",
   );
-  const tools = blocks.filter((b) => b.type === "tool_use");
+  const tools = blocks.filter((b) =>
+    b.type === "tool_use" || b.type === "tool_call"
+  );
+  if (!text && tools.length === 0) {
+    return (
+      <div class="alert-error text-sm">
+        The assistant returned no content.
+      </div>
+    );
+  }
   return (
     <div class="space-y-1">
       {text && <Markdown text={text} class="text-sm" />}

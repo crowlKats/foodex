@@ -26,6 +26,7 @@ import { foldConversation } from "./conversation.ts";
 import { executeTool, TOOLS } from "./tools.ts";
 import { buildSystemPrompt } from "./system-prompt.ts";
 import { resolveImages } from "./images.ts";
+import { emptyAssistantError, formatTurnError } from "./turn-error.ts";
 
 const MAX_STEPS = 24;
 const MAX_TOKENS = 8192;
@@ -187,7 +188,7 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
         } else if (part.type === "error") {
           streamError = part.error instanceof Error
             ? part.error
-            : new Error(String(part.error));
+            : new Error(formatTurnError(part.error));
         }
       }
       // A failed request surfaces as an error part rather than a rejected
@@ -199,6 +200,8 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
       );
       const usage = await result.usage;
       const finishReason = await result.finishReason;
+      const empty = emptyAssistantError(content, finishReason);
+      if (empty) throw new Error(empty);
       const modelId = (await result.response).modelId;
       const cost = costOf((await result.finalStep).providerMetadata);
 
@@ -300,6 +303,6 @@ export async function runTurn(opts: RunTurnOpts): Promise<void> {
       message: "Reached the tool-step limit for this turn.",
     });
   } catch (e) {
-    await emit({ type: "error", message: (e as Error).message });
+    await emit({ type: "error", message: formatTurnError(e) });
   }
 }
