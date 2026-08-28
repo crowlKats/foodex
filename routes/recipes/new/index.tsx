@@ -2,15 +2,25 @@ import { handler, page } from "./$index.ts";
 import type { RecipeDraft } from "../../../db/types.ts";
 import { BackLink } from "../../../components/BackLink.tsx";
 import RecipeStart from "../../../islands/RecipeStart.tsx";
+import { householdSetupUrl, loginUrl } from "../../../lib/auth.ts";
+import {
+  sharedImportText,
+  shareFieldsFromFormData,
+  shareTargetLandingPath,
+} from "../../../lib/share-target.ts";
+
+function redirectTo(location: string): Response {
+  return new Response(null, {
+    status: 303,
+    headers: { Location: location },
+  });
+}
 
 export const handlers = handler({
   async GET(ctx) {
-    if (!ctx.state.user || !ctx.state.householdId) {
-      return new Response(null, {
-        status: 303,
-        headers: { Location: ctx.state.user ? "/households" : "/auth/login" },
-      });
-    }
+    const here = ctx.url.pathname + ctx.url.search;
+    if (!ctx.state.user) return redirectTo(loginUrl(here));
+    if (!ctx.state.householdId) return redirectTo(householdSetupUrl(here));
 
     const draftsRes = await ctx.state.db.query<RecipeDraft>(
       `SELECT id, recipe_data, source, updated_at
@@ -22,6 +32,16 @@ export const handlers = handler({
 
     ctx.state.pageTitle = "New Recipe";
     return { data: { drafts: draftsRes.rows } };
+  },
+
+  // Fallback when the service worker does not intercept a share POST (URL
+  // and text only; files need the SW stash). Always 303 to the GET page.
+  async POST(ctx) {
+    const form = await ctx.req.formData();
+    const dest = shareTargetLandingPath(shareFieldsFromFormData(form));
+    if (!ctx.state.user) return redirectTo(loginUrl(dest));
+    if (!ctx.state.householdId) return redirectTo(householdSetupUrl(dest));
+    return redirectTo(dest);
   },
 });
 
@@ -38,9 +58,14 @@ function sourceLabel(source: string): string {
   }
 }
 
-export default page(function NewRecipePage({ data }) {
+export default page(function NewRecipePage({ data, url }) {
   // The back link sits inside the column so it lines up with the title rather
   // than the page edge.
+  const initialText = sharedImportText({
+    title: url.searchParams.get("title"),
+    text: url.searchParams.get("text"),
+    url: url.searchParams.get("url"),
+  });
   return (
     <div class="max-w-2xl mx-auto">
       <BackLink href="/recipes" label="Back to Recipes" />
@@ -52,7 +77,7 @@ export default page(function NewRecipePage({ data }) {
         is saved.
       </p>
 
-      <RecipeStart />
+      <RecipeStart initialText={initialText} />
 
       <p class="text-sm text-stone-500 mt-4 space-x-4">
         <a href="/recipes/new/manual" class="link">

@@ -85,7 +85,9 @@ export default page(function SettingsDocs({ url }) {
           </li>
           <li class={docProse}>
             <strong>Android</strong>: your browser's menu offers "Install app"
-            or "Add to Home screen".
+            or "Add to Home screen". Once installed, Foodex also appears in the
+            system share sheet so you can send a recipe link or photo straight
+            to New Recipe.
           </li>
         </ul>
       </DocSection>

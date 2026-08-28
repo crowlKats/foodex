@@ -37,6 +37,8 @@ household.
   screenshots. AI (Claude) extracts the title, ingredients, steps, times, and
   even crops a cover photo. Supports any language with automatic English
   translation.
+- **Share into Foodex** (Android installed PWA): share a recipe URL or photo
+  from the system share sheet; New Recipe opens with that content filled in.
 
 ### Pantry
 

@@ -6,6 +6,32 @@
   "display": "standalone",
   "background_color": "#1c1917",
   "theme_color": "#1c1917",
+  "share_target": {
+    "action": "/recipes/new",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "images",
+          "accept": [
+            "image/*",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+            ".gif",
+            ".heic",
+            ".heif",
+            ".avif"
+          ]
+        }
+      ]
+    }
+  },
   "icons": [
     {
       "src": "/icon.svg",

@@ -156,6 +156,22 @@ export default page(function ImportDocs({ url }) {
           by closing the tab.
         </p>
 
+        <DocSub title="Share from your phone">
+          <p class={`${docProse} mb-3`}>
+            On Android, install Foodex to the home screen. It then appears in
+            the system share sheet: share a recipe link or a photo of a page and
+            New Recipe opens with that content already in the box. You can still
+            edit before Continue.
+          </p>
+          <p class={`${docMuted} mb-4`}>
+            This is an Android Chrome feature of the installed app; Safari on
+            iOS does not offer it. If you are signed out, a shared link survives
+            signing in. Shared photos stay on this phone for a day, so finish
+            sign-in here — completing it on another device keeps the link but
+            not the photos.
+          </p>
+        </DocSub>
+
         <DocSub title="Bulk Import">
           <p class={`${docProse} mb-3`}>
             To capture a whole recipe book, use{" "}

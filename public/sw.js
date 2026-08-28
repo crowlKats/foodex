@@ -39,6 +39,18 @@ self.addEventListener("install", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
+  // Web Share Target POSTs files as multipart; the page cannot read that
+  // body, so stash it (IndexedDB names match lib/share-target.ts) and
+  // redirect to a GET of New Recipe.
+  if (
+    event.request.method === "POST" &&
+    url.origin === self.location.origin &&
+    url.pathname === "/recipes/new"
+  ) {
+    event.respondWith(handleShareTarget(event.request));
+    return;
+  }
+
   // Only handle same-origin GET requests
   if (event.request.method !== "GET" || url.origin !== self.location.origin) {
     return;
@@ -117,3 +129,94 @@ self.addEventListener("notificationclick", (event) => {
     }),
   );
 });
+
+// IndexedDB names must match lib/share-target.ts.
+const SHARE_TARGET_DB = "foodex-share-target";
+const SHARE_TARGET_STORE = "incoming";
+const SHARE_TARGET_KEY = "latest";
+const SHARE_TARGET_FILES_FIELD = "images";
+const MAX_QUERY_VALUE = 2000;
+
+async function handleShareTarget(request) {
+  try {
+    const formData = await request.formData();
+    const title = formString(formData.get("title"));
+    const text = formString(formData.get("text"));
+    const shareUrl = formString(formData.get("url"));
+    const files = [];
+    for (const value of formData.getAll(SHARE_TARGET_FILES_FIELD)) {
+      if (!(value instanceof File) || value.size === 0) continue;
+      if (value.type && !value.type.startsWith("image/")) continue;
+      files.push({
+        name: value.name || "image.jpg",
+        type: value.type || "image/jpeg",
+        buffer: await value.arrayBuffer(),
+      });
+    }
+    await putShare({
+      title,
+      text,
+      url: shareUrl,
+      files,
+      createdAt: Date.now(),
+    });
+    return Response.redirect(
+      `${self.location.origin}${
+        shareLandingPath({
+          title,
+          text,
+          url: shareUrl,
+        })
+      }`,
+      303,
+    );
+  } catch (err) {
+    console.error("share target failed:", err);
+    return Response.redirect(`${self.location.origin}/recipes/new`, 303);
+  }
+}
+
+function formString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function capQuery(value) {
+  return value.length > MAX_QUERY_VALUE
+    ? value.slice(0, MAX_QUERY_VALUE)
+    : value;
+}
+
+function shareLandingPath({ title, text, url }) {
+  const params = new URLSearchParams();
+  if (url) params.set("url", capQuery(url));
+  if (text) params.set("text", capQuery(text));
+  if (title && !url && !text) params.set("title", capQuery(title));
+  const qs = params.toString();
+  return qs ? `/recipes/new?${qs}` : "/recipes/new";
+}
+
+function putShare(record) {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open(SHARE_TARGET_DB, 1);
+    open.onupgradeneeded = () => {
+      const db = open.result;
+      if (!db.objectStoreNames.contains(SHARE_TARGET_STORE)) {
+        db.createObjectStore(SHARE_TARGET_STORE);
+      }
+    };
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction(SHARE_TARGET_STORE, "readwrite");
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+      tx.objectStore(SHARE_TARGET_STORE).put(record, SHARE_TARGET_KEY);
+    };
+  });
+}
