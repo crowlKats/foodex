@@ -19,8 +19,9 @@ household.
 - **Sub-recipes**: reference other recipes with `@recipe(slug)` and cross-link
   steps with `@step(N)`.
 - **Tags**: categorize by meal type (breakfast, lunch, dinner, snack, dessert,
-  appetizer, side, drink) and dietary labels (vegetarian, vegan, gluten-free,
-  dairy-free, nut-free, low-carb, keto, paleo).
+  appetizer, side, drink), dietary labels (vegetarian, vegan, gluten-free,
+  dairy-free, nut-free, low-carb, keto, paleo), and cuisine (Italian, Indian,
+  Mexican, Thai, and more), and filter the recipe list by any of them.
 - **Privacy**: mark recipes as private so only your household members can see
   them.
 - **Cost estimates**: ingredient costs calculated from store prices, shown

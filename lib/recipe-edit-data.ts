@@ -52,6 +52,7 @@ export function editDataToRecipeFields(
     output_expires_days: r.output_expires_days,
     meal_types: d.mealTypes,
     dietary_tags: d.dietaryTags,
+    cuisines: d.cuisines,
     ingredients: d.ingredients.map((i) => ({
       key: i.key ?? "",
       // Prefer the live ingredient name: the line's snapshot goes stale when
@@ -206,6 +207,9 @@ export async function loadRecipeEditData(
   const dietaryTags = tagsRes.rows
     .filter((t) => t.tag_type === "dietary")
     .map((t) => t.tag_value);
+  const cuisines = tagsRes.rows
+    .filter((t) => t.tag_type === "cuisine")
+    .map((t) => t.tag_value);
 
   const ingredientsListRes = await query<Ingredient>(
     "SELECT id, name, unit FROM ingredients ORDER BY name",
@@ -284,6 +288,7 @@ export async function loadRecipeEditData(
     refs: refsRes.rows,
     mealTypes,
     dietaryTags,
+    cuisines,
     allIngredients: ingredientsListRes.rows,
     allTools: allToolsRes.rows,
     allRecipes: allRecipesRes.rows,

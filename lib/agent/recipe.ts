@@ -82,6 +82,7 @@ export interface AgentRecipe {
   output_expires_days?: number | null;
   meal_types?: string[];
   dietary_tags?: string[];
+  cuisines?: string[];
   ingredients: AgentIngredientRow[];
   sections?: AgentSection[];
   steps: AgentStep[];
@@ -200,6 +201,9 @@ export async function loadAgentRecipe(
     dietary_tags: tags.rows.filter((t) => t.tag_type === "dietary").map((t) =>
       t.tag_value
     ),
+    cuisines: tags.rows.filter((t) => t.tag_type === "cuisine").map((t) =>
+      t.tag_value
+    ),
     ingredients: ing.rows.map((r) => ({
       key: r.key ?? "",
       // Prefer the live ingredient name: the line's snapshot goes stale when
@@ -300,6 +304,7 @@ export function agentRecipeToFormData(r: AgentRecipe): FormData {
 
   for (const v of r.meal_types ?? []) fd.append("meal_type", v);
   for (const v of r.dietary_tags ?? []) fd.append("dietary", v);
+  for (const v of r.cuisines ?? []) fd.append("cuisine", v);
 
   return fd;
 }

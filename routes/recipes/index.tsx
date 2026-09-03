@@ -18,6 +18,7 @@ import { formatDuration } from "../../lib/duration.ts";
 import { formatQuantity } from "../../lib/quantity.ts";
 import type { RecipeQuantity } from "../../lib/quantity.ts";
 import {
+  CUISINES,
   DIETARY_TAGS,
   DIFFICULTY_LEVELS,
   MEAL_TYPES,
@@ -70,6 +71,7 @@ function buildRecipeQuery(opts: {
   difficulty: string[];
   mealTypes: string[];
   dietary: string[];
+  cuisine: string[];
   sort: SortValue;
   desc: boolean;
 }) {
@@ -186,6 +188,16 @@ function buildRecipeQuery(opts: {
     p++;
   }
 
+  // Cuisine filter (any selected cuisine matches: a recipe is rarely two
+  // cuisines at once, so requiring all of them would mostly return nothing)
+  if (opts.cuisine.length > 0) {
+    wheres.push(
+      `EXISTS (SELECT 1 FROM recipe_tags rt WHERE rt.recipe_id = r.id AND rt.tag_type = 'cuisine' AND rt.tag_value = ANY($${p}))`,
+    );
+    params.push(opts.cuisine);
+    p++;
+  }
+
   const joinSql = joins.join("\n             ");
   const whereSql = wheres.join(" AND ");
   const distinct = needsDistinct ? "DISTINCT " : "";
@@ -239,6 +251,7 @@ export const handlers = handler({
     );
     const mealTypes = parseMultiParam(ctx.url, "meal_type", MEAL_TYPES);
     const dietary = parseMultiParam(ctx.url, "dietary", DIETARY_TAGS);
+    const cuisine = parseMultiParam(ctx.url, "cuisine", CUISINES);
     const sortParam = ctx.url.searchParams.get("sort") ?? "newest";
     const sort: SortValue = SORT_OPTIONS.some((o) => o.value === sortParam)
       ? (sortParam as SortValue)
@@ -259,6 +272,7 @@ export const handlers = handler({
       difficulty,
       mealTypes,
       dietary,
+      cuisine,
       sort,
       desc,
     });
@@ -322,21 +336,22 @@ export const handlers = handler({
 
     const dishCounts = new Map(dishCountRows.map((d) => [d.dish_id, d.cnt]));
 
-    const tagsMap: Record<string, { meal_types: string[]; dietary: string[] }> =
-      {};
+    const tagsMap: Record<string, RecipeListItem["tags"]> = {};
     for (const t of tagsRows) {
       if (!tagsMap[t.recipe_id]) {
-        tagsMap[t.recipe_id] = { meal_types: [], dietary: [] };
+        tagsMap[t.recipe_id] = { meal_types: [], dietary: [], cuisine: [] };
       }
       if (t.tag_type === "meal_type") {
         tagsMap[t.recipe_id].meal_types.push(t.tag_value);
       } else if (t.tag_type === "dietary") {
         tagsMap[t.recipe_id].dietary.push(t.tag_value);
+      } else if (t.tag_type === "cuisine") {
+        tagsMap[t.recipe_id].cuisine.push(t.tag_value);
       }
     }
     const recipes: RecipeListItem[] = result.rows.map((r) => ({
       ...r,
-      tags: tagsMap[r.id] ?? { meal_types: [], dietary: [] },
+      tags: tagsMap[r.id] ?? { meal_types: [], dietary: [], cuisine: [] },
       dish_count: r.dish_id ? dishCounts.get(r.dish_id) ?? 0 : 0,
     }));
 
@@ -356,6 +371,7 @@ export const handlers = handler({
         difficulty,
         mealTypes,
         dietary,
+        cuisine,
         sort,
         desc,
       },
@@ -372,6 +388,7 @@ function filterUrl(
     difficulty?: string[];
     mealTypes?: string[];
     dietary?: string[];
+    cuisine?: string[];
     sort?: SortValue;
     desc?: boolean;
   },
@@ -391,6 +408,7 @@ function filterUrl(
   for (const v of current.difficulty ?? []) p.append("difficulty", v);
   for (const v of current.mealTypes ?? []) p.append("meal_type", v);
   for (const v of current.dietary ?? []) p.append("dietary", v);
+  for (const v of current.cuisine ?? []) p.append("cuisine", v);
   // Apply overrides (undefined = remove, string = set, string[] = replace all)
   for (const [k, v] of Object.entries(overrides)) {
     p.delete(k);
@@ -422,6 +440,7 @@ export default page(function RecipesPage({
     difficulty,
     mealTypes,
     dietary,
+    cuisine,
     sort,
     desc,
   },
@@ -434,12 +453,13 @@ export default page(function RecipesPage({
     difficulty,
     mealTypes,
     dietary,
+    cuisine,
     sort,
     desc,
   };
 
   const hasFilters = difficulty.length > 0 || mealTypes.length > 0 ||
-    dietary.length > 0 || favoritesOnly || cookableOnly;
+    dietary.length > 0 || cuisine.length > 0 || favoritesOnly || cookableOnly;
 
   /**
    * "No recipes found." was the same sentence whether the catalog was empty,
@@ -451,6 +471,7 @@ export default page(function RecipesPage({
       difficulty: undefined,
       meal_type: undefined,
       dietary: undefined,
+      cuisine: undefined,
       favorites: undefined,
       cookable: undefined,
     });
@@ -572,6 +593,7 @@ export default page(function RecipesPage({
               {hasFilters && (
                 <span class="count-badge count-badge-soft">
                   {difficulty.length + mealTypes.length + dietary.length +
+                    cuisine.length +
                     (favoritesOnly ? 1 : 0) + (cookableOnly ? 1 : 0)}
                 </span>
               )}
@@ -648,12 +670,28 @@ export default page(function RecipesPage({
                 ))}
               </div>
             </div>
+            <div>
+              <div class="text-xs font-medium text-stone-500 dark:text-stone-400 mb-1.5">
+                Cuisine
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                {CUISINES.map((c) => (
+                  <FilterChip
+                    key={c}
+                    label={c}
+                    active={cuisine.includes(c)}
+                    href={toggleArrayFilter("cuisine", c, cuisine)}
+                  />
+                ))}
+              </div>
+            </div>
             {hasFilters && (
               <a
                 href={filterUrl(current, {
                   difficulty: undefined,
                   meal_type: undefined,
                   dietary: undefined,
+                  cuisine: undefined,
                   favorites: undefined,
                   cookable: undefined,
                 })}
@@ -772,7 +810,8 @@ export default page(function RecipesPage({
                       </div>
                     )}
                     {(r.tags.meal_types.length > 0 ||
-                      r.tags.dietary.length > 0) && (
+                      r.tags.dietary.length > 0 ||
+                      r.tags.cuisine.length > 0) && (
                       <div class="flex flex-wrap gap-1 mt-1">
                         {r.tags.meal_types.map((mt) => (
                           <span
@@ -788,6 +827,14 @@ export default page(function RecipesPage({
                             class="text-[10px] bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded capitalize"
                           >
                             {dt}
+                          </span>
+                        ))}
+                        {r.tags.cuisine.map((c) => (
+                          <span
+                            key={c}
+                            class="text-[10px] bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 px-1.5 py-0.5 rounded capitalize"
+                          >
+                            {c}
                           </span>
                         ))}
                       </div>

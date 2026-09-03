@@ -41,9 +41,10 @@ export default page(function RecipesDocs({ url }) {
             <strong>Difficulty</strong>: Easy, Medium, or Hard.
           </li>
           <li class={docProse}>
-            <strong>Meal type</strong> and <strong>dietary</strong>{" "}
-            tags: breakfast to dessert, vegetarian to keto. You can pick several
-            at once.
+            <strong>Meal type</strong>, <strong>dietary</strong>, and{" "}
+            <strong>cuisine</strong>{" "}
+            tags: breakfast to dessert, vegetarian to keto, Italian to
+            Vietnamese. You can pick several at once.
           </li>
           <li class={docProse}>
             <strong>Favorites only</strong>: just the recipes you've hearted.

@@ -56,9 +56,10 @@ export interface MergeSchema {
 }
 
 /**
- * Recipes: every child collection is keyed by a stable identifier. `meal_types`
- * and `dietary_tags` are modelled as scalar array fields (a whole-array `set`),
- * not keyed collections; tag edits are add/remove over a small fixed enum.
+ * Recipes: every child collection is keyed by a stable identifier. `meal_types`,
+ * `dietary_tags` and `cuisines` are modelled as scalar array fields (a
+ * whole-array `set`), not keyed collections; tag edits are add/remove over a
+ * small fixed enum.
  */
 export const RECIPE_SCHEMA: MergeSchema = {
   collections: {

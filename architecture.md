@@ -26,7 +26,7 @@
 │   ├── mod.ts                 # Connection pool, query/transaction helpers, orphaned media cleanup
 │   ├── types.ts               # TypeScript interfaces for all DB row types
 │   ├── migrate.ts             # Migration runner
-│   └── migrations/            # Sequential .sql files (001–035)
+│   └── migrations/            # Sequential .sql files (001–080)
 │
 ├── lib/                       # Shared utilities
 │   ├── auth.ts                # OAuth flows (GitHub/Google), session cookies
@@ -180,7 +180,7 @@
 - **recipe_step_media**: step_id, media_id, sort_order
 - **recipe_tools**: recipe_id, tool_id, settings, sort_order
 - **recipe_references**: recipe_id, referenced_recipe_id, sort_order
-- **recipe_tags**: recipe_id, tag_type (meal_type|dietary), tag_value
+- **recipe_tags**: recipe_id, tag_type (meal_type|dietary|cuisine), tag_value
 - **recipe_favorites**: user_id, recipe_id
 - **recipe_drafts**: id (uuid), household_id, recipe_data (JSONB), ai_messages,
   source (manual|ocr|generate)

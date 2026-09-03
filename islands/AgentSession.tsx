@@ -1560,7 +1560,11 @@ function ItemPreview({ item }: { item: SerializedStagedItem }) {
   }
   const ings: Any[] = eff.ingredients ?? [];
   const steps: Any[] = eff.steps ?? [];
-  const tags = [...(eff.meal_types ?? []), ...(eff.dietary_tags ?? [])];
+  const tags = [
+    ...(eff.meal_types ?? []),
+    ...(eff.dietary_tags ?? []),
+    ...(eff.cuisines ?? []),
+  ];
   const chip =
     "text-xs px-1.5 py-0.5 bg-stone-100 dark:bg-stone-800 capitalize";
   return (
@@ -1933,6 +1937,12 @@ function StagedItemDiff(
         label="Dietary"
         before={b.dietary_tags}
         after={a.dietary_tags}
+        compact={compact}
+      />
+      <DiffRow
+        label="Cuisine"
+        before={b.cuisines}
+        after={a.cuisines}
         compact={compact}
       />
       <DiffRow

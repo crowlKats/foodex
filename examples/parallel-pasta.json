@@ -9,7 +9,11 @@
   "rest_time": null,
   "difficulty": "easy",
   "private": false,
-  "tags": { "meal_type": ["dinner"], "dietary": ["vegetarian"] },
+  "tags": {
+    "meal_type": ["dinner"],
+    "dietary": ["vegetarian"],
+    "cuisine": ["italian"]
+  },
   "ingredients": [
     { "key": "pasta", "name": "spaghetti", "amount": 200, "unit": "g" },
     {

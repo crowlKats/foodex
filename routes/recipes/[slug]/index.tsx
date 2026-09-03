@@ -145,6 +145,9 @@ export const handlers = handler({
     const dietaryTags = tagsRes.rows
       .filter((t) => t.tag_type === "dietary")
       .map((t) => t.tag_value);
+    const cuisines = tagsRes.rows
+      .filter((t) => t.tag_type === "cuisine")
+      .map((t) => t.tag_value);
 
     const baseQuantity: RecipeQuantity = {
       type: (recipe.quantity_type || "servings") as RecipeQuantity["type"],
@@ -450,6 +453,7 @@ export const handlers = handler({
         dishRefs,
         mealTypes,
         dietaryTags,
+        cuisines,
         baseQuantity,
         isOwner,
         isFavorited,
@@ -524,6 +528,7 @@ export default page(function RecipeViewPage({
     dishRefs,
     mealTypes,
     dietaryTags,
+    cuisines,
     isOwner,
     isFavorited,
     loggedIn,
@@ -666,7 +671,8 @@ export default page(function RecipeViewPage({
         </p>
       )}
 
-      {(mealTypes.length > 0 || dietaryTags.length > 0) && (
+      {(mealTypes.length > 0 || dietaryTags.length > 0 ||
+        cuisines.length > 0) && (
         <div class="flex flex-wrap gap-1.5 mt-2">
           {mealTypes.map((mt) => (
             <span
@@ -682,6 +688,14 @@ export default page(function RecipeViewPage({
               class="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded capitalize"
             >
               {dt}
+            </span>
+          ))}
+          {cuisines.map((c) => (
+            <span
+              key={c}
+              class="text-xs bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 px-2 py-0.5 rounded capitalize"
+            >
+              {c}
             </span>
           ))}
         </div>

@@ -135,6 +135,7 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     source_url: (fd.get("source_url") as string)?.trim() || null,
     meal_types: (fd.getAll("meal_type") as string[]).filter((v) => v.trim()),
     dietary_tags: (fd.getAll("dietary") as string[]).filter((v) => v.trim()),
+    cuisines: (fd.getAll("cuisine") as string[]).filter((v) => v.trim()),
     ingredients,
     sections,
     steps,

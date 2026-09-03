@@ -68,7 +68,7 @@ export default page(function WritingRecipesDocs({ url }) {
           </li>
           <li class={docProse}>
             <strong>Classification</strong>: difficulty, meal types, dietary
-            tags.
+            tags, cuisines.
           </li>
           <li class={docProse}>
             <strong>Source</strong>: where it came from, like a book title, a

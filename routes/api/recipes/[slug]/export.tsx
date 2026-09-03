@@ -111,6 +111,9 @@ export const handlers = handler({
     const dietaryTags = tagsRes.rows
       .filter((t) => t.tag_type === "dietary")
       .map((t) => t.tag_value);
+    const cuisines = tagsRes.rows
+      .filter((t) => t.tag_type === "cuisine")
+      .map((t) => t.tag_value);
 
     // Foodex-native export format (superset of OcrRecipeData)
     const exportData = {
@@ -153,6 +156,7 @@ export const handlers = handler({
       tags: {
         meal_types: mealTypes,
         dietary: dietaryTags,
+        cuisine: cuisines,
       },
       cover_image: null,
       source_type: recipe.source_type,

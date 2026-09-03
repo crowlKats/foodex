@@ -52,7 +52,7 @@ interface ExampleRecipe {
   source_type?: string | null;
   source_name?: string | null;
   source_url?: string | null;
-  tags?: { meal_type?: string[]; dietary?: string[] };
+  tags?: { meal_type?: string[]; dietary?: string[]; cuisine?: string[] };
   ingredients: ExampleIngredient[];
   sections?: ExampleSection[];
   steps: ExampleStep[];
@@ -270,6 +270,9 @@ async function importOne(
     }
     for (const v of recipe.tags?.dietary ?? []) {
       tagRows.push([recipeId, "dietary", v]);
+    }
+    for (const v of recipe.tags?.cuisine ?? []) {
+      tagRows.push([recipeId, "cuisine", v]);
     }
     if (tagRows.length > 0) {
       await bulkInsert(

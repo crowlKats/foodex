@@ -9,7 +9,7 @@
   "rest_time": null,
   "difficulty": "easy",
   "private": false,
-  "tags": { "meal_type": ["dinner"], "dietary": [] },
+  "tags": { "meal_type": ["dinner"], "dietary": [], "cuisine": ["italian"] },
   "ingredients": [
     { "key": "beef", "name": "ground beef", "amount": 500, "unit": "g" },
     {
