@@ -121,6 +121,7 @@ export async function importRecipeFromUrl(
         source_url: data.source_url ?? null,
         meal_types: data.tags?.meal_types ?? [],
         dietary_tags: data.tags?.dietary ?? [],
+        cuisines: data.tags?.cuisine ?? [],
       };
     }
     throw new Error("JSON response is not a recognized recipe format");

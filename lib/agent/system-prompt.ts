@@ -43,7 +43,7 @@ references by "referenced_recipe_id".
 - edit:    { "op": "set", "collection": "steps", "key": "<stepId>", "field": "body", "value": "..." }
 - remove:  { "op": "remove", "collection": "ingredients", "key": "salt" }
 - reorder: { "op": "reorder", "collection": "steps", "order": ["<id2>", "<id1>"] }
-meal_types and dietary_tags are scalar array fields: replace the whole array with a "set".
+meal_types, dietary_tags and cuisines are scalar array fields: replace the whole array with a "set".
 
 Swapping or renaming an ingredient is a PAIRED change; do all of it in one edit call:
 1. Remove the old row and add the replacement (its own new snake_case "key", searched/created \

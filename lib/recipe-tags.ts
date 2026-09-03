@@ -21,6 +21,33 @@ export const DIETARY_TAGS = [
   "paleo",
 ] as const;
 
+export const CUISINES = [
+  "african",
+  "american",
+  "australian",
+  "british",
+  "caribbean",
+  "chinese",
+  "eastern-european",
+  "french",
+  "german",
+  "greek",
+  "indian",
+  "italian",
+  "japanese",
+  "korean",
+  "latin-american",
+  "mediterranean",
+  "mexican",
+  "middle-eastern",
+  "nordic",
+  "southeast-asian",
+  "spanish",
+  "thai",
+  "turkish",
+  "vietnamese",
+] as const;
+
 export const DIFFICULTY_LEVELS = [
   "easy",
   "medium",

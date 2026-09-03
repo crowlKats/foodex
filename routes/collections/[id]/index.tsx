@@ -3,6 +3,7 @@ import { HttpError } from "fresh/errors";
 import type {
   Collection,
   CollectionShare,
+  RecipeListItem,
   RecipeTag,
   RecipeWithCover,
 } from "../../../db/types.ts";
@@ -64,8 +65,7 @@ export const handlers = handler({
 
     // Load tags for recipes
     const recipeIds = recipesRes.rows.map((r) => r.id);
-    const tagsMap: Record<string, { meal_types: string[]; dietary: string[] }> =
-      {};
+    const tagsMap: Record<string, RecipeListItem["tags"]> = {};
     if (recipeIds.length > 0) {
       const tagsRes = await ctx.state.db.query<RecipeTag>(
         "SELECT recipe_id, tag_type, tag_value FROM recipe_tags WHERE recipe_id = ANY($1)",
@@ -73,19 +73,21 @@ export const handlers = handler({
       );
       for (const t of tagsRes.rows) {
         if (!tagsMap[t.recipe_id]) {
-          tagsMap[t.recipe_id] = { meal_types: [], dietary: [] };
+          tagsMap[t.recipe_id] = { meal_types: [], dietary: [], cuisine: [] };
         }
         if (t.tag_type === "meal_type") {
           tagsMap[t.recipe_id].meal_types.push(t.tag_value);
         } else if (t.tag_type === "dietary") {
           tagsMap[t.recipe_id].dietary.push(t.tag_value);
+        } else if (t.tag_type === "cuisine") {
+          tagsMap[t.recipe_id].cuisine.push(t.tag_value);
         }
       }
     }
 
     const recipes = recipesRes.rows.map((r) => ({
       ...r,
-      tags: tagsMap[r.id] ?? { meal_types: [], dietary: [] },
+      tags: tagsMap[r.id] ?? { meal_types: [], dietary: [], cuisine: [] },
     }));
 
     // Load shares
@@ -396,7 +398,8 @@ export default page(
                           )}
                         </div>
                         {(r.tags.meal_types.length > 0 ||
-                          r.tags.dietary.length > 0) && (
+                          r.tags.dietary.length > 0 ||
+                          r.tags.cuisine.length > 0) && (
                           <div class="flex flex-wrap gap-1 mt-1">
                             {r.tags.meal_types.map((mt) => (
                               <span
@@ -412,6 +415,14 @@ export default page(
                                 class="text-[10px] bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded capitalize"
                               >
                                 {dt}
+                              </span>
+                            ))}
+                            {r.tags.cuisine.map((c) => (
+                              <span
+                                key={c}
+                                class="text-[10px] bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 px-1.5 py-0.5 rounded capitalize"
+                              >
+                                {c}
                               </span>
                             ))}
                           </div>

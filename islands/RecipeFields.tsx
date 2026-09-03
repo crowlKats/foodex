@@ -15,6 +15,7 @@ import { Checkbox } from "../components/Checkbox.tsx";
 import { SubGroup } from "../components/recipe-form/ui.tsx";
 import MultiSearchSelect from "./MultiSearchSelect.tsx";
 import {
+  CUISINES,
   DIETARY_TAGS,
   DIFFICULTY_LEVELS,
   MEAL_TYPES,
@@ -255,7 +256,7 @@ export default function RecipeFields(props: Props) {
           </div>
         </SubGroup>
         <SubGroup label="Classification">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label class="block text-sm font-medium mb-1">Difficulty</label>
               <Select key={`diff-${v}`} name="difficulty" class="w-full">
@@ -285,6 +286,16 @@ export default function RecipeFields(props: Props) {
                 options={[...DIETARY_TAGS]}
                 initialSelected={r.dietary_tags ?? []}
                 placeholder="Search dietary tags..."
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Cuisine</label>
+              <MultiSearchSelect
+                key={`cuisine-${v}`}
+                name="cuisine"
+                options={[...CUISINES]}
+                initialSelected={r.cuisines ?? []}
+                placeholder="Search cuisines..."
               />
             </div>
           </div>

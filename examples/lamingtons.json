@@ -12,7 +12,11 @@
   "source_type": "website",
   "source_name": "RecipeTin Eats",
   "source_url": "https://www.recipetineats.com/classic-lamingtons/",
-  "tags": { "meal_type": ["dessert"], "dietary": [] },
+  "tags": {
+    "meal_type": ["dessert"],
+    "dietary": [],
+    "cuisine": ["australian"]
+  },
   "ingredients": [
     {
       "key": "flour",

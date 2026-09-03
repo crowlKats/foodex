@@ -315,9 +315,11 @@ export async function saveRecipeChildren(
   const dietaryTags = (form.getAll("dietary") as string[]).filter((v) =>
     v.trim()
   );
+  const cuisines = (form.getAll("cuisine") as string[]).filter((v) => v.trim());
   const tagRows = [
     ...mealTypes.map((v) => [recipeId, "meal_type", v.trim()]),
     ...dietaryTags.map((v) => [recipeId, "dietary", v.trim()]),
+    ...cuisines.map((v) => [recipeId, "cuisine", v.trim()]),
   ];
 
   if (tagRows.length > 0) {

@@ -1,6 +1,6 @@
 import { ALL_UNITS } from "./units.ts";
 import { DOCS as TEMPLATE_DOCS } from "../routes/docs/templates.md.tsx";
-import { DIETARY_TAGS, MEAL_TYPES } from "./recipe-tags.ts";
+import { CUISINES, DIETARY_TAGS, MEAL_TYPES } from "./recipe-tags.ts";
 
 /** JSON schema + shared rules for recipe output, used by both OCR and generation prompts. */
 export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
@@ -42,7 +42,8 @@ ${coverLine},
   }>],
   "dietary_tags": [<zero or more of: ${
     DIETARY_TAGS.map((d) => `"${d}"`).join(", ")
-  }>]
+  }>],
+  "cuisines": [<zero or more of: ${CUISINES.map((c) => `"${c}"`).join(", ")}>]
 }`;
 }
 
@@ -84,4 +85,7 @@ ${TEMPLATE_DOCS}
 - "dietary_tags": Tag the recipe with zero or more dietary attributes from the allowed list (${
   DIETARY_TAGS.join(", ")
 }). Only include a tag if the recipe genuinely satisfies it based on its ingredients (e.g. don't mark "vegan" if it contains dairy or eggs; don't mark "gluten-free" if it contains wheat flour). Return an empty array if none clearly apply or you're unsure.
+- "cuisines": Tag the recipe with zero or more cuisines from the allowed list (${
+  CUISINES.join(", ")
+}). Go by the dish's origin and its ingredients and techniques, not by where the source was published. Prefer the specific cuisine over a regional one when both fit (e.g. "thai" rather than "southeast-asian"). Return an empty array if none clearly apply.
 - Return ONLY the JSON object, no markdown fences or extra text`;

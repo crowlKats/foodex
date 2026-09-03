@@ -208,9 +208,10 @@ export default page(function OrganizingDocs({ url }) {
         <ul class="list-disc pl-6 space-y-1 mb-0">
           <li class={docProse}>
             <strong>Tags</strong>{" "}
-            classify a recipe by meal type (breakfast, lunch, dinner, and so on)
-            and dietary labels (vegetarian, vegan, gluten-free, and more). The
-            recipe list can filter by any of them.
+            classify a recipe by meal type (breakfast, lunch, dinner, and so
+            on), dietary labels (vegetarian, vegan, gluten-free, and more), and
+            cuisine (Italian, Thai, Mexican, and more). The recipe list can
+            filter by any of them.
           </li>
           <li class={docProse}>
             <strong>Favorites</strong>{" "}

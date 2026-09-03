@@ -45,6 +45,7 @@ export interface OcrRecipeData {
   source_url?: string | null;
   meal_types?: string[];
   dietary_tags?: string[];
+  cuisines?: string[];
   output_ingredient_id?: string | null;
   output_amount?: number | null;
   output_unit?: string | null;

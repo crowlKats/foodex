@@ -122,7 +122,7 @@ export interface RecipeReference {
 export interface RecipeTag {
   id: string;
   recipe_id: string;
-  tag_type: "meal_type" | "dietary";
+  tag_type: "meal_type" | "dietary" | "cuisine";
   tag_value: string;
 }
 
@@ -339,7 +339,7 @@ export interface StepMedia {
 }
 
 export interface RecipeListItem extends RecipeWithCover {
-  tags: { meal_types: string[]; dietary: string[] };
+  tags: { meal_types: string[]; dietary: string[]; cuisine: string[] };
   /** Owning household, for attribution on cross-household lists. */
   household_name?: string | null;
   dish_slug?: string | null;
