@@ -45,11 +45,11 @@ export default page(function ImportDocs({ url }) {
 
         <DocSub title="Chatting">
           <p class={`${docProse} mb-4`}>
-            Type a request, or attach photos with the photo button (pasting and
-            drag-and-drop work too). While the assistant works you'll see its
-            progress live: what it's searching, which pages it's fetching, what
-            it's staging. A new chat offers starter suggestions if you're not
-            sure what to ask.
+            Type a request, dictate one with the microphone button, or attach
+            photos with the photo button (pasting and drag-and-drop work too).
+            While the assistant works you'll see its progress live: what it's
+            searching, which pages it's fetching, what it's staging. A new chat
+            offers starter suggestions if you're not sure what to ask.
           </p>
         </DocSub>
 
@@ -135,6 +135,11 @@ export default page(function ImportDocs({ url }) {
             The recipe <strong>written out</strong> or pasted as text.
           </li>
           <li class={docProse}>
+            The recipe{" "}
+            <strong>dictated</strong>: press Dictate, talk it through, press
+            stop. The transcript lands in the box for you to read over.
+          </li>
+          <li class={docProse}>
             <strong>Instructions</strong>{" "}
             alongside any of the above: what language it's in, how many it
             should serve, "halve the sugar", "make it vegetarian".
@@ -155,6 +160,21 @@ export default page(function ImportDocs({ url }) {
           Recipe page (and in your Assistant conversations), so nothing is lost
           by closing the tab.
         </p>
+
+        <DocSub title="Dictating">
+          <p class={`${docProse} mb-3`}>
+            Talk the way you would explain the recipe to someone in the kitchen:
+            what goes in, roughly how much, what you do with it. Numbers come
+            out as digits, filler words are dropped, and a correction ("two
+            eggs, no, three") keeps only the correction. Any language works.
+          </p>
+          <p class={`${docMuted} mb-4`}>
+            A recording runs up to five minutes; the button shows the elapsed
+            time. The audio itself is not kept: it is transcribed and then gone,
+            and only the text you see is sent on. The assistant chat has the
+            same button, so follow-ups ("halve the sugar") can be spoken too.
+          </p>
+        </DocSub>
 
         <DocSub title="Share from your phone">
           <p class={`${docProse} mb-3`}>

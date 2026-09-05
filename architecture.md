@@ -7,8 +7,10 @@
 - **Styling:** Tailwind CSS v4 (no rounded corners, `border-2`, sharp cards)
 - **Bundler:** Vite
 - **Icons:** Tabler icons (`tb-icons`)
-- **AI:** Anthropic Claude SDK (assistant sessions with staging; imports
-  (URL/text/photos) run through the assistant)
+- **AI:** OpenRouter via the AI SDK (assistant sessions with staging; imports
+  (URL/text/photos/dictation) run through the assistant; dictation is
+  transcribed by a pinned audio-capable model with a fallback chain, see
+  `lib/agent/model.ts`)
 - **Storage:** AWS S3 with presigned URLs
 - **Auth:** GitHub & Google OAuth
 
@@ -43,6 +45,8 @@
 │   ├── markdown.ts            # Server-side step rendering (marked + template eval + @step/@recipe/@timer)
 │   ├── recipe-data.ts         # OcrRecipeData extraction-output shape
 │   ├── image-downscale.ts     # Client-side photo re-encode + upload (islands only)
+│   ├── dictation.ts           # Client-side mic recording + WAV fallback + transcribe call (islands only)
+│   ├── transcribe.ts          # Server-side speech-to-text via a pinned audio model
 │   ├── agent/                 # Assistant: event log, staging, tools, turn loop
 │   ├── quantity.ts            # RecipeQuantity types, computeScaleRatio, formatQuantity
 │   ├── recipe-prompt.ts       # JSON schema + rules for AI recipe output
@@ -71,7 +75,8 @@
 │   ├── DarkModeToggle.tsx
 │   ├── AgentSession.tsx       # Assistant chat + staged-recipe workbench
 │   ├── RecipeFields.tsx       # THE shared recipe edit form (new/edit/agent)
-│   ├── ImportStart.tsx        # Chatless import entry (URL/text/photos → session)
+│   ├── RecipeStart.tsx        # New Recipe entry (URL/text/photos/dictation → session)
+│   ├── DictateButton.tsx      # Record → transcribe → hand the text to a text box
 │   ├── FavoriteButton.tsx
 │   ├── GenerateRecipe.tsx     # Generate-from-pantry (seeds an agent session)
 │   ├── ImageCrop.tsx
@@ -143,6 +148,7 @@
 │       ├── shopping-list-shared.tsx
 │       ├── pantry.tsx         # add, update, remove, deduct_recipe actions
 │       ├── upload.tsx
+│       ├── transcribe.tsx     # Dictation audio → transcript (audio not stored)
 │       └── media/{[id],[key]}.tsx
 │
 └── static/

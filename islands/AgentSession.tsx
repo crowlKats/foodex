@@ -35,6 +35,7 @@ import { Checkbox } from "../components/Checkbox.tsx";
 import { formDataToRecipeData } from "../lib/recipe-form-data.ts";
 import { stepDisplayNumber } from "../lib/agent/merge.ts";
 import { uploadImages } from "../lib/image-downscale.ts";
+import DictateButton from "./DictateButton.tsx";
 
 interface IngredientOption {
   id: string;
@@ -829,6 +830,15 @@ export default function AgentSession(props: Props) {
                   title="Attach photos"
                   disabled={turnActive}
                   onClick={() => fileInputRef.current?.click()}
+                />
+                <DictateButton
+                  size="md"
+                  disabled={turnActive}
+                  onTranscript={(t) =>
+                    setInput((v) => v.trim() ? `${v.trimEnd()} ${t}` : t)}
+                  onError={(msg) => {
+                    if (msg) setError(msg);
+                  }}
                 />
                 <Input
                   type="text"

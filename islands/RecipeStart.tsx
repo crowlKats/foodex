@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 import { IconLoader2, IconPhoto, IconX } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
+import DictateButton from "./DictateButton.tsx";
 import { InputMultiline } from "../components/Input.tsx";
 import { uploadImages } from "../lib/image-downscale.ts";
 import { sharedImportText, takeIncomingShare } from "../lib/share-target.ts";
@@ -9,8 +10,8 @@ import { sharedImportText, takeIncomingShare } from "../lib/share-target.ts";
 const PLACEHOLDER = [
   "Paste a link to import from…",
   "",
-  "…or write the recipe out, or attach photos of a page. Add instructions " +
-  "too: halve the sugar, it's in Italian, serves 4.",
+  "…or write the recipe out, dictate it, or attach photos of a page. Add " +
+  "instructions too: halve the sugar, it's in Italian, serves 4.",
 ].join("\n");
 
 /**
@@ -64,6 +65,12 @@ export default function RecipeStart(
       cancelled = true;
     };
   }, []);
+
+  // A transcript joins whatever is already in the box as its own paragraph.
+  function addTranscript(transcript: string) {
+    const current = text.value.trimEnd();
+    text.value = current ? `${current}\n\n${transcript}` : transcript;
+  }
 
   function removeFile(index: number) {
     URL.revokeObjectURL(files.value[index]?.preview ?? "");
@@ -183,16 +190,23 @@ export default function RecipeStart(
       )}
 
       <div class="flex items-center justify-between gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          icon={IconPhoto}
-          onClick={pickFiles}
-          class="whitespace-nowrap"
-        >
-          Attach photos
-        </Button>
+        <div class="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            icon={IconPhoto}
+            onClick={pickFiles}
+            class="whitespace-nowrap"
+          >
+            Attach photos
+          </Button>
+          <DictateButton
+            label="Dictate"
+            onTranscript={addTranscript}
+            onError={(msg) => error.value = msg || null}
+          />
+        </div>
         <Button
           type="button"
           disabled={!hasInput}
