@@ -73,8 +73,8 @@ export default page(function NewRecipePage({ data, url }) {
       <h1 class="text-2xl font-bold mt-4 mb-2">New Recipe</h1>
       <p class="text-sm text-stone-500 mb-4">
         Enter a link to import from, the recipe itself, photos of a page,
-        instructions, or any mix of them. You review the result before anything
-        is saved.
+        instructions, or any mix of them, or dictate it. You review the result
+        before anything is saved.
       </p>
 
       <RecipeStart initialText={initialText} />

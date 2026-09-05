@@ -15,6 +15,19 @@ export type ProviderOptions = NonNullable<TextPart["providerOptions"]>;
 
 const MODEL = "openrouter/auto-beta";
 
+// The one exception to the auto router: transcribing dictation. The router
+// advertises audio input, but which model it lands on per request is its
+// call, and a text-only pick would fail the whole recording. So dictation
+// pins an audio-capable model, with OpenRouter's request-level fallback list
+// behind it: if the primary errors, the next one answers. All three take
+// audio natively and handle any language; the last is a different vendor so
+// a Google outage does not take dictation down with it.
+const TRANSCRIPTION_MODELS = [
+  "google/gemini-3.8-flash",
+  "google/gemini-2.5-flash",
+  "openai/gpt-audio-mini",
+];
+
 function apiKey(): string {
   const key = Deno.env.get("OPENROUTER_API_KEY");
   if (!key) throw new Error("OPENROUTER_API_KEY is not set");
@@ -28,6 +41,22 @@ export function hasCredentials(): boolean {
 
 export function getModel(): LanguageModel {
   return createOpenRouter({ apiKey: apiKey() })(MODEL);
+}
+
+/**
+ * The audio-capable model used to transcribe dictated recordings.
+ *
+ * Reasoning is dialled to the minimum: these are thinking models by default,
+ * and thinking adds latency and tokens to what is a straight listen-and-write
+ * task. "minimal" rather than "none" because every model in the chain
+ * accepts it; a rejected parameter would count as an error and skip a model.
+ */
+export function getTranscriptionModel(): LanguageModel {
+  const [primary, ...fallbacks] = TRANSCRIPTION_MODELS;
+  return createOpenRouter({ apiKey: apiKey() })(primary, {
+    models: fallbacks,
+    reasoning: { effort: "minimal", exclude: true },
+  });
 }
 
 /**
