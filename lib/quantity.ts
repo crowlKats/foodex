@@ -1,3 +1,6 @@
+import { toBaseUnit } from "./unit-convert.ts";
+import { getUnitStep, VOLUME_UNITS, WEIGHT_UNITS } from "./units.ts";
+
 export type QuantityType = "servings" | "weight" | "volume" | "dimensions";
 
 export interface RecipeQuantity {
@@ -16,12 +19,25 @@ export const QUANTITY_TYPES: { type: QuantityType; label: string }[] = [
   { type: "dimensions", label: "Tray dimensions" },
 ];
 
+/**
+ * Units a recipe's scaling quantity can be stated in. Weight and volume come
+ * from the shared ingredient unit list so the yield dropdown and ingredient
+ * lines never disagree, and every entry has a conversion factor in
+ * unit-convert.ts so scaling between them stays exact.
+ */
 export const QUANTITY_UNITS: Record<QuantityType, string[]> = {
   servings: ["servings", "portions", "pieces"],
-  weight: ["g", "kg"],
-  volume: ["ml", "l"],
+  weight: WEIGHT_UNITS,
+  volume: VOLUME_UNITS,
   dimensions: ["cm"],
 };
+
+/** HTML step attribute for a quantity unit's amount input. */
+export function quantityStep(type: QuantityType, unit: string): string {
+  if (type === "servings") return "1";
+  if (type === "dimensions") return "0.5";
+  return getUnitStep(unit);
+}
 
 export const QUANTITY_DEFAULTS: Record<
   QuantityType,
@@ -50,15 +66,9 @@ export function computeScaleRatio(
   return baseNormalized > 0 ? targetNormalized / baseNormalized : 1;
 }
 
+/** Express a quantity in its base unit (g, ml, mm) so units can be compared. */
 function normalizeValue(value: number, unit: string): number {
-  switch (unit) {
-    case "kg":
-      return value * 1000;
-    case "l":
-      return value * 1000;
-    default:
-      return value;
-  }
+  return toBaseUnit(value, unit).amount;
 }
 
 export function formatQuantity(q: RecipeQuantity): string {

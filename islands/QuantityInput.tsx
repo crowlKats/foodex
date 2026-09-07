@@ -3,6 +3,7 @@ import {
   QUANTITY_DEFAULTS,
   QUANTITY_TYPES,
   QUANTITY_UNITS,
+  quantityStep,
   type QuantityType,
 } from "../lib/quantity.ts";
 import { formatInputValue } from "../lib/format.ts";
@@ -129,8 +130,8 @@ export default function QuantityInput(
                 <InputBar>
                   <Input
                     type="number"
-                    min="1"
-                    step={qType.value === "servings" ? "1" : "any"}
+                    min={qType.value === "servings" ? "1" : "0"}
+                    step={quantityStep(qType.value, qUnit.value)}
                     value={formatInputValue(qValue.value)}
                     onValueChange={(v) => qValue.value = parseFloat(v) || 0}
                   />
@@ -147,8 +148,8 @@ export default function QuantityInput(
                 <div class="flex">
                   <Input
                     type="number"
-                    min="1"
-                    step={qType.value === "servings" ? "1" : "any"}
+                    min={qType.value === "servings" ? "1" : "0"}
+                    step={quantityStep(qType.value, qUnit.value)}
                     value={formatInputValue(qValue.value)}
                     class="w-full"
                     onValueChange={(v) => qValue.value = parseFloat(v) || 0}

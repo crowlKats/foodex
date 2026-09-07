@@ -1,4 +1,5 @@
 import { ALL_UNITS } from "./units.ts";
+import { QUANTITY_UNITS } from "./quantity.ts";
 import { DOCS as TEMPLATE_DOCS } from "../routes/docs/templates.md.tsx";
 import { CUISINES, DIETARY_TAGS, MEAL_TYPES } from "./recipe-tags.ts";
 
@@ -16,9 +17,13 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
   "cook_time": <number in minutes or null>,
   "rest_time": <number in minutes or null>,
   "difficulty": "easy" | "medium" | "hard" | null,
-  "quantity_type": "servings" | "dimensions",
-  "quantity_value": <servings count, or tray width in cm>,
-  "quantity_unit": "servings" | "cm",
+  "quantity_type": "servings" | "weight" | "volume" | "dimensions",
+  "quantity_value": <servings count, total weight or volume, or tray width in cm>,
+  "quantity_unit": <"servings" | "portions" | "pieces" for servings; one of ${
+    QUANTITY_UNITS.weight.join(", ")
+  } for weight; one of ${
+    QUANTITY_UNITS.volume.join(", ")
+  } for volume; "cm" for dimensions>,
   "quantity_value2": <tray length in cm (dimensions only), else null>,
   "quantity_value3": <tray depth in cm (dimensions only, optional), else null>,
   "quantity_unit2": <"cm" for dimensions, else null>,
@@ -55,7 +60,10 @@ export const RECIPE_FIELD_RULES = `\
 - "unit" must be one of these exact values: ${
   ALL_UNITS.join(", ")
 }, or empty string if no unit applies
-- "quantity_type" should be "servings" unless the recipe specifies weight/volume/dimensions
+- "quantity_type" should be "servings" unless the recipe specifies weight/volume/dimensions. \
+A recipe whose yield is stated as an amount rather than a count ("makes 500 g", "yields 7 tbsp", \
+"makes 1 litre") uses "weight" or "volume" with that amount and unit as quantity_value/quantity_unit; \
+that amount is what the recipe scales by.
 - TRAY RECIPES: when the recipe is baked or set in a tray/pan/tin/dish of stated dimensions \
 (e.g. "20x30 cm tray", "9x13 inch pan"), use quantity_type "dimensions" with the tray size in \
 cm as quantity_value (width) / quantity_value2 (length) / quantity_value3 (depth, if stated); \

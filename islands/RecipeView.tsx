@@ -6,7 +6,11 @@ import {
   formatCurrency,
   formatInputValue,
 } from "../lib/format.ts";
-import { computeScaleRatio, formatQuantity } from "../lib/quantity.ts";
+import {
+  computeScaleRatio,
+  formatQuantity,
+  QUANTITY_UNITS,
+} from "../lib/quantity.ts";
 import type { RecipeQuantity } from "../lib/quantity.ts";
 import { getCurrencySymbol } from "../lib/currencies.ts";
 import { computeAvailability, isAvailable } from "../lib/inventory.ts";
@@ -369,14 +373,15 @@ export default function RecipeView(
             />
             <Select
               value={targetUnit}
-              class="w-16 shrink-0"
+              class="w-20 shrink-0"
               onValueChange={(v) => {
                 targetUnit.value = v;
                 update();
               }}
             >
-              <option value="g">g</option>
-              <option value="kg">kg</option>
+              {QUANTITY_UNITS.weight.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
             </Select>
           </div>
         </div>
@@ -404,14 +409,15 @@ export default function RecipeView(
             />
             <Select
               value={targetUnit}
-              class="w-16 shrink-0"
+              class="w-20 shrink-0"
               onValueChange={(v) => {
                 targetUnit.value = v;
                 update();
               }}
             >
-              <option value="ml">ml</option>
-              <option value="l">l</option>
+              {QUANTITY_UNITS.volume.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
             </Select>
           </div>
         </div>
