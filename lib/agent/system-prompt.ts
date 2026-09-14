@@ -57,6 +57,17 @@ reject the call; fix and retry. Successful results may carry "step_warnings" (so
 e.g. a typed-out amount that won't scale where a {{ ref }} would); resolve them when it \
 makes sense. get_proposed also reports a staged recipe's current step_errors/step_warnings.
 
+## Alternatives (either/or)
+Steps in one section that share an "alt" group key are alternatives the cook picks between \
+("Sear on the stove" / "Sear in the oven"); the first in order is the default. Alternative \
+sections share an "alt" key the same way. An ingredient only one alternative needs carries \
+"for_step" (that step's id) or "for_section" (that section's key). To offer a second way to do \
+a step: add the new step with the same "after" and "section", give both steps the same "alt" \
+key, and make whatever depended on the original depend on the new step too. Steps only one way \
+needs hang off that way's tagged step ("after" it) and rejoin where both ways meet; they are \
+hidden with it automatically, so give them no "alt" of their own. "alternatives" (keyed by that \
+"alt" key) holds a one-line "description" of what the choice is about; add or edit it with the fork.
+
 ## Ingredients: EVERY row must be linked
 Every ingredient row in a recipe MUST have an "ingredient_id" pointing at a real ingredient \
 entity, with ONE exception: rows marked "intermediate": true (products made during the \

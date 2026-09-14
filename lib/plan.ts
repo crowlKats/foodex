@@ -139,6 +139,7 @@ export async function loadPlan(
        WHERE ri.recipe_id = ANY($1)
          AND NOT ri.intermediate
          AND NOT COALESCE(g.always_on_hand, false)
+         AND fx_option_default(ri.option_id)
        ORDER BY ri.sort_order`,
         [recipeIds],
       )
@@ -231,6 +232,8 @@ export interface AddPlanEntryInput {
   plannedFor?: string | null;
   includeInList?: boolean;
   note?: string | null;
+  /** Picked choice options (see lib/recipe-choices.ts); null = defaults. */
+  optionIds?: string[] | null;
   userId?: string | null;
 }
 
@@ -267,9 +270,9 @@ export async function addPlanEntry(
   const res = await db.query<{ id: string }>(
     `INSERT INTO plan_entries (
        household_id, recipe_id, dish_id, target_servings, scale, planned_for,
-       include_in_list, note, created_by
+       include_in_list, note, option_ids, created_by
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
     [
       input.householdId,
@@ -280,6 +283,7 @@ export async function addPlanEntry(
       input.plannedFor ?? null,
       input.includeInList ?? true,
       input.note ?? null,
+      input.optionIds && input.optionIds.length > 0 ? input.optionIds : null,
       input.userId ?? null,
     ],
   );
@@ -365,6 +369,7 @@ export async function cookPlanEntry(
     recipe_id: string;
     scale: number;
     status: PlanStatus;
+    option_ids: string[] | null;
     title: string;
     output_ingredient_id: string | null;
     output_amount: number | null;
@@ -372,7 +377,7 @@ export async function cookPlanEntry(
     output_expires_days: number | null;
     output_name: string | null;
   }>(
-    `SELECT pe.id, pe.recipe_id, pe.scale, pe.status, r.title,
+    `SELECT pe.id, pe.recipe_id, pe.scale, pe.status, pe.option_ids, r.title,
             r.output_ingredient_id, r.output_amount, r.output_unit,
             r.output_expires_days, g.name as output_name
      FROM plan_entries pe
@@ -395,8 +400,9 @@ export async function cookPlanEntry(
      LEFT JOIN ingredients g ON g.id = ri.ingredient_id
      WHERE ri.recipe_id = $1
        AND NOT ri.intermediate
-         AND NOT COALESCE(g.always_on_hand, false)`,
-    [entry.recipe_id],
+       AND NOT COALESCE(g.always_on_hand, false)
+       AND fx_option_active(ri.option_id, $2)`,
+    [entry.recipe_id, entry.option_ids],
   );
 
   const refs: IngredientRef[] = ingredientsRes.rows.map((row) => ({
@@ -563,6 +569,7 @@ export async function suggestRecipes(
      LEFT JOIN ingredients g ON g.id = ri.ingredient_id
      WHERE NOT ri.intermediate
        AND NOT COALESCE(g.always_on_hand, false)
+       AND fx_option_default(ri.option_id)
        AND (r.household_id = $1 OR r.private = false)
        AND EXISTS (
          SELECT 1 FROM recipe_ingredients hit

@@ -1,5 +1,6 @@
-import { useSignal } from "@preact/signals";
+import { type Signal, useSignal } from "@preact/signals";
 import { ALL_UNITS, UNIT_GROUPS } from "../lib/units.ts";
+import type { AltRef } from "../lib/recipe-alternatives-form.ts";
 import SearchSelect from "./SearchSelect.tsx";
 import { IconPlus } from "@tabler/icons-preact";
 import { IconTrash } from "@tabler/icons-preact";
@@ -18,6 +19,8 @@ interface Ingredient {
   note?: string;
   /** Made during this recipe: no library link, never shopped. */
   intermediate?: boolean;
+  /** Only needed for one alternative step/section, by editor uid, or null. */
+  target?: { kind: "step" | "section"; uid: string } | null;
 }
 
 interface IngredientItem extends Ingredient {
@@ -27,6 +30,8 @@ interface IngredientItem extends Ingredient {
 interface IngredientFormProps {
   initialIngredients: Ingredient[];
   ingredients: { id: string; name: string; unit: string }[];
+  /** Alternatives the step editor currently holds (see RecipeFields). */
+  alternatives?: Signal<AltRef[]>;
 }
 
 function slugifyKey(name: string): string {
@@ -37,9 +42,17 @@ function slugifyKey(name: string): string {
 }
 
 export default function IngredientForm(
-  { initialIngredients, ingredients: availableIngredients }:
+  { initialIngredients, ingredients: availableIngredients, alternatives }:
     IngredientFormProps,
 ) {
+  const altList = alternatives?.value ?? [];
+  const altGroups = [...new Set(altList.map((a) => a.group))].map((g) => ({
+    group: g,
+    members: altList.filter((a) => a.group === g),
+  }));
+  const altKey = (a: { kind: string; uid: string }) => `${a.kind}:${a.uid}`;
+  const findAlt = (t: Ingredient["target"]) =>
+    t ? altList.find((a) => a.kind === t.kind && a.uid === t.uid) : undefined;
   const items = useSignal<IngredientItem[]>(
     (initialIngredients.length > 0 ? initialIngredients : [{
       key: "",
@@ -80,6 +93,18 @@ export default function IngredientForm(
   function update(index: number, field: keyof Ingredient, value: string) {
     const next = [...items.value];
     next[index] = { ...next[index], [field]: value };
+    items.value = next;
+  }
+
+  function setTarget(index: number, key: string) {
+    const next = [...items.value];
+    const [kind, uid] = key.split(":");
+    next[index] = {
+      ...next[index],
+      target: key && (kind === "step" || kind === "section")
+        ? { kind, uid }
+        : null,
+    };
     items.value = next;
   }
 
@@ -256,6 +281,47 @@ export default function IngredientForm(
               type="hidden"
               name={`ingredients[${i}][note]`}
               value={item.note ?? ""}
+            />
+            {altGroups.length > 0 && (() => {
+              const current = findAlt(item.target);
+              return (
+                <div class="sm:pl-7">
+                  <Select
+                    value={current ? altKey(current) : ""}
+                    onValueChange={(v) => setTarget(i, v)}
+                    size="xs"
+                    class="w-full"
+                    title="Only needed when the cook picks this alternative"
+                  >
+                    <option value="">Needed either way</option>
+                    {altGroups.map((g) => (
+                      <optgroup key={g.group} label="Only for">
+                        {g.members.map((a) => (
+                          <option key={altKey(a)} value={altKey(a)}>
+                            {a.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </Select>
+                </div>
+              );
+            })()}
+            <input
+              type="hidden"
+              name={`ingredients[${i}][for_step]`}
+              value={(() => {
+                const a = findAlt(item.target);
+                return a?.kind === "step" ? String(a.formIndex) : "";
+              })()}
+            />
+            <input
+              type="hidden"
+              name={`ingredients[${i}][for_section]`}
+              value={(() => {
+                const a = findAlt(item.target);
+                return a?.kind === "section" ? String(a.formIndex) : "";
+              })()}
             />
             <Checkbox
               class="sm:pl-7"

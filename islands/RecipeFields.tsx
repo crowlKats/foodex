@@ -1,9 +1,11 @@
 import type { ComponentChildren } from "preact";
-import { useEffect, useRef } from "preact/hooks";
+import { signal } from "@preact/signals";
+import { useEffect, useMemo, useRef } from "preact/hooks";
 import QuantityInput from "./QuantityInput.tsx";
 import IngredientForm from "./IngredientForm.tsx";
 import ToolForm from "./ToolForm.tsx";
 import StepForm from "./StepForm.tsx";
+import type { AltRef } from "../lib/recipe-alternatives-form.ts";
 import MediaUpload from "./MediaUpload.tsx";
 import RecipeOutputForm from "./RecipeOutputForm.tsx";
 import DishSelect from "./DishSelect.tsx";
@@ -121,15 +123,49 @@ export default function RecipeFields(props: Props) {
     return () => form.removeEventListener("invalid", onInvalid, true);
   }, []);
 
+  // The step editor publishes the alternatives it holds here; the
+  // ingredient editor offers them as "needed for" targets.
+  const alternatives = useMemo(() => signal<AltRef[]>([]), [v]);
+
   const sections: Any[] = r.sections ?? [];
   const sectionKeyToIdx = new Map<string, number>();
   sections.forEach((s: Any, i: number) => sectionKeyToIdx.set(s.key ?? "", i));
+  // Editor identities, decided here so an ingredient's "needed for" can
+  // point at a step or section before the step editor has mounted.
+  const sectionUids = useMemo(
+    () => sections.map((s: Any) => String(s.uid ?? crypto.randomUUID())),
+    [v],
+  );
 
   const steps: Any[] = r.steps ?? [];
   const stepIdToIdx = new Map<string, number>();
   steps.forEach((s: Any, i: number) => {
     if (s.id) stepIdToIdx.set(s.id, i);
   });
+  const stepUids = useMemo(
+    () => steps.map((s: Any) => String(s.id ?? crypto.randomUUID())),
+    [v],
+  );
+  /** Seed an ingredient's target from `for_step` (id or index) / `for_section` (key). */
+  const targetOf = (
+    ing: Any,
+  ): { kind: "step" | "section"; uid: string } | null => {
+    if (ing.for_step != null && ing.for_step !== "") {
+      const idx = typeof ing.for_step === "number"
+        ? ing.for_step
+        : stepIdToIdx.get(String(ing.for_step)) ?? -1;
+      if (idx >= 0 && stepUids[idx]) {
+        return { kind: "step", uid: stepUids[idx] };
+      }
+    }
+    if (ing.for_section) {
+      const idx = sectionKeyToIdx.get(String(ing.for_section)) ?? -1;
+      if (idx >= 0 && sectionUids[idx]) {
+        return { kind: "section", uid: sectionUids[idx] };
+      }
+    }
+    return null;
+  };
   const initialSteps = steps.map((s: Any, i: number) => {
     const secKey = s.section ?? null;
     const secIdx = secKey != null ? sectionKeyToIdx.get(secKey) ?? -1 : -1;
@@ -141,7 +177,7 @@ export default function RecipeFields(props: Props) {
         .filter((n): n is number => n != null && n !== i)
       : (i > 0 ? [i - 1] : []);
     return {
-      id: s.id,
+      id: stepUids[i],
       title: s.title ?? "",
       body: s.body ?? "",
       media: (s.media ?? []).map((m: Any) =>
@@ -149,6 +185,7 @@ export default function RecipeFields(props: Props) {
       ),
       after,
       section: secIdx >= 0 ? secIdx : null,
+      alt: s.alt ?? null,
     };
   });
   const branches = initialSteps.length > 0 &&
@@ -354,8 +391,10 @@ export default function RecipeFields(props: Props) {
             note: ing.note ?? "",
             intermediate: ing.intermediate === true ||
               ing.intermediate === "true",
+            target: targetOf(ing),
           }))}
           ingredients={ingredients}
+          alternatives={alternatives}
         />
       </div>
 
@@ -363,14 +402,21 @@ export default function RecipeFields(props: Props) {
         <StepForm
           key={`steps-${v}`}
           initialSteps={initialSteps}
-          initialSections={sections.map((s: Any) => ({
+          initialSections={sections.map((s: Any, i: number) => ({
+            uid: sectionUids[i],
             title: s.title ?? "",
             key: s.key ?? "",
             after: (s.after ?? [])
               .map((k: string) => sectionKeyToIdx.get(k))
               .filter((n: number | undefined): n is number => n != null),
+            alt: s.alt ?? null,
           }))}
           initialMode={branches ? "graph" : "list"}
+          initialAlternatives={(r.alternatives ?? []).map((a: Any) => ({
+            key: String(a.key ?? ""),
+            description: String(a.description ?? ""),
+          }))}
+          alternatives={alternatives}
         />
       </div>
 

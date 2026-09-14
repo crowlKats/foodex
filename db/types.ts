@@ -69,6 +69,8 @@ export interface RecipeIngredient {
   /** Made during this recipe (browned butter): scales, but is not shoppable
    *  and links to no library ingredient. */
   intermediate: boolean;
+  /** Only needed when this choice option is picked; null applies always. */
+  option_id: string | null;
   ingredient_name: string | null;
   ingredient_unit: string | null;
 }
@@ -90,6 +92,8 @@ export interface RecipeStep {
   body: string;
   sort_order: number;
   section_id: string | null;
+  /** Only shown when this choice option is picked; null applies always. */
+  option_id: string | null;
 }
 
 export interface RecipeStepSection {
@@ -98,6 +102,28 @@ export interface RecipeStepSection {
   key: string;
   title: string;
   sort_order: number;
+  /** Only shown when this choice option is picked; null applies always. */
+  option_id: string | null;
+}
+
+/** A decision the cook makes ("Cooking method"), offering several options. */
+export interface RecipeChoice {
+  id: string;
+  recipe_id: string;
+  key: string;
+  title: string;
+  /** What the cook is choosing between, shown with the picker. */
+  description: string | null;
+  sort_order: number;
+}
+
+export interface RecipeChoiceOption {
+  id: string;
+  choice_id: string;
+  key: string;
+  title: string;
+  sort_order: number;
+  is_default: boolean;
 }
 
 export interface RecipeStepDep {

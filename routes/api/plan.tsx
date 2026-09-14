@@ -36,6 +36,7 @@ export const handlers = handler({
         plannedFor: body.planned_for,
         includeInList: body.include_in_list,
         note: body.note,
+        optionIds: body.option_ids,
         userId,
       });
       if (entryId == null) {
@@ -112,6 +113,7 @@ export const handlers = handler({
           householdId,
           recipeId: body.recipe_id,
           scale: body.scale,
+          optionIds: body.option_ids,
           userId,
         });
         if (cooked.entryId === "") {

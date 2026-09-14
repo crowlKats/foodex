@@ -1,4 +1,4 @@
-import { useSignal } from "@preact/signals";
+import { type Signal, signal, useSignal } from "@preact/signals";
 import { Fragment } from "preact";
 import { useEffect, useMemo, useRef } from "preact/hooks";
 import {
@@ -30,6 +30,16 @@ import {
 } from "../lib/recipe-template/render.tsx";
 import { toDisplayUnit } from "../lib/unit-display.ts";
 import type { UnitSystem } from "../lib/unit-display.ts";
+import {
+  type ChoiceInfo,
+  type ChoiceSelection,
+  defaultSelection,
+  hiddenOptionIds,
+  projectVisible,
+  selectionFromParams,
+  selectionToParams,
+} from "../lib/recipe-choices.ts";
+import SegmentToggle from "./SegmentToggle.tsx";
 import { Button } from "../components/Button.tsx";
 import { Input } from "../components/Input.tsx";
 import { Select } from "../components/Select.tsx";
@@ -54,6 +64,10 @@ interface RecipeStep {
   media?: { id: string; url: string }[];
   after?: number[];
   section_id?: string | null;
+  /** Only shown when this choice option is picked. */
+  option_id?: string | null;
+  /** Set by the projection on the picked member of a fork. */
+  choice_id?: string;
 }
 
 interface RecipeIngredient {
@@ -72,6 +86,8 @@ interface RecipeIngredient {
   /** Made during this recipe (browned butter): scales and renders, but is
    *  not shoppable and links to no library ingredient. */
   intermediate?: boolean;
+  /** Only needed when this choice option is picked. */
+  option_id?: string;
 }
 
 interface RecipeTool {
@@ -105,6 +121,8 @@ interface Substitution {
 interface RecipeViewProps {
   steps: RecipeStep[];
   sections?: SectionInfo[];
+  /** Alternatives the cook picks between; see lib/recipe-choices.ts. */
+  choices?: ChoiceInfo[];
   ingredients: RecipeIngredient[];
   tools?: RecipeTool[];
   refs?: RecipeRef[];
@@ -125,9 +143,10 @@ interface RecipeViewProps {
 
 export default function RecipeView(
   {
-    steps,
-    sections,
-    ingredients,
+    steps: allSteps,
+    sections: allSections,
+    choices: choicesProp,
+    ingredients: allIngredients,
     tools,
     refs,
     recipeRefs: recipeRefsList,
@@ -143,6 +162,160 @@ export default function RecipeView(
     sourceRecipes,
   }: RecipeViewProps,
 ) {
+  // ── Choices ──
+  // The cook's picks decide which steps, sections and ingredient rows the
+  // rest of this component sees. Everything below works on the projected
+  // lists, so cooking mode, scaling and shopping never meet a hidden node.
+  const choices = choicesProp ?? [];
+  const selection = useSignal<ChoiceSelection>(defaultSelection(choices));
+  // One signal per choice for the toggles; the aggregate above is what the
+  // projection reads. Held in a signal rather than a memo: under the dev
+  // server's SSR, `useMemo` from preact/hooks and the hooks inside
+  // @preact/signals count slots separately, and a memo with empty deps
+  // hands back whatever the signal hook before it stored.
+  const choiceSignals = useSignal<Record<string, Signal<string>>>(
+    Object.fromEntries(
+      choices.map((c) => [c.id, signal(c.options[0]?.id ?? "")]),
+    ),
+  ).value;
+  const optionTitleById: Record<string, string> = {};
+  const choiceOfOption: Record<string, string> = {};
+  for (const c of choices) {
+    for (const o of c.options) {
+      optionTitleById[o.id] = o.title;
+      choiceOfOption[o.id] = c.id;
+    }
+  }
+  // A shared link can carry the picks (`?choice.method=oven`).
+  useEffect(() => {
+    if (choices.length === 0) return;
+    const fromUrl = selectionFromParams(
+      choices,
+      new URLSearchParams(globalThis.location?.search ?? ""),
+    );
+    selection.value = fromUrl;
+    for (const [id, sig] of Object.entries(choiceSignals)) {
+      if (fromUrl[id]) sig.value = fromUrl[id];
+    }
+  }, []);
+  /** Project steps and sections for a selection; `stepIndexMap` is
+   *  original step index → projected index (null when hidden). */
+  function projectFor(sel: ChoiceSelection) {
+    const hidden = hiddenOptionIds(choices, sel);
+    const isHidden = (id?: string | null) => !!id && hidden.has(id);
+    const secProj = allSections
+      ? projectVisible(allSections, (sec) => isHidden(sec.option_id))
+      : undefined;
+    const hiddenSectionIds = new Set(
+      (allSections ?? []).filter((sec) => isHidden(sec.option_id)).map((sec) =>
+        sec.id
+      ),
+    );
+    const stepProj = projectVisible(
+      allSteps,
+      (st) =>
+        isHidden(st.option_id) ||
+        (!!st.section_id && hiddenSectionIds.has(st.section_id)),
+    );
+    // The picker sits on the member (the first node carrying an option);
+    // branch nodes after it share the option but show no picker.
+    const seenOptions = new Set<string>();
+    const memberChoice = (optionId?: string | null) => {
+      if (!optionId || seenOptions.has(optionId)) return undefined;
+      seenOptions.add(optionId);
+      return choiceOfOption[optionId];
+    };
+    return {
+      sections: secProj?.nodes.map((sec) => ({
+        ...sec,
+        choice_id: memberChoice(sec.option_id),
+      })),
+      steps: stepProj.nodes.map((st) => ({
+        ...st,
+        choice_id: memberChoice(st.option_id),
+      })),
+      stepIndexMap: stepProj.indexMap,
+      isHidden,
+    };
+  }
+
+  function pickOption(choiceId: string, optionId: string) {
+    const before = projectFor(selection.value);
+    selection.value = { ...selection.value, [choiceId]: optionId };
+    const url = new URL(globalThis.location.href);
+    selectionToParams(choices, selection.value, url.searchParams);
+    globalThis.history.replaceState(null, "", url);
+    // Step indices shift with the projection. Carry cooking progress across
+    // by way of the original indices, so a pick made mid-cook keeps what is
+    // done and only the fork's own steps change hands.
+    const after = projectFor(selection.value);
+    const oldToOrig = new Map<number, number>();
+    before.stepIndexMap.forEach((p, orig) => {
+      if (p != null) oldToOrig.set(p, orig);
+    });
+    const remap = (old: number): number | null => {
+      const orig = oldToOrig.get(old);
+      return orig == null ? null : after.stepIndexMap[orig];
+    };
+    // Standing on the alternative that just got swapped out: land on the
+    // one that replaced it, the newly picked member of the same fork.
+    const replacement = after.steps.findIndex((st) =>
+      st.option_id === optionId
+    );
+    const remapOrReplace = (old: number): number | null =>
+      remap(old) ?? (replacement >= 0 ? replacement : null);
+    const doneOrder = cookingDoneOrder.value
+      .map(remap)
+      .filter((i): i is number => i != null);
+    cookingDone.value = new Set(doneOrder);
+    cookingDoneOrder.value = doneOrder;
+    cookingStep.value = remapOrReplace(cookingStep.value) ?? 0;
+    cookingFocused.value = cookingFocused.value != null
+      ? remapOrReplace(cookingFocused.value)
+      : null;
+  }
+  const projected = projectFor(selection.value);
+  const isHiddenOption = projected.isHidden;
+  const sections = projected.sections;
+  const steps = projected.steps;
+  const ingredients = allIngredients.filter((i) =>
+    !isHiddenOption(i.option_id)
+  );
+  /** Option ids to record on a plan entry, or undefined without choices. */
+  const pickedOptionIds = (): string[] | undefined =>
+    choices.length > 0 ? Object.values(selection.value) : undefined;
+
+  /**
+   * The either/or picker for a fork, rendered where the fork sits in the
+   * step list and in cooking mode. The options are the alternatives' own
+   * titles, so it reads "Sear on the stove | Sear in the oven".
+   */
+  function renderPicker(choiceId: string) {
+    const c = choices.find((x) => x.id === choiceId);
+    const sig = choiceSignals[choiceId];
+    if (!c || !sig) return null;
+    return (
+      <div class="print-hidden mt-6 mb-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-mono uppercase tracking-[0.12em] text-amber-700 dark:text-amber-400">
+            Either / or
+          </span>
+          <SegmentToggle
+            value={sig}
+            options={c.options.map((o) => o.id)}
+            labels={Object.fromEntries(c.options.map((o) => [o.id, o.title]))}
+            onChange={(optionId) => pickOption(c.id, optionId)}
+          />
+        </div>
+        {c.description && (
+          <p class="text-sm text-stone-500 dark:text-stone-400 mt-1.5">
+            {c.description}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   const layout = computeSectionLayout(steps, sections);
   const unitSystem = unitSystemProp ?? "metric";
   const pantryItems = pantryItemsProp ?? [];
@@ -532,6 +705,7 @@ export default function RecipeView(
         recipe_id: recipeId,
         scale: getCurrentRatio(),
         planned_for: plannedFor,
+        option_ids: pickedOptionIds(),
       }),
     });
     if (res.ok) {
@@ -752,19 +926,30 @@ export default function RecipeView(
 
   function cookingStepBody(idx: number) {
     const ratio = getCurrentRatio();
+    const st = steps[idx];
+    // A forked section shows its picker on its first step.
+    const sec = st.section_id
+      ? (sections ?? []).find((x) => x.id === st.section_id)
+      : undefined;
+    const firstOfSection = sec &&
+      (layout.bySectionId.get(sec.id) ?? [])[0] === idx;
     return (
-      <RecipeStepBody
-        step={steps[idx]}
-        steps={steps}
-        sections={sections}
-        tray={getTray()}
-        variables={{ ratio }}
-        ingredients={scaleIngredients(ingredients, ratio)}
-        recipeRefs={recipeRefsMap}
-        dishRefs={dishRefsMap}
-        tools={toolsMap}
-        onTimerStart={startTimer}
-      />
+      <>
+        {firstOfSection && sec?.choice_id ? renderPicker(sec.choice_id) : null}
+        {st.choice_id ? renderPicker(st.choice_id) : null}
+        <RecipeStepBody
+          step={steps[idx]}
+          steps={steps}
+          sections={sections}
+          tray={getTray()}
+          variables={{ ratio }}
+          ingredients={scaleIngredients(allIngredients, ratio)}
+          recipeRefs={recipeRefsMap}
+          dishRefs={dishRefsMap}
+          tools={toolsMap}
+          onTimerStart={startTimer}
+        />
+      </>
     );
   }
 
@@ -1074,6 +1259,7 @@ export default function RecipeView(
         action: "cook_now",
         recipe_id: recipeId,
         scale: getCurrentRatio(),
+        option_ids: pickedOptionIds(),
       }),
     });
 
@@ -1402,6 +1588,14 @@ export default function RecipeView(
                               , {ing.note}
                             </span>
                           )}
+                          {ing.option_id && (
+                            <span
+                              class="text-xs text-stone-400 ml-1"
+                              title="Only needed for the alternative you picked"
+                            >
+                              (for {optionTitleById[ing.option_id]})
+                            </span>
+                          )}
                           {ing.ingredient_id &&
                             sourceRecipes?.[ing.ingredient_id]?.map(
                               (src, i, all) => (
@@ -1596,12 +1790,13 @@ export default function RecipeView(
             steps={steps}
             sections={sections}
             variables={{ ratio: getCurrentRatio() }}
-            ingredients={scaleIngredients(ingredients, getCurrentRatio())}
+            ingredients={scaleIngredients(allIngredients, getCurrentRatio())}
             tray={getTray()}
             recipeRefs={recipeRefsMap}
             dishRefs={dishRefsMap}
             tools={toolsMap}
             onTimerStart={startTimer}
+            renderPicker={renderPicker}
           />
         </div>
       </div>

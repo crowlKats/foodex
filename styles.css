@@ -677,6 +677,14 @@
   @apply text-sm italic text-stone-500 dark:text-stone-400 mb-3;
 }
 
+/* "Oven" tag on a step, section or ingredient that belongs to a choice option. */
+.option-badge {
+  @apply inline-block text-[10px] font-mono font-normal uppercase
+    tracking-[0.12em]
+    border px-1 py-px leading-tight text-stone-500 border-stone-300
+    dark:text-stone-400 dark:border-stone-600;
+}
+
 /* Override .recipe-body h2 for section titles */
 .recipe-body .recipe-section-title,
 .recipe-section-title {

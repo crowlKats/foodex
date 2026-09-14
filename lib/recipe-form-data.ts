@@ -15,6 +15,27 @@ function num(fd: FormData, name: string): number | null {
 }
 
 export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
+  /** `for_step` / `for_section` of an ingredient row, still as form
+   *  indices here; resolved to a step id / section key once those exist. */
+  const targetIdx = (i: number) => {
+    const st = fd.get(`ingredients[${i}][for_step]`) as string | null;
+    const sec = fd.get(`ingredients[${i}][for_section]`) as string | null;
+    return {
+      step: st ? parseInt(st) : NaN,
+      section: sec ? parseInt(sec) : NaN,
+    };
+  };
+
+  const alternatives: { key: string; description: string }[] = [];
+  let ai = 0;
+  while (fd.has(`alts[${ai}][key]`)) {
+    alternatives.push({
+      key: String(fd.get(`alts[${ai}][key]`) ?? ""),
+      description: String(fd.get(`alts[${ai}][description]`) ?? ""),
+    });
+    ai++;
+  }
+
   const ingredients: Record<string, unknown>[] = [];
   let i = 0;
   while (fd.has(`ingredients[${i}][name]`)) {
@@ -31,7 +52,12 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     i++;
   }
 
-  const sectionsRaw: { title: string; key: string; afterIdx: number[] }[] = [];
+  const sectionsRaw: {
+    title: string;
+    key: string;
+    afterIdx: number[];
+    alt: string | null;
+  }[] = [];
   let secIdx = 0;
   while (fd.has(`sections[${secIdx}][title]`)) {
     const afterStr = String(fd.get(`sections[${secIdx}][after]`) ?? "");
@@ -41,6 +67,7 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
       afterIdx: afterStr
         ? afterStr.split(",").map(Number).filter((n) => !isNaN(n))
         : [],
+      alt: (fd.get(`sections[${secIdx}][alt]`) as string) || null,
     });
     secIdx++;
   }
@@ -50,6 +77,7 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     after: s.afterIdx.map((i) => sectionsRaw[i]?.key).filter((k): k is string =>
       !!k
     ),
+    alt: s.alt,
   }));
 
   const steps: Record<string, unknown>[] = [];
@@ -79,6 +107,7 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
         ? sections[sIdx].key
         : null,
       media,
+      alt: (fd.get(`steps[${s}][alt]`) as string) || null,
     });
     s++;
   }
@@ -86,6 +115,13 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     step.after = stepAfterIdx[i]
       .map((idx) => steps[idx]?.id)
       .filter((id): id is string => typeof id === "string" && id !== step.id);
+  });
+  ingredients.forEach((ing, i) => {
+    const t = targetIdx(i);
+    ing.for_step = !isNaN(t.step) ? steps[t.step]?.id ?? null : null;
+    ing.for_section = !isNaN(t.section)
+      ? sections[t.section]?.key ?? null
+      : null;
   });
 
   const tools: Record<string, unknown>[] = [];
@@ -137,6 +173,7 @@ export function formDataToRecipeData(fd: FormData): Record<string, unknown> {
     dietary_tags: (fd.getAll("dietary") as string[]).filter((v) => v.trim()),
     cuisines: (fd.getAll("cuisine") as string[]).filter((v) => v.trim()),
     ingredients,
+    alternatives,
     sections,
     steps,
     tools,

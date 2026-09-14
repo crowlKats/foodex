@@ -29,6 +29,9 @@ export interface RenderStep {
   media?: { id: string; url: string }[];
   after?: number[];
   section_id?: string | null;
+  /** Set when this step is the picked member of an either/or fork: the id
+   *  the picker is keyed by (see `RecipeStepsProps.renderPicker`). */
+  choice_id?: string;
 }
 
 export interface RecipeStepsProps {
@@ -43,6 +46,9 @@ export interface RecipeStepsProps {
   /** Attached tools keyed by normalized name (`@tool(...)`); see toolRefMap. */
   tools?: Map<string, ToolRefInfo>;
   onTimerStart?: (seconds: number, label: string, maxSeconds?: number) => void;
+  /** Renders the either/or picker for a fork, shown above the picked step
+   *  or section. Omit (preview, print) to render no pickers. */
+  renderPicker?: (choiceId: string) => VNode | null;
 }
 
 /** Renders the full set of steps with sections, annotations, and media. */
@@ -86,6 +92,9 @@ export function RecipeSteps(props: RecipeStepsProps): VNode {
       anchor={layout.anchors[i]}
       displayNum={layout.displayNum[i]}
       annotation={annotations[i].annotation}
+      picker={props.steps[i].choice_id
+        ? props.renderPicker?.(props.steps[i].choice_id!) ?? null
+        : null}
       ctx={ctx}
     />
   );
@@ -102,6 +111,7 @@ export function RecipeSteps(props: RecipeStepsProps): VNode {
         const ann = sectionAnns[sIdx];
         return (
           <section key={sec.id} class="recipe-section">
+            {sec.choice_id ? props.renderPicker?.(sec.choice_id) ?? null : null}
             <h2 class="recipe-section-title">{sec.title}</h2>
             {ann?.afterTitles?.length
               ? (
@@ -169,12 +179,15 @@ function StepView(props: {
   anchor: string;
   displayNum: number;
   annotation: string | null;
+  /** The either/or picker, when this step is the picked member of a fork. */
+  picker?: VNode | null;
   ctx: RenderContext;
 }): VNode {
   const body = renderTemplate(props.step.body, props.ctx);
   const titleText = props.step.title.trim();
   return (
     <>
+      {props.picker ?? null}
       {props.annotation
         ? (
           <div class="text-sm text-orange-600 dark:text-orange-400 italic mb-1">

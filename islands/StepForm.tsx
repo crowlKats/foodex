@@ -1,6 +1,7 @@
-import { useSignal } from "@preact/signals";
+import { type Signal, useSignal } from "@preact/signals";
 import { useCallback, useEffect, useRef } from "preact/hooks";
 import { IconArrowUp } from "@tabler/icons-preact";
+import { IconArrowsSplit2 } from "@tabler/icons-preact";
 import { IconArrowDown } from "@tabler/icons-preact";
 import { IconPlus } from "@tabler/icons-preact";
 import { IconTrash } from "@tabler/icons-preact";
@@ -15,6 +16,8 @@ import {
   type StepBodyIngredient,
 } from "../components/StepBodyEditor.tsx";
 import SegmentToggle from "./SegmentToggle.tsx";
+import { type AltRef, newAltGroup } from "../lib/recipe-alternatives-form.ts";
+import { altFallbackTitle, deriveBranches } from "../lib/recipe-choices.ts";
 
 interface MediaItem {
   id: string;
@@ -28,6 +31,9 @@ interface StepEntry {
   after: number[];
   /** Index into the sections array, or null for "no section". */
   section: number | null;
+  /** Either/or: steps in one section sharing a group key are alternatives
+   *  the cook picks between. Null for an ordinary step. */
+  alt: string | null;
   _uid?: string;
 }
 
@@ -39,6 +45,8 @@ interface SectionEntry {
   keyDirty: boolean;
   /** Indices of sections this one depends on (must complete first). */
   after: number[];
+  /** Either/or: sections sharing a group key are alternatives. */
+  alt: string | null;
   _uid?: string;
 }
 
@@ -49,8 +57,9 @@ function newStep(partial: Partial<StepEntry> = {}): StepEntry {
     media: [],
     after: [],
     section: null,
+    alt: null,
     ...partial,
-    _uid: crypto.randomUUID(),
+    _uid: partial._uid ?? crypto.randomUUID(),
   };
 }
 
@@ -60,15 +69,20 @@ function newSection(partial: Partial<SectionEntry> = {}): SectionEntry {
     key: "",
     keyDirty: false,
     after: [],
+    alt: null,
     ...partial,
-    _uid: crypto.randomUUID(),
+    _uid: partial._uid ?? crypto.randomUUID(),
   };
 }
 
 interface InitialSection {
+  /** Editor identity, decided by RecipeFields so ingredient rows can point
+   *  at a section before this editor mounts. */
+  uid?: string;
   title: string;
   key: string;
   after?: number[];
+  alt?: string | null;
 }
 
 interface InitialStep {
@@ -77,6 +91,7 @@ interface InitialStep {
   media: MediaItem[];
   after: number[];
   section?: number | null;
+  alt?: string | null;
   /** Stable id (e.g. an existing DB step id) preserved through edits/reorders. */
   id?: string;
 }
@@ -86,6 +101,11 @@ interface StepFormProps {
   initialSections?: InitialSection[];
   /** Starting view. The toggle lives in here, so the mode does too. */
   initialMode?: "list" | "graph";
+  /** Written by this editor: the alternatives it currently holds, for the
+   *  ingredient editor's "needed for" picker. */
+  alternatives?: Signal<AltRef[]>;
+  /** What each fork is about, keyed by `alt` group. */
+  initialAlternatives?: { key: string; description: string }[];
 }
 
 // ── Pure helpers ──
@@ -168,6 +188,8 @@ interface GraphLayout {
     key: string;
     fromIdx: number;
     toIdx: number;
+    /** For a line standing in for several edges: every (to, from) it draws. */
+    pairs?: [number, number][];
   }[];
   leafNodes: number[];
 }
@@ -177,6 +199,26 @@ interface LayoutSizing {
   cardW: number;
   cardH: number;
   rowHeight: number;
+  /** Space above the top row, so a fork bracket's label is not clipped. */
+  topPad?: number;
+}
+
+/** Room a fork bracket needs above its top card for the label. */
+const FORK_HEADROOM = 18;
+
+/** True when two or more of the given nodes share an alt group. */
+function hasForkAmong(
+  nodes: { alt: string | null }[],
+  idxs: number[],
+): boolean {
+  const seen = new Set<string>();
+  for (const i of idxs) {
+    const g = nodes[i]?.alt;
+    if (!g) continue;
+    if (seen.has(g)) return true;
+    seen.add(g);
+  }
+  return false;
 }
 
 function computeDagLayout<T extends { after: number[] }>(
@@ -185,6 +227,7 @@ function computeDagLayout<T extends { after: number[] }>(
   size: LayoutSizing,
 ): GraphLayout {
   const { colWidth, cardW, cardH, rowHeight } = size;
+  const topPad = size.topPad ?? 0;
   const cols = computeColumns(items);
   const maxCol = Math.max(0, ...cols);
 
@@ -192,7 +235,7 @@ function computeDagLayout<T extends { after: number[] }>(
   for (const c of cols) if (c >= 0) colCounts[c]++;
   const maxRows = Math.max(1, ...colCounts);
   const svgW = (maxCol + 1) * colWidth;
-  const svgH = maxRows * rowHeight;
+  const svgH = maxRows * rowHeight + topPad;
 
   const stepY = new Map<number, number>();
   const colSorted = new Map<number, number[]>();
@@ -214,7 +257,7 @@ function computeDagLayout<T extends { after: number[] }>(
     }
     colSorted.set(c, inCol);
     const colH = inCol.length * rowHeight;
-    const offsetY = (svgH - colH) / 2;
+    const offsetY = topPad + (svgH - topPad - colH) / 2;
     inCol.forEach((idx, row) => {
       stepY.set(idx, offsetY + row * rowHeight + cardH / 2);
     });
@@ -255,6 +298,7 @@ function computeGraphLayout(
     cardW: CARD_W,
     cardH,
     rowHeight: cardH + ROW_GAP,
+    topPad: hasForkAmong(steps, steps.map((_, i) => i)) ? FORK_HEADROOM : 0,
   });
 }
 
@@ -346,6 +390,7 @@ function computeNestedLayout(
       cardW: CARD_W,
       cardH,
       rowHeight: cardH + ROW_GAP,
+      topPad: hasForkAmong(steps, stepIdxs) ? FORK_HEADROOM : 0,
     });
     const stepLocal = new Map<number, { x: number; y: number }>();
     for (let l = 0; l < localSteps.length; l++) {
@@ -414,6 +459,9 @@ function computeNestedLayout(
   // pinned level with the topmost dependency. Sections sharing a column
   // stack downward from their anchors.
   const sectionBoxes = sections.map(() => ({ x: 0, y: 0, w: 0, h: 0 }));
+  const secTop = hasForkAmong(sections, sections.map((_, i) => i))
+    ? FORK_HEADROOM
+    : 0;
   let totalH = 0;
   for (let c = 0; c <= maxSecCol; c++) {
     const idxs = [...secInCol[c]];
@@ -430,7 +478,7 @@ function computeNestedLayout(
       return Math.max(0, (top + bottom) / 2 - boxHOf(i) / 2);
     };
     if (c > 0) idxs.sort((a, b) => desiredTop(a) - desiredTop(b));
-    let curY = 0;
+    let curY = secTop;
     for (const idx of idxs) {
       const y = Math.max(c > 0 ? desiredTop(idx) : 0, curY);
       const boxH = boxHOf(idx);
@@ -440,24 +488,12 @@ function computeNestedLayout(
     }
   }
 
-  // Section edges between section box borders. Endpoints fan out along the
-  // box edge instead of stacking on the vertical midpoint: a section fed by
-  // many sections gets a clean fan rather than a knot of overlapping curves.
-  // Slots are ordered by the far end's height so the fan never crosses itself.
+  // Section edges between section box borders, anchored at the vertical
+  // midpoint of each side, the same way step cards connect.
   const secCenter = (i: number) => sectionBoxes[i].y + sectionBoxes[i].h / 2;
   const incomingOf: number[][] = sections.map((s) =>
     s.after.filter((d) => d >= 0 && d < sections.length)
-      .sort((a, b) => secCenter(a) - secCenter(b))
   );
-  const outgoingOf: number[][] = sections.map(() => []);
-  for (let i = 0; i < sections.length; i++) {
-    for (const dep of incomingOf[i]) outgoingOf[dep].push(i);
-  }
-  for (const list of outgoingOf) {
-    list.sort((a, b) => secCenter(a) - secCenter(b));
-  }
-  const slotY = (box: { y: number; h: number }, slot: number, count: number) =>
-    box.y + (box.h * (slot + 1)) / (count + 1);
 
   const sectionEdges: GraphLayout["edges"] = [];
   for (let i = 0; i < sections.length; i++) {
@@ -465,17 +501,9 @@ function computeNestedLayout(
       const fromBox = sectionBoxes[dep];
       const toBox = sectionBoxes[i];
       const p1x = fromBox.x + fromBox.w;
-      const p1y = slotY(
-        fromBox,
-        outgoingOf[dep].indexOf(i),
-        outgoingOf[dep].length,
-      );
+      const p1y = secCenter(dep);
       const p2x = toBox.x;
-      const p2y = slotY(
-        toBox,
-        incomingOf[i].indexOf(dep),
-        incomingOf[i].length,
-      );
+      const p2y = secCenter(i);
       const dx = Math.abs(p2x - p1x) * 0.4;
       const d = `M${p1x},${p1y} C${p1x + dx},${p1y} ${
         p2x - dx
@@ -550,11 +578,15 @@ function StepCardEl(
     onBranch,
     onRemove,
     onDragStart,
+    onAlternative,
+    altLabel,
   }: {
     index: number;
     /** Number shown on the card. 1-based, restarts per section in nested mode. */
     displayNum: number;
     step: StepEntry;
+    /** "A" / "B" when the step sits on one side of an either/or fork. */
+    altLabel?: string;
     position: { x: number; y: number };
     cardH: number;
     borderClass: string;
@@ -563,6 +595,7 @@ function StepCardEl(
     onBranch: () => void;
     onRemove: () => void;
     onDragStart: (e: MouseEvent) => void;
+    onAlternative: () => void;
   },
 ) {
   return (
@@ -595,6 +628,14 @@ function StepCardEl(
             </span>
           );
         })()}
+        {altLabel && (
+          <span
+            class="option-badge shrink-0"
+            title={`Side ${altLabel} of an either/or fork`}
+          >
+            {altLabel}
+          </span>
+        )}
         <div class="flex items-center shrink-0 -mr-1">
           <button
             type="button"
@@ -622,6 +663,18 @@ function StepCardEl(
               class="size-3.5"
               style={{ transform: "rotate(45deg)" }}
             />
+          </button>
+          <button
+            type="button"
+            title="Add alternative (either this step or the new one)"
+            aria-label={`Add an alternative to step ${displayNum}`}
+            class="text-stone-400 hover:text-amber-600 p-0.5 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAlternative();
+            }}
+          >
+            <IconArrowsSplit2 class="size-3.5" />
           </button>
           <button
             type="button"
@@ -720,6 +773,142 @@ function EdgePath(
 
 // ── Step editor (shared between list and graph modes) ──
 
+/**
+ * Either/or status line for the side panels: which siblings this step or
+ * section is an alternative to, with a way out of the fork.
+ */
+function AltNote(
+  { siblings, onUnlink, description, onDescription }: {
+    siblings: string[];
+    onUnlink: () => void;
+    description: string;
+    onDescription: (v: string) => void;
+  },
+) {
+  if (siblings.length === 0) return null;
+  return (
+    <div class="space-y-1.5">
+      <div class="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+        <span class="option-badge">or</span>
+        <span class="min-w-0 truncate">
+          Either this or {siblings.join(" / ")}. The cook picks one.
+        </span>
+        <button
+          type="button"
+          class="link text-xs shrink-0 ml-auto"
+          onClick={onUnlink}
+        >
+          Not an alternative
+        </button>
+      </div>
+      <Input
+        type="text"
+        placeholder="What is the choice about? (shown with the either / or toggle)"
+        value={description}
+        onValueChange={onDescription}
+        size="xs"
+        class="w-full"
+      />
+    </div>
+  );
+}
+
+/**
+ * The OR bracket drawn around the members of a fork in the graph. Sits
+ * under the cards; the label rides the top edge.
+ */
+function AltBracket(
+  { box }: { box: { x: number; y: number; w: number; h: number } },
+) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: `${box.x}px`,
+        top: `${box.y}px`,
+        width: `${box.w}px`,
+        height: `${box.h}px`,
+        zIndex: 1,
+        pointerEvents: "none",
+      }}
+      class="border-2 border-dashed border-amber-400 dark:border-amber-600 bg-amber-50/40 dark:bg-amber-900/10"
+    >
+      <span class="absolute -top-2.5 left-2 px-1 bg-white dark:bg-stone-900 text-[10px] font-mono uppercase tracking-[0.12em] text-amber-700 dark:text-amber-400">
+        either / or
+      </span>
+    </div>
+  );
+}
+
+/**
+ * A fork is one node in the flow, so its edges are drawn once, to and from
+ * the bracket, instead of once per member. Edges between two nodes that
+ * both sit in the same fork are dropped.
+ */
+function mergeForkEdges(
+  edges: GraphLayout["edges"],
+  forks: number[][],
+  rectOf: (i: number) => { x: number; y: number; w: number; h: number },
+  opts: { pad: number; curve: number },
+): GraphLayout["edges"] {
+  const forkOf = new Map<number, number>();
+  forks.forEach((members, f) => members.forEach((i) => forkOf.set(i, f)));
+  if (forkOf.size === 0) return edges;
+  const forkBox = forks.map((members) =>
+    bracketBox(members.map(rectOf), opts.pad)
+  );
+  const anchor = (i: number) => {
+    const f = forkOf.get(i);
+    return (f != null ? forkBox[f] : null) ?? rectOf(i);
+  };
+  const nodeKey = (i: number) => forkOf.has(i) ? `f${forkOf.get(i)}` : `n${i}`;
+  const merged = new Map<string, GraphLayout["edges"][number]>();
+  const internal: GraphLayout["edges"] = [];
+  for (const e of edges) {
+    const fk = nodeKey(e.fromIdx);
+    const tk = nodeKey(e.toIdx);
+    if (fk === tk) {
+      // Inside one fork (a branch's own chain): drawn as is.
+      internal.push(e);
+      continue;
+    }
+    const key = `${fk}-${tk}`;
+    const prev = merged.get(key);
+    if (prev) {
+      prev.active = prev.active || e.active;
+      prev.pairs!.push([e.toIdx, e.fromIdx]);
+      continue;
+    }
+    const a = anchor(e.fromIdx);
+    const b = anchor(e.toIdx);
+    const p1x = a.x + a.w;
+    const p1y = a.y + a.h / 2;
+    const p2x = b.x;
+    const p2y = b.y + b.h / 2;
+    const dx = Math.abs(p2x - p1x) * opts.curve;
+    merged.set(key, {
+      ...e,
+      key,
+      d: `M${p1x},${p1y} C${p1x + dx},${p1y} ${p2x - dx},${p2y} ${p2x},${p2y}`,
+      pairs: [[e.toIdx, e.fromIdx]],
+    });
+  }
+  return [...internal, ...merged.values()];
+}
+
+/** Bounding box around a set of card rectangles, with breathing room. */
+function bracketBox(
+  rects: { x: number; y: number; w: number; h: number }[],
+  pad = 8,
+): { x: number; y: number; w: number; h: number } | null {
+  if (rects.length < 2) return null;
+  const x0 = Math.min(...rects.map((r) => r.x)) - pad;
+  const y0 = Math.min(...rects.map((r) => r.y)) - pad - 4;
+  const x1 = Math.max(...rects.map((r) => r.x + r.w)) + pad;
+  const y1 = Math.max(...rects.map((r) => r.y + r.h)) + pad;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
 function StepEditor(
   {
     step,
@@ -728,6 +917,10 @@ function StepEditor(
     onTitle,
     onBody,
     onSection,
+    altSiblings,
+    onUnlinkAlt,
+    altDescription,
+    onAltDescription,
     onRemoveMedia,
     onUploadMedia,
     uploading,
@@ -739,6 +932,11 @@ function StepEditor(
     onTitle: (v: string) => void;
     onBody: (v: string) => void;
     onSection: (idx: number | null) => void;
+    /** Labels of the other members of this step's fork, if any. */
+    altSiblings: string[];
+    onUnlinkAlt: () => void;
+    altDescription: string;
+    onAltDescription: (v: string) => void;
     onRemoveMedia: (mi: number) => void;
     onUploadMedia: () => void;
     uploading: boolean;
@@ -769,6 +967,12 @@ function StepEditor(
           ))}
         </Select>
       )}
+      <AltNote
+        siblings={altSiblings}
+        onUnlink={onUnlinkAlt}
+        description={altDescription}
+        onDescription={onAltDescription}
+      />
       <StepBodyEditor
         placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
         value={step.body}
@@ -811,7 +1015,13 @@ function StepEditor(
 // ── Main component ──
 
 export default function StepForm(
-  { initialSteps, initialSections, initialMode }: StepFormProps,
+  {
+    initialSteps,
+    initialSections,
+    initialMode,
+    alternatives,
+    initialAlternatives,
+  }: StepFormProps,
 ) {
   // Owned here rather than passed in: the toggle that drives it is rendered
   // below, so handing this out would split one island in two just to fit a
@@ -826,6 +1036,7 @@ export default function StepForm(
         return initialSteps.map((s, i) => ({
           ...s,
           section: s.section ?? null,
+          alt: s.alt ?? null,
           after: (s.after ?? []).filter(
             (d) => sectionByIdx[d] === sectionByIdx[i],
           ),
@@ -837,13 +1048,38 @@ export default function StepForm(
   const sections = useSignal<SectionEntry[]>(
     (initialSections ?? []).map((s) =>
       newSection({
+        _uid: s.uid,
         title: s.title,
         key: s.key,
         keyDirty: true, // existing keys shouldn't be auto-overwritten
         after: s.after ?? [],
+        alt: s.alt ?? null,
       })
     ),
   );
+  // What each fork is about, keyed by alt group; shown with the picker.
+  const altDescriptions = useSignal<Record<string, string>>(
+    Object.fromEntries(
+      (initialAlternatives ?? []).map((a) => [a.key, a.description]),
+    ),
+  );
+  function altDescription(kind: "step" | "section", idx: number): string {
+    const group = kind === "step"
+      ? items.value[idx]?.alt
+      : sections.value[idx]?.alt;
+    return group ? altDescriptions.value[group] ?? "" : "";
+  }
+  function setAltDescription(
+    kind: "step" | "section",
+    idx: number,
+    v: string,
+  ) {
+    const group = kind === "step"
+      ? items.value[idx]?.alt
+      : sections.value[idx]?.alt;
+    if (!group) return;
+    altDescriptions.value = { ...altDescriptions.value, [group]: v };
+  }
   const selected = useSignal<number | null>(null);
   const uploading = useSignal<number | null>(null);
   const savedGraphDeps = useSignal<number[][] | null>(null);
@@ -1084,7 +1320,8 @@ export default function StepForm(
 
   function graphInsertSectionAfter(depIdx: number) {
     const newIdx = sections.value.length;
-    // Sections that previously depended on depIdx now depend on the new one
+    // Sections that previously depended on depIdx now depend on the new one.
+    // After a fork member this extends that member's branch.
     const rewired = sections.value.map((s) => ({
       ...s,
       after: s.after.map((a) => (a === depIdx ? newIdx : a)),
@@ -1102,24 +1339,34 @@ export default function StepForm(
     secSelected.value = newIdx;
   }
 
-  function addSectionDep(stepIdx: number, depIdx: number) {
-    if (stepIdx === depIdx) return;
-    if (sections.value[stepIdx].after.includes(depIdx)) return;
-    const next = [...sections.value];
-    next[stepIdx] = {
-      ...next[stepIdx],
-      after: [...next[stepIdx].after, depIdx].sort((a, b) => a - b),
-    };
-    sections.value = next;
+  /**
+   * A dependency dropped on a fork member from outside the fork feeds the
+   * whole fork (its members share their input); anything else is between
+   * the two nodes only, so branches can be wired individually.
+   */
+  function addSectionDep(secIdx: number, depIdx: number) {
+    if (secIdx === depIdx) return;
+    const members = altMembers("section", secIdx);
+    const forkInput = members.length >= 2 &&
+      !forkNodes("section", null).some((f) =>
+        f.includes(secIdx) && f.includes(depIdx)
+      );
+    const targets = forkInput ? members : [secIdx];
+    sections.value = sections.value.map((sec, i) =>
+      targets.includes(i) && !sec.after.includes(depIdx)
+        ? { ...sec, after: [...sec.after, depIdx].sort((a, b) => a - b) }
+        : sec
+    );
   }
 
-  function removeSectionDep(stepIdx: number, depIdx: number) {
-    const next = [...sections.value];
-    next[stepIdx] = {
-      ...next[stepIdx],
-      after: next[stepIdx].after.filter((a) => a !== depIdx),
-    };
-    sections.value = next;
+  /** Remove the edges a drawn line stands for: (section, depends on). */
+  function removeSectionDepPairs(pairs: [number, number][]) {
+    sections.value = sections.value.map((sec, i) => {
+      const drop = pairs.filter(([t]) => t === i).map(([, d]) => d);
+      return drop.length > 0
+        ? { ...sec, after: sec.after.filter((a) => !drop.includes(a)) }
+        : sec;
+    });
   }
 
   function setStepSection(stepIndex: number, secIdx: number | null) {
@@ -1127,6 +1374,184 @@ export default function StepForm(
     next[stepIndex] = { ...next[stepIndex], section: secIdx };
     items.value = next;
   }
+
+  // ── Alternatives (either/or) ──
+
+  /** Display label of a step in pickers and notes. */
+  function stepAltLabel(i: number): string {
+    const st = items.value[i];
+    return stepLabel(st) || altFallbackTitle(altPosition("step", i));
+  }
+
+  function sectionAltLabel(i: number): string {
+    return sections.value[i].title.trim() || `Section ${i + 1}`;
+  }
+
+  /** Members of a fork, in order, for a step or section index. */
+  function altMembers(kind: "step" | "section", idx: number): number[] {
+    if (kind === "step") {
+      const st = items.value[idx];
+      if (!st.alt) return [];
+      return items.value
+        .map((_x, i) => i)
+        .filter((i) =>
+          items.value[i].alt === st.alt &&
+          (items.value[i].section ?? null) === (st.section ?? null)
+        );
+    }
+    const sec = sections.value[idx];
+    if (!sec.alt) return [];
+    return sections.value.map((_, i) => i).filter((i) =>
+      sections.value[i].alt === sec.alt
+    );
+  }
+
+  function altPosition(kind: "step" | "section", idx: number): number {
+    return Math.max(0, altMembers(kind, idx).indexOf(idx));
+  }
+
+  /** True when the node is in a fork with at least one other member. */
+  function isAlt(kind: "step" | "section", idx: number): boolean {
+    return altMembers(kind, idx).length >= 2;
+  }
+
+  function altSiblingLabels(kind: "step" | "section", idx: number): string[] {
+    return altMembers(kind, idx)
+      .filter((i) => i !== idx)
+      .map((i) => kind === "step" ? stepAltLabel(i) : sectionAltLabel(i));
+  }
+
+  const allGroups = () => [
+    ...items.value.map((x) => x.alt),
+    ...sections.value.map((x) => x.alt),
+  ];
+
+  /**
+   * Graph: fork a step. The new step joins the same section, copies the
+   * step's dependencies, and everything that waited on the step now waits
+   * on the new one too, so the cook's pick leaves the flow intact.
+   */
+  function graphAddAlternative(index: number) {
+    const src = items.value[index];
+    const group = src.alt ?? newAltGroup(allGroups());
+    const newIdx = items.value.length;
+    const rewired = items.value.map((st, i) => ({
+      ...st,
+      alt: i === index ? group : st.alt,
+      after: st.after.includes(index) ? [...st.after, newIdx] : st.after,
+    }));
+    applyGraphChange(
+      [
+        ...rewired,
+        newStep({ after: [...src.after], section: src.section, alt: group }),
+      ],
+      newIdx,
+    );
+  }
+
+  /** Graph: fork a section the same way. */
+  function graphAddAlternativeSection(sIdx: number) {
+    const src = sections.value[sIdx];
+    const group = src.alt ?? newAltGroup(allGroups());
+    const newIdx = sections.value.length;
+    sections.value = [
+      ...sections.value.map((sec, i) => ({
+        ...sec,
+        alt: i === sIdx ? group : sec.alt,
+        after: sec.after.includes(sIdx) ? [...sec.after, newIdx] : sec.after,
+      })),
+      newSection({ after: [...src.after], alt: group }),
+    ];
+    secSelected.value = newIdx;
+  }
+
+  /** Leave a fork; a fork left with one member stops being one. */
+  function unlinkAlt(kind: "step" | "section", idx: number) {
+    const members = altMembers(kind, idx);
+    const clearAll = members.length <= 2;
+    if (kind === "step") {
+      items.value = items.value.map((st, i) =>
+        (i === idx || (clearAll && members.includes(i)))
+          ? { ...st, alt: null }
+          : st
+      );
+    } else {
+      sections.value = sections.value.map((sec, i) =>
+        (i === idx || (clearAll && members.includes(i)))
+          ? { ...sec, alt: null }
+          : sec
+      );
+    }
+  }
+
+  /**
+   * List mode: make a step an alternative to the step above it in the same
+   * group (joining its fork, or opening one), or leave the fork again.
+   */
+  function listToggleAlt(idx: number, prevIdx: number | null) {
+    if (isAlt("step", idx)) {
+      unlinkAlt("step", idx);
+      return;
+    }
+    if (prevIdx == null) return;
+    const prev = items.value[prevIdx];
+    const group = prev.alt ?? newAltGroup(allGroups());
+    items.value = items.value.map((st, i) =>
+      i === idx || i === prevIdx ? { ...st, alt: group } : st
+    );
+  }
+
+  function listToggleSectionAlt(idx: number) {
+    if (isAlt("section", idx)) {
+      unlinkAlt("section", idx);
+      return;
+    }
+    if (idx === 0) return;
+    const prev = sections.value[idx - 1];
+    const group = prev.alt ?? newAltGroup(allGroups());
+    sections.value = sections.value.map((sec, i) =>
+      i === idx || i === idx - 1 ? { ...sec, alt: group } : sec
+    );
+  }
+
+  // Publish the current alternatives for the ingredient editor. Indices
+  // match the hidden fields below: steps by position, sections skipping
+  // untitled ones.
+  useEffect(() => {
+    if (!alternatives) return;
+    const secFormIdx = new Map<number, number>();
+    sections.value.forEach((sec, i) => {
+      if (sec.title.trim()) secFormIdx.set(i, secFormIdx.size);
+    });
+    const refs: AltRef[] = [];
+    sections.value.forEach((sec, i) => {
+      if (!isAlt("section", i) || !secFormIdx.has(i)) return;
+      refs.push({
+        kind: "section",
+        uid: sec._uid!,
+        label: sectionAltLabel(i),
+        group: sec.alt!,
+        formIndex: secFormIdx.get(i)!,
+      });
+    });
+    items.value.forEach((st, i) => {
+      if (!isAlt("step", i)) return;
+      refs.push({
+        kind: "step",
+        uid: st._uid!,
+        label: stepAltLabel(i),
+        group: st.alt!,
+        formIndex: i,
+      });
+    });
+    const same = refs.length === alternatives.value.length &&
+      refs.every((r, i) => {
+        const o = alternatives.value[i];
+        return o.kind === r.kind && o.uid === r.uid && o.label === r.label &&
+          o.group === r.group && o.formIndex === r.formIndex;
+      });
+    if (!same) alternatives.value = refs;
+  });
 
   // ── Shared helpers ──
 
@@ -1192,14 +1617,26 @@ export default function StepForm(
     selected.value = r.selected;
   }
 
+  /** A node's fork members, or just itself: forks act as one node. */
+  /** A fork's members, or just the node: a fork at the end counts once. */
+  function forkOrSelf(kind: "step" | "section", idx: number): number[] {
+    const members = altMembers(kind, idx);
+    return members.length >= 2 ? members : [idx];
+  }
+
   function graphInsertAfter(depIndex: number) {
     const newIdx = items.value.length;
+    // Steps that waited on depIndex now wait on the new step. After a fork
+    // member this extends that member's branch; the rejoin moves along.
     const rewired = items.value.map((s) => ({
       ...s,
       after: s.after.map((a) => (a === depIndex ? newIdx : a)),
     }));
     applyGraphChange(
-      [...rewired, newStep({ after: [depIndex] })],
+      [
+        ...rewired,
+        newStep({ after: [depIndex], section: items.value[depIndex].section }),
+      ],
       newIdx,
     );
   }
@@ -1207,7 +1644,10 @@ export default function StepForm(
   function graphBranchAfter(depIndex: number) {
     const newIdx = items.value.length;
     applyGraphChange(
-      [...items.value, newStep({ after: [depIndex] })],
+      [
+        ...items.value,
+        newStep({ after: [depIndex], section: items.value[depIndex].section }),
+      ],
       newIdx,
     );
   }
@@ -1306,23 +1746,36 @@ export default function StepForm(
     applyGraphChange(next, newSel);
   }
 
+  /**
+   * A dependency dropped on a fork member from outside the fork feeds the
+   * whole fork (its members share their input); anything else is between
+   * the two steps only, so branches can be wired individually.
+   */
   function addDep(stepIndex: number, depIndex: number) {
     if (stepIndex === depIndex) return;
-    if (items.value[stepIndex].after.includes(depIndex)) return;
-    const next = [...items.value];
-    next[stepIndex] = {
-      ...next[stepIndex],
-      after: [...next[stepIndex].after, depIndex].sort((a, b) => a - b),
-    };
+    const members = altMembers("step", stepIndex);
+    const sec = items.value[stepIndex].section;
+    const forkInput = members.length >= 2 &&
+      !forkNodes("step", sec).some((f) =>
+        f.includes(stepIndex) && f.includes(depIndex)
+      );
+    const targets = forkInput ? members : [stepIndex];
+    const next = items.value.map((st, i) =>
+      targets.includes(i) && !st.after.includes(depIndex)
+        ? { ...st, after: [...st.after, depIndex].sort((a, b) => a - b) }
+        : st
+    );
     applyGraphChange(next);
   }
 
-  function removeDep(stepIndex: number, depIndex: number) {
-    const next = [...items.value];
-    next[stepIndex] = {
-      ...next[stepIndex],
-      after: next[stepIndex].after.filter((a) => a !== depIndex),
-    };
+  /** Remove the edges a drawn line stands for: (step, depends on). */
+  function removeDepPairs(pairs: [number, number][]) {
+    const next = items.value.map((st, i) => {
+      const drop = pairs.filter(([t]) => t === i).map(([, d]) => d);
+      return drop.length > 0
+        ? { ...st, after: st.after.filter((a) => !drop.includes(a)) }
+        : st;
+    });
     applyGraphChange(next);
   }
 
@@ -1452,6 +1905,62 @@ export default function StepForm(
   // ── Render ──
 
   const steps = items.value;
+  /**
+   * Forks to bracket: member index lists. For steps, scoped to one section
+   * (`null` = loose steps / flat mode) since brackets are drawn per box.
+   */
+  // Branch membership, from the graph: node → the fork member it follows.
+  const stepBranches = deriveBranches(
+    steps.map((st) => ({ after: st.after, alt: st.alt, scope: st.section })),
+  );
+  const sectionBranches = deriveBranches(
+    sections.value.map((sec) => ({ after: sec.after, alt: sec.alt })),
+  );
+
+  /** "A" / "B": which side of its fork a node is on, or undefined. */
+  function branchLetter(
+    kind: "step" | "section",
+    idx: number,
+  ): string | undefined {
+    const member = (kind === "step" ? stepBranches : sectionBranches).get(idx);
+    if (member == null) return undefined;
+    const pos = altMembers(kind, member).indexOf(member);
+    return pos >= 0 ? String.fromCharCode(65 + (pos % 26)) : undefined;
+  }
+
+  /** Each fork's members plus the branch nodes that follow them. */
+  function forkNodes(kind: "step" | "section", secIdx: number | null) {
+    const branches = kind === "step" ? stepBranches : sectionBranches;
+    return altForks(kind, secIdx).map((members) => {
+      const nodes = new Set(members);
+      for (const [i, m] of branches) if (members.includes(m)) nodes.add(i);
+      return [...nodes].sort((a, b) => a - b);
+    });
+  }
+
+  function altForks(kind: "step" | "section", secIdx: number | null) {
+    const seen = new Set<string>();
+    const forks: number[][] = [];
+    const n = kind === "step" ? steps.length : sections.value.length;
+    for (let i = 0; i < n; i++) {
+      if (kind === "step") {
+        const st = steps[i];
+        if (!st.alt) continue;
+        if (secIdx != null && st.section !== secIdx) continue;
+        if (secIdx == null && hasSections && st.section != null) continue;
+        const key = `${st.section ?? ""}:${st.alt}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+      } else {
+        const sec = sections.value[i];
+        if (!sec.alt || seen.has(sec.alt)) continue;
+        seen.add(sec.alt);
+      }
+      const members = altMembers(kind, i);
+      if (members.length >= 2) forks.push(members);
+    }
+    return forks;
+  }
   const sel = selected.value;
   const isGraph = mode.value === "graph";
   const hasSections = sections.value.length > 0;
@@ -1599,6 +2108,27 @@ export default function StepForm(
                   size="sm"
                 />
                 <div class="flex items-center gap-1 shrink-0 max-sm:order-2 max-sm:ml-auto">
+                  {(isAlt("step", i) || !atTop) && (
+                    <button
+                      type="button"
+                      title={isAlt("step", i)
+                        ? `Either this or ${
+                          altSiblingLabels("step", i).join(" / ")
+                        }. Click to make it an ordinary step.`
+                        : "Make this an alternative to the step above (the cook picks one)"}
+                      class={`p-1 cursor-pointer ${
+                        isAlt("step", i)
+                          ? "text-amber-600 hover:text-amber-700"
+                          : "text-stone-400 hover:text-amber-600"
+                      }`}
+                      onClick={() =>
+                        listToggleAlt(i, atTop ? null : group[posInGroup - 1])}
+                    >
+                      {isAlt("step", i)
+                        ? <span class="option-badge">or</span>
+                        : <IconArrowsSplit2 class="size-4" />}
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={upDisabled}
@@ -1644,6 +2174,16 @@ export default function StepForm(
                   </button>
                 </div>
               </div>
+              {isAlt("step", i) && altMembers("step", i)[0] === i && (
+                <Input
+                  type="text"
+                  placeholder="What is the choice about? (shown with the either / or toggle)"
+                  value={altDescription("step", i)}
+                  onValueChange={(v) => setAltDescription("step", i, v)}
+                  size="xs"
+                  class="w-full"
+                />
+              )}
               <StepBodyEditor
                 placeholder="Step body (markdown, use {{ ingredient_key }} for scaled amounts)"
                 value={item.body}
@@ -1734,6 +2274,26 @@ export default function StepForm(
                       monospace
                       title="Used in @step(key.N) references"
                     />
+                    {(isAlt("section", sIdx) || sIdx > 0) && (
+                      <button
+                        type="button"
+                        title={isAlt("section", sIdx)
+                          ? `Either this section or ${
+                            altSiblingLabels("section", sIdx).join(" / ")
+                          }. Click to make it an ordinary section.`
+                          : "Make this section an alternative to the one above (the cook picks one)"}
+                        class={`p-1 cursor-pointer ${
+                          isAlt("section", sIdx)
+                            ? "text-amber-600 hover:text-amber-700"
+                            : "text-stone-400 hover:text-amber-600"
+                        }`}
+                        onClick={() => listToggleSectionAlt(sIdx)}
+                      >
+                        {isAlt("section", sIdx)
+                          ? <span class="option-badge">or</span>
+                          : <IconArrowsSplit2 class="size-4" />}
+                      </button>
+                    )}
                     <button
                       type="button"
                       disabled={sIdx === 0}
@@ -1758,6 +2318,18 @@ export default function StepForm(
                       <IconTrash class="size-4" />
                     </button>
                   </div>
+                  {isAlt("section", sIdx) &&
+                    altMembers("section", sIdx)[0] === sIdx && (
+                    <Input
+                      type="text"
+                      placeholder="What is the choice about? (shown with the either / or toggle)"
+                      value={altDescription("section", sIdx)}
+                      onValueChange={(v) =>
+                        setAltDescription("section", sIdx, v)}
+                      size="xs"
+                      class="w-full"
+                    />
+                  )}
                   {group.length > 0 && (
                     <div class="space-y-3">
                       {group.map((i, n) =>
@@ -1879,10 +2451,31 @@ export default function StepForm(
                         size="xs"
                         monospace
                       />
+                      {branchLetter("section", sIdx) && (
+                        <span
+                          class="option-badge shrink-0"
+                          title={`Side ${
+                            branchLetter("section", sIdx)
+                          } of an either/or fork`}
+                        >
+                          {branchLetter("section", sIdx)}
+                        </span>
+                      )}
                       <span class="text-[10px] text-stone-400 shrink-0">
                         {stepCount} {stepCount === 1 ? "step" : "steps"}
                       </span>
                       <div class="flex items-center shrink-0 -mr-1">
+                        <button
+                          type="button"
+                          title="Add alternative section (either this section or the new one)"
+                          class="text-stone-400 hover:text-amber-600 p-0.5 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            graphAddAlternativeSection(sIdx);
+                          }}
+                        >
+                          <IconArrowsSplit2 class="size-3.5" />
+                        </button>
                         <button
                           type="button"
                           title="Insert section in sequence"
@@ -1969,18 +2562,37 @@ export default function StepForm(
                           width={innerL.innerW}
                           height={innerL.innerH}
                         >
-                          {innerL.stepEdges.map(
-                            ({ d, active, key, fromIdx, toIdx }) => (
+                          {mergeForkEdges(
+                            innerL.stepEdges,
+                            forkNodes("step", sIdx),
+                            (i) => ({
+                              ...innerL.stepLocal.get(i)!,
+                              w: CARD_W,
+                              h: cardH,
+                            }),
+                            { pad: 8, curve: 0.5 },
+                          ).map(
+                            ({ d, active, key, fromIdx, toIdx, pairs }) => (
                               <EdgePath
                                 key={`step-${key}`}
                                 d={d}
                                 active={active}
                                 color="step"
-                                onRemove={() => removeDep(toIdx, fromIdx)}
+                                onRemove={() =>
+                                  removeDepPairs(pairs ?? [[toIdx, fromIdx]])}
                               />
                             ),
                           )}
                         </svg>
+                        {forkNodes("step", sIdx).map((members, fi) => {
+                          const box = bracketBox(
+                            members.map((i) => {
+                              const tl = innerL.stepLocal.get(i)!;
+                              return { x: tl.x, y: tl.y, w: CARD_W, h: cardH };
+                            }),
+                          );
+                          return box ? <AltBracket key={fi} box={box} /> : null;
+                        })}
                         {steps.map((step, index) => {
                           const tl = innerL.stepLocal.get(index);
                           if (!tl) {
@@ -2003,6 +2615,8 @@ export default function StepForm(
                               displayNum={nested.displayNum.get(index) ??
                                 index + 1}
                               step={step}
+                              altLabel={branchLetter("step", index)}
+                              onAlternative={() => graphAddAlternative(index)}
                               position={tl}
                               cardH={cardH}
                               borderClass={stepBorder}
@@ -2062,6 +2676,14 @@ export default function StepForm(
               );
             })()}
 
+            {forkNodes("section", null).map((members, fi) => {
+              const box = bracketBox(
+                members.map((i) => nested.sectionBoxes[i]).filter((b) => b),
+                10,
+              );
+              return box ? <AltBracket key={`sec-${fi}`} box={box} /> : null;
+            })}
+
             {/* Section dependency edges */}
             <svg
               style={{
@@ -2075,14 +2697,20 @@ export default function StepForm(
               width={nested.svgW}
               height={nested.svgH}
             >
-              {nested.sectionEdges.map(
-                ({ d, active, key, fromIdx, toIdx }) => (
+              {mergeForkEdges(
+                nested.sectionEdges,
+                forkNodes("section", null),
+                (i) => nested.sectionBoxes[i],
+                { pad: 10, curve: 0.4 },
+              ).map(
+                ({ d, active, key, fromIdx, toIdx, pairs }) => (
                   <EdgePath
                     key={key}
                     d={d}
                     active={active}
                     color="section"
-                    onRemove={() => removeSectionDep(toIdx, fromIdx)}
+                    onRemove={() =>
+                      removeSectionDepPairs(pairs ?? [[toIdx, fromIdx]])}
                   />
                 ),
               )}
@@ -2129,17 +2757,23 @@ export default function StepForm(
 
       {/* Single-ending-section validation (nested graph) */}
       {isGraph && nested && (() => {
+        // A final fork counts as one ending: either member ends the recipe.
         const leafSecs = sections.value
           .map((_, i) => i)
           .filter((i) =>
             !sections.value.some((s) => (s.after ?? []).includes(i))
+          )
+          .filter((i, _n, all) =>
+            forkOrSelf("section", i)[0] === i ||
+            !all.includes(forkOrSelf("section", i)[0])
           );
         if (leafSecs.length <= 1) return null;
         return (
           <div class="text-xs text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-700 p-2">
             Recipe must have a single final section. Currently {leafSecs.length}
             {" "}
-            sections have nothing after them: {leafSecs.map((i) =>
+            sections have nothing after them:{" "}
+            {leafSecs.map((i) =>
               sections.value[i].title.trim() || `Section ${i + 1}`
             ).join(", ")}. Connect them or remove extras.
           </div>
@@ -2174,6 +2808,17 @@ export default function StepForm(
                 minHeight: `${flatLayout.svgH + rowHeight}px`,
               }}
             >
+              {forkNodes("step", null).map((members, fi) => {
+                const box = bracketBox(
+                  members.map((i) => ({
+                    x: flatLayout.cols[i] * COL_WIDTH,
+                    y: (flatLayout.stepY.get(i) ?? 0) - cardH / 2,
+                    w: CARD_W,
+                    h: cardH,
+                  })),
+                );
+                return box ? <AltBracket key={fi} box={box} /> : null;
+              })}
               <div style={{ position: "relative", zIndex: 2 }}>
                 {steps.map((step, index) => {
                   const y = (flatLayout.stepY.get(index) ?? 0) - cardH / 2;
@@ -2194,6 +2839,8 @@ export default function StepForm(
                       index={index}
                       displayNum={index + 1}
                       step={step}
+                      altLabel={branchLetter("step", index)}
+                      onAlternative={() => graphAddAlternative(index)}
                       position={{ x, y }}
                       cardH={cardH}
                       borderClass={borderClass}
@@ -2239,13 +2886,23 @@ export default function StepForm(
                 width={flatLayout.svgW}
                 height={flatLayout.svgH}
               >
-                {flatLayout.edges.map(({ d, active, key, fromIdx, toIdx }) => (
+                {mergeForkEdges(
+                  flatLayout.edges,
+                  forkNodes("step", null),
+                  (i) => ({
+                    x: flatLayout.cols[i] * COL_WIDTH,
+                    y: (flatLayout.stepY.get(i) ?? 0) - cardH / 2,
+                    w: CARD_W,
+                    h: cardH,
+                  }),
+                  { pad: 8, curve: 0.5 },
+                ).map(({ d, active, key, fromIdx, toIdx, pairs }) => (
                   <EdgePath
                     key={key}
                     d={d}
                     active={active}
                     color="step"
-                    onRemove={() => removeDep(toIdx, fromIdx)}
+                    onRemove={() => removeDepPairs(pairs ?? [[toIdx, fromIdx]])}
                   />
                 ))}
                 {dragLine && (
@@ -2263,15 +2920,23 @@ export default function StepForm(
           </div>
 
           {/* Single end node validation */}
-          {flatLayout.leafNodes.length > 1 && (
-            <div class="text-xs text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-700 p-2">
-              Recipe must have a single final step. Currently{" "}
-              {flatLayout.leafNodes.length} steps have nothing after them:{" "}
-              {flatLayout.leafNodes.map((i) =>
-                `#${i + 1} ${stepLabel(steps[i]) || "untitled"}`
-              ).join(", ")}. Connect them or remove extras.
-            </div>
-          )}
+          {(() => {
+            // A final fork counts as one ending: either member ends the recipe.
+            const leaves = flatLayout.leafNodes.filter((i, _n, all) =>
+              forkOrSelf("step", i)[0] === i ||
+              !all.includes(forkOrSelf("step", i)[0])
+            );
+            if (leaves.length <= 1) return null;
+            return (
+              <div class="text-xs text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-700 p-2">
+                Recipe must have a single final step. Currently {leaves.length}
+                {" "}
+                steps have nothing after them: {leaves.map((i) =>
+                  `#${i + 1} ${stepLabel(steps[i]) || "untitled"}`
+                ).join(", ")}. Connect them or remove extras.
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2322,6 +2987,10 @@ export default function StepForm(
             onTitle={(v) => updateField(sel, "title", v)}
             onBody={(v) => updateField(sel, "body", v)}
             onSection={(idx) => setStepSection(sel, idx)}
+            altSiblings={altSiblingLabels("step", sel)}
+            onUnlinkAlt={() => unlinkAlt("step", sel)}
+            altDescription={altDescription("step", sel)}
+            onAltDescription={(v) => setAltDescription("step", sel, v)}
             onRemoveMedia={(mi) => removeMedia(sel, mi)}
             onUploadMedia={() => triggerFileUpload(sel)}
             uploading={uploading.value === sel}
@@ -2372,6 +3041,14 @@ export default function StepForm(
                   title="Used in @step(key.N) references"
                 />
               </div>
+              <div class="mb-3">
+                <AltNote
+                  siblings={altSiblingLabels("section", secSel)}
+                  onUnlink={() => unlinkAlt("section", secSel)}
+                  description={altDescription("section", secSel)}
+                  onDescription={(v) => setAltDescription("section", secSel, v)}
+                />
+              </div>
               {secSteps.length === 0 && (
                 <div class="text-xs text-stone-400 italic">
                   No steps in this section yet.
@@ -2393,6 +3070,10 @@ export default function StepForm(
                       onTitle={(v) => updateField(i, "title", v)}
                       onBody={(v) => updateField(i, "body", v)}
                       onSection={(idx) => setStepSection(i, idx)}
+                      altSiblings={altSiblingLabels("step", i)}
+                      onUnlinkAlt={() => unlinkAlt("step", i)}
+                      altDescription={altDescription("step", i)}
+                      onAltDescription={(v) => setAltDescription("step", i, v)}
                       onRemoveMedia={(mi) => removeMedia(i, mi)}
                       onUploadMedia={() => triggerFileUpload(i)}
                       uploading={uploading.value === i}
@@ -2418,8 +3099,26 @@ export default function StepForm(
             kept.push(sec);
           }
         });
+        const forkKeys = [
+          ...new Set([
+            ...steps.filter((_st, i) => isAlt("step", i)).map((st) => st.alt!),
+            ...sections.value.filter((_, i) => isAlt("section", i)).map((
+              sec,
+            ) => sec.alt!),
+          ]),
+        ];
         return (
           <>
+            {forkKeys.map((key, ai) => (
+              <div key={`hidden-alt-${key}`}>
+                <input type="hidden" name={`alts[${ai}][key]`} value={key} />
+                <input
+                  type="hidden"
+                  name={`alts[${ai}][description]`}
+                  value={altDescriptions.value[key] ?? ""}
+                />
+              </div>
+            ))}
             {kept.map((sec, si) => (
               <div key={`hidden-section-${si}`}>
                 <input
@@ -2440,6 +3139,11 @@ export default function StepForm(
                     .map((oldIdx) => oldToNewSec.get(oldIdx))
                     .filter((v): v is number => v != null)
                     .join(",")}
+                />
+                <input
+                  type="hidden"
+                  name={`sections[${si}][alt]`}
+                  value={sec.alt ?? ""}
                 />
               </div>
             ))}
@@ -2473,6 +3177,11 @@ export default function StepForm(
                     type="hidden"
                     name={`steps[${i}][section]`}
                     value={remappedSec ?? ""}
+                  />
+                  <input
+                    type="hidden"
+                    name={`steps[${i}][alt]`}
+                    value={step.alt ?? ""}
                   />
                   {step.media.map((m, mi) => (
                     <input

@@ -10,6 +10,7 @@ export type Collection =
   | "ingredients"
   | "steps"
   | "sections"
+  | "alternatives"
   | "tools"
   | "refs"
   | "tags";
@@ -66,6 +67,7 @@ export const RECIPE_SCHEMA: MergeSchema = {
     ingredients: "key",
     steps: "id",
     sections: "key",
+    alternatives: "key",
     tools: "tool_id",
     refs: "referenced_recipe_id",
   },

@@ -69,6 +69,47 @@ export const handlers = handler({
     );
     const newRecipeId = newRecipeRes.rows[0].id;
 
+    // Clone choices and options first: ingredients, sections and steps
+    // point at options.
+    const oldToNewOptionId = new Map<string, string>();
+    const choicesRes = await ctx.state.db.query(
+      `SELECT * FROM recipe_choices WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipe.id],
+    );
+    for (const choice of choicesRes.rows) {
+      const newChoiceRes = await ctx.state.db.query(
+        `INSERT INTO recipe_choices (recipe_id, key, title, description, sort_order)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [
+          newRecipeId,
+          choice.key,
+          choice.title,
+          choice.description,
+          choice.sort_order,
+        ],
+      );
+      const optionsRes = await ctx.state.db.query(
+        `SELECT * FROM recipe_choice_options WHERE choice_id = $1 ORDER BY sort_order, id`,
+        [choice.id],
+      );
+      for (const opt of optionsRes.rows) {
+        const newOptRes = await ctx.state.db.query(
+          `INSERT INTO recipe_choice_options (choice_id, key, title, sort_order, is_default)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [
+            newChoiceRes.rows[0].id,
+            opt.key,
+            opt.title,
+            opt.sort_order,
+            opt.is_default ?? false,
+          ],
+        );
+        oldToNewOptionId.set(String(opt.id), String(newOptRes.rows[0].id));
+      }
+    }
+    const newOptionId = (old: unknown) =>
+      old != null ? oldToNewOptionId.get(String(old)) ?? null : null;
+
     // Clone ingredients
     const ingredientsRes = await ctx.state.db.query(
       `SELECT * FROM recipe_ingredients WHERE recipe_id = $1 ORDER BY sort_order, id`,
@@ -76,8 +117,8 @@ export const handlers = handler({
     );
     for (const ing of ingredientsRes.rows) {
       await ctx.state.db.query(
-        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, note, intermediate, sort_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, key, name, amount, unit, note, intermediate, option_id, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           newRecipeId,
           ing.ingredient_id,
@@ -87,6 +128,7 @@ export const handlers = handler({
           ing.unit,
           ing.note,
           ing.intermediate ?? false,
+          newOptionId(ing.option_id),
           ing.sort_order,
         ],
       );
@@ -118,9 +160,15 @@ export const handlers = handler({
     const oldToNewSectionId = new Map<string, string>();
     for (const sec of sectionsRes.rows) {
       const newSecRes = await ctx.state.db.query(
-        `INSERT INTO recipe_step_sections (recipe_id, key, title, sort_order)
-         VALUES ($1, $2, $3, $4) RETURNING id`,
-        [newRecipeId, sec.key, sec.title, sec.sort_order],
+        `INSERT INTO recipe_step_sections (recipe_id, key, title, sort_order, option_id)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [
+          newRecipeId,
+          sec.key,
+          sec.title,
+          sec.sort_order,
+          newOptionId(sec.option_id),
+        ],
       );
       oldToNewSectionId.set(String(sec.id), String(newSecRes.rows[0].id));
     }
@@ -155,9 +203,16 @@ export const handlers = handler({
         ? oldToNewSectionId.get(String(step.section_id)) ?? null
         : null;
       const newStepRes = await ctx.state.db.query(
-        `INSERT INTO recipe_steps (recipe_id, title, body, sort_order, section_id)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [newRecipeId, step.title, step.body, step.sort_order, newSectionId],
+        `INSERT INTO recipe_steps (recipe_id, title, body, sort_order, section_id, option_id)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [
+          newRecipeId,
+          step.title,
+          step.body,
+          step.sort_order,
+          newSectionId,
+          newOptionId(step.option_id),
+        ],
       );
       const newStepId = newStepRes.rows[0].id;
       oldToNewStepId.set(String(step.id), String(newStepId));

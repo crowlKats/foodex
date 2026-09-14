@@ -2,6 +2,11 @@ import { bulkInsert } from "./bulk-insert.ts";
 import { parseFormArray } from "./form.ts";
 import { ensureIngredientIds, isIntermediate } from "./ingredient-resolve.ts";
 import type { QueryFn } from "../db/mod.ts";
+import {
+  type AltMember,
+  deriveBranches,
+  deriveChoices,
+} from "./recipe-choices.ts";
 
 /**
  * Fill in `tool_id` on rows that arrived with a `new_name`, matching an
@@ -50,7 +55,7 @@ async function ensureToolIds(
 }
 
 /**
- * Save all recipe child records (ingredients, tools, steps, step media, refs, tags).
+ * Save all recipe child records (choices, ingredients, tools, steps, step media, refs, tags).
  * Caller is responsible for wrapping this in a transaction.
  *
  * `householdId` lets tools created inline on the recipe form land in the
@@ -62,6 +67,121 @@ export async function saveRecipeChildren(
   form: FormData,
   opts: { householdId?: string | null } = {},
 ): Promise<void> {
+  // Alternatives. Steps and sections carry an `alt` group key; every group
+  // with two or more members becomes a choice with one option per member.
+  // Inserted first so the rows below can carry their option id, and so an
+  // ingredient tied to a step (`for_step`) or section (`for_section`) by
+  // form index can resolve to that member's option.
+  const sectionEntries = parseFormArray(form, "sections");
+  const stepEntriesAll = parseFormArray(form, "steps");
+  const members: AltMember[] = [];
+  sectionEntries.forEach((sec, i) => {
+    if (sec.title?.trim() && sec.alt?.trim()) {
+      members.push({
+        kind: "section",
+        index: i,
+        title: sec.title.trim(),
+        group: sec.alt.trim(),
+      });
+    }
+  });
+  stepEntriesAll.forEach((step, i) => {
+    if ((step.title?.trim() || step.body?.trim()) && step.alt?.trim()) {
+      members.push({
+        kind: "step",
+        index: i,
+        title: step.title?.trim() ?? "",
+        group: step.alt.trim(),
+      });
+    }
+  });
+  const derived = deriveChoices(members);
+  // `alts[i][key|description]`: what each fork is about, keyed by group.
+  const altDescription = new Map<string, string>();
+  for (const a of parseFormArray(form, "alts")) {
+    const key = a.key?.trim();
+    if (key && a.description?.trim()) {
+      altDescription.set(key, a.description.trim());
+    }
+  }
+  const stepOptionId = new Map<number, string>();
+  const sectionOptionId = new Map<number, string>();
+  if (derived.length > 0) {
+    const choiceRes = await bulkInsert(
+      q,
+      "recipe_choices",
+      ["recipe_id", "key", "title", "description", "sort_order"],
+      derived.map((c, i) => [
+        recipeId,
+        c.key,
+        c.title,
+        altDescription.get(c.key) ?? null,
+        i,
+      ]),
+      { returning: "id" },
+    );
+    const optionRows: unknown[][] = [];
+    const optionMembers: AltMember[] = [];
+    derived.forEach((c, ci) => {
+      c.options.forEach((o, oi) => {
+        optionRows.push([choiceRes.rows[ci].id, o.key, o.title, oi, oi === 0]);
+        optionMembers.push(o.member);
+      });
+    });
+    const optionRes = await bulkInsert(
+      q,
+      "recipe_choice_options",
+      ["choice_id", "key", "title", "sort_order", "is_default"],
+      optionRows,
+      { returning: "id" },
+    );
+    optionRes.rows.forEach((row, i) => {
+      const m = optionMembers[i];
+      (m.kind === "step" ? stepOptionId : sectionOptionId).set(
+        m.index,
+        row.id as string,
+      );
+    });
+  }
+  // Branch steps and sections (only reachable from one member) take that
+  // member's option, so the page hides them with it.
+  const afterOf = (raw: string | undefined): number[] => {
+    const t = raw?.trim() ?? "";
+    return t ? t.split(",").map(Number).filter((n) => !isNaN(n)) : [];
+  };
+  const stepBranches = deriveBranches(stepEntriesAll.map((st) => ({
+    after: afterOf(st.after),
+    alt: st.alt?.trim() || null,
+    scope: st.section?.trim() || null,
+  })));
+  for (const [idx, member] of stepBranches) {
+    const opt = stepOptionId.get(member);
+    if (opt && !stepOptionId.has(idx)) stepOptionId.set(idx, opt);
+  }
+  const sectionBranches = deriveBranches(sectionEntries.map((sec) => ({
+    after: afterOf(sec.after),
+    alt: sec.title?.trim() ? sec.alt?.trim() || null : null,
+  })));
+  for (const [idx, member] of sectionBranches) {
+    const opt = sectionOptionId.get(member);
+    if (opt && !sectionOptionId.has(idx)) sectionOptionId.set(idx, opt);
+  }
+
+  const indexOf = (raw: string | undefined): number | null => {
+    const t = raw?.trim() ?? "";
+    if (t === "") return null;
+    const n = parseInt(t);
+    return isNaN(n) ? null : n;
+  };
+  /** An ingredient's option: the alternative step or section it is for. */
+  const ingredientOptionId = (ing: Record<string, string>): string | null => {
+    const st = indexOf(ing.for_step);
+    if (st != null) return stepOptionId.get(st) ?? null;
+    const sec = indexOf(ing.for_section);
+    if (sec != null) return sectionOptionId.get(sec) ?? null;
+    return null;
+  };
+
   // Ingredients. Every line must link to a real ingredient entity; free-text
   // names (manual form, imports) are resolved to an existing ingredient or
   // create one here, inside the caller's transaction.
@@ -79,6 +199,7 @@ export async function saveRecipeChildren(
     ing.unit?.trim() || null,
     ing.note?.trim() || null,
     isIntermediate(ing),
+    ingredientOptionId(ing),
     i,
   ]);
 
@@ -92,6 +213,7 @@ export async function saveRecipeChildren(
       "unit",
       "note",
       "intermediate",
+      "option_id",
       "sort_order",
     ], ingRows);
   }
@@ -131,7 +253,6 @@ export async function saveRecipeChildren(
   }
 
   // Sections (insert before steps so steps can reference section_id)
-  const sectionEntries = parseFormArray(form, "sections");
   const sectionFormIdxToDbId = new Map<number, string>();
   // afters by section form index: collected here, inserted after sections exist
   const sectionAfters: { idx: number; after: number[] }[] = [];
@@ -146,6 +267,7 @@ export async function saveRecipeChildren(
         sec.key?.trim() || "",
         sec.title.trim(),
         i,
+        sectionOptionId.get(i) ?? null,
       ]);
       sectionFormIdxs.push(i);
       const afterStr = sec.after?.trim() ?? "";
@@ -158,7 +280,7 @@ export async function saveRecipeChildren(
       const sectionRes = await bulkInsert(
         q,
         "recipe_step_sections",
-        ["recipe_id", "key", "title", "sort_order"],
+        ["recipe_id", "key", "title", "sort_order", "option_id"],
         sectionRows,
         { returning: "id" },
       );
@@ -194,7 +316,7 @@ export async function saveRecipeChildren(
   }
 
   // Steps (need RETURNING id for media and deps)
-  const steps = parseFormArray(form, "steps");
+  const steps = stepEntriesAll;
   const stepRows: unknown[][] = [];
   const stepIndexes: number[] = []; // original form indexes for media lookup
   const stepAfters: number[][] = []; // dependency indices per inserted step
@@ -212,6 +334,7 @@ export async function saveRecipeChildren(
       step.body?.trim() || "",
       i,
       sectionId,
+      stepOptionId.get(i) ?? null,
     ]);
     stepIndexes.push(i);
     // Parse "after" field: comma-separated form indices
@@ -225,7 +348,7 @@ export async function saveRecipeChildren(
     const stepRes = await bulkInsert(
       q,
       "recipe_steps",
-      ["recipe_id", "title", "body", "sort_order", "section_id"],
+      ["recipe_id", "title", "body", "sort_order", "section_id", "option_id"],
       stepRows,
       { returning: "id" },
     );

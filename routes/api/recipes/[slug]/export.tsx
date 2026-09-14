@@ -9,6 +9,13 @@ import type {
   RecipeTag,
 } from "../../../../db/types.ts";
 import { computeStepAfters } from "../../../../lib/step-graph.ts";
+import {
+  alternativesOf,
+  altGroupById,
+  ingredientTarget,
+  loadRecipeChoices,
+  memberRowIds,
+} from "../../../../lib/recipe-choices-db.ts";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -115,6 +122,25 @@ export const handlers = handler({
       .filter((t) => t.tag_type === "cuisine")
       .map((t) => t.tag_value);
 
+    const choices = await loadRecipeChoices(ctx.state.db.query, recipe.id);
+    const groupById = altGroupById(choices);
+    const members = new Set([
+      ...memberRowIds(stepsRes.rows),
+      ...memberRowIds(sectionsRes.rows),
+    ]);
+    const alt = (id: string, optionId: string | null) => ({
+      alt: optionId && members.has(id) ? groupById.get(optionId) ?? null : null,
+    });
+    // Ingredients tie to an alternative by step index / section key, the
+    // same way `after` is expressed in this shape.
+    const target = (optionId: string | null) => {
+      const t = ingredientTarget(optionId, stepsRes.rows, sectionsRes.rows);
+      return {
+        for_step: t.step,
+        for_section: t.section != null ? sectionsRes.rows[t.section].key : null,
+      };
+    };
+
     // Foodex-native export format (superset of OcrRecipeData)
     const exportData = {
       _format: "foodex/recipe",
@@ -139,11 +165,14 @@ export const handlers = handler({
         unit: i.unit || "",
         note: i.note || "",
         intermediate: i.intermediate ?? false,
+        ...target(i.option_id),
       })),
+      alternatives: alternativesOf(choices),
       sections: sectionsRes.rows.map((s) => ({
         key: s.key,
         title: s.title,
         after: sectionAfters.get(s.id) ?? [],
+        ...alt(s.id, s.option_id),
       })),
       steps: stepsRes.rows.map((s) => ({
         title: s.title,
@@ -152,6 +181,7 @@ export const handlers = handler({
         section: s.section_id != null
           ? sectionKeyById.get(s.section_id) ?? null
           : null,
+        ...alt(s.id, s.option_id),
       })),
       tags: {
         meal_types: mealTypes,
