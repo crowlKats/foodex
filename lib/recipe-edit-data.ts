@@ -1,4 +1,11 @@
 import type { QueryFn } from "../db/mod.ts";
+import {
+  alternativesOf,
+  altGroupById,
+  ingredientTarget,
+  loadRecipeChoices,
+  memberRowIds,
+} from "./recipe-choices-db.ts";
 import type {
   Ingredient,
   Recipe,
@@ -26,6 +33,26 @@ export function editDataToRecipeFields(
   d: RecipeEditData,
 ): Record<string, unknown> {
   const r = d.recipe;
+  const groupById = altGroupById(d.choices);
+  const members = new Set([
+    ...memberRowIds(
+      d.steps.map((s) => ({ id: String(s.id), option_id: s.option_id })),
+    ),
+    ...memberRowIds(
+      d.sections.map((s) => ({ id: s.id, option_id: s.option_id })),
+    ),
+  ]);
+  const alt = (id: string, optionId: string | null) => ({
+    alt: optionId && members.has(id) ? groupById.get(optionId) ?? null : null,
+  });
+  /** `for_step` (step id) / `for_section` (section key) of an ingredient. */
+  const target = (optionId: string | null) => {
+    const t = ingredientTarget(optionId, d.steps, d.sections);
+    return {
+      for_step: t.step != null ? String(d.steps[t.step].id) : null,
+      for_section: t.section != null ? d.sections[t.section].key : null,
+    };
+  };
   return {
     title: r.title,
     description: r.description,
@@ -63,13 +90,16 @@ export function editDataToRecipeFields(
       ingredient_id: i.ingredient_id != null ? String(i.ingredient_id) : "",
       note: i.note ?? "",
       intermediate: i.intermediate ?? false,
+      ...target(i.option_id),
     })),
+    alternatives: alternativesOf(d.choices),
     sections: d.sections.map((s) => ({
       key: s.key,
       title: s.title,
       after: s.after
         .map((idx) => d.sections[idx]?.key)
         .filter((k): k is string => !!k),
+      ...alt(s.id, s.option_id),
     })),
     steps: d.steps.map((s) => ({
       id: String(s.id),
@@ -81,6 +111,7 @@ export function editDataToRecipeFields(
         .filter((id): id is string => id != null)
         .map(String),
       media: s.media,
+      ...alt(String(s.id), s.option_id),
     })),
     tools: d.tools.map((t) => ({
       tool_id: String(t.tool_id),
@@ -135,6 +166,8 @@ export async function loadRecipeEditData(
     `SELECT * FROM recipe_step_sections WHERE recipe_id = $1 ORDER BY sort_order, id`,
     [recipe.id],
   );
+
+  const choices = await loadRecipeChoices(query, recipe.id);
 
   const sectionDepsRes = await query<
     { section_id: string; depends_on: string }
@@ -281,10 +314,13 @@ export async function loadRecipeEditData(
     tools: toolsRes.rows,
     steps: stepsWithMedia,
     sections: sectionsRes.rows.map((s, i) => ({
+      id: s.id,
       title: s.title,
       key: s.key,
       after: sectionAfters[i],
+      option_id: s.option_id,
     })),
+    choices,
     refs: refsRes.rows,
     mealTypes,
     dietaryTags,

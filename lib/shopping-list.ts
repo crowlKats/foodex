@@ -262,6 +262,8 @@ export async function loadDemands(
          -- Water and the like scale with the recipe but are never bought.
          AND NOT ri.intermediate
          AND NOT COALESCE(g.always_on_hand, false)
+         -- Only the option the cook picked for this meal.
+         AND fx_option_active(ri.option_id, pe.option_ids)
        ORDER BY pe.planned_for NULLS LAST, ri.sort_order`,
       [householdId],
     ),
@@ -502,6 +504,7 @@ export async function countOutstandingLines(
          AND pe.include_in_list = true
          AND NOT ri.intermediate
          AND NOT COALESCE(g.always_on_hand, false)
+         AND fx_option_active(ri.option_id, pe.option_ids)
        GROUP BY 1, 2
        UNION ALL
        SELECT fx_match_key(d.ingredient_id, d.name),

@@ -178,6 +178,35 @@ export default page(function WritingRecipesDocs({ url }) {
           </p>
         </DocSub>
 
+        <DocSub title="Alternatives (either / or)">
+          <p class={`${docProse} mb-3`}>
+            Some recipes offer two ways to do a step: sear on the stove or in
+            the oven, finish with ganache or buttercream. In the graph view, the
+            fork button on a step card adds an alternative: a sibling step the
+            cook does <em>instead of</em>{" "}
+            the original, wired to the same neighbours and drawn inside an
+            "either / or" bracket. In list view the same fork button marks a
+            step as an alternative to the one above it. The first alternative is
+            the default. Give the fork a line on what the choice is about, in
+            the field next to the "or" note; it shows with the toggle.
+          </p>
+          <p class={`${docProse} mb-3`}>
+            Each side of a fork can go on: insert steps after one alternative
+            and they belong to that path, the bracket grows around them, and the
+            paths rejoin at the first step that follows both. A whole stage with
+            two versions can also be forked at the section level. An ingredient
+            only one way needs gets a <strong>Needed for</strong>{" "}
+            picker on its row, so it drops out of the list and the shopping when
+            the cook goes the other way.
+          </p>
+          <p class={`${docMuted} mb-4`}>
+            On the recipe page the fork shows as a toggle where it sits in the
+            steps; the cook picks one and sees only that path, on the page, in
+            cooking mode, and on the shopping list. Step numbers count what the
+            cook sees, so a single-step fork keeps the numbering intact.
+          </p>
+        </DocSub>
+
         <DocNote title="Advanced: the graph editor and parallel steps">
           <p>
             By default steps run as a simple chain. Switch the Steps tab to{" "}

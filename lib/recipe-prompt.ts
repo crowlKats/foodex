@@ -30,13 +30,17 @@ export function recipeJsonSchema(opts?: { coverImage?: boolean }): string {
   "quantity_servings": <servings/pieces the tray yields, dimensions only, or null>,
   "ingredients": [
     { "key": "snake_case_key", "name": "Ingredient name", "amount": "numeric amount as string", "unit": "unit", "note": "short prep/usage note or empty string" },
-    { "key": "browned_butter", "name": "Browned butter", "amount": "80", "unit": "g", "intermediate": true }
+    { "key": "browned_butter", "name": "Browned butter", "amount": "80", "unit": "g", "intermediate": true },
+    { "key": "cream", "name": "Cream", "amount": "200", "unit": "ml", "note": "", "for_step": 4 }
+  ],
+  "alternatives": [
+    { "key": "alternative group key", "description": "What the cook is choosing between, one sentence" }
   ],
   "sections": [
-    { "key": "kebab-case-key", "title": "Section title", "after": ["other-section-key"] }
+    { "key": "kebab-case-key", "title": "Section title", "after": ["other-section-key"], "alt": "alternative group key or null" }
   ],
   "steps": [
-    { "title": "Step title (short)", "body": "Detailed step instructions", "section": "kebab-case-key or null" }
+    { "title": "Step title (short)", "body": "Detailed step instructions", "section": "kebab-case-key or null", "alt": "alternative group key or null" }
   ],
 ${coverLine},
   "source_type": "book" | "website" | "family" | "ai_generated" | "personal" | "other" | null,
@@ -71,6 +75,19 @@ the tray is what the recipe scales by. If the source ALSO states a yield in piec
 ("makes 15", "serves 12"), record it in "quantity_servings". Where a step mentions the tray or \
 its size, write {{ tray }} instead of the literal dimensions so the text follows the scaled \
 tray size.
+- ALTERNATIVES: when the source offers either/or ways ("bake, or fry if you prefer", "top with \
+ganache or buttercream", "stovetop method / oven method"), write one step per way and give those \
+steps the same "alt" group key (a short kebab-case name like "cooking-method"); they must sit in \
+the same section, and the source's preferred or first-listed way comes first (it is the default). \
+Steps that only one way needs after that come next in that way's chain (the recipe is a chain in \
+order, so put a way's own follow-up steps right after its tagged step, before the next tagged \
+step). An alternative that spans a whole stage gets its own section instead, and the alternative \
+sections share an "alt" key. An ingredient only one way uses carries "for_step" (the 0-based index of that \
+step in "steps") or "for_section" (that section's key). Steps and rows without "alt"/"for_*" apply \
+whichever way the cook goes. Never put "alt" on a step that has no alternative; leave it null. \
+Add one "alternatives" entry per group key with a short "description" of what the choice is \
+about and when to pick which ("The oven is hands-off; the stovetop browns better"), taken from \
+the source where it says so. Leave "alternatives" empty when there are no forks.
 - If prep, cook, or rest time is not specified, use null. "rest_time" covers any inactive waiting (rising dough, marinating, chilling, resting cooked meat, etc.), not active prep or cook time.
 - "difficulty" should be "easy", "medium", or "hard" based on the recipe's complexity, technique requirements, and skill level needed. Use null if uncertain
 - INTERMEDIATE products (browned butter made from the butter row, burnt lemon juice pressed from the lemon, reserved cooking water) get their own ingredient row with "intermediate": true. Such a row scales, appears under "Made while cooking", and can be referenced from steps like any other row; it is never shopped for and MUST NOT be linked to or create an ingredient library entity. Amounts too incidental for a row still scale via the "ratio" variable: "add {{ round(50 * ratio) }} g". Never leave a bare number on anything that scales with the recipe.

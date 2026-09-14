@@ -34,11 +34,29 @@ export interface OcrRecipeData {
     note?: string;
     /** Made during this recipe: no library link, never shopped. */
     intermediate?: boolean;
+    /** Only needed for one alternative: the index of that step in `steps`,
+     * or the key of that section. Omitted applies always. */
+    for_step?: number | null;
+    for_section?: string | null;
   }[];
+  /** What each either/or fork is about, keyed by the members' `alt` key. */
+  alternatives?: { key: string; description?: string | null }[];
   /** Optional grouping of steps. Step.section refers to a section by key.
-   * Sections form their own DAG: `after` is a list of section keys that must complete first. */
-  sections?: { key: string; title: string; after?: string[] }[];
-  steps: { title: string; body: string; section?: string | null }[];
+   * Sections form their own DAG: `after` is a list of section keys that must complete first.
+   * Sections sharing an `alt` key are either/or alternatives; the first is the default. */
+  sections?: {
+    key: string;
+    title: string;
+    after?: string[];
+    alt?: string | null;
+  }[];
+  /** Steps in one section sharing an `alt` key are either/or alternatives. */
+  steps: {
+    title: string;
+    body: string;
+    section?: string | null;
+    alt?: string | null;
+  }[];
   cover_image: CoverImageBounds | null;
   source_type?: string | null;
   source_name?: string | null;

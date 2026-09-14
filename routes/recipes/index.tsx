@@ -129,6 +129,7 @@ function buildRecipeQuery(opts: {
         LEFT JOIN ingredients g_ck ON g_ck.id = ri_ck.ingredient_id
         WHERE ri_ck.recipe_id = r.id
           AND NOT COALESCE(g_ck.always_on_hand, false)
+          AND fx_option_default(ri_ck.option_id)
           AND COALESCE((
             SELECT
               -- Staples and untracked amounts cover any requirement; otherwise

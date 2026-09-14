@@ -158,6 +158,8 @@ export const PlanAction = z.discriminatedUnion("action", [
     planned_for: z.string().nullable().optional(),
     include_in_list: z.boolean().optional(),
     note: z.string().nullable().optional(),
+    /** Picked choice options; omitted means the recipe's defaults. */
+    option_ids: z.array(uuid).optional(),
   }),
   z.object({
     /** Choose (or switch) the recipe for a dish-planned entry. */
@@ -191,6 +193,7 @@ export const PlanAction = z.discriminatedUnion("action", [
     action: z.literal("cook_now"),
     recipe_id: uuid,
     scale: z.number().positive().optional(),
+    option_ids: z.array(uuid).optional(),
   }),
 ]);
 

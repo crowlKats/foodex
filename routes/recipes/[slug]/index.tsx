@@ -11,6 +11,7 @@ import type {
   RecipeWithCover,
 } from "../../../db/types.ts";
 import { computeStepAfters } from "../../../lib/step-graph.ts";
+import { loadRecipeChoices } from "../../../lib/recipe-choices-db.ts";
 import { logAudit } from "../../../lib/audit.ts";
 import { loadStock, type StockItem } from "../../../lib/pantry.ts";
 import { formatDuration } from "../../../lib/duration.ts";
@@ -91,6 +92,8 @@ export const handlers = handler({
        WHERE s.recipe_id = $1`,
       [recipe.id],
     );
+
+    const choices = await loadRecipeChoices(ctx.state.db.query, recipe.id);
 
     const [stepMediaRes, stepDepsRes] = await Promise.all([
       ctx.state.db.query<
@@ -230,6 +233,7 @@ export const handlers = handler({
           density: i.density,
           always_on_hand: i.always_on_hand ?? false,
           intermediate: i.intermediate ?? false,
+          option_id: i.option_id ?? undefined,
         };
       });
 
@@ -239,6 +243,7 @@ export const handlers = handler({
       media: stepMediaMap.get(String(s.id)) ?? [],
       after: stepAfterMap.get(s.id) ?? [],
       section_id: s.section_id,
+      option_id: s.option_id,
     }));
 
     // Build per-section index of which other sections it depends on (by index in sectionsData)
@@ -257,6 +262,7 @@ export const handlers = handler({
       key: s.key,
       title: s.title,
       after: sectionAfters[i],
+      option_id: s.option_id,
     }));
 
     // Resolve every `@recipe(slug)` directive referenced in any step body so
@@ -448,6 +454,7 @@ export const handlers = handler({
         tools: toolsRes.rows,
         steps: stepsData,
         sections: sectionsData,
+        choices,
         refs: refsRes.rows,
         recipeRefs,
         dishRefs,
@@ -523,6 +530,7 @@ export default page(function RecipeViewPage({
     tools,
     steps,
     sections,
+    choices,
     refs,
     recipeRefs,
     dishRefs,
@@ -759,8 +767,10 @@ export default page(function RecipeViewPage({
             body: s.body,
             after: s.after,
             section_id: s.section_id,
+            option_id: s.option_id,
           }))}
           sections={sections}
+          choices={choices}
           ingredients={ingredientsForTemplate}
           tools={tools.map((m) => ({
             id: m.tool_id,

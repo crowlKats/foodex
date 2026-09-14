@@ -4,6 +4,10 @@ export interface SectionInfo {
   title: string;
   /** Indices (within the same `sections` array) of sections this depends on. */
   after?: number[];
+  /** Only shown when this choice option is picked; see lib/recipe-choices.ts. */
+  option_id?: string | null;
+  /** Set on the picked member of an either/or fork: the fork's choice id. */
+  choice_id?: string;
 }
 
 export interface StepWithSection {

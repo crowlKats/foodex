@@ -182,6 +182,7 @@ export const handlers = handler({
         q("DELETE FROM recipe_tools WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_steps WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_step_sections WHERE recipe_id = $1", [recipeId]),
+        q("DELETE FROM recipe_choices WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_references WHERE recipe_id = $1", [recipeId]),
         q("DELETE FROM recipe_tags WHERE recipe_id = $1", [recipeId]),
       ]);

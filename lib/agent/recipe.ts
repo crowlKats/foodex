@@ -8,6 +8,13 @@
 // so the whole child-save path (deps, sections, media, tags) is reused verbatim.
 
 import { saveRecipeChildren } from "../recipe-save.ts";
+import {
+  alternativesOf,
+  altGroupById,
+  ingredientTarget,
+  loadRecipeChoices,
+  memberRowIds,
+} from "../recipe-choices-db.ts";
 import { uniqueSlug } from "../slug.ts";
 import { isoVersion } from "./version.ts";
 import type { QueryFn } from "../../db/mod.ts";
@@ -32,12 +39,25 @@ export interface AgentIngredientRow {
   ingredient_id?: string | null;
   /** Made during this recipe: no library link, never shopped. */
   intermediate?: boolean;
+  /** Only needed for one alternative: that step's id, or that section's
+   *  key. Omitted means the row applies whichever way the cook goes. */
+  for_step?: string | null;
+  for_section?: string | null;
+}
+/** One either/or fork: what the cook is choosing between. */
+export interface AgentAlternative {
+  /** The `alt` group key the fork's members carry. */
+  key: string;
+  description?: string | null;
 }
 export interface AgentSection {
   key: string;
   title: string;
   /** keys of sections that must finish first */
   after?: string[];
+  /** Sections sharing an `alt` key are either/or alternatives the cook
+   *  picks between; the first in order is the default. */
+  alt?: string | null;
 }
 export interface AgentStep {
   id: string;
@@ -47,6 +67,9 @@ export interface AgentStep {
   /** ids of steps that must finish first (same section only) */
   after?: string[];
   media?: string[];
+  /** Steps in one section sharing an `alt` key are either/or alternatives
+   *  the cook picks between; the first in order is the default. */
+  alt?: string | null;
 }
 export interface AgentTool {
   tool_id: string;
@@ -84,6 +107,8 @@ export interface AgentRecipe {
   dietary_tags?: string[];
   cuisines?: string[];
   ingredients: AgentIngredientRow[];
+  /** Descriptions of the either/or forks, keyed by `alt` group. */
+  alternatives?: AgentAlternative[];
   sections?: AgentSection[];
   steps: AgentStep[];
   tools?: AgentTool[];
@@ -103,52 +128,79 @@ export async function loadAgentRecipe(
   if (recipeRes.rows.length === 0) return null;
   const recipe = recipeRes.rows[0];
 
-  const [ing, secs, secDeps, steps, stepDeps, media, tools, refs, tags] =
-    await Promise.all([
-      q<RecipeIngredient>(
-        `SELECT ri.*, g.name as ingredient_name FROM recipe_ingredients ri
+  const [
+    ing,
+    secs,
+    secDeps,
+    steps,
+    stepDeps,
+    media,
+    tools,
+    refs,
+    tags,
+    choices,
+  ] = await Promise.all([
+    q<RecipeIngredient>(
+      `SELECT ri.*, g.name as ingredient_name FROM recipe_ingredients ri
          LEFT JOIN ingredients g ON g.id = ri.ingredient_id
          WHERE ri.recipe_id = $1 ORDER BY ri.sort_order, ri.id`,
-        [recipeId],
-      ),
-      q<RecipeStepSection>(
-        `SELECT * FROM recipe_step_sections WHERE recipe_id = $1 ORDER BY sort_order, id`,
-        [recipeId],
-      ),
-      q<{ section_id: string; depends_on: string }>(
-        `SELECT sd.section_id, sd.depends_on FROM recipe_section_deps sd
+      [recipeId],
+    ),
+    q<RecipeStepSection>(
+      `SELECT * FROM recipe_step_sections WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipeId],
+    ),
+    q<{ section_id: string; depends_on: string }>(
+      `SELECT sd.section_id, sd.depends_on FROM recipe_section_deps sd
          JOIN recipe_step_sections s ON s.id = sd.section_id WHERE s.recipe_id = $1`,
-        [recipeId],
-      ),
-      q<RecipeStep>(
-        `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
-        [recipeId],
-      ),
-      q<RecipeStepDep>(
-        `SELECT sd.step_id, sd.depends_on FROM recipe_step_deps sd
+      [recipeId],
+    ),
+    q<RecipeStep>(
+      `SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipeId],
+    ),
+    q<RecipeStepDep>(
+      `SELECT sd.step_id, sd.depends_on FROM recipe_step_deps sd
          JOIN recipe_steps rs ON rs.id = sd.step_id WHERE rs.recipe_id = $1`,
-        [recipeId],
-      ),
-      q<{ step_id: string; media_id: string; sort_order: number }>(
-        `SELECT rsm.step_id, rsm.media_id, rsm.sort_order FROM recipe_step_media rsm
+      [recipeId],
+    ),
+    q<{ step_id: string; media_id: string; sort_order: number }>(
+      `SELECT rsm.step_id, rsm.media_id, rsm.sort_order FROM recipe_step_media rsm
          JOIN recipe_steps rs ON rs.id = rsm.step_id WHERE rs.recipe_id = $1
          ORDER BY rsm.step_id, rsm.sort_order`,
-        [recipeId],
-      ),
-      q<RecipeTool>(
-        `SELECT rt.*, t.name as tool_name FROM recipe_tools rt
+      [recipeId],
+    ),
+    q<RecipeTool>(
+      `SELECT rt.*, t.name as tool_name FROM recipe_tools rt
          JOIN tools t ON t.id = rt.tool_id WHERE rt.recipe_id = $1
          ORDER BY rt.sort_order, rt.id`,
-        [recipeId],
-      ),
-      q<RecipeReference>(
-        `SELECT * FROM recipe_references WHERE recipe_id = $1 ORDER BY sort_order, id`,
-        [recipeId],
-      ),
-      q<RecipeTag>(`SELECT * FROM recipe_tags WHERE recipe_id = $1`, [
-        recipeId,
-      ]),
-    ]);
+      [recipeId],
+    ),
+    q<RecipeReference>(
+      `SELECT * FROM recipe_references WHERE recipe_id = $1 ORDER BY sort_order, id`,
+      [recipeId],
+    ),
+    q<RecipeTag>(`SELECT * FROM recipe_tags WHERE recipe_id = $1`, [
+      recipeId,
+    ]),
+    loadRecipeChoices(q, recipeId),
+  ]);
+
+  const groupById = altGroupById(choices);
+  const members = new Set([
+    ...memberRowIds(steps.rows),
+    ...memberRowIds(secs.rows),
+  ]);
+  const alt = (id: string, optionId: string | null) => ({
+    alt: optionId && members.has(id) ? groupById.get(optionId) ?? null : null,
+  });
+  const target = (optionId: string | null) => {
+    const t = ingredientTarget(optionId, steps.rows, secs.rows);
+    return {
+      for_step: t.step != null ? steps.rows[t.step].id : null,
+      for_section: t.section != null ? secs.rows[t.section].key : null,
+    };
+  };
 
   const sectionKeyById = new Map(secs.rows.map((s) => [s.id, s.key]));
   const sectionDepsBySection = new Map<string, string[]>();
@@ -214,11 +266,14 @@ export async function loadAgentRecipe(
       note: r.note ?? "",
       ingredient_id: r.ingredient_id,
       intermediate: r.intermediate ?? false,
+      ...target(r.option_id),
     })),
+    alternatives: alternativesOf(choices),
     sections: secs.rows.map((s) => ({
       key: s.key,
       title: s.title,
       after: sectionDepsBySection.get(s.id) ?? [],
+      ...alt(s.id, s.option_id),
     })),
     steps: steps.rows.map((s) => ({
       id: s.id,
@@ -227,6 +282,7 @@ export async function loadAgentRecipe(
       section: s.section_id ? sectionKeyById.get(s.section_id) ?? null : null,
       after: stepDepsByStep.get(s.id) ?? [],
       media: mediaByStep.get(s.id) ?? [],
+      ...alt(s.id, s.option_id),
     })),
     tools: tools.rows.map((t) => ({
       tool_id: t.tool_id,
@@ -247,8 +303,29 @@ export async function loadAgentRecipe(
 export function agentRecipeToFormData(r: AgentRecipe): FormData {
   const fd = new FormData();
 
+  const sections = r.sections ?? [];
+  const sectionKeyToIdx = new Map(sections.map((s, i) => [s.key, i]));
+  const steps = r.steps ?? [];
+  const stepIdToIdx = new Map(steps.map((s, i) => [s.id, i]));
+  (r.alternatives ?? []).forEach((a, i) => {
+    fd.set(`alts[${i}][key]`, a.key ?? "");
+    fd.set(`alts[${i}][description]`, a.description ?? "");
+  });
+
   const ingredients = r.ingredients ?? [];
   ingredients.forEach((ing, i) => {
+    const forStep = ing.for_step ? stepIdToIdx.get(ing.for_step) : undefined;
+    const forSection = ing.for_section
+      ? sectionKeyToIdx.get(ing.for_section)
+      : undefined;
+    fd.set(
+      `ingredients[${i}][for_step]`,
+      forStep != null ? String(forStep) : "",
+    );
+    fd.set(
+      `ingredients[${i}][for_section]`,
+      forSection != null ? String(forSection) : "",
+    );
     fd.set(`ingredients[${i}][name]`, ing.name ?? "");
     fd.set(`ingredients[${i}][key]`, ing.key ?? "");
     fd.set(`ingredients[${i}][amount]`, ing.amount ?? "");
@@ -263,22 +340,20 @@ export function agentRecipeToFormData(r: AgentRecipe): FormData {
     }
   });
 
-  const sections = r.sections ?? [];
-  const sectionKeyToIdx = new Map(sections.map((s, i) => [s.key, i]));
   sections.forEach((sec, i) => {
     fd.set(`sections[${i}][title]`, sec.title ?? "");
     fd.set(`sections[${i}][key]`, sec.key ?? "");
+    fd.set(`sections[${i}][alt]`, sec.alt ?? "");
     const after = (sec.after ?? [])
       .map((k) => sectionKeyToIdx.get(k))
       .filter((n): n is number => n != null);
     fd.set(`sections[${i}][after]`, after.join(","));
   });
 
-  const steps = r.steps ?? [];
-  const stepIdToIdx = new Map(steps.map((s, i) => [s.id, i]));
   steps.forEach((step, i) => {
     fd.set(`steps[${i}][title]`, step.title ?? "");
     fd.set(`steps[${i}][body]`, step.body ?? "");
+    fd.set(`steps[${i}][alt]`, step.alt ?? "");
     const secIdx = step.section != null
       ? sectionKeyToIdx.get(step.section)
       : undefined;
@@ -403,6 +478,7 @@ export async function updateRecipeFromData(
     q("DELETE FROM recipe_tools WHERE recipe_id = $1", [recipeId]),
     q("DELETE FROM recipe_steps WHERE recipe_id = $1", [recipeId]),
     q("DELETE FROM recipe_step_sections WHERE recipe_id = $1", [recipeId]),
+    q("DELETE FROM recipe_choices WHERE recipe_id = $1", [recipeId]),
     q("DELETE FROM recipe_references WHERE recipe_id = $1", [recipeId]),
     q("DELETE FROM recipe_tags WHERE recipe_id = $1", [recipeId]),
   ]);

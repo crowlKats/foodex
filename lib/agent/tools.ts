@@ -141,7 +141,9 @@ export const TOOLS: ToolDef[] = [
     name: "get_recipe",
     description:
       "Get one recipe by slug with all fields, ingredients, steps (with stable ids), " +
-      "sections, tools and references. Read this before proposing a modification to it.",
+      'sections, alternatives (steps/sections sharing an "alt" key are either/or; ingredients ' +
+      'may be "for_step"/"for_section"), tools and references. Read this before proposing a ' +
+      "modification to it.",
     input_schema: {
       type: "object",
       properties: { slug: { type: "string" } },

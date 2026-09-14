@@ -84,6 +84,13 @@ export default page(function RecipesDocs({ url }) {
             links to other steps or recipes.
           </li>
           <li class={docProse}>
+            An <strong>either / or</strong>{" "}
+            toggle wherever the recipe offers two ways to do a step or a section
+            ("Sear on the stove" or "Sear in the oven"). Pick one and the page
+            shows only that path: its steps, its ingredients, its shopping. The
+            pick travels with the link.
+          </li>
+          <li class={docProse}>
             <strong>Tools</strong>{" "}
             the recipe needs, with their settings ("Oven (180C)"). A tool your
             household doesn't own is flagged "not owned".
@@ -209,6 +216,10 @@ export default page(function RecipesDocs({ url }) {
             The final step ends with{" "}
             <strong>Done: I cooked this</strong>, which takes the ingredients
             out of your pantry.
+          </li>
+          <li class={docProse}>
+            An either / or fork shows its toggle on the step itself; cooking
+            mode walks only the way you picked.
           </li>
         </ul>
         <DocNote title="Advanced: parallel steps">

@@ -113,6 +113,7 @@ export async function importRecipeFromUrl(
         quantity_unit2: data.quantity_unit2 ?? null,
         quantity_servings: data.quantity_servings ?? null,
         ingredients: data.ingredients || [],
+        alternatives: data.alternatives || [],
         sections: data.sections || [],
         steps: data.steps || [],
         cover_image: null,
