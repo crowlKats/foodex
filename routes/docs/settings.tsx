@@ -26,7 +26,9 @@ export default page(function SettingsDocs({ url }) {
           page (click your name in the top bar) holds your{" "}
           <strong>display name</strong>, which is how your household sees you,
           and the sign-out button. Your avatar and email come from the account
-          you sign in with.
+          you sign in with. It is also where you create{" "}
+          <a href="/docs/mcp" class="link">API tokens</a>{" "}
+          for an AI assistant outside Foodex.
         </p>
       </DocSection>
 
