@@ -28,7 +28,7 @@
 │   ├── mod.ts                 # Connection pool, query/transaction helpers, orphaned media cleanup
 │   ├── types.ts               # TypeScript interfaces for all DB row types
 │   ├── migrate.ts             # Migration runner
-│   └── migrations/            # Sequential .sql files (001–080)
+│   └── migrations/            # Sequential .sql files (001–082)
 │
 ├── lib/                       # Shared utilities
 │   ├── auth.ts                # OAuth flows (GitHub/Google), session cookies
@@ -48,6 +48,8 @@
 │   ├── dictation.ts           # Client-side mic recording + WAV fallback + transcribe call (islands only)
 │   ├── transcribe.ts          # Server-side speech-to-text via a pinned audio model
 │   ├── agent/                 # Assistant: event log, staging, tools, turn loop
+│   ├── api-tokens.ts          # Personal bearer tokens (hashed) for the MCP endpoint
+│   ├── mcp.ts                 # MCP server (JSON-RPC over Streamable HTTP), pure half; routes/mcp.tsx wraps it
 │   ├── quantity.ts            # RecipeQuantity types, computeScaleRatio, formatQuantity
 │   ├── recipe-prompt.ts       # JSON schema + rules for AI recipe output
 │   ├── recipe-save.ts         # saveRecipeChildren(): bulk save ingredients/tools/steps/refs/tags

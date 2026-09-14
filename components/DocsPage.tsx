@@ -37,6 +37,7 @@ export const DOCS_GROUPS: { label: string; pages: DocsPageInfo[] }[] = [
     pages: [
       { href: "/docs/settings", label: "Settings" },
       { href: "/docs/templates", label: "Template syntax" },
+      { href: "/docs/mcp", label: "AI assistants (MCP)" },
     ],
   },
 ];
