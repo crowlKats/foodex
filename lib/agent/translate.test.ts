@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import type { FilePart } from "ai";
-import { foldConversation } from "./conversation.ts";
+import { foldConversation, photoSourceNote } from "./conversation.ts";
 import type { AgentEvent } from "./events.ts";
 import { resolveImages } from "./images.ts";
 import { toModelMessages } from "./translate.ts";
@@ -75,6 +75,7 @@ Deno.test("resolveImages: image_ref becomes a byte block", async () => {
 
   assertEquals(out[0].role, "user");
   assertEquals(out[0].content, [
+    { type: "text", text: photoSourceNote(1) },
     { type: "text", text: "Attached image (media id: m1):" },
     { type: "image", data: JPEG_BYTES, media_type: "image/jpeg" },
     { type: "text", text: "Add the recipe from this photo to the library." },
