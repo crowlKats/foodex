@@ -13,6 +13,7 @@
 
 import type { QueryFn } from "../db/mod.ts";
 import { base64url, hashToken } from "./api-tokens.ts";
+import { CLIENT_ASSERTION_ALGS } from "./oauth-client-auth.ts";
 
 /** How long the user has between approving and the client redeeming. */
 const CODE_TTL_SECONDS = 5 * 60;
@@ -54,7 +55,8 @@ export function authorizationServerMetadata(origin: string) {
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
     code_challenge_methods_supported: ["S256"],
-    token_endpoint_auth_methods_supported: ["none"],
+    token_endpoint_auth_methods_supported: ["none", "private_key_jwt"],
+    token_endpoint_auth_signing_alg_values_supported: CLIENT_ASSERTION_ALGS,
     client_id_metadata_document_supported: true,
     authorization_response_iss_parameter_supported: true,
     service_documentation: `${origin}/docs/mcp`,
@@ -68,10 +70,19 @@ export function isMcpResource(value: string, origin: string): boolean {
 
 // ── client metadata documents ──────────────────────────────────────
 
+/** How a client may authenticate at the token endpoint. */
+export type ClientAuthMethod = "none" | "private_key_jwt";
+
 export interface ClientMetadata {
   client_id: string;
   client_name: string;
   redirect_uris: string[];
+  /** The methods both sides support, never empty. */
+  auth_methods: ClientAuthMethod[];
+  /** Where its signing keys live, for private_key_jwt. */
+  jwks_uri?: string;
+  /** Or the keys themselves, inline in the metadata. */
+  jwks?: JsonWebKey[];
 }
 
 /**
@@ -117,10 +128,29 @@ export function parseClientMetadata(
   ) {
     return "metadata lists no redirect_uris";
   }
-  // A CIMD client cannot hold a shared secret: the document is public.
-  const auth = d.token_endpoint_auth_method ?? "none";
-  if (auth !== "none") {
-    return `token_endpoint_auth_method ${String(auth)} is not supported`;
+  // A client may list every method it can use (ChatGPT lists both none and
+  // private_key_jwt) or name just one. Shared secrets can't work, since
+  // the document is public, so only these two are accepted.
+  const listed = Array.isArray(d.token_endpoint_auth_methods_supported)
+    ? d.token_endpoint_auth_methods_supported
+    : [d.token_endpoint_auth_method ?? "none"];
+  let jwksUri: string | undefined;
+  let jwks: JsonWebKey[] | undefined;
+  if (typeof d.jwks_uri === "string" && parseHttpsUrl(d.jwks_uri)) {
+    jwksUri = d.jwks_uri;
+  } else if (
+    typeof d.jwks === "object" && d.jwks !== null &&
+    Array.isArray((d.jwks as { keys?: unknown }).keys)
+  ) {
+    jwks = (d.jwks as { keys: JsonWebKey[] }).keys;
+  }
+  const authMethods = listed.filter((m): m is ClientAuthMethod =>
+    m === "none" || (m === "private_key_jwt" && !!(jwksUri || jwks))
+  );
+  if (authMethods.length === 0) {
+    return `token endpoint auth ${
+      listed.map(String).join(", ")
+    } is not supported`;
   }
   const host = new URL(clientId).hostname;
   const name = typeof d.client_name === "string" && d.client_name.trim()
@@ -130,7 +160,20 @@ export function parseClientMetadata(
     client_id: clientId,
     client_name: name,
     redirect_uris: d.redirect_uris as string[],
+    auth_methods: [...new Set(authMethods)],
+    ...(authMethods.includes("private_key_jwt")
+      ? { jwks_uri: jwksUri, jwks }
+      : {}),
   };
+}
+
+function parseHttpsUrl(raw: string): URL | null {
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -278,41 +321,7 @@ export async function fetchClientMetadata(
 
   const url = parseClientId(clientId);
   if (!url) throw new Error("client_id is not a valid metadata URL");
-  await assertPublicHost(url.hostname);
-
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: { Accept: "application/json" },
-      redirect: "error",
-      signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
-    });
-  } catch {
-    throw new Error("could not fetch the client's metadata");
-  }
-  if (!res.ok || !res.body) {
-    await res.body?.cancel();
-    throw new Error(`client metadata returned HTTP ${res.status}`);
-  }
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  const reader = res.body.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.length;
-    if (size > MAX_METADATA_BYTES) {
-      await reader.cancel();
-      throw new Error("client metadata is too large");
-    }
-    chunks.push(value);
-  }
-  let doc: unknown;
-  try {
-    doc = JSON.parse(new TextDecoder().decode(concat(chunks, size)));
-  } catch {
-    throw new Error("client metadata is not JSON");
-  }
+  const doc = await fetchPublicJson(url, MAX_METADATA_BYTES, "client metadata");
   const metadata = parseClientMetadata(doc, clientId);
   if (typeof metadata === "string") throw new Error(metadata);
 
@@ -324,6 +333,87 @@ export async function fetchClientMetadata(
     expires: Date.now() + METADATA_CACHE_MS,
   });
   return metadata;
+}
+
+/** JWKS documents hold a few keys; leave room for RSA ones and rotation. */
+const MAX_JWKS_BYTES = 32 * 1024;
+
+const jwksCache = new Map<string, { keys: JsonWebKey[]; expires: number }>();
+
+/**
+ * A private_key_jwt client's public keys: inline in its metadata, or from
+ * its jwks_uri, cached like metadata. `refresh` skips the cache, for when
+ * an assertion names a key the cached set doesn't have.
+ */
+export async function fetchClientKeys(
+  client: ClientMetadata,
+  refresh: boolean,
+): Promise<JsonWebKey[]> {
+  if (client.jwks) return client.jwks;
+  if (!client.jwks_uri) return [];
+  const cached = jwksCache.get(client.jwks_uri);
+  if (!refresh && cached && cached.expires > Date.now()) return cached.keys;
+
+  const doc = await fetchPublicJson(
+    new URL(client.jwks_uri),
+    MAX_JWKS_BYTES,
+    "client JWKS",
+  ) as { keys?: unknown };
+  if (!Array.isArray(doc?.keys)) throw new Error("client JWKS has no keys");
+  const keys = doc.keys as JsonWebKey[];
+  if (jwksCache.size >= METADATA_CACHE_MAX) {
+    jwksCache.delete(jwksCache.keys().next().value!);
+  }
+  jwksCache.set(client.jwks_uri, {
+    keys,
+    expires: Date.now() + METADATA_CACHE_MS,
+  });
+  return keys;
+}
+
+/**
+ * GET a JSON document from a host on the public internet, for URLs a
+ * client picked: its metadata and its signing keys. Throws with a reason
+ * that names `what`.
+ */
+export async function fetchPublicJson(
+  url: URL,
+  maxBytes: number,
+  what: string,
+): Promise<unknown> {
+  await assertPublicHost(url.hostname);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
+    });
+  } catch {
+    throw new Error(`could not fetch the ${what}`);
+  }
+  if (!res.ok || !res.body) {
+    await res.body?.cancel();
+    throw new Error(`${what} returned HTTP ${res.status}`);
+  }
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  const reader = res.body.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > maxBytes) {
+      await reader.cancel();
+      throw new Error(`${what} is too large`);
+    }
+    chunks.push(value);
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(concat(chunks, size)));
+  } catch {
+    throw new Error(`${what} is not JSON`);
+  }
 }
 
 function concat(chunks: Uint8Array[], size: number): Uint8Array {
@@ -443,8 +533,8 @@ export async function createAuthorizationCode(
   const code = base64url(crypto.getRandomValues(new Uint8Array(32)));
   await q(
     `INSERT INTO oauth_codes (code_hash, user_id, client_id, client_name,
-       redirect_uri, code_challenge, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6, now() + make_interval(secs => $7))`,
+       redirect_uri, code_challenge, client_auth_required, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, now() + make_interval(secs => $8))`,
     [
       await hashToken(code),
       userId,
@@ -452,6 +542,8 @@ export async function createAuthorizationCode(
       request.client.client_name,
       request.redirectUri,
       request.codeChallenge,
+      // A client that can't do the public flow must prove who it is.
+      !request.client.auth_methods.includes("none"),
       CODE_TTL_SECONDS,
     ],
   );
@@ -465,8 +557,9 @@ export interface RedeemedCode {
 
 /**
  * Redeem a code. It is deleted whatever the outcome, so a code that fails
- * a check once cannot be retried. Null unless the code is live and the
- * client, redirect URI and PKCE verifier all match what was approved.
+ * a check once cannot be retried. Null unless the code is live, the
+ * client, redirect URI and PKCE verifier all match what was approved, and
+ * the client authenticated if its metadata requires that.
  */
 export async function redeemAuthorizationCode(
   q: QueryFn,
@@ -474,6 +567,7 @@ export async function redeemAuthorizationCode(
   clientId: string,
   redirectUri: string,
   codeVerifier: string,
+  clientAuthenticated: boolean,
 ): Promise<RedeemedCode | null> {
   const res = await q<{
     user_id: string;
@@ -481,11 +575,12 @@ export async function redeemAuthorizationCode(
     client_name: string;
     redirect_uri: string;
     code_challenge: string;
+    client_auth_required: boolean;
     live: boolean;
   }>(
     `DELETE FROM oauth_codes WHERE code_hash = $1
      RETURNING user_id, client_id, client_name, redirect_uri, code_challenge,
-       expires_at > now() AS live`,
+       client_auth_required, expires_at > now() AS live`,
     [await hashToken(code)],
   );
   const row = res.rows[0];
@@ -493,6 +588,7 @@ export async function redeemAuthorizationCode(
   if (row.client_id !== clientId || row.redirect_uri !== redirectUri) {
     return null;
   }
+  if (row.client_auth_required && !clientAuthenticated) return null;
   if (!(await verifyPkce(codeVerifier, row.code_challenge))) return null;
   return { userId: row.user_id, clientName: row.client_name };
 }

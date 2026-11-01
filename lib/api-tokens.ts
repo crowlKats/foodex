@@ -105,25 +105,32 @@ async function oauthSecrets(): Promise<{
   };
 }
 
-/** Mint the tokens for an approved OAuth grant, named after the client. */
+/**
+ * Mint the tokens for an approved OAuth grant, named after the client.
+ * `clientAuth` is how the client authenticated; a private_key_jwt grant
+ * only refreshes with another signed assertion.
+ */
 export async function createOAuthGrant(
   q: QueryFn,
   userId: string,
   clientId: string,
   name: string,
+  clientAuth: "none" | "private_key_jwt",
 ): Promise<OAuthTokens> {
   const { tokens, params } = await oauthSecrets();
   await q(
     `INSERT INTO api_tokens (user_id, name, token_hash, token_prefix,
-       refresh_token_hash, client_id, expires_at, refresh_expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6,
-       now() + make_interval(secs => $7),
-       now() + make_interval(days => $8))`,
+       refresh_token_hash, client_id, client_auth, expires_at,
+       refresh_expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7,
+       now() + make_interval(secs => $8),
+       now() + make_interval(days => $9))`,
     [
       userId,
       name,
       ...params,
       clientId,
+      clientAuth,
       ACCESS_TOKEN_TTL_SECONDS,
       REFRESH_TOKEN_TTL_DAYS,
     ],
@@ -134,12 +141,14 @@ export async function createOAuthGrant(
 /**
  * Trade a refresh token for a new pair. Both rotate, so a stolen refresh
  * token stops working once either party uses it. Null when the token is
- * unknown, expired, revoked or belongs to another client.
+ * unknown, expired, revoked or belongs to another client, or when the
+ * grant was made with a signed assertion and this request has none.
  */
 export async function refreshOAuthGrant(
   q: QueryFn,
   clientId: string,
   refreshToken: string,
+  clientAuthenticated: boolean,
 ): Promise<OAuthTokens | null> {
   if (!refreshToken.startsWith(REFRESH_PREFIX)) return null;
   const { tokens, params } = await oauthSecrets();
@@ -150,6 +159,7 @@ export async function refreshOAuthGrant(
          refresh_expires_at = now() + make_interval(days => $7)
      WHERE refresh_token_hash = $4 AND client_id = $5
        AND refresh_expires_at > now()
+       AND (client_auth IS DISTINCT FROM 'private_key_jwt' OR $8)
      RETURNING id`,
     [
       ...params,
@@ -157,6 +167,7 @@ export async function refreshOAuthGrant(
       clientId,
       ACCESS_TOKEN_TTL_SECONDS,
       REFRESH_TOKEN_TTL_DAYS,
+      clientAuthenticated,
     ],
   );
   return res.rows.length > 0 ? tokens : null;
