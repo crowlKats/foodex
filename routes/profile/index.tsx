@@ -217,7 +217,8 @@ export default page(
           <p class="text-xs text-stone-500 mb-3">
             Let an AI assistant such as Claude Code use Foodex as you, over MCP.
             A token can read your household's recipes, pantry, plan and shopping
-            list, and add to the plan, the list and the pantry.{" "}
+            list, and add to the plan, the list and the pantry. Assistants that
+            sign in through OAuth show up here too.{" "}
             <a href="/docs/mcp" class="link">How to connect</a>
           </p>
 
@@ -244,9 +245,20 @@ export default page(
                 <li key={t.id} class="py-2 flex items-center gap-3">
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium truncate">{t.name}</div>
-                    <div class="text-xs text-stone-500 font-mono">
-                      {t.prefix}…
-                    </div>
+                    {t.client_id
+                      ? (
+                        <div class="text-xs text-stone-500">
+                          Signed in through OAuth from{" "}
+                          <span class="font-mono">
+                            {new URL(t.client_id).host}
+                          </span>
+                        </div>
+                      )
+                      : (
+                        <div class="text-xs text-stone-500 font-mono">
+                          {t.prefix}…
+                        </div>
+                      )}
                     <div class="text-xs text-stone-500">
                       Created {formatDay(t.created_at)}
                       {t.last_used_at
