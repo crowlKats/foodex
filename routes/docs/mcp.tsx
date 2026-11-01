@@ -44,22 +44,39 @@ export default page(function McpDocs({ url }) {
       </DocSection>
 
       <DocSection id="connect" title="Connecting">
-        <DocSub title="1. Create a token">
+        <DocSub title="Sign in (recommended)">
+          <p class={`${docProse} mb-3`}>
+            The endpoint is{" "}
+            <code class="text-sm">{endpoint}</code>. Add it to the assistant and
+            it sends you to Foodex to approve it, the way "Sign in with" buttons
+            work. For Claude Code:
+          </p>
+          <code class={codeClass}>
+            {`claude mcp add --transport http foodex ${endpoint}`}
+          </code>
+          <p class={`${docProse} mb-3`}>
+            Then run <code class="text-sm">/mcp</code>{" "}
+            in Claude Code, pick foodex and authenticate. Foodex shows who is
+            asking and what it will be able to do; press <strong>Allow</strong>
+            {" "}
+            and you are done. The assistant stays signed in until you disconnect
+            it.
+          </p>
+          <p class={`${docMuted} mb-0`}>
+            Foodex identifies assistants by their client metadata document
+            rather than by registering them, so this works with clients that
+            support client ID metadata documents (Claude Code does). Others can
+            use a token instead.
+          </p>
+        </DocSub>
+        <DocSub title="Or use a token">
           <p class={`${docProse} mb-3`}>
             On your <a href="/profile" class="link">Profile</a> page, under{" "}
             <strong>API tokens</strong>, name the token after what will use it
             and press{" "}
             <strong>Create token</strong>. Copy it right away: it is shown once
             and never again. Treat it like a password; anyone holding it acts as
-            you in your household.
-          </p>
-        </DocSub>
-        <DocSub title="2. Point the assistant at Foodex">
-          <p class={`${docProse} mb-3`}>
-            The endpoint is{" "}
-            <code class="text-sm">{endpoint}</code>. Any MCP client that
-            supports remote servers with a custom header can use it. For Claude
-            Code:
+            you in your household. Then pass it as a header:
           </p>
           <code class={codeClass}>
             {`claude mcp add --transport http foodex ${endpoint} \\\n  --header "Authorization: Bearer YOUR_TOKEN"`}
@@ -82,19 +99,14 @@ export default page(function McpDocs({ url }) {
               2,
             )}
           </code>
-          <p class={`${docMuted} mb-0`}>
-            Clients that only sign in through OAuth cannot use a token; the
-            connection needs a client that lets you set a header.
-          </p>
         </DocSub>
-        <DocSub title="3. Revoke when done">
+        <DocSub title="Disconnecting">
           <p class={`${docProse} mb-0`}>
-            Each token on your profile shows when it was created and last used.
-            {" "}
-            <strong>Revoke</strong>{" "}
+            Every connection, signed in or token, is listed on your profile with
+            when it was created and last used. <strong>Revoke</strong>{" "}
             cuts it off at once; the assistant simply stops being able to reach
-            Foodex. Leaving your household does the same for every token you
-            hold, since a token only ever acts within your current household.
+            Foodex. Leaving your household does the same for every connection
+            you hold, since each only ever acts within your current household.
           </p>
         </DocSub>
       </DocSection>

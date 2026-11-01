@@ -5,21 +5,30 @@ import {
   touchApiToken,
 } from "../lib/api-tokens.ts";
 import { handleMcpBody, PARSE_ERROR } from "../lib/mcp.ts";
+import { resourceMetadataUrl } from "../lib/oauth.ts";
+import { getBaseUrl } from "../lib/auth.ts";
 import { executeTool } from "../lib/agent/tools.ts";
 import { rateLimit } from "../lib/rate-limit.ts";
 
 // The MCP endpoint. Stateless Streamable HTTP: every call is one POST with
-// a bearer token from the profile page; there is no session to keep and no
+// a bearer token, either a personal one from the profile page or one issued
+// through OAuth (routes/oauth); there is no session to keep and no
 // server-initiated stream, so GET and DELETE have nothing to do.
 
-const UNAUTHORIZED_HEADERS = {
-  "WWW-Authenticate": 'Bearer realm="foodex", error="invalid_token"',
-};
-
-function unauthorized(message: string): Response {
+/**
+ * A 401 points at the protected resource metadata, which is how an OAuth
+ * client finds out where to sign the user in (RFC 9728). A request that
+ * sent no token gets no error code (RFC 6750 section 3.1).
+ */
+function unauthorized(req: Request, message: string, sentToken: boolean) {
+  const params = [
+    'realm="foodex"',
+    `resource_metadata="${resourceMetadataUrl(getBaseUrl(req))}"`,
+  ];
+  if (sentToken) params.push('error="invalid_token"');
   return Response.json({ error: message }, {
     status: 401,
-    headers: UNAUTHORIZED_HEADERS,
+    headers: { "WWW-Authenticate": `Bearer ${params.join(", ")}` },
   });
 }
 
@@ -44,9 +53,9 @@ export const handlers = handler({
     }
 
     const secret = bearerToken(req);
-    if (!secret) return unauthorized("Missing bearer token");
+    if (!secret) return unauthorized(req, "Missing bearer token", false);
     const principal = await authenticateApiToken(q, secret);
-    if (!principal) return unauthorized("Invalid token");
+    if (!principal) return unauthorized(req, "Invalid token", true);
     if (!principal.householdId) {
       return Response.json(
         { error: "Join or create a household to use Foodex over MCP." },

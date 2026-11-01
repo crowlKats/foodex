@@ -233,7 +233,8 @@ export function householdRequirementResponse(url: URL): Response | null {
   });
 }
 
-function getBaseUrl(req: Request): string {
+/** This server's origin as clients see it, https behind a TLS proxy. */
+export function getBaseUrl(req: Request): string {
   const url = new URL(req.url);
   return `${ALWAYS_HTTPS ? "https:" : url.protocol}//${url.host}`;
 }
