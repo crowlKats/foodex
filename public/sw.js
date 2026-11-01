@@ -1,11 +1,10 @@
-const CACHE_NAME = "foodex-v1";
+const CACHE_NAME = "foodex-v2";
 
 const STATIC_ASSETS = [
   "/favicon.ico",
   "/icon.svg",
   "/icon-512.png",
   "/apple-touch-icon.png",
-  "/logo.svg",
   "/manifest.json",
 ];
 
