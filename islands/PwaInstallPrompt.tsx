@@ -1,12 +1,18 @@
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
-import { IconDots } from "@tabler/icons-preact";
 import { IconX } from "@tabler/icons-preact";
 import { Button } from "../components/Button.tsx";
+import { createT } from "../components/Translation.tsx";
+import { t as shared } from "../locales/shared.ts";
+import en from "./PwaInstallPrompt.en.mfr";
+import it from "./PwaInstallPrompt.it.mfr";
+
+const t = createT({ en, it });
 
 const DISMISSED_KEY = "pwa-install-dismissed";
 
 export default function PwaInstallPrompt() {
+  const sharedTrans = shared.use();
   const show = useSignal(false);
 
   useEffect(() => {
@@ -36,25 +42,13 @@ export default function PwaInstallPrompt() {
         type="button"
         variant="ghost"
         icon={IconX}
-        title="Dismiss"
+        title={sharedTrans("common.dismiss")}
         class="absolute top-2 right-2"
         onClick={dismiss}
       />
-      <p class="font-bold mb-1">Install Foodex</p>
+      <p class="font-bold mb-1">{t("pwa.install")}</p>
       <p class="text-sm text-stone-600 dark:text-stone-400">
-        Tap <IconDots class="size-4 inline -mt-0.5" /> in your browser, then
-        {" "}
-        <span class="font-semibold text-stone-900 dark:text-stone-200">
-          Share
-        </span>
-        {" → "}
-        <span class="font-semibold text-stone-900 dark:text-stone-200">
-          View More
-        </span>
-        {" → "}
-        <span class="font-semibold text-stone-900 dark:text-stone-200">
-          Add to Home Screen
-        </span>.
+        {t("pwa.installBody")}
       </p>
     </div>
   );

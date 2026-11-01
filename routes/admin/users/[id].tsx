@@ -6,6 +6,13 @@ import { SectionHeader } from "../../../components/SectionHeader.tsx";
 import { BackLink } from "../../../components/BackLink.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { logAudit } from "../../../lib/audit.ts";
+import { createT } from "../../../components/Translation.tsx";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import { t as shared } from "../../../locales/shared.ts";
+import en from "./[id].en.mfr";
+import it from "./[id].it.mfr";
+
+const t = createT({ en, it });
 
 interface UserDetail {
   id: string;
@@ -14,6 +21,7 @@ interface UserDetail {
   avatar_url: string | null;
   unit_system: string;
   timezone: string;
+  language: string;
   created_at: Date;
   github_id: string | null;
   google_id: string | null;
@@ -26,7 +34,7 @@ export const handlers = handler({
     const q = ctx.state.db.query;
 
     const userRes = await q<UserDetail>(
-      `SELECT id, name, email, avatar_url, unit_system, timezone, created_at,
+      `SELECT id, name, email, avatar_url, unit_system, timezone, language, created_at,
               github_id, google_id, authentik_id
        FROM users WHERE id = $1`,
       [id],
@@ -60,7 +68,10 @@ export const handlers = handler({
         ),
       ]);
 
-    ctx.state.pageTitle = `Admin: ${user.name ?? user.email ?? "User"}`;
+    const msg = pickBundle(ctx.state.locale, { en, it });
+    ctx.state.pageTitle = msg.get("admin.namedTitle").format({
+      name: user.name ?? user.email ?? msg.get("admin.noNameUser").format(),
+    });
     return {
       data: {
         user,
@@ -163,18 +174,20 @@ export default page(function AdminUserDetailPage(
     url,
   },
 ) {
+  const trans = t.use();
+  const sharedTrans = shared.use();
   return (
     <div>
-      <PageHeader title={user.name ?? "(no name)"} noSearch />
+      <PageHeader title={user.name ?? sharedTrans("common.noName")} noSearch />
       <AdminNav currentPath={url.pathname} />
-      <BackLink href="/admin/users" label="All users" />
+      <BackLink href="/admin/users" label={trans("admin.allUsers")} />
 
       {error && <div class="alert-error my-4">{error}</div>}
 
       <div class="grid gap-6 md:grid-cols-2 mt-4">
         <div class="space-y-6">
           <div class="card">
-            <SectionHeader title="Account" />
+            <SectionHeader title={trans("admin.account")} />
             <div class="flex items-center gap-3 mt-3 mb-4">
               {user.avatar_url && (
                 <img
@@ -184,50 +197,61 @@ export default page(function AdminUserDetailPage(
                 />
               )}
               <div>
-                <div class="font-medium">{user.name ?? "(no name)"}</div>
+                <div class="font-medium">
+                  {user.name ?? shared("common.noName")}
+                </div>
                 <div class="text-sm text-stone-500">
-                  {user.email ?? "no email"}
+                  {user.email ?? shared("common.noEmail")}
                 </div>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
-              <Field label="User ID" value={user.id} />
-              <Field label="Joined" value={formatDate(user.created_at)} />
-              <Field label="Unit system" value={user.unit_system} />
-              <Field label="Timezone" value={user.timezone} />
+              <Field label={trans("admin.userId")} value={user.id} />
               <Field
-                label="Providers"
+                label={trans("admin.created")}
+                value={formatDate(user.created_at)}
+              />
+              <Field
+                label={trans("admin.unitSystem")}
+                value={user.unit_system}
+              />
+              <Field label={trans("admin.timezone")} value={user.timezone} />
+              <Field label={trans("admin.language")} value={user.language} />
+              <Field
+                label={trans("admin.providers")}
                 value={[
                   user.authentik_id && "Authentik",
                   user.github_id && "GitHub",
                   user.google_id && "Google",
-                ].filter(Boolean).join(", ") || "Email only"}
+                ].filter(Boolean).join(", ") || trans("admin.emailOnly")}
               />
               <Field
-                label="Household"
+                label={sharedTrans("profile.household")}
                 value={membership
                   ? `${membership.household} (${membership.role})`
-                  : "none"}
+                  : trans("admin.none")}
               />
             </div>
           </div>
 
           <div class="card">
-            <SectionHeader title="Activity" />
+            <SectionHeader title={trans("admin.activity")} />
             <div class="grid grid-cols-3 gap-3 mt-3 text-center">
               <div>
                 <div class="text-xl font-bold">{stats.favorites}</div>
-                <div class="text-xs text-stone-500">favorites</div>
+                <div class="text-xs text-stone-500">{t("admin.favorites")}</div>
               </div>
               <div>
                 <div class="text-xl font-bold">{stats.agentSessions}</div>
-                <div class="text-xs text-stone-500">assistant chats</div>
+                <div class="text-xs text-stone-500">
+                  {t("admin.agentSessions")}
+                </div>
               </div>
               <div>
                 <div class="text-xl font-bold">
                   {stats.aiTokens.toLocaleString("en-US")}
                 </div>
-                <div class="text-xs text-stone-500">AI tokens</div>
+                <div class="text-xs text-stone-500">{t("admin.aiTokens")}</div>
               </div>
             </div>
           </div>
@@ -296,7 +320,7 @@ export default page(function AdminUserDetailPage(
           )}
 
           <div class="card border-red-300 dark:border-red-900">
-            <SectionHeader title="Danger zone" />
+            <SectionHeader title={trans("admin.dangerZone")} />
             <p class="text-sm text-stone-500 mt-3">
               Deleting removes the account with its sessions, favorites, and
               assistant chats. Households and their recipes stay, even ones this

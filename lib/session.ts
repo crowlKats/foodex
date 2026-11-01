@@ -11,6 +11,7 @@ import { getSessionIdFromRequest } from "./auth.ts";
 import { countOutstandingLines } from "./shopping-list.ts";
 import type { User } from "../utils.ts";
 import type { UnitSystem } from "./unit-display.ts";
+import { DEFAULT_LOCALE, negotiateLocale } from "./i18n/locale.ts";
 
 export interface SessionState {
   user: User | null;
@@ -18,6 +19,8 @@ export interface SessionState {
   shoppingListCount: number;
   householdId: string | null;
   isAdmin: boolean;
+  /** Resolved UI locale for this request (user setting, else Accept-Language, else en). */
+  locale: string;
 }
 
 export function emptySession(): SessionState {
@@ -27,6 +30,7 @@ export function emptySession(): SessionState {
     shoppingListCount: 0,
     householdId: null,
     isAdmin: false,
+    locale: DEFAULT_LOCALE,
   };
 }
 
@@ -36,6 +40,7 @@ interface UserRow {
   email: string | null;
   avatar_url: string | null;
   unit_system: string | null;
+  language: string | null;
   household_id: string | null;
 }
 
@@ -46,17 +51,20 @@ function toUser(row: UserRow): User {
     email: row.email,
     avatar_url: row.avatar_url,
     unit_system: (row.unit_system ?? "metric") as UnitSystem,
+    language: row.language ?? DEFAULT_LOCALE,
   };
 }
 
 export async function loadSessionState(req: Request): Promise<SessionState> {
   const state = emptySession();
+  const accept = req.headers.get("accept-language");
+  state.locale = negotiateLocale(null, accept);
   const sessionId = getSessionIdFromRequest(req);
   if (!sessionId) return state;
 
   // Single query: user + household.
   const result = await query<UserRow & { sudo_user_id: string | null }>(
-    `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system,
+    `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system, u.language,
             s.sudo_user_id, h.id as household_id
      FROM sessions s
      JOIN users u ON u.id = s.user_id
@@ -79,7 +87,7 @@ export async function loadSessionState(req: Request): Promise<SessionState> {
   // kills any impersonation that session had going.
   if (state.isAdmin && row.sudo_user_id && row.sudo_user_id !== row.id) {
     const targetRes = await query<UserRow>(
-      `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system,
+      `SELECT u.id, u.name, u.email, u.avatar_url, u.unit_system, u.language,
               h.id as household_id
        FROM users u
        LEFT JOIN household_members hm ON hm.user_id = u.id
@@ -95,6 +103,7 @@ export async function loadSessionState(req: Request): Promise<SessionState> {
       state.householdId = target.household_id;
     }
   }
+  state.locale = negotiateLocale(state.user.language, accept);
   // The list is a projection now, so the badge is derived rather than a row
   // count. Kept to one query; this runs on every request.
   if (state.householdId) {

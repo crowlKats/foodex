@@ -1,0 +1,34 @@
+@locale en
+---
+
+oauth.title = Connect an app
+
+oauth.yourHousehold = your household
+
+oauth.errorHeading = Can't connect this app
+
+oauth.error.noClientMetadata = The app did not identify itself with a client metadata URL, which Foodex requires.
+
+oauth.error.unverified = Foodex could not verify the app: {$detail}.
+
+oauth.error.unregisteredRedirect = The app asked to be sent back to an address it has not registered.
+
+oauth.nothingShared = Nothing was shared with it. You can close this page.
+
+oauth.heading = Connect {$client}?
+
+oauth.wantsAccess = {#bold}{$client}{/bold} wants to use Foodex as you, {$user}, in {#bold}{$household}{/bold}.
+
+oauth.identifiedBy = Identified by {#code}{$clientHost}{/code}
+
+oauth.identifiedByReturning = Identified by {#code}{$clientHost}{/code}, returning you to {#code}{$redirectHost}{/code}
+
+oauth.canDo = It will be able to:
+
+oauth.canRead = read your household's recipes, pantry, plan and list
+
+oauth.canWrite = add meals to the plan and items to the list and pantry
+
+oauth.limits = It can't create or change recipes. Disconnect it any time from your {#link}Profile{/link}.
+
+oauth.allow = Allow

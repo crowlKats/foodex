@@ -1,0 +1,16 @@
+@locale en
+---
+
+admin.pageAudit = Admin: Audit log
+
+admin.searchAudit = Search actions, targets, actors, details...
+
+admin.noAudit = No edit operations recorded yet
+
+admin.noAuditBody = Creating, editing, or deleting recipes, ingredients, stores, tools, collections, and households lands here as it happens, as do assistant applies and admin actions.
+
+admin.noAuditMatch = No entries match these filters
+
+admin.noAuditMatchBody = Try a shorter search, a wider date range, or clear all filters.
+
+admin.clearFilters = Clear all filters

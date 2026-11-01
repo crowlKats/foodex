@@ -10,6 +10,9 @@ import MediaUpload from "../../../islands/MediaUpload.tsx";
 import RecipePicker from "../../../islands/RecipePicker.tsx";
 import ConfirmButton from "../../../islands/ConfirmButton.tsx";
 import { logAudit } from "../../../lib/audit.ts";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import en from "./edit.en.mfr";
+import it from "./edit.it.mfr";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -56,7 +59,9 @@ export const handlers = handler({
       [ctx.state.householdId],
     );
 
-    ctx.state.pageTitle = `Edit ${collRes.rows[0].name}`;
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "collections.editTitle",
+    ).format({ name: collRes.rows[0].name });
     return {
       data: {
         collection: collRes.rows[0],

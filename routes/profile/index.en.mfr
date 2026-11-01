@@ -1,0 +1,22 @@
+@locale en
+---
+
+profile.title = Profile
+
+profile.displayName = Display Name
+
+profile.displayNameHelp = Shown to other members of your household.
+
+profile.preferences = Preferences
+
+profile.unitSystem = Unit system
+
+profile.metric = Metric (g, ml, cm)
+
+profile.imperial = Imperial (oz, fl oz, inch)
+
+profile.language = Language
+
+profile.languageHelp = The language used for buttons, labels, and the rest of the Foodex chrome. Recipes stay in English.
+
+profile.signOut = Sign out

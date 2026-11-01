@@ -4,6 +4,13 @@ import { Input } from "../components/Input.tsx";
 import { FormField } from "../components/FormField.tsx";
 import { sanitizeRedirect } from "../lib/auth.ts";
 import WelcomeTour from "../islands/WelcomeTour.tsx";
+import { createT } from "../components/Translation.tsx";
+import { pickBundle } from "../lib/i18n/locale.ts";
+import { t as shared } from "../locales/shared.ts";
+import en from "./welcome.en.mfr";
+import it from "./welcome.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
@@ -21,7 +28,9 @@ export const handlers = handler({
         headers: { Location: redirect ?? "/" },
       });
     }
-    ctx.state.pageTitle = "Welcome";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "welcome.title",
+    ).format();
     // The tour needs a name to exist first; without one, fall back to the form.
     return { data: { redirect, tour: tour && ctx.state.user.name != null } };
   },
@@ -65,17 +74,18 @@ export default page(function WelcomePage({ data }) {
   if (data.tour) {
     return <WelcomeTour target={data.redirect ?? "/"} />;
   }
+  const trans = t.use();
   return (
     <div class="max-w-md mx-auto mt-12">
-      <h1 class="text-2xl font-bold mb-2">Welcome to Foodex</h1>
+      <h1 class="text-2xl font-bold mb-2">{t("welcome.heading")}</h1>
       <p class="text-stone-600 dark:text-stone-400 mb-6">
-        One quick thing before you get cooking: what should we call you?
+        {t("welcome.blurb")}
       </p>
       <form method="POST" class="card space-y-4">
         {data.redirect && (
           <input type="hidden" name="redirect" value={data.redirect} />
         )}
-        <FormField label="Your name">
+        <FormField label={trans("welcome.nameLabel")}>
           <Input
             type="text"
             name="name"
@@ -83,11 +93,11 @@ export default page(function WelcomePage({ data }) {
             maxLength={100}
             autofocus
             class="w-full"
-            placeholder="How your household sees you"
+            placeholder={trans("welcome.namePlaceholder")}
           />
         </FormField>
         <Button type="submit" class="w-full">
-          Continue
+          {shared("common.continue")}
         </Button>
       </form>
     </div>

@@ -1,0 +1,94 @@
+@locale en
+---
+
+recipes.title = Recipes
+
+recipes.newRecipe = New Recipe
+
+recipes.filters = Filters
+
+recipes.showOnly = Show only
+
+recipes.readyToMake = Ready to make
+
+recipes.favourites = Favourites
+
+recipes.difficulty = Difficulty
+
+recipes.mealType = Meal Type
+
+recipes.dietary = Dietary
+
+recipes.sortNewest = Newest
+
+recipes.sortAlpha = A–Z
+
+recipes.sortQuickest = Total Time
+
+recipes.sortIngredients = Ingredients
+
+empty.noRecipes = No recipes yet
+
+empty.noRecipesBody = Write one from scratch, or import one from a URL, a photo or a block of text.
+
+empty.noRecipesMatch = No recipes match "{$query}"
+
+empty.noRecipesMatchBody = Try a shorter search.
+
+empty.noRecipesMatchBodyFilters = Try a shorter search, or clear the filters.
+
+empty.noRecipesFilters = No recipes match these filters
+
+empty.noRecipesFiltersBody = Nothing in the collection fits every filter you've picked.
+
+empty.nothingReady = Nothing is ready to make yet
+
+empty.nothingReadyBody = "Ready to make" only shows recipes your pantry already covers, and your pantry is empty.
+
+empty.stockPantry = Stock the pantry
+
+empty.showAllRecipes = Show all recipes
+
+empty.clearAllFilters = Clear all filters
+
+empty.newRecipe = New recipe
+
+tags.breakfast = breakfast
+
+tags.lunch = lunch
+
+tags.dinner = dinner
+
+tags.snack = snack
+
+tags.dessert = dessert
+
+tags.appetizer = appetizer
+
+tags.side = side
+
+tags.drink = drink
+
+tags.easy = easy
+
+tags.medium = medium
+
+tags.hard = hard
+
+tags.vegetarian = vegetarian
+
+tags.vegan = vegan
+
+tags.pescetarian = pescetarian
+
+tags.glutenFree = gluten-free
+
+tags.dairyFree = dairy-free
+
+tags.nutFree = nut-free
+
+tags.lowCarb = low-carb
+
+tags.keto = keto
+
+tags.paleo = paleo

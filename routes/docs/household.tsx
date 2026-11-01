@@ -7,19 +7,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Households";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.householdsTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function HouseholdDocs({ url }) {
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Households"
+      title={trans("docs.householdsTitle")}
       intro="Members and roles, your household's equipment and stores, and how to move out without losing your recipes."
     >
       <DocSection id="members" title="Members and Roles">

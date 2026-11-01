@@ -9,6 +9,13 @@ import {
   Pagination,
   paginationParams,
 } from "../../components/Pagination.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   async GET(ctx) {
@@ -64,7 +71,9 @@ export const handlers = handler({
     ]);
     const totalCount = Number(countRes.rows[0].cnt);
 
-    ctx.state.pageTitle = "Collections";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "collections.title",
+    ).format();
     return {
       data: {
         collections: result.rows,
@@ -81,33 +90,34 @@ export default page(
   function CollectionsPage(
     { data: { collections, q, currentPage, totalCount, householdId }, url },
   ) {
+    const trans = t.use();
     return (
       <div>
-        <PageHeader title="Collections" query={q}>
+        <PageHeader title={trans("collections.title")} query={q}>
           <ButtonLink href="/collections/new">
-            New Collection
+            {t("collections.newTitle")}
           </ButtonLink>
         </PageHeader>
 
         {collections.length === 0
           ? q
             ? (
-              <EmptyState title={`No collections match "${q}"`}>
-                Nothing here goes by that name.
+              <EmptyState
+                title={trans("empty.noCollectionsMatch", { query: q })}
+              >
+                {shared("error.noMatchQuery")}
               </EmptyState>
             )
             : (
               <EmptyState
-                title="No collections yet"
+                title={trans("empty.noCollections")}
                 action={
                   <ButtonLink href="/collections/new" size="sm">
-                    New collection
+                    {t("collections.newTitle")}
                   </ButtonLink>
                 }
               >
-                Collections group recipes however you like: a weeknight set, a
-                Christmas menu, everything you've cooked out of one book. They
-                can be shared with a link.
+                {t("empty.noCollectionsBody")}
               </EmptyState>
             )
           : (
@@ -131,12 +141,12 @@ export default page(
                         <div class="font-medium text-lg">{c.name}</div>
                         {c.private && (
                           <span class="text-xs bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400 px-1.5 py-0.5 rounded">
-                            private
+                            {t("recipes.private")}
                           </span>
                         )}
                         {c.household_id !== householdId && (
                           <span class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
-                            shared
+                            {shared("common.shared")}
                           </span>
                         )}
                       </div>
@@ -147,8 +157,7 @@ export default page(
                       )}
                     </div>
                     <div class="text-sm text-stone-400 shrink-0">
-                      {c.recipe_count}{" "}
-                      {c.recipe_count === 1 ? "recipe" : "recipes"}
+                      {t("collections.recipeCount", { count: c.recipe_count })}
                     </div>
                   </div>
                 </a>

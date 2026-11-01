@@ -6,19 +6,28 @@ import {
   DocSection,
   DocsPage,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Pantry";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.pantryTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function PantryDocs({ url }) {
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Pantry"
+      title={trans("docs.pantryTitle")}
       intro="Your household's shared inventory: what's in the kitchen, when it expires, and how stock moves in and out."
     >
       <DocSection id="basics" title="How the Pantry Works">

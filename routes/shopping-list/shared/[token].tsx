@@ -2,6 +2,9 @@ import { handler, page } from "./$[token].ts";
 import { HttpError } from "fresh/errors";
 import { projectShoppingList } from "../../../lib/shopping-list.ts";
 import SharedShoppingList from "../../../islands/SharedShoppingList.tsx";
+import { pickBundle } from "../../../lib/i18n/locale.ts";
+import en from "./[token].en.mfr";
+import it from "./[token].it.mfr";
 
 export const handlers = handler({
   async GET(ctx) {
@@ -27,7 +30,9 @@ export const handlers = handler({
       list.household_id,
     );
 
-    ctx.state.pageTitle = "Shopping List";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "shopping.title",
+    ).format();
     return {
       data: {
         lines: projected.lines.map((line) => ({

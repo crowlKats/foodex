@@ -1,0 +1,12 @@
+@locale it
+---
+
+auth.invalidLinkTitle = Link non valido
+
+auth.invalidLinkHeading = Link non valido o scaduto
+
+auth.invalidLinkBody = Questo link di accesso è scaduto o è già stato usato. Richiedine uno nuovo.
+
+auth.inviteRequiredTitle = Invito necessario
+
+auth.inviteRequiredHeading = Invito necessario

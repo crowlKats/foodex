@@ -9,6 +9,11 @@ import { IconFridge } from "@tabler/icons-preact";
 import { IconHome } from "@tabler/icons-preact";
 import { IconScan } from "@tabler/icons-preact";
 import type { User } from "../utils.ts";
+import { createT } from "./Translation.tsx";
+import en from "./Nav.en.mfr";
+import it from "./Nav.it.mfr";
+
+const t = createT({ en, it });
 
 function isActive(currentPath: string, href: string): boolean {
   if (href === "/recipes") {
@@ -103,22 +108,31 @@ export function Nav(
     currentPath: string;
   },
 ) {
+  const trans = t.use();
   // Reference catalogs and the guide sit behind a menu rather than in the bar:
   // the bar only has room for the core workflow before it wraps.
   const moreLinks: NavDropdownLink[] = [
-    { href: "/ingredients", label: "Ingredients", group: "catalogs" },
-    { href: "/stores", label: "Stores", group: "catalogs" },
-    { href: "/tools", label: "Tools", group: "catalogs" },
-    { href: "/docs", label: "User guide", tour: "docs" },
-    ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+    {
+      href: "/ingredients",
+      label: trans("nav.ingredients"),
+      group: "catalogs",
+    },
+    { href: "/stores", label: trans("nav.stores"), group: "catalogs" },
+    { href: "/tools", label: trans("nav.tools"), group: "catalogs" },
+    { href: "/docs", label: trans("nav.docs"), tour: "docs" },
+    ...(isAdmin ? [{ href: "/admin", label: trans("nav.admin") }] : []),
   ];
   // Below lg the bar shows none of the links, so the menu carries everything
   // the bottom tab bar has no room for as well.
   const compactLinks: NavDropdownLink[] = [
     ...(hasHousehold
       ? [
-        { href: "/agent", label: "Assistant", tour: "assistant" },
-        { href: "/collections", label: "Collections", tour: "collections" },
+        { href: "/agent", label: trans("nav.assistant"), tour: "assistant" },
+        {
+          href: "/collections",
+          label: trans("nav.collections"),
+          tour: "collections",
+        },
       ]
       : []),
     ...moreLinks,
@@ -142,7 +156,7 @@ export function Nav(
             <div class="hidden lg:flex items-center gap-4 min-w-0">
               <NavLink
                 href="/recipes"
-                label="Recipes"
+                label={trans("nav.recipes")}
                 tour="recipes"
                 currentPath={currentPath}
               />
@@ -150,25 +164,25 @@ export function Nav(
                 <>
                   <NavLink
                     href="/collections"
-                    label="Collections"
+                    label={trans("nav.collections")}
                     tour="collections"
                     currentPath={currentPath}
                   />
                   <NavLink
                     href="/agent"
-                    label="Assistant"
+                    label={trans("nav.assistant")}
                     tour="assistant"
                     currentPath={currentPath}
                   />
                   <NavLink
                     href="/household/pantry"
-                    label="Pantry"
+                    label={trans("nav.pantry")}
                     tour="pantry"
                     currentPath={currentPath}
                   />
                   <NavLink
                     href="/plan"
-                    label="Plan"
+                    label={trans("nav.plan")}
                     tour="plan"
                     currentPath={currentPath}
                   />
@@ -177,7 +191,7 @@ export function Nav(
               {user && (
                 <NavLink
                   href="/shopping-list"
-                  label="Shopping List"
+                  label={trans("nav.shoppingList")}
                   tour="shopping"
                   currentPath={currentPath}
                   badge={shoppingListCount ?? 0}
@@ -197,7 +211,7 @@ export function Nav(
               <NavDropdown
                 id="more"
                 class="hidden lg:block"
-                trigger={{ kind: "text", label: "More" }}
+                trigger={{ kind: "text", label: trans("nav.more") }}
                 links={moreLinks}
                 currentPath={currentPath}
               />
@@ -211,7 +225,7 @@ export function Nav(
                     ? "text-orange-400"
                     : ""
                 }`}
-                title="Household"
+                title={trans("nav.household")}
               >
                 <IconHome class="size-5" />
               </a>
@@ -224,7 +238,7 @@ export function Nav(
                       name: user.name,
                       avatarUrl: user.avatar_url,
                     }}
-                    links={[{ href: "/profile", label: "Profile" }]}
+                    links={[{ href: "/profile", label: trans("nav.profile") }]}
                     currentPath={currentPath}
                     signOut
                   />
@@ -234,7 +248,7 @@ export function Nav(
                     href="/auth/login"
                     class="text-sm text-stone-400 hover:text-stone-200 whitespace-nowrap"
                   >
-                    Sign in
+                    {t("nav.signIn")}
                   </a>
                 )}
             </div>
@@ -250,7 +264,7 @@ export function Nav(
         <div class="flex items-center justify-around">
           <MobileTab
             href="/recipes"
-            label="Recipes"
+            label={trans("nav.recipes")}
             tour="recipes"
             icon={IconToolsKitchen2}
             currentPath={currentPath}
@@ -258,7 +272,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/household/pantry"
-              label="Pantry"
+              label={trans("nav.pantry")}
               tour="pantry"
               icon={IconFridge}
               currentPath={currentPath}
@@ -267,7 +281,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/plan"
-              label="Plan"
+              label={trans("nav.plan")}
               tour="plan"
               icon={IconCalendar}
               currentPath={currentPath}
@@ -276,7 +290,7 @@ export function Nav(
           {hasHousehold && (
             <MobileTab
               href="/scan"
-              label="Scan"
+              label={trans("nav.scan")}
               tour="scan"
               icon={IconScan}
               currentPath={currentPath}
@@ -285,7 +299,7 @@ export function Nav(
           {user && (
             <MobileTab
               href="/shopping-list"
-              label="Shop"
+              label={trans("nav.shop")}
               tour="shopping"
               icon={IconShoppingCart}
               currentPath={currentPath}
@@ -294,7 +308,7 @@ export function Nav(
           )}
           <MobileTab
             href={hasHousehold ? "/household" : "/households"}
-            label="Household"
+            label={trans("nav.household")}
             tour="household"
             icon={IconHome}
             currentPath={currentPath}

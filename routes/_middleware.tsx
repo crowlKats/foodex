@@ -14,8 +14,10 @@ import {
   nameRequirementResponse,
 } from "../lib/auth.ts";
 import { loadSessionState } from "../lib/session.ts";
+import { pickBundle } from "../lib/i18n/locale.ts";
 import { cleanupStaleAccounts } from "../lib/retention.ts";
 import { deleteFile } from "../lib/s3.ts";
+import { en, it } from "../locales/shared.ts";
 
 export interface State extends ParentState {
   db: {
@@ -28,6 +30,7 @@ export interface State extends ParentState {
   householdId: string | null;
   isAdmin: boolean;
   pageTitle: string;
+  locale: string;
 }
 
 export default middleware(async function (ctx) {
@@ -55,10 +58,23 @@ export default middleware(async function (ctx) {
   // and onboarding; see householdRequirementResponse for the exemptions.
   if (state.user && !state.householdId) {
     const denied = householdRequirementResponse(new URL(ctx.req.url));
-    if (denied) return denied;
+    if (denied) {
+      if (denied.status === 403) {
+        return Response.json(
+          {
+            error: pickBundle(state.locale, { en, it }).get(
+              "error.needHousehold",
+            ).format(),
+          },
+          { status: 403 },
+        );
+      }
+      return denied;
+    }
   }
 
   try {
+    globalThis.__LOCALE__ = state.locale;
     return await ctx.next(state);
   } catch (err) {
     // The framework catches any thrown error and renders _error.tsx without

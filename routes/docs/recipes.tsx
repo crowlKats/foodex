@@ -7,19 +7,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Browsing & Cooking";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.recipesTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function RecipesDocs({ url }) {
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Browsing & Cooking"
+      title={trans("docs.recipesTitle")}
       intro="Finding recipes, reading them at the right scale, and cooking with timers and step-by-step mode."
     >
       <DocSection id="browsing" title="Browsing and Searching">

@@ -5,6 +5,7 @@
     "npm:@aws-sdk/s3-request-presigner@^3.1096.0": "3.1096.0",
     "npm:@frsh/fresh@latest": "3.0.0-alpha.202606211459_@preact+signals@2.10.0__preact@10.29.7___preact-render-to-string@6.7.0__preact-render-to-string@6.7.0___preact@10.29.7_preact@10.29.7__preact-render-to-string@6.7.0_vite@8.1.5",
     "npm:@jsr/luca__highlightable-textarea@~0.1.1": "0.1.1_preact-render-to-string@6.7.0__preact@10.29.7",
+    "npm:@jsr/luca__messageformat-resources@0.1": "0.1.0",
     "npm:@jsr/std__assert@^1.0.19": "1.0.19",
     "npm:@openrouter/ai-sdk-provider@3": "3.0.0_ai@7.0.55__zod@3.25.76_zod@3.25.76",
     "npm:@preact/signals@^2.10.0": "2.10.0_preact@10.29.7__preact-render-to-string@6.7.0_preact-render-to-string@6.7.0__preact@10.29.7",
@@ -17,6 +18,7 @@
     "npm:ai@^7.0.52": "7.0.55_zod@3.25.76",
     "npm:barcode-detector@^3.2.1": "3.2.1_@types+emscripten@1.41.5",
     "npm:marked@^15.0.12": "15.0.12",
+    "npm:messageformat@4": "4.0.0",
     "npm:nodemailer@^6.10.1": "6.10.1",
     "npm:pg@^8.22.0": "8.22.0",
     "npm:preact-render-to-string@^6.7.0": "6.7.0_preact@10.29.7",
@@ -622,6 +624,10 @@
         "preact"
       ],
       "tarball": "https://npm.jsr.io/~/11/@jsr/luca__highlightable-textarea/0.1.1.tgz"
+    },
+    "@jsr/luca__messageformat-resources@0.1.0": {
+      "integrity": "sha512-xe800qr8FTDH3U3wC9HQLqfh94HbFZM6TM//lI6xe52NAx1DFgh/YSEXGKuEyjf8byF+O+HXDGFpwOKjZtS4ew==",
+      "tarball": "https://npm.jsr.io/~/11/@jsr/luca__messageformat-resources/0.1.0.tgz"
     },
     "@jsr/nic__local-highlight-registry@0.1.0": {
       "integrity": "sha512-zAV4KgTNgxFSoDqdrT4+P33sZYlCw/ek8hlqs3v25y1jCebqZnUy4gF1CHd8ifd09Vamt/cTESM88I7CTCEgLQ==",
@@ -1239,6 +1245,9 @@
       "integrity": "sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA==",
       "bin": true
     },
+    "messageformat@4.0.0": {
+      "integrity": "sha512-XKmJ/ffTWToWOlHJzt85ZChQgVGC0LHzNWuNK8zuYpNySsB0nIEmytOdSAOW9ETKtkajAUJf520m5gFHHnrTYg=="
+    },
     "ms@2.1.3": {
       "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="
     },
@@ -1597,6 +1606,7 @@
         "npm:@aws-sdk/s3-request-presigner@^3.1096.0",
         "npm:@frsh/fresh@latest",
         "npm:@jsr/luca__highlightable-textarea@~0.1.1",
+        "npm:@jsr/luca__messageformat-resources@0.1",
         "npm:@jsr/std__assert@^1.0.19",
         "npm:@openrouter/ai-sdk-provider@3",
         "npm:@preact/signals@^2.10.0",
@@ -1609,6 +1619,7 @@
         "npm:ai@^7.0.52",
         "npm:barcode-detector@^3.2.1",
         "npm:marked@^15.0.12",
+        "npm:messageformat@4",
         "npm:nodemailer@^6.10.1",
         "npm:pg@^8.22.0",
         "npm:preact-render-to-string@^6.7.0",

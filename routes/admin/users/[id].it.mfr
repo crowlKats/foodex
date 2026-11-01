@@ -1,0 +1,36 @@
+@locale it
+---
+
+admin.namedTitle = Admin: {$name}
+
+admin.noNameUser = Utente
+
+admin.allUsers = Tutti gli utenti
+
+admin.account = Account
+
+admin.userId = ID utente
+
+admin.created = Creato
+
+admin.unitSystem = Sistema di unità
+
+admin.timezone = Fuso orario
+
+admin.language = Lingua
+
+admin.providers = Accesso
+
+admin.emailOnly = Solo email
+
+admin.none = nessuno
+
+admin.activity = Attività
+
+admin.favorites = Preferiti
+
+admin.agentSessions = Chat assistente
+
+admin.aiTokens = Token IA
+
+admin.dangerZone = Zona pericolosa

@@ -14,6 +14,13 @@ import {
   Pagination,
   paginationParams,
 } from "../../components/Pagination.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./index.en.mfr";
+import it from "./index.it.mfr";
+
+const t = createT({ en, it });
 
 const INGREDIENT_SELECT = `SELECT g.*,
   (SELECT COUNT(*) FROM ingredient_prices gp WHERE gp.ingredient_id = g.id) as store_count,
@@ -61,7 +68,9 @@ export const handlers = handler({
       ctx.state.db.query("SELECT id, name FROM ingredients"),
     ]);
     const error = ctx.url.searchParams.get("error") || undefined;
-    ctx.state.pageTitle = "Ingredients";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "catalog.ingredients",
+    ).format();
     return {
       data: {
         ingredients: result.rows,
@@ -158,9 +167,11 @@ export default page(
       url,
     },
   ) {
+    const trans = t.use();
+    const sharedTrans = shared.use();
     return (
       <div>
-        <PageHeader title="Ingredients" query={q} />
+        <PageHeader title={trans("catalog.ingredients")} query={q} />
 
         {error && (
           <div class="alert-error mb-4">
@@ -173,15 +184,17 @@ export default page(
         >
           {loggedIn && (
             <div class="lg:col-span-1">
-              <h2 class="text-lg font-semibold mb-3">Add Ingredient</h2>
+              <h2 class="text-lg font-semibold mb-3">
+                {t("catalog.addIngredient")}
+              </h2>
               <form
                 method="POST"
                 class="card space-y-3"
               >
-                <FormField label="Name">
+                <FormField label={sharedTrans("common.name")}>
                   <IngredientNameInput existing={existingNames} />
                 </FormField>
-                <FormField label="Unit">
+                <FormField label={sharedTrans("form.unit")}>
                   <UnitSelect name="unit" required />
                 </FormField>
 
@@ -240,24 +253,25 @@ export default page(
 
           <div class={loggedIn ? "lg:col-span-2" : ""}>
             <h2 class="text-lg font-semibold mb-3">
-              All Ingredients ({totalCount})
+              {shared("common.allCount", {
+                title: trans("catalog.ingredients"),
+                count: String(totalCount),
+              })}
             </h2>
             {ingredients.length === 0
               ? q
                 ? (
-                  <EmptyState title={`No ingredients match "${q}"`}>
-                    Nothing in the catalog goes by that name. Try a shorter
-                    search, or add it below.
+                  <EmptyState
+                    title={trans("empty.noIngredientsMatch", { query: q })}
+                  >
+                    {t("empty.noIngredientsMatchBody")}
                   </EmptyState>
                 )
                 : (
-                  <EmptyState title="No ingredients yet">
-                    Ingredients are the shared catalog that recipes, your pantry
-                    and the shopping list all point at. Linking a recipe line to
-                    one is what lets Foodex track stock, prices and
-                    substitutions across recipes. {loggedIn
-                      ? "Use the Add Ingredient form to create the first one."
-                      : "Sign in to add one."}
+                  <EmptyState title={trans("empty.noIngredients")}>
+                    {t("empty.noIngredientsBody")} {loggedIn
+                      ? t("empty.addIngredientFirst")
+                      : shared("empty.signInToAdd")}
                   </EmptyState>
                 )
               : (

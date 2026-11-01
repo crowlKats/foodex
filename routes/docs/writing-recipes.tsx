@@ -7,19 +7,28 @@ import {
   DocsPage,
   DocSub,
 } from "../../components/DocsPage.tsx";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import en from "../../components/DocsPage.en.mfr";
+import it from "../../components/DocsPage.it.mfr";
+
+const t = createT({ en, it });
 
 export const handlers = handler({
   GET(ctx) {
-    ctx.state.pageTitle = "Writing Recipes";
+    ctx.state.pageTitle = pickBundle(ctx.state.locale, { en, it }).get(
+      "docs.writingTitle",
+    ).format();
     return { data: {} };
   },
 });
 
 export default page(function WritingRecipesDocs({ url }) {
+  const trans = t.use();
   return (
     <DocsPage
       currentPath={url.pathname}
-      title="Writing Recipes"
+      title={trans("docs.writingTitle")}
       intro="The recipe editor from front to back: the basics, ingredients and their keys, steps and sections, and the advanced options."
     >
       <DocSection id="editor" title="The Recipe Editor">

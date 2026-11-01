@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import { IconChevronDown } from "@tabler/icons-preact";
 import { IconSortAscending } from "@tabler/icons-preact";
 import { IconSortDescending } from "@tabler/icons-preact";
+import { t } from "../locales/shared.ts";
 
 interface SortOption {
   value: string;
@@ -19,6 +20,7 @@ interface SortSelectProps {
 export default function SortSelect(
   { options, current, desc, toggleHref }: SortSelectProps,
 ) {
+  const trans = t.use();
   const currentOption = options.find((o) => o.value === current) ?? options[0];
   const open = useSignal(false);
   const highlightIndex = useSignal(-1);
@@ -113,7 +115,7 @@ export default function SortSelect(
       <a
         href={toggleHref}
         class="flex items-center border-2 border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 px-2 py-2 text-sm h-[2.5rem] transition-colors duration-75"
-        title={desc ? "Descending" : "Ascending"}
+        title={desc ? trans("common.descending") : trans("common.ascending")}
       >
         <Icon class="size-4" />
       </a>

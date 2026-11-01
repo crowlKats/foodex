@@ -2,9 +2,12 @@ import "../styles.css";
 
 import { handler, page } from "./$_error.ts";
 import { HttpError } from "fresh/errors";
+import { Head } from "fresh/runtime";
 import { Nav } from "../components/Nav.tsx";
 import { ButtonLink } from "../components/Button.tsx";
 import { loadSessionState } from "../lib/session.ts";
+import { LocaleProvider } from "../components/Translation.tsx";
+import { t } from "../locales/shared.ts";
 
 export const handlers = handler(async (ctx) => ({
   data: await loadSessionState(ctx.req),
@@ -22,9 +25,19 @@ export const handlers = handler(async (ctx) => ({
 export default page(function ErrorPage({ error, url, data }) {
   const status = error instanceof HttpError ? error.status : 500;
   const notFound = status === 404;
+  const locale = data.locale;
 
   return (
-    <>
+    <LocaleProvider locale={locale}>
+      <Head>
+        <script
+          // deno-lint-ignore react-no-danger
+          dangerouslySetInnerHTML={{
+            __html: `globalThis.__LOCALE__ = ${JSON.stringify(locale)};`,
+          }}
+        />
+        <html lang={locale} />
+      </Head>
       <Nav
         user={data.user}
         shoppingListCount={data.shoppingListCount}
@@ -38,27 +51,19 @@ export default page(function ErrorPage({ error, url, data }) {
             {status}
           </p>
           <h1 class="text-2xl font-bold mt-4">
-            {notFound ? "We couldn't find that page" : "Something went wrong"}
+            {notFound ? t("error.notFoundTitle") : t("error.serverTitle")}
           </h1>
           <p class="text-stone-500 mt-2">
-            {notFound
-              ? (
-                <>
-                  Nothing lives at{" "}
-                  <code class="text-stone-600 dark:text-stone-400 break-all">
-                    {url.pathname}
-                  </code>. The link may be out of date, or the recipe may have
-                  been renamed or deleted.
-                </>
-              )
-              : "The page failed to load. Trying again often works; if it doesn't, the problem is on our side."}
+            {notFound ? t("error.notFoundBody") : t("error.serverBody")}
           </p>
           <div class="flex flex-wrap gap-2 justify-center mt-6">
-            <ButtonLink href="/recipes">Browse recipes</ButtonLink>
-            <ButtonLink href="/" variant="outline">Home</ButtonLink>
+            <ButtonLink href="/recipes">{t("error.browseRecipes")}</ButtonLink>
+            <ButtonLink href="/" variant="outline">
+              {t("common.home")}
+            </ButtonLink>
           </div>
         </div>
       </main>
-    </>
+    </LocaleProvider>
   );
 });

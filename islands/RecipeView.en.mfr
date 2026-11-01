@@ -1,0 +1,6 @@
+@locale en
+---
+
+recipes.ingredients = Ingredients
+
+recipes.tools = Tools

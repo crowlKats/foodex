@@ -1,4 +1,5 @@
 import { ButtonLink } from "./Button.tsx";
+import { t } from "../locales/shared.ts";
 
 export const PAGE_SIZE = 50;
 
@@ -34,15 +35,15 @@ export function Pagination(
     <div class="flex items-center justify-center gap-2 mt-4">
       {currentPage > 1 && (
         <ButtonLink href={pageUrl(currentPage - 1)} variant="outline">
-          Prev
+          {t("common.prev")}
         </ButtonLink>
       )}
       <span class="text-sm text-stone-500">
-        Page {currentPage} of {totalPages}
+        {t("common.pageOf", { current: currentPage, total: totalPages })}
       </span>
       {currentPage < totalPages && (
         <ButtonLink href={pageUrl(currentPage + 1)} variant="outline">
-          Next
+          {t("common.next")}
         </ButtonLink>
       )}
     </div>

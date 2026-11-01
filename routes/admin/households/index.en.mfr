@@ -1,0 +1,26 @@
+@locale en
+---
+
+admin.pageHouseholds = Admin: Households
+
+admin.searchHouseholds = Search households...
+
+admin.inviteUser = Invite a new user
+
+admin.inviteUserHelp = Creates an empty household and emails an invite link. The invitee becomes its owner and picks the name when they join.
+
+admin.invite = Invite
+
+admin.pendingInvites = Pending invites ({$count})
+
+admin.noOutstandingInvites = No outstanding invites
+
+admin.revokeInviteConfirm = Revoke the invite for {$email}? Its empty household is removed too.
+
+admin.thisAddress = this address
+
+admin.noHouseholds = No households yet
+
+admin.noHouseholdsMatch = No households match "{$query}"
+
+admin.noHouseholdsBody = A household is created during onboarding, so one appears here for each account that has finished that step.

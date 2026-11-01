@@ -1,0 +1,12 @@
+@locale it
+---
+
+catalog.stores = Negozi
+
+catalog.addStore = Aggiungi negozio
+
+empty.noStores = Nessun negozio ancora
+
+empty.noStoresMatch = Nessun negozio corrisponde a "{$query}"
+
+empty.noStoresBody = I negozi sono i posti in cui compri. Registrarne uno permette di attaccare i prezzi agli ingredienti, da cui il totale in lista della spesa e il raggruppamento per negozio.

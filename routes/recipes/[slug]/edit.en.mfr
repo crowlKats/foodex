@@ -1,0 +1,4 @@
+@locale en
+---
+
+recipes.editTitle = Edit: {$title}
