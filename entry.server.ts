@@ -1,6 +1,7 @@
 import { App } from "fresh";
 import { sendExpiryNotifications } from "./lib/expiry-notifications.ts";
 import { query } from "./db/mod.ts";
+import { contentSecurityPolicy } from "./lib/csp.ts";
 
 export const app = new App()
   // Security headers
@@ -18,24 +19,12 @@ export const app = new App()
       "camera=(), microphone=(), geolocation=()",
     );
 
+    // A page that set its own policy keeps it (see lib/csp.ts).
     const ct = resp.headers.get("Content-Type") ?? "";
-    if (ct.includes("text/html")) {
-      resp.headers.set(
-        "Content-Security-Policy",
-        [
-          "default-src 'self'",
-          "script-src 'self' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com",
-          "style-src 'self' 'unsafe-inline' https://hcaptcha.com https://*.hcaptcha.com",
-          "img-src 'self' data: blob: https://avatars.githubusercontent.com https://*.googleusercontent.com",
-          "connect-src 'self' https://hcaptcha.com https://*.hcaptcha.com",
-          "font-src 'self'",
-          "frame-src https://hcaptcha.com https://*.hcaptcha.com",
-          "object-src 'none'",
-          "base-uri 'self'",
-          "form-action 'self'",
-          "frame-ancestors 'none'",
-        ].join("; "),
-      );
+    if (
+      ct.includes("text/html") && !resp.headers.has("Content-Security-Policy")
+    ) {
+      resp.headers.set("Content-Security-Policy", contentSecurityPolicy());
     }
 
     return resp;

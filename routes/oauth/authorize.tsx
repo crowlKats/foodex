@@ -7,6 +7,7 @@ import {
   createAuthorizationCode,
 } from "../../lib/oauth.ts";
 import { Button } from "../../components/Button.tsx";
+import { contentSecurityPolicy } from "../../lib/csp.ts";
 
 // The OAuth authorization endpoint: an MCP client sends the user here to
 // approve it. GET checks the request and shows the consent page; the page
@@ -26,12 +27,18 @@ type AuthorizeData =
     params: [string, string][];
   };
 
-// The consent page must not be framed, or another site could overlay it
-// and trick the user into clicking Allow.
-const NO_FRAMING = {
-  "X-Frame-Options": "DENY",
-  "Content-Security-Policy": "frame-ancestors 'none'",
-};
+/**
+ * The consent page's policy. Its form ends in a redirect to the client, and
+ * browsers hold that redirect to form-action too, so the client's origin
+ * (or scheme, for an app link like cursor://) has to be allowed. Framing
+ * stays forbidden, or another site could overlay the page and trick the
+ * user into clicking Allow.
+ */
+function consentPolicy(redirectUri: string): string {
+  const target = new URL(redirectUri);
+  const source = target.origin === "null" ? target.protocol : target.origin;
+  return contentSecurityPolicy({ formAction: [source] });
+}
 
 function redirect(location: string): Response {
   return new Response(null, { status: 303, headers: { Location: location } });
@@ -43,7 +50,6 @@ function failure(check: Exclude<AuthorizeCheck, { ok: true }>) {
   return {
     data: { kind: "error", message: check.show } satisfies AuthorizeData,
     status: 400,
-    headers: NO_FRAMING,
   };
 }
 
@@ -78,7 +84,7 @@ export const handlers = handler({
         householdName: household.rows[0]?.name ?? "your household",
         params: [...ctx.url.searchParams],
       } satisfies AuthorizeData,
-      headers: NO_FRAMING,
+      headers: { "Content-Security-Policy": consentPolicy(redirectUri) },
     };
   },
   async POST(ctx) {
