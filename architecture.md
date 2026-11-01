@@ -28,7 +28,7 @@
 │   ├── mod.ts                 # Connection pool, query/transaction helpers, orphaned media cleanup
 │   ├── types.ts               # TypeScript interfaces for all DB row types
 │   ├── migrate.ts             # Migration runner
-│   └── migrations/            # Sequential .sql files (001–083)
+│   └── migrations/            # Sequential .sql files (001–084)
 │
 ├── lib/                       # Shared utilities
 │   ├── auth.ts                # OAuth flows (GitHub/Google), session cookies
@@ -50,6 +50,7 @@
 │   ├── agent/                 # Assistant: event log, staging, tools, turn loop
 │   ├── api-tokens.ts          # Bearer tokens (hashed) for the MCP endpoint: personal ones and OAuth grants
 │   ├── oauth.ts               # OAuth authorization server for MCP clients (CIMD client ids, PKCE, codes)
+│   ├── oauth-client-auth.ts   # private_key_jwt client assertions (signed JWTs checked against the client's JWKS)
 │   ├── mcp.ts                 # MCP server (JSON-RPC over Streamable HTTP), pure half; routes/mcp.tsx wraps it
 │   ├── quantity.ts            # RecipeQuantity types, computeScaleRatio, formatQuantity
 │   ├── recipe-prompt.ts       # JSON schema + rules for AI recipe output

@@ -14,6 +14,7 @@ const client: ClientMetadata = {
   client_id: CLIENT_ID,
   client_name: "Example",
   redirect_uris: ["http://localhost/callback", "https://app.example/cb"],
+  auth_methods: ["none"],
 };
 
 Deno.test("parseClientId accepts https URLs with a path only", () => {
@@ -38,6 +39,7 @@ Deno.test("parseClientMetadata checks the document against its URL", () => {
     client_id: CLIENT_ID,
     client_name: "Example",
     redirect_uris: ["x:/"],
+    auth_methods: ["none"],
   });
   // No name: fall back to the host, which is what the user can trust.
   const unnamed = parseClientMetadata(
@@ -62,6 +64,60 @@ Deno.test("parseClientMetadata checks the document against its URL", () => {
   for (const doc of bad) {
     assertEquals(typeof parseClientMetadata(doc, CLIENT_ID), "string");
   }
+});
+
+Deno.test("parseClientMetadata picks the auth methods both sides support", () => {
+  // ChatGPT's document, trimmed: it names private_key_jwt as its preference
+  // and lists none as well.
+  const chatgpt = {
+    client_id: CLIENT_ID,
+    client_name: "ChatGPT",
+    redirect_uris: ["https://chatgpt.com/connector_platform_oauth_redirect"],
+    token_endpoint_auth_method: "private_key_jwt",
+    token_endpoint_auth_methods_supported: ["none", "private_key_jwt"],
+    jwks_uri: "https://chatgpt.com/oauth/jwks.json",
+  };
+  const parsed = parseClientMetadata(chatgpt, CLIENT_ID) as ClientMetadata;
+  assertEquals(parsed.auth_methods, ["none", "private_key_jwt"]);
+  assertEquals(parsed.jwks_uri, "https://chatgpt.com/oauth/jwks.json");
+
+  // private_key_jwt alone, with inline keys.
+  const inline = parseClientMetadata(
+    {
+      client_id: CLIENT_ID,
+      redirect_uris: ["x:/"],
+      token_endpoint_auth_method: "private_key_jwt",
+      jwks: { keys: [{ kty: "EC" }] },
+    },
+    CLIENT_ID,
+  ) as ClientMetadata;
+  assertEquals(inline.auth_methods, ["private_key_jwt"]);
+  assertEquals(inline.jwks, [{ kty: "EC" }]);
+
+  // private_key_jwt without any keys to check it against is no use.
+  assertEquals(
+    typeof parseClientMetadata(
+      {
+        client_id: CLIENT_ID,
+        redirect_uris: ["x:/"],
+        token_endpoint_auth_method: "private_key_jwt",
+      },
+      CLIENT_ID,
+    ),
+    "string",
+  );
+  assertEquals(
+    typeof parseClientMetadata(
+      {
+        client_id: CLIENT_ID,
+        redirect_uris: ["x:/"],
+        token_endpoint_auth_method: "private_key_jwt",
+        jwks_uri: "http://insecure.example/jwks.json",
+      },
+      CLIENT_ID,
+    ),
+    "string",
+  );
 });
 
 Deno.test("redirectUriAllowed matches exactly, loopback on any port", () => {

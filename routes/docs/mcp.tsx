@@ -65,8 +65,8 @@ export default page(function McpDocs({ url }) {
           <p class={`${docMuted} mb-0`}>
             Foodex identifies assistants by their client metadata document
             rather than by registering them, so this works with clients that
-            support client ID metadata documents (Claude Code does). Others can
-            use a token instead.
+            support client ID metadata documents (Claude Code and ChatGPT do).
+            Others can use a token instead.
           </p>
         </DocSub>
         <DocSub title="Or use a token">
