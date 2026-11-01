@@ -155,9 +155,7 @@
 │       ├── transcribe.tsx     # Dictation audio → transcript (audio not stored)
 │       └── media/{[id],[key]}.tsx
 │
-└── static/
-    ├── favicon.ico
-    └── logo.svg
+└── public/                # favicon, app icons, manifest.json, sw.js
 ```
 
 ## Database Schema (key tables)
