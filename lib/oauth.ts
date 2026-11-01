@@ -436,15 +436,20 @@ export interface AuthorizeRequest {
   state: string | null;
 }
 
+export type AuthorizeProblem =
+  | "noClientMetadata"
+  | "unverified"
+  | "unregisteredRedirect";
+
 /**
  * The outcome of checking an authorization request. Until the client and
  * redirect URI check out, errors are shown on the page: redirecting to an
  * unverified URI would make this an open redirector. After that, errors go
- * back to the client.
+ * back to the client. A shown error names the problem; the page words it.
  */
 export type AuthorizeCheck =
   | { ok: true; request: AuthorizeRequest }
-  | { ok: false; show: string }
+  | { ok: false; show: AuthorizeProblem; detail?: string }
   | { ok: false; redirect: string };
 
 export async function checkAuthorizeRequest(
@@ -458,8 +463,7 @@ export async function checkAuthorizeRequest(
   if (!parseClientId(clientId)) {
     return {
       ok: false,
-      show: "The app did not identify itself with a client metadata URL, " +
-        "which Foodex requires.",
+      show: "noClientMetadata",
     };
   }
   let client: ClientMetadata;
@@ -468,14 +472,14 @@ export async function checkAuthorizeRequest(
   } catch (err) {
     return {
       ok: false,
-      show: `Foodex could not verify the app: ${(err as Error).message}.`,
+      show: "unverified",
+      detail: (err as Error).message,
     };
   }
   if (!redirectUri || !redirectUriAllowed(client, redirectUri)) {
     return {
       ok: false,
-      show: "The app asked to be sent back to an address it has not " +
-        "registered.",
+      show: "unregisteredRedirect",
     };
   }
 

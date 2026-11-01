@@ -1,0 +1,34 @@
+@locale it
+---
+
+oauth.title = Collega un'app
+
+oauth.yourHousehold = il tuo nucleo
+
+oauth.errorHeading = Impossibile collegare questa app
+
+oauth.error.noClientMetadata = L'app non si è identificata con un URL di metadati client, che Foodex richiede.
+
+oauth.error.unverified = Foodex non è riuscito a verificare l'app: {$detail}.
+
+oauth.error.unregisteredRedirect = L'app ha chiesto di essere rimandata a un indirizzo che non ha registrato.
+
+oauth.nothingShared = Non è stato condiviso nulla. Puoi chiudere questa pagina.
+
+oauth.heading = Collegare {$client}?
+
+oauth.wantsAccess = {#bold}{$client}{/bold} vuole usare Foodex a nome tuo, {$user}, nel nucleo {#bold}{$household}{/bold}.
+
+oauth.identifiedBy = Identificata da {#code}{$clientHost}{/code}
+
+oauth.identifiedByReturning = Identificata da {#code}{$clientHost}{/code}, ti riporterà a {#code}{$redirectHost}{/code}
+
+oauth.canDo = Potrà:
+
+oauth.canRead = leggere ricette, dispensa, piano e lista del tuo nucleo
+
+oauth.canWrite = aggiungere pasti al piano e articoli alla lista e alla dispensa
+
+oauth.limits = Non può creare né modificare ricette. Puoi scollegarla in qualsiasi momento dal tuo {#link}Profilo{/link}.
+
+oauth.allow = Consenti

@@ -1,13 +1,22 @@
+import type { ComponentChildren } from "preact";
 import { handler, page } from "./$authorize.ts";
 import { getBaseUrl, loginUrl } from "../../lib/auth.ts";
 import {
   authorizationResponseUrl,
   type AuthorizeCheck,
+  type AuthorizeProblem,
   checkAuthorizeRequest,
   createAuthorizationCode,
 } from "../../lib/oauth.ts";
 import { Button } from "../../components/Button.tsx";
 import { contentSecurityPolicy } from "../../lib/csp.ts";
+import { createT } from "../../components/Translation.tsx";
+import { pickBundle } from "../../lib/i18n/locale.ts";
+import { t as shared } from "../../locales/shared.ts";
+import en from "./authorize.en.mfr";
+import it from "./authorize.it.mfr";
+
+const t = createT({ en, it });
 
 // The OAuth authorization endpoint: an MCP client sends the user here to
 // approve it. GET checks the request and shows the consent page; the page
@@ -15,7 +24,7 @@ import { contentSecurityPolicy } from "../../lib/csp.ts";
 // again before a code is issued.
 
 type AuthorizeData =
-  | { kind: "error"; message: string }
+  | { kind: "error"; problem: AuthorizeProblem; detail: string | null }
   | {
     kind: "consent";
     clientName: string;
@@ -48,14 +57,19 @@ function redirect(location: string): Response {
 function failure(check: Exclude<AuthorizeCheck, { ok: true }>) {
   if ("redirect" in check) return redirect(check.redirect);
   return {
-    data: { kind: "error", message: check.show } satisfies AuthorizeData,
+    data: {
+      kind: "error",
+      problem: check.show,
+      detail: check.detail ?? null,
+    } satisfies AuthorizeData,
     status: 400,
   };
 }
 
 export const handlers = handler({
   async GET(ctx) {
-    ctx.state.pageTitle = "Connect an app";
+    const bundle = pickBundle(ctx.state.locale, { en, it });
+    ctx.state.pageTitle = bundle.get("oauth.title").format();
     const origin = getBaseUrl(ctx.req);
     const check = await checkAuthorizeRequest(ctx.url.searchParams, origin);
     if (!check.ok) return failure(check);
@@ -81,7 +95,8 @@ export const handlers = handler({
         redirectHost: loopback || target.host === clientHost
           ? null
           : target.host || target.protocol,
-        householdName: household.rows[0]?.name ?? "your household",
+        householdName: household.rows[0]?.name ??
+          bundle.get("oauth.yourHousehold").format(),
         params: [...ctx.url.searchParams],
       } satisfies AuthorizeData,
       headers: { "Content-Security-Policy": consentPolicy(redirectUri) },
@@ -126,18 +141,22 @@ export const handlers = handler({
   },
 });
 
+function Mono({ children }: { children?: ComponentChildren }) {
+  return <span class="font-mono">{children}</span>;
+}
+
 export default page(function Authorize({ data, state }) {
   if (data.kind === "error") {
     return (
       <div class="max-w-md mx-auto mt-16">
         <h1 class="text-2xl font-bold text-center mb-8">
-          Can't connect this app
+          {t("oauth.errorHeading")}
         </h1>
         <div class="card">
-          <p class="text-sm mb-3">{data.message}</p>
-          <p class="text-xs text-stone-500">
-            Nothing was shared with it. You can close this page.
+          <p class="text-sm mb-3">
+            {t(`oauth.error.${data.problem}`, { detail: data.detail ?? "" })}
           </p>
+          <p class="text-xs text-stone-500">{t("oauth.nothingShared")}</p>
         </div>
       </div>
     );
@@ -146,34 +165,40 @@ export default page(function Authorize({ data, state }) {
   return (
     <div class="max-w-md mx-auto mt-16">
       <h1 class="text-2xl font-bold text-center mb-8">
-        Connect {data.clientName}?
+        {t("oauth.heading", { client: data.clientName })}
       </h1>
       <div class="card space-y-4">
         <div class="text-sm">
           <p class="mb-1">
-            <strong>{data.clientName}</strong> wants to use Foodex as you,{" "}
-            {state.user?.name}, in <strong>{data.householdName}</strong>.
+            {t("oauth.wantsAccess", {
+              client: data.clientName,
+              user: state.user?.name ?? "",
+              household: data.householdName,
+            }, { bold: ({ children }) => <strong>{children}</strong> })}
           </p>
           <p class="text-xs text-stone-500">
-            Identified by <span class="font-mono">{data.clientHost}</span>
-            {data.redirectHost && (
-              <>
-                , returning you to{" "}
-                <span class="font-mono">{data.redirectHost}</span>
-              </>
-            )}
+            {data.redirectHost
+              ? t("oauth.identifiedByReturning", {
+                clientHost: data.clientHost,
+                redirectHost: data.redirectHost,
+              }, { code: Mono })
+              : t("oauth.identifiedBy", { clientHost: data.clientHost }, {
+                code: Mono,
+              })}
           </p>
         </div>
         <div class="text-sm">
-          <p class="mb-1">It will be able to:</p>
+          <p class="mb-1">{t("oauth.canDo")}</p>
           <ul class="list-disc pl-5 space-y-0.5">
-            <li>read your household's recipes, pantry, plan and list</li>
-            <li>add meals to the plan and items to the list and pantry</li>
+            <li>{t("oauth.canRead")}</li>
+            <li>{t("oauth.canWrite")}</li>
           </ul>
           <p class="text-xs text-stone-500 mt-2">
-            It can't create or change recipes. Disconnect it any time from your
-            {" "}
-            <a href="/profile" class="link">Profile</a>.
+            {t("oauth.limits", {}, {
+              link: ({ children }) => (
+                <a href="/profile" class="link">{children}</a>
+              ),
+            })}
           </p>
         </div>
         <form method="POST" class="flex gap-2">
@@ -187,7 +212,7 @@ export default page(function Authorize({ data, state }) {
             variant="outline"
             class="flex-1"
           >
-            Cancel
+            {shared("common.cancel")}
           </Button>
           <Button
             type="submit"
@@ -196,7 +221,7 @@ export default page(function Authorize({ data, state }) {
             variant="primary"
             class="flex-1"
           >
-            Allow
+            {t("oauth.allow")}
           </Button>
         </form>
       </div>
